@@ -1,13 +1,10 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "nicchyo | 高知の日曜市を、未来へつなぐ",
-  description:
-    "nicchyo は、高知の日曜市を舞台に「観光客 × 地元民 × 市場文化」がつながる、新しいコミュニティ市場をデザインするデジタルプラットフォームです。",
-  icons: {
-    icon: "/favicon.ico",
-  },
+  description: "高知の日曜市を舞台に、「観光客 × 地元民 × 市場文化」がつながるデジタルプラットフォーム。",
 };
 
 export default function RootLayout({
@@ -17,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className="min-h-screen bg-slate-950 text-slate-50 antialiased">
+      <body className="min-h-screen bg-slate-950 text-slate-50">
         {children}
       </body>
     </html>
