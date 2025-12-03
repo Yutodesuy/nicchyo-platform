@@ -1,3 +1,5 @@
+"use client";
+
 import { Metadata } from 'next';
 import MapView from './components/MapView';
 
