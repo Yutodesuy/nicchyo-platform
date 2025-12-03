@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 80" width="60" height="80">
+  <!-- 建物本体 -->
+  <rect x="10" y="30" width="40" height="45" fill="#95a5a6" stroke="#7f8c8d" stroke-width="1.5"/>
+
+  <!-- 屋根 -->
+  <path d="M5 30 L30 10 L55 30 Z" fill="#34495e" stroke="#2c3e50" stroke-width="1.5"/>
+
+  <!-- 窓 -->
+  <rect x="18" y="40" width="8" height="8" fill="#3498db" opacity="0.6"/>
+  <rect x="34" y="40" width="8" height="8" fill="#3498db" opacity="0.6"/>
+  <rect x="18" y="55" width="8" height="8" fill="#3498db" opacity="0.6"/>
+  <rect x="34" y="55" width="8" height="8" fill="#3498db" opacity="0.6"/>
+
+  <!-- ドア -->
+  <rect x="25" y="60" width="10" height="15" fill="#8e44ad"/>
+
+  <text x="30" y="78" font-family="Arial" font-size="6" fill="#2c3e50" text-anchor="middle">建物</text>
+</svg>

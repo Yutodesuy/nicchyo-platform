@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1600">
+  <!-- 背景 - クリーム色の紙風 -->
+  <rect width="800" height="1600" fill="#faf8f3"/>
+
+  <!-- 道のイメージ（追手筋） - 南北に走る道路 -->
+  <rect x="320" y="0" width="160" height="1600" fill="#d4c5b0" opacity="0.7"/>
+
+  <!-- 道路の中央線 -->
+  <line x1="400" y1="0" x2="400" y2="1600" stroke="#a89070" stroke-width="2" stroke-dasharray="10,10" opacity="0.5"/>
+
+  <!-- 道の西側（左側）の店舗テント - 縦長に配置 -->
+  <g id="west-shops">
+    <path d="M250 100 L290 90 L330 100 L320 110 L260 110 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="260" y="110" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 200 L290 190 L330 200 L320 210 L260 210 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="260" y="210" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 300 L290 290 L330 300 L320 310 L260 310 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="260" y="310" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 400 L290 390 L330 400 L320 410 L260 410 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="260" y="410" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 500 L290 490 L330 500 L320 510 L260 510 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="260" y="510" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 600 L290 590 L330 600 L320 610 L260 610 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="260" y="610" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 700 L290 690 L330 700 L320 710 L260 710 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="260" y="710" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 800 L290 790 L330 800 L320 810 L260 810 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="260" y="810" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 900 L290 890 L330 900 L320 910 L260 910 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="260" y="910" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1000 L290 990 L330 1000 L320 1010 L260 1010 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="260" y="1010" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1100 L290 1090 L330 1100 L320 1110 L260 1110 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="260" y="1110" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1200 L290 1190 L330 1200 L320 1210 L260 1210 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="260" y="1210" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1300 L290 1290 L330 1300 L320 1310 L260 1310 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="260" y="1310" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1400 L290 1390 L330 1400 L320 1410 L260 1410 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="260" y="1410" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M250 1500 L290 1490 L330 1500 L320 1510 L260 1510 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="260" y="1510" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+  </g>
+
+  <!-- 道の東側（右側）の店舗テント - 縦長に配置 -->
+  <g id="east-shops">
+    <path d="M470 100 L510 90 L550 100 L540 110 L480 110 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="480" y="110" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 200 L510 190 L550 200 L540 210 L480 210 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="480" y="210" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 300 L510 290 L550 300 L540 310 L480 310 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="480" y="310" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 400 L510 390 L550 400 L540 410 L480 410 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="480" y="410" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 500 L510 490 L550 500 L540 510 L480 510 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="480" y="510" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 600 L510 590 L550 600 L540 610 L480 610 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="480" y="610" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 700 L510 690 L550 700 L540 710 L480 710 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="480" y="710" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 800 L510 790 L550 800 L540 810 L480 810 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="480" y="810" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 900 L510 890 L550 900 L540 910 L480 910 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="480" y="910" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1000 L510 990 L550 1000 L540 1010 L480 1010 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="480" y="1010" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1100 L510 1090 L550 1100 L540 1110 L480 1110 Z" fill="#3498db" stroke="#2980b9" stroke-width="1.5"/>
+    <rect x="480" y="1110" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1200 L510 1190 L550 1200 L540 1210 L480 1210 Z" fill="#2ecc71" stroke="#27ae60" stroke-width="1.5"/>
+    <rect x="480" y="1210" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1300 L510 1290 L550 1300 L540 1310 L480 1310 Z" fill="#f39c12" stroke="#e67e22" stroke-width="1.5"/>
+    <rect x="480" y="1310" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1400 L510 1390 L550 1400 L540 1410 L480 1410 Z" fill="#9b59b6" stroke="#8e44ad" stroke-width="1.5"/>
+    <rect x="480" y="1410" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+
+    <path d="M470 1500 L510 1490 L550 1500 L540 1510 L480 1510 Z" fill="#e74c3c" stroke="#c0392b" stroke-width="1.5"/>
+    <rect x="480" y="1510" width="60" height="40" fill="#f8f9fa" stroke="#95a5a6" stroke-width="1"/>
+  </g>
+
+  <!-- メインテキスト -->
+  <text x="400" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold"
+        fill="#2c3e50" text-anchor="middle">
+    手書きマップ準備中
+  </text>
+
+  <!-- サブテキスト -->
+  <text x="400" y="1520" font-family="Arial, sans-serif" font-size="18"
+        fill="#7f8c8d" text-anchor="middle">
+    高知市日曜市（追手筋 約1.3km）
+  </text>
+
+  <text x="400" y="1550" font-family="Arial, sans-serif" font-size="14"
+        fill="#95a5a6" text-anchor="middle">
+    手書きマップ完成までの仮表示です
+  </text>
+
+  <!-- 北マーク -->
+  <g transform="translate(50, 50)">
+    <circle cx="0" cy="0" r="25" fill="none" stroke="#34495e" stroke-width="2"/>
+    <polygon points="0,-18 -6,10 0,6 6,10" fill="#e74c3c"/>
+    <text x="0" y="5" font-family="Arial, sans-serif" font-size="16"
+          font-weight="bold" fill="#34495e" text-anchor="middle">N</text>
+  </g>
+</svg>
