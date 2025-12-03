@@ -108,7 +108,7 @@ export default function HomePage() {
                   transition={{ delay: 0.25, duration: 0.5 }}
                 >
                   <Link
-                    href="/map"
+                    href="/public/map"
                     className="rounded-xl bg-nicchyo-primary text-sm font-semibold text-white shadow-lg shadow-nicchyo-primary/30 transition hover:bg-nicchyo-primary/90"
                   >
                     <span className="flex items-center gap-2 px-5 py-3">
