@@ -1,10 +1,16 @@
 import { Metadata } from 'next';
-import MapView from './components/MapView';
+import dynamic from 'next/dynamic';
 
 export const metadata: Metadata = {
   title: 'nicchyo日曜市マップ | 高知市日曜市',
-  description: '高知市日曜市のインタラクティブマップ。出店位置を確認して、お気に入りのお店を見つけよう。',
+  description:
+    '高知市日曜市のインタラクティブマップ。出店位置を確認して、お気に入りのお店を見つけよう。',
 };
+
+// ★ ここがポイント：MapView を ssr: false で読み込む
+const MapView = dynamic(() => import('./components/MapView'), {
+  ssr: false,
+});
 
 export default function MapPage() {
   return (
