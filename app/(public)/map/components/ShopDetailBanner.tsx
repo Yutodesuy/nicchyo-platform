@@ -16,10 +16,36 @@ export default function ShopDetailBanner({
 }: ShopDetailBannerProps) {
   // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
+  // キラキラ演出の表示
+  const [sparkle, setSparkle] = useState(false);
   // ドラッグ中のオフセット
   const [dragOffset, setDragOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
+
+  const playChime = () => {
+    try {
+      const ctx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      // AudioContext が使えない環境では何もしない
+    }
+  };
+
+  const triggerSparkle = () => {
+    setSparkle(true);
+    playChime();
+    setTimeout(() => setSparkle(false), 600);
+  };
 
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0].clientX;
@@ -41,6 +67,9 @@ export default function ShopDetailBanner({
 
     if (deltaX > threshold) {
       // 右へスワイプ（画像が右側へ）
+      if (imagePosition !== "right") {
+        triggerSparkle();
+      }
       setImagePosition("right");
     } else if (deltaX < -threshold) {
       // 左へスワイプ（画像が左側へ）
@@ -146,6 +175,15 @@ export default function ShopDetailBanner({
                 height={160}
                 className="object-cover object-center cursor-grab active:cursor-grabbing h-full w-full scale-1"
               />
+              {/* キラキラ演出 */}
+              {sparkle && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div className="absolute inset-0 rounded-xl border-2 border-amber-300/50 blur-sm animate-pulse"></div>
+                  <div className="absolute -4 -4 h-16 w-16 rounded-full bg-amber-200/60 animate-ping" />
+                  <div className="absolute bottom-2 right-2 h-10 w-10 rounded-full bg-yellow-200/80 animate-ping" />
+                  <div className="absolute top-2 right-6 h-6 w-6 rounded-full bg-white/70 shadow-lg shadow-amber-200/60 animate-ping" />
+                </div>
+              )}
             </div>
           </div>
 
