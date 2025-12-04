@@ -110,7 +110,7 @@ public/images/maps/elements/buildings/kochi-castle.png
 
 ### 4. データファイルを更新
 
-`app/(public)/map/data/sampleElements.ts` を編集：
+`app/map/data/sampleElements.ts` を編集：
 
 ```typescript
 export const sampleMapElements: MapElementsCollection = {
