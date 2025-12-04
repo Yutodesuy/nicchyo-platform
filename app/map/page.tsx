@@ -1,4 +1,4 @@
-// app/(public)/map/page.tsx
+// app/map/page.tsx
 import { Metadata } from "next";
 import MapPageClient from "./MapPageClient";
 
@@ -18,7 +18,7 @@ export default function MapPage() {
         </h1>
       </header>
 
-      {/* マップエリア */}
+      {/* マップエリア（クライアント側で地図＋バナー制御） */}
       <main className="flex-1 relative">
         <MapPageClient />
       </main>
