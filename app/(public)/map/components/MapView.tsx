@@ -1,35 +1,30 @@
+// app/(public)/map/components/MapView.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, ImageOverlay, CircleMarker, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { shops, Shop } from '../data/shops';
-import ShopDetailModal from './ShopDetailModal';
-import UserLocationMarker from './UserLocationMarker';
-import GrandmaGuide from './GrandmaGuide';
+import ShopDetailBanner from '../components/ShopDetailBanner'; // ★ 追加
 
-// 高知市日曜市の中心地点（道の中央）
-const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.53100];
-const INITIAL_ZOOM = 17;  // 初期表示（1.3kmの市場全体が見やすい）
-const MIN_ZOOM = 16;      // 最小ズーム（市場の全体像を確認）
-const MAX_ZOOM = 20;      // 最大ズーム（個別店舗の詳細を見る）
+// 高知市日曜市の中心地点
+const KOCHI_SUNDAY_MARKET: [number, number] = [33.559154, 133.531113];
+const INITIAL_ZOOM = 17;  // 初期表示のズームレベル
+const MIN_ZOOM = 16;      // 最小ズーム（縮小しすぎない）
+const MAX_ZOOM = 19;      // 最大ズーム（拡大しすぎない）
 
-// 手書きマップ画像のパス（450x10000px - 300店舗対応、余白削減）
-// マップの向き: 上=西（高知城側）、下=東
+// 手書きマップ画像のパス
 const HANDDRAWN_MAP_IMAGE = '/images/maps/placeholder-map.svg';
 
-// 手書きマップの表示範囲（実測約1.3km - 正確な縮尺）
-// 上側が西（高知城）、下側が東方向（追手筋）
-// 1度の緯度 ≈ 111km、1.3km = 0.0117度
+// 手書きマップの表示範囲
 const MAP_BOUNDS: [[number, number], [number, number]] = [
-  [33.56500, 133.53200], // 西側上端（高知城前）
-  [33.55330, 133.53000], // 東側下端（追手筋東端）
+  [33.5650, 133.5350], // 北東
+  [33.5530, 133.5270], // 南西
 ];
 
-// 移動可能範囲を制限（マップより少し広め）
+// 移動可能範囲を制限
 const MAX_BOUNDS: [[number, number], [number, number]] = [
-  [33.56700, 133.53300], // 西側上端（余裕あり）
-  [33.55100, 133.52900], // 東側下端（余裕あり）
+  [33.5680, 133.5370], // 北東
+  [33.5500, 133.5250], // 南西
 ];
 
 // ===== スマホ用のズームボタンコンポーネント =====
@@ -66,7 +61,7 @@ function MobileZoomControls() {
 
 export default function MapView() {
   const [isMobile, setIsMobile] = useState(false);
-  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [activeShopName, setActiveShopName] = useState<string | null>(null); // ★ 追加：表示中のお店
 
   useEffect(() => {
     const detectMobile = () => {
@@ -81,6 +76,15 @@ export default function MapView() {
     return () => window.removeEventListener('resize', detectMobile);
   }, []);
 
+  // 仮の「店を開く」関数（あとでマーカーから呼ぶ）
+  const openShopDetail = (shopName: string) => {
+    setActiveShopName(shopName);
+  };
+
+  const closeShopDetail = () => {
+    setActiveShopName(null);
+  };
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -88,18 +92,17 @@ export default function MapView() {
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        scrollWheelZoom={!isMobile}          // スマホではホイールズーム無し
+        scrollWheelZoom={!isMobile}
         dragging={true}
-        touchZoom={isMobile ? 'center' : true} // スマホはピンチズームを中心寄せ
-        doubleClickZoom={!isMobile}          // ダブルタップ誤操作防止
+        touchZoom={isMobile ? 'center' : true}
+        doubleClickZoom={!isMobile}
         className="h-full w-full z-0"
         style={{
           height: '100%',
           width: '100%',
           backgroundColor: '#faf8f3',
         }}
-        zoomControl={!isMobile}              // スマホでは標準ズームボタンを非表示
-        attributionControl={false}           // Leaflet表示を非表示
+        zoomControl={!isMobile}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
       >
@@ -110,80 +113,29 @@ export default function MapView() {
           zIndex={10}
         />
 
-            {/* ★ テスト用：ボタンでバナーを出す（あとでマーカーの onClick に差し替え） */}
-                {/* これは MapContainer の外に出したいなら、absolute で重ねてもOK */}
-              </MapContainer>
-        
-              {/* テスト用トリガーボタン（上に重ねて表示） */}
-              <button
-                type="button"
-                onClick={() => openShopDetail('土佐刃物 シャツル')}
-                className="absolute top-4 left-4 z-[1200] rounded-full bg-white/90 px-3 py-1 text-xs shadow border border-amber-300"
-              >
-                バナーを表示（テスト）
-              </button>
-        
-              {/* ★ 店舗バナー：activeShopName があるときだけ表示 */}
-              {activeShopName && (
-                <ShopDetailBanner
-                  shopName={activeShopName}
-                  onClose={closeShopDetail}
-                />
-              )}
-
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
-        {/* 店舗マーカー - クリック可能（店舗イラストの中央） */}
-        {shops.map((shop) => (
-          <CircleMarker
-            key={shop.id}
-            center={[shop.lat, shop.lng]}
-            radius={35}
-            pathOptions={{
-              fillColor: '#3b82f6',
-              fillOpacity: 0.05,
-              color: '#3b82f6',
-              weight: 2,
-              opacity: 0.1,
-            }}
-            eventHandlers={{
-              click: () => setSelectedShop(shop),
-              mouseover: (e) => {
-                e.target.setStyle({
-                  fillColor: '#fbbf24',
-                  fillOpacity: 0.4,
-                  color: '#f59e0b',
-                  opacity: 1,
-                  weight: 4,
-                });
-                e.target.bringToFront();
-              },
-              mouseout: (e) => {
-                e.target.setStyle({
-                  fillColor: '#3b82f6',
-                  fillOpacity: 0.05,
-                  color: '#3b82f6',
-                  opacity: 0.1,
-                  weight: 2,
-                });
-              },
-            }}
-          />
-        ))}
-
-        {/* ユーザー位置マーカー */}
-        <UserLocationMarker />
+        {/* ★ テスト用：ボタンでバナーを出す（あとでマーカーの onClick に差し替え） */}
+        {/* これは MapContainer の外に出したいなら、absolute で重ねてもOK */}
       </MapContainer>
 
-      {/* 店舗詳細モーダル */}
-      <ShopDetailModal
-        shop={selectedShop}
-        onClose={() => setSelectedShop(null)}
-      />
+      {/* テスト用トリガーボタン（上に重ねて表示） */}
+      <button
+        type="button"
+        onClick={() => openShopDetail('土佐刃物 シャツル')}
+        className="absolute top-4 left-4 z-[1200] rounded-full bg-white/90 px-3 py-1 text-xs shadow border border-amber-300"
+      >
+        バナーを表示（テスト）
+      </button>
 
-      {/* おばあちゃんの説明ガイド */}
-      <GrandmaGuide />
+      {/* ★ 店舗バナー：activeShopName があるときだけ表示 */}
+      {activeShopName && (
+        <ShopDetailBanner
+          shopName={activeShopName}
+          onClose={closeShopDetail}
+        />
+      )}
     </div>
   );
 }
