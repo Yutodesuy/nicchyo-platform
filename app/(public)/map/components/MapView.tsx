@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { shops, Shop } from '../data/shops';
 import ShopDetailModal from './ShopDetailModal';
 import UserLocationMarker from './UserLocationMarker';
+import GrandmaGuide from './GrandmaGuide';
 
 // 高知市日曜市の中心地点（道の中央）
 const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.53100];
@@ -98,6 +99,7 @@ export default function MapView() {
           backgroundColor: '#faf8f3',
         }}
         zoomControl={!isMobile}              // スマホでは標準ズームボタンを非表示
+        attributionControl={false}           // Leaflet表示を非表示
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
       >
@@ -111,31 +113,38 @@ export default function MapView() {
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
-        {/* 店舗マーカー - クリック可能 */}
+        {/* 店舗マーカー - クリック可能（店舗イラストの中央） */}
         {shops.map((shop) => (
           <CircleMarker
             key={shop.id}
             center={[shop.lat, shop.lng]}
-            radius={8}
+            radius={35}
             pathOptions={{
-              fillColor: 'transparent',
-              fillOpacity: 0.3,
+              fillColor: '#3b82f6',
+              fillOpacity: 0.05,
               color: '#3b82f6',
               weight: 2,
-              opacity: 0,
+              opacity: 0.1,
             }}
             eventHandlers={{
               click: () => setSelectedShop(shop),
               mouseover: (e) => {
                 e.target.setStyle({
+                  fillColor: '#fbbf24',
+                  fillOpacity: 0.4,
+                  color: '#f59e0b',
                   opacity: 1,
-                  fillOpacity: 0.5,
+                  weight: 4,
                 });
+                e.target.bringToFront();
               },
               mouseout: (e) => {
                 e.target.setStyle({
-                  opacity: 0,
-                  fillOpacity: 0.3,
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.05,
+                  color: '#3b82f6',
+                  opacity: 0.1,
+                  weight: 2,
                 });
               },
             }}
@@ -151,6 +160,9 @@ export default function MapView() {
         shop={selectedShop}
         onClose={() => setSelectedShop(null)}
       />
+
+      {/* おばあちゃんの説明ガイド */}
+      <GrandmaGuide />
     </div>
   );
 }
