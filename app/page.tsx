@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import NavigationBar from "./components/NavigationBar";
 
 export default function HomePage() {
   return (
@@ -108,7 +109,7 @@ export default function HomePage() {
                   transition={{ delay: 0.25, duration: 0.5 }}
                 >
                   <Link
-                    href="/public/map"
+                    href="/map"
                     className="rounded-xl bg-nicchyo-primary text-sm font-semibold text-white shadow-lg shadow-nicchyo-primary/30 transition hover:bg-nicchyo-primary/90"
                   >
                     <span className="flex items-center gap-2 px-5 py-3">
@@ -298,6 +299,9 @@ export default function HomePage() {
           </footer>
         </div>
       </section>
+
+      {/* ナビゲーションバー */}
+      <NavigationBar />
     </main>
   );
 }
