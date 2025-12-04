@@ -110,27 +110,6 @@ export default function MapView() {
           zIndex={10}
         />
 
-            {/* ★ テスト用：ボタンでバナーを出す（あとでマーカーの onClick に差し替え） */}
-                {/* これは MapContainer の外に出したいなら、absolute で重ねてもOK */}
-              </MapContainer>
-        
-              {/* テスト用トリガーボタン（上に重ねて表示） */}
-              <button
-                type="button"
-                onClick={() => openShopDetail('土佐刃物 シャツル')}
-                className="absolute top-4 left-4 z-[1200] rounded-full bg-white/90 px-3 py-1 text-xs shadow border border-amber-300"
-              >
-                バナーを表示（テスト）
-              </button>
-        
-              {/* ★ 店舗バナー：activeShopName があるときだけ表示 */}
-              {activeShopName && (
-                <ShopDetailBanner
-                  shopName={activeShopName}
-                  onClose={closeShopDetail}
-                />
-              )}
-
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
