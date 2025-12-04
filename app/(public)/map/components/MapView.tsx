@@ -1,43 +1,40 @@
 // app/(public)/map/components/MapView.tsx
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { MapContainer, ImageOverlay, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import ShopDetailBanner from '../components/ShopDetailBanner'; // ★ 追加
+import { useEffect, useState } from "react";
+import { MapContainer, ImageOverlay, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import ShopDetailBanner from "../components/ShopDetailBanner";
+import ShopDetailModal from "./ShopDetailModal";
+import { shops, type Shop } from "../data/shops";
 
-// 高知市日曜市の中心地点
+// 高知市日曜市の中心座標
 const KOCHI_SUNDAY_MARKET: [number, number] = [33.559154, 133.531113];
-const INITIAL_ZOOM = 17;  // 初期表示のズームレベル
-const MIN_ZOOM = 16;      // 最小ズーム（縮小しすぎない）
-const MAX_ZOOM = 19;      // 最大ズーム（拡大しすぎない）
+const INITIAL_ZOOM = 17;
+const MIN_ZOOM = 16;
+const MAX_ZOOM = 19;
 
 // 手書きマップ画像のパス
-const HANDDRAWN_MAP_IMAGE = '/images/maps/placeholder-map.svg';
+const HANDDRAWN_MAP_IMAGE = "/images/maps/placeholder-map.svg";
 
-// 手書きマップの表示範囲
+// 画像の表示範囲
 const MAP_BOUNDS: [[number, number], [number, number]] = [
   [33.5650, 133.5350], // 北東
   [33.5530, 133.5270], // 南西
 ];
 
-// 移動可能範囲を制限
+// 移動可能範囲
 const MAX_BOUNDS: [[number, number], [number, number]] = [
   [33.5680, 133.5370], // 北東
   [33.5500, 133.5250], // 南西
 ];
 
-// ===== スマホ用のズームボタンコンポーネント =====
+// スマホ用ズームボタン
 function MobileZoomControls() {
   const map = useMap();
 
-  const handleZoomIn = () => {
-    map.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    map.zoomOut();
-  };
+  const handleZoomIn = () => map.zoomIn();
+  const handleZoomOut = () => map.zoomOut();
 
   return (
     <div className="pointer-events-none absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
@@ -61,28 +58,31 @@ function MobileZoomControls() {
 
 export default function MapView() {
   const [isMobile, setIsMobile] = useState(false);
-  const [activeShopName, setActiveShopName] = useState<string | null>(null); // ★ 追加：表示中のお店
+  const [activeShopName, setActiveShopName] = useState<string | null>(null); // バナー用
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null); // モーダル用
 
   useEffect(() => {
     const detectMobile = () => {
-      if (typeof window === 'undefined') return;
-      const touch = 'ontouchstart' in window;
+      if (typeof window === "undefined") return;
+      const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
     };
 
     detectMobile();
-    window.addEventListener('resize', detectMobile);
-    return () => window.removeEventListener('resize', detectMobile);
+    window.addEventListener("resize", detectMobile);
+    return () => window.removeEventListener("resize", detectMobile);
   }, []);
 
-  // 仮の「店を開く」関数（あとでマーカーから呼ぶ）
-  const openShopDetail = (shopName: string) => {
-    setActiveShopName(shopName);
+  // 仮の「店を開く」関数（後でマーカーから呼ぶ想定）
+  const openShopDetail = (shop: Shop) => {
+    setActiveShopName(shop.name);
+    setSelectedShop(shop);
   };
 
   const closeShopDetail = () => {
     setActiveShopName(null);
+    setSelectedShop(null);
   };
 
   return (
@@ -94,47 +94,44 @@ export default function MapView() {
         maxZoom={MAX_ZOOM}
         scrollWheelZoom={!isMobile}
         dragging={true}
-        touchZoom={isMobile ? 'center' : true}
+        touchZoom={isMobile ? "center" : true}
         doubleClickZoom={!isMobile}
         className="h-full w-full z-0"
         style={{
-          height: '100%',
-          width: '100%',
-          backgroundColor: '#faf8f3',
+          height: "100%",
+          width: "100%",
+          backgroundColor: "#faf8f3",
         }}
         zoomControl={!isMobile}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
       >
-        <ImageOverlay
-          url={HANDDRAWN_MAP_IMAGE}
-          bounds={MAP_BOUNDS}
-          opacity={1}
-          zIndex={10}
-        />
+        <ImageOverlay url={HANDDRAWN_MAP_IMAGE} bounds={MAP_BOUNDS} opacity={1} zIndex={10} />
 
-        {/* スマホのときだけ大きめズームボタンを表示 */}
+        {/* スマホのときだけ大きめズームボタン */}
         {isMobile && <MobileZoomControls />}
-
-        {/* ★ テスト用：ボタンでバナーを出す（あとでマーカーの onClick に差し替え） */}
-        {/* これは MapContainer の外に出したいなら、absolute で重ねてもOK */}
       </MapContainer>
 
-      {/* テスト用トリガーボタン（上に重ねて表示） */}
+      {/* デモ用トリガー */}
       <button
         type="button"
-        onClick={() => openShopDetail('土佐刃物 シャツル')}
+        onClick={() => openShopDetail(shops[0])}
         className="absolute top-4 left-4 z-[1200] rounded-full bg-white/90 px-3 py-1 text-xs shadow border border-amber-300"
       >
-        バナーを表示（テスト）
+        店舗カード表示（テスト）
       </button>
 
-      {/* ★ 店舗バナー：activeShopName があるときだけ表示 */}
+      {/* バナー */}
       {activeShopName && (
         <ShopDetailBanner
           shopName={activeShopName}
           onClose={closeShopDetail}
         />
+      )}
+
+      {/* 詳細モーダル */}
+      {selectedShop && (
+        <ShopDetailModal shop={selectedShop} onClose={closeShopDetail} />
       )}
     </div>
   );
