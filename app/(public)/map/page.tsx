@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import dynamic from 'next/dynamic';
+import NavigationBar from '../../components/NavigationBar';
 
 export const metadata: Metadata = {
   title: 'nicchyo日曜市マップ | 高知市日曜市',
@@ -22,10 +23,13 @@ export default function MapPage() {
         </h1>
       </header>
 
-      {/* マップエリア */}
-      <main className="flex-1 relative">
+      {/* マップエリア（ナビゲーションバーの高さ分の余白を確保） */}
+      <main className="flex-1 relative pb-16">
         <MapView />
       </main>
+
+      {/* ナビゲーションバー */}
+      <NavigationBar />
     </div>
   );
 }

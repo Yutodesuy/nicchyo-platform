@@ -1,28 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, ImageOverlay, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { shops, Shop } from '../data/shops';
+import ShopDetailModal from './ShopDetailModal';
+import UserLocationMarker from './UserLocationMarker';
 
-// 高知市日曜市の中心地点
-const KOCHI_SUNDAY_MARKET: [number, number] = [33.559154, 133.531113];
-const INITIAL_ZOOM = 17;  // 初期表示のズームレベル
-const MIN_ZOOM = 16;      // 最小ズーム（縮小しすぎない）
-const MAX_ZOOM = 19;      // 最大ズーム（拡大しすぎない）
+// 高知市日曜市の中心地点（道の中央）
+const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.53100];
+const INITIAL_ZOOM = 17;  // 初期表示（1.3kmの市場全体が見やすい）
+const MIN_ZOOM = 16;      // 最小ズーム（市場の全体像を確認）
+const MAX_ZOOM = 20;      // 最大ズーム（個別店舗の詳細を見る）
 
-// 手書きマップ画像のパス
+// 手書きマップ画像のパス（450x10000px - 300店舗対応、余白削減）
+// マップの向き: 上=西（高知城側）、下=東
 const HANDDRAWN_MAP_IMAGE = '/images/maps/placeholder-map.svg';
 
-// 手書きマップの表示範囲
+// 手書きマップの表示範囲（実測約1.3km - 正確な縮尺）
+// 上側が西（高知城）、下側が東方向（追手筋）
+// 1度の緯度 ≈ 111km、1.3km = 0.0117度
 const MAP_BOUNDS: [[number, number], [number, number]] = [
-  [33.5650, 133.5350], // 北東
-  [33.5530, 133.5270], // 南西
+  [33.56500, 133.53200], // 西側上端（高知城前）
+  [33.55330, 133.53000], // 東側下端（追手筋東端）
 ];
 
-// 移動可能範囲を制限
+// 移動可能範囲を制限（マップより少し広め）
 const MAX_BOUNDS: [[number, number], [number, number]] = [
-  [33.5680, 133.5370], // 北東
-  [33.5500, 133.5250], // 南西
+  [33.56700, 133.53300], // 西側上端（余裕あり）
+  [33.55100, 133.52900], // 東側下端（余裕あり）
 ];
 
 // ===== スマホ用のズームボタンコンポーネント =====
@@ -59,6 +65,7 @@ function MobileZoomControls() {
 
 export default function MapView() {
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
 
   useEffect(() => {
     const detectMobile = () => {
@@ -104,13 +111,46 @@ export default function MapView() {
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
-        {/*
-          将来のマーカー表示：
-          {getAllElements().map((element) => (
-            <MapElementMarker key={element.id} element={element} />
-          ))}
-        */}
+        {/* 店舗マーカー - クリック可能 */}
+        {shops.map((shop) => (
+          <CircleMarker
+            key={shop.id}
+            center={[shop.lat, shop.lng]}
+            radius={8}
+            pathOptions={{
+              fillColor: 'transparent',
+              fillOpacity: 0.3,
+              color: '#3b82f6',
+              weight: 2,
+              opacity: 0,
+            }}
+            eventHandlers={{
+              click: () => setSelectedShop(shop),
+              mouseover: (e) => {
+                e.target.setStyle({
+                  opacity: 1,
+                  fillOpacity: 0.5,
+                });
+              },
+              mouseout: (e) => {
+                e.target.setStyle({
+                  opacity: 0,
+                  fillOpacity: 0.3,
+                });
+              },
+            }}
+          />
+        ))}
+
+        {/* ユーザー位置マーカー */}
+        <UserLocationMarker />
       </MapContainer>
+
+      {/* 店舗詳細モーダル */}
+      <ShopDetailModal
+        shop={selectedShop}
+        onClose={() => setSelectedShop(null)}
+      />
     </div>
   );
 }
