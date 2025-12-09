@@ -1,46 +1,78 @@
-// app/map/components/ShopDetailBanner.tsx
+// app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import type { TouchEvent } from "react";
 import Image from "next/image";
+import { Shop } from "../data/shops";
 
 type ShopDetailBannerProps = {
-  shopName: string;
+  shop: Shop;
   onClose?: () => void;
 };
 
 export default function ShopDetailBanner({
-  shopName,
+  shop,
   onClose,
 }: ShopDetailBannerProps) {
   // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
+  // キラキラ演出の表示
+  const [sparkle, setSparkle] = useState(false);
   // ドラッグ中のオフセット
   const [dragOffset, setDragOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
 
-  const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+  // 音声チャイム再生（最適化：useCallbackでメモ化）
+  const playChime = useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      // AudioContextが使えない環境では何もしない
+    }
+  }, []);
+
+  // キラキラ演出トリガー（最適化：useCallbackでメモ化）
+  const triggerSparkle = useCallback(() => {
+    setSparkle(true);
+    playChime();
+    setTimeout(() => setSparkle(false), 600);
+  }, [playChime]);
+
+  const handleTouchStart = useCallback((e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0].clientX;
     initialPosition.current = imagePosition;
-  };
+  }, [imagePosition]);
 
-  const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+  const handleTouchMove = useCallback((e: TouchEvent<HTMLDivElement>) => {
     if (touchStartX.current === null) return;
     const currentX = e.touches[0].clientX;
     const offset = currentX - touchStartX.current;
     // オフセットを制限（-100 to 100）
     setDragOffset(Math.max(-100, Math.min(100, offset)));
-  };
+  }, []);
 
-  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = useCallback((e: TouchEvent<HTMLDivElement>) => {
     if (touchStartX.current === null) return;
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
     const threshold = 40; // スワイプ判定のしきい値(px)
 
     if (deltaX > threshold) {
       // 右へスワイプ（画像が右側へ）
+      if (imagePosition !== "right") {
+        triggerSparkle();
+      }
       setImagePosition("right");
     } else if (deltaX < -threshold) {
       // 左へスワイプ（画像が左側へ）
@@ -49,7 +81,15 @@ export default function ShopDetailBanner({
 
     setDragOffset(0);
     touchStartX.current = null;
-  };
+  }, [imagePosition, triggerSparkle]);
+
+  // 画像のスタイルを計算（最適化：useMemoでメモ化）
+  const imageStyle = useMemo(() => ({
+    width: "160px",
+    left: imagePosition === "left"
+      ? `${dragOffset}px`
+      : `calc(100% - 160px + ${dragOffset}px)`,
+  }), [imagePosition, dragOffset]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -58,22 +98,26 @@ export default function ShopDetailBanner({
         <div className="mb-2 flex items-start justify-between">
           <div>
             <h2 className="text-base font-semibold text-slate-900">
-              {shopName}
+              {shop.name}
             </h2>
-            <p className="text-[11px] text-slate-600">お店の情報</p>
+            <p className="text-[11px] text-slate-600">
+              {shop.category} | {shop.ownerName}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[11px] text-pink-500 shadow-sm"
+              className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[11px] text-pink-500 shadow-sm transition-transform hover:scale-105"
               type="button"
+              aria-label="お気に入りに追加"
             >
               <span>❤️</span>
               <span>お気に入り</span>
             </button>
             <button
               onClick={onClose}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow transition-transform hover:scale-110"
               type="button"
+              aria-label="閉じる"
             >
               ×
             </button>
@@ -96,11 +140,11 @@ export default function ShopDetailBanner({
                   出店者の思い
                 </div>
                 <p className="text-xs leading-snug text-slate-800">
-                  土佐刃物は高知の歴史やき。ちょっくら見ていきや〜。
+                  {shop.message || shop.description}
                 </p>
                 <div className="rounded-lg bg-yellow-100 px-2 py-2">
-                  <p className="text-[9px] font-semibold text-amber-800">好きな土佐料理</p>
-                  <p className="text-[10px] text-slate-700 mt-1">藁焼きカツオのタタキ</p>
+                  <p className="text-[9px] font-semibold text-amber-800">出店予定</p>
+                  <p className="text-[10px] text-slate-700 mt-1">{shop.schedule}</p>
                 </div>
               </div>
             </div>
@@ -110,19 +154,21 @@ export default function ShopDetailBanner({
               <div className="space-y-2 text-xs text-slate-800">
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">ジャンル</p>
-                  <p className="text-sm font-bold">シャツル</p>
+                  <p className="text-sm font-bold">{shop.category}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">主な商品</p>
                   <ul className="list-disc list-inside space-y-[2px] text-[11px]">
-                    <li>○○包丁</li>
-                    <li>○○釜</li>
-                    <li>○○包丁研ぎ</li>
+                    {shop.products.slice(0, 3).map((product, idx) => (
+                      <li key={idx}>{product}</li>
+                    ))}
                   </ul>
                 </div>
                 <div className="flex items-center gap-1 pt-1">
-                  <span>❤️</span>
-                  <span className="text-[10px] font-semibold">301人</span>
+                  <span className="text-lg">{shop.icon}</span>
+                  <span className="text-[10px] font-semibold">
+                    {shop.side === 'north' ? '北側' : '南側'} {shop.position + 1}番
+                  </span>
                 </div>
               </div>
             </div>
@@ -132,20 +178,29 @@ export default function ShopDetailBanner({
               className={`absolute top-0 h-full flex-shrink-0 transition-all ${
                 dragOffset === 0 ? "duration-300" : "duration-0"
               }`}
-              style={{
-                width: "160px",
-                left: imagePosition === "left" 
-                  ? `${dragOffset}px` 
-                  : `calc(100% - 160px + ${dragOffset}px)`,
-              }}
+              style={imageStyle}
             >
               <Image
                 src="/images/shops/tosahamono.webp"
-                alt="土佐刃物の包丁"
+                alt={`${shop.name}の商品`}
                 width={160}
                 height={160}
-                className="object-cover object-center cursor-grab active:cursor-grabbing h-full w-full scale-1"
+                className="object-cover object-center cursor-grab active:cursor-grabbing h-full w-full"
+                priority
+                onError={(e) => {
+                  // 画像が読み込めない場合のフォールバック
+                  e.currentTarget.style.display = 'none';
+                }}
               />
+              {/* キラキラ演出 */}
+              {sparkle && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div className="absolute inset-0 rounded-xl border-2 border-amber-300/50 blur-sm animate-pulse" />
+                  <div className="absolute -top-4 -left-4 h-16 w-16 rounded-full bg-amber-200/60 animate-ping" />
+                  <div className="absolute bottom-2 right-2 h-10 w-10 rounded-full bg-yellow-200/80 animate-ping" />
+                  <div className="absolute top-2 right-6 h-6 w-6 rounded-full bg-white/70 shadow-lg shadow-amber-200/60 animate-ping" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -170,7 +225,7 @@ export default function ShopDetailBanner({
               <span>2025/12/03 の投稿</span>
               <button
                 type="button"
-                className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600"
+                className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600 transition-transform hover:scale-105"
               >
                 投稿する
               </button>

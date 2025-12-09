@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import NavigationBar from '../../components/NavigationBar';
+import UserProfileButton from './components/UserProfileButton';
 
 export const metadata: Metadata = {
   title: 'nicchyo日曜市マップ | 高知市日曜市',
@@ -44,6 +45,8 @@ export default function MapPage() {
 
       {/* マップエリア（ナビゲーションバーの高さ分の余白を確保） */}
       <main className="flex-1 relative pb-16 z-10">
+        {/* ユーザーメニュー（右上） */}
+        <UserProfileButton />
         <div className="h-full p-2 md:p-4">
           <div className="h-full bg-white rounded-lg md:rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-200 relative">
             {/* マップ装飾 - 四隅 */}

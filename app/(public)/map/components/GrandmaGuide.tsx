@@ -1,12 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-interface GrandmaGuideProps {
-  onClose?: () => void;
-}
-
-export default function GrandmaGuide({ onClose }: GrandmaGuideProps) {
+export default function GrandmaGuide() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasAppeared, setHasAppeared] = useState(false);
 
@@ -30,12 +26,9 @@ export default function GrandmaGuide({ onClose }: GrandmaGuideProps) {
     }
   }, []);
 
-  const handleToggle = () => {
-    setIsExpanded(!isExpanded);
-    if (onClose && isExpanded) {
-      onClose();
-    }
-  };
+  const handleToggle = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
 
   if (!hasAppeared) return null;
 

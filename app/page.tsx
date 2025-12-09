@@ -3,6 +3,74 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 
+// 5つの柱のデータ
+const pillars = [
+  {
+    title: "マップ",
+    icon: "🗺️",
+    desc: "500店舗以上の位置情報をもとに、日曜市を自由に散策できるデジタルマップ。",
+    href: "/map",
+  },
+  {
+    title: "おすすめ",
+    icon: "✨",
+    desc: "「初めて来た人」「地元の人」それぞれに合わせたルート提案。",
+    href: "/recommend",
+  },
+  {
+    title: "郷土料理",
+    icon: "🍜",
+    desc: "高知の食文化を知り、市場で出会える料理や食材を紹介。",
+    href: "/food",
+  },
+  {
+    title: "ことづて",
+    icon: "💬",
+    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
+    href: "/messages",
+  },
+  {
+    title: "午後イベント",
+    icon: "🎪",
+    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
+    href: "/events",
+  },
+];
+
+// ターゲットユーザーのデータ
+const audiences = [
+  {
+    title: "観光客",
+    icon: "🧳",
+    subtitle: "初めての日曜市でも迷わない",
+    points: [
+      "おすすめルートで効率よく回れる",
+      "郷土料理の知識が身につく",
+      "地元の人の声が聞ける",
+    ],
+  },
+  {
+    title: "地元民",
+    icon: "🏠",
+    subtitle: "日常の買い物がもっと楽しく",
+    points: [
+      "お気に入りの店を記録できる",
+      "新しい発見がある",
+      "出店者と交流できる",
+    ],
+  },
+  {
+    title: "出店者",
+    icon: "🛒",
+    subtitle: "お店の魅力を発信できる",
+    points: [
+      "来場者にメッセージを届けられる",
+      "リピーター獲得につながる",
+      "市場全体の活性化に貢献",
+    ],
+  },
+];
+
 export default function MapPage() {
   return (
     <div className="flex flex-col h-screen">
@@ -264,6 +332,6 @@ export default function MapPage() {
           </footer>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
