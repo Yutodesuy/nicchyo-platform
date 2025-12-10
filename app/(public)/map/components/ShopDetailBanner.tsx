@@ -1,27 +1,34 @@
 // app/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { TouchEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { loadKotodute, KotoduteNote } from "../../../../lib/kotoduteStorage";
 
 type ShopDetailBannerProps = {
+  shopId: number;
   shopName: string;
   onClose?: () => void;
 };
 
 export default function ShopDetailBanner({
+  shopId,
   shopName,
   onClose,
 }: ShopDetailBannerProps) {
-  // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
-  // キラキラ演出の表示
   const [sparkle, setSparkle] = useState(false);
-  // ドラッグ中のオフセット
   const [dragOffset, setDragOffset] = useState(0);
+  const [notes, setNotes] = useState<KotoduteNote[]>([]);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
+
+  useEffect(() => {
+    const all = loadKotodute();
+    setNotes(all.filter((n) => n.shopId === shopId));
+  }, [shopId]);
 
   const playChime = () => {
     try {
@@ -56,23 +63,20 @@ export default function ShopDetailBanner({
     if (touchStartX.current === null) return;
     const currentX = e.touches[0].clientX;
     const offset = currentX - touchStartX.current;
-    // オフセットを制限（-100 to 100）
     setDragOffset(Math.max(-100, Math.min(100, offset)));
   };
 
   const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (touchStartX.current === null) return;
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const threshold = 40; // スワイプ判定のしきい値(px)
+    const threshold = 40;
 
     if (deltaX > threshold) {
-      // 右へスワイプ（画像が右側へ）
       if (imagePosition !== "right") {
         triggerSparkle();
       }
       setImagePosition("right");
     } else if (deltaX < -threshold) {
-      // 左へスワイプ（画像が左側へ）
       setImagePosition("left");
     }
 
@@ -89,14 +93,14 @@ export default function ShopDetailBanner({
             <h2 className="text-base font-semibold text-slate-900">
               {shopName}
             </h2>
-            <p className="text-[11px] text-slate-600">お店の情報</p>
+            <p className="text-[11px] text-slate-600">お店の紹介</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[11px] text-pink-500 shadow-sm"
               type="button"
             >
-              <span>❤️</span>
+              <span>❤</span>
               <span>お気に入り</span>
             </button>
             <button
@@ -109,23 +113,21 @@ export default function ShopDetailBanner({
           </div>
         </div>
 
-        {/* ===== メインコンテンツエリア（画像 + テキスト） ===== */}
+        {/* メインコンテンツ：テキスト + 画像 */}
         <div
           className="relative mt-2 rounded-2xl bg-white overflow-hidden"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* レイアウト：テキストが2つ並んでいて、その上を画像が動く */}
           <div className="relative flex gap-0 items-stretch min-h-40">
-            {/* 左側テキスト：出店者の思い */}
             <div className="flex-1 px-4 py-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="inline-block rounded-full bg-emerald-500 px-2 py-[2px] text-[9px] font-semibold text-white">
                   出店者の思い
                 </div>
                 <p className="text-xs leading-snug text-slate-800">
-                  土佐刃物は高知の歴史やき。ちょっくら見ていきや〜。
+                  土佐のものは高知の歴史そのもの。ちょっと見ていってね。
                 </p>
                 <div className="rounded-lg bg-yellow-100 px-2 py-2">
                   <p className="text-[9px] font-semibold text-amber-800">好きな土佐料理</p>
@@ -134,48 +136,46 @@ export default function ShopDetailBanner({
               </div>
             </div>
 
-            {/* 右側テキスト：商品情報 */}
             <div className="flex-1 px-4 py-3 flex flex-col justify-between pl-8">
               <div className="space-y-2 text-xs text-slate-800">
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">ジャンル</p>
-                  <p className="text-sm font-bold">シャツル</p>
+                  <p className="text-sm font-bold">シャモ鍋</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">主な商品</p>
                   <ul className="list-disc list-inside space-y-[2px] text-[11px]">
-                    <li>○○包丁</li>
-                    <li>○○釜</li>
-                    <li>○○包丁研ぎ</li>
+                    <li>鍋セット</li>
+                    <li>だし</li>
+                    <li>薬味</li>
                   </ul>
                 </div>
                 <div className="flex items-center gap-1 pt-1">
-                  <span>❤️</span>
+                  <span>❤</span>
                   <span className="text-[10px] font-semibold">301人</span>
                 </div>
               </div>
             </div>
 
-            {/* 画像：上に浮かんで左右に動く */}
             <div
               className={`absolute top-0 h-full flex-shrink-0 transition-all ${
                 dragOffset === 0 ? "duration-300" : "duration-0"
               }`}
               style={{
                 width: "160px",
-                left: imagePosition === "left" 
-                  ? `${dragOffset}px` 
-                  : `calc(100% - 160px + ${dragOffset}px)`,
+                left:
+                  imagePosition === "left"
+                    ? `${dragOffset}px`
+                    : `calc(100% - 160px + ${dragOffset}px)`,
               }}
             >
               <Image
                 src="/images/shops/tosahamono.webp"
-                alt="土佐刃物の包丁"
+                alt="土佐物の店"
                 width={160}
                 height={160}
                 className="object-cover object-center cursor-grab active:cursor-grabbing h-full w-full scale-1"
               />
-              {/* キラキラ演出 */}
               {sparkle && (
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                   <div className="absolute inset-0 rounded-xl border-2 border-amber-300/50 blur-sm animate-pulse"></div>
@@ -187,13 +187,12 @@ export default function ShopDetailBanner({
             </div>
           </div>
 
-          {/* スワイプのヒント */}
           <div className="py-2 text-center text-[9px] text-slate-400 bg-white border-t border-slate-100">
             画像をドラッグして切り替え
           </div>
         </div>
 
-        {/* ことづてエリア（下） */}
+        {/* ことづてエリア */}
         <div className="mt-3 rounded-2xl bg-white/90 px-3 py-2 text-xs text-slate-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
@@ -201,27 +200,37 @@ export default function ShopDetailBanner({
                 ことづて
               </span>
               <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">
-                2
+                {notes.length}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px]">
-              <span>2025/12/03 の投稿</span>
-              <button
-                type="button"
-                className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600"
-              >
-                投稿する
-              </button>
-            </div>
+            <Link
+              href={`/kotodute?shopId=${shopId}`}
+              className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600"
+            >
+              投稿・もっと読む
+            </Link>
           </div>
 
-          <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] leading-snug">
-            <div className="text-slate-500">出店者から：なし</div>
-            <div className="mt-1">
-              <span className="mr-1 text-[10px] text-slate-400">07時26分</span>
-              <span>めっちゃ良いの買えた</span>
+          {notes.length === 0 ? (
+            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
+              まだ投稿がありません。# {shopId} で投稿してもらいましょう。
             </div>
-          </div>
+          ) : (
+            <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] leading-snug space-y-2">
+              {notes.slice(0, 3).map((n) => (
+                <div key={n.id} className="rounded-lg bg-lime-50 px-2 py-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span># {shopId}</span>
+                    <span>
+                      {new Date(n.createdAt).getHours().toString().padStart(2, "0")}:
+                      {new Date(n.createdAt).getMinutes().toString().padStart(2, "0")}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-slate-800">{n.text}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
