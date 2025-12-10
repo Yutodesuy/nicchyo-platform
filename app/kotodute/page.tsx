@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import KotoduteClient from "./KotoduteClient";
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function KotodutePage() {
-  return <KotoduteClient />;
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-gray-700">?????...</div>}>
+      <KotoduteClient />
+    </Suspense>
+  );
 }
