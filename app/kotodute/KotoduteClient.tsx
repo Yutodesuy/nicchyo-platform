@@ -65,20 +65,20 @@ export default function KotoduteClient() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      <header className="sticky top-0 z-20 border-b border-amber-100/60 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+      <header className="sticky top-0 z-20 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white shadow-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-orange-100">
               nicchyo kotodute
             </p>
             <h1 className="text-xl font-bold">日曜市のことづて</h1>
-            <p className="text-[11px] text-gray-600">
+            <p className="text-[11px] text-amber-100">
               #店番号 でお店宛、#all で日曜市全体宛に投稿。閲覧はここか各お店のカードで。
             </p>
           </div>
           <Link
             href="/map"
-            className="rounded-full bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+            className="rounded-full border border-amber-200 bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md transition hover:bg-amber-50"
           >
             マップへ戻る
           </Link>

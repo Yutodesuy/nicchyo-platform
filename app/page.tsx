@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { motion, useAnimation, useInView } from "framer-motion";
 import NavigationBar from "./components/NavigationBar";
 
 const pillars = [
@@ -70,11 +71,67 @@ const audiences = [
   },
 ];
 
+type Pillar = (typeof pillars)[number];
+
+function PillarCard({ item }: { item: Pillar }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const inView = useInView(ref, { amount: 0.6 });
+  const controls = useAnimation();
+
+  useEffect(() => {
+    controls.start(
+      inView
+        ? {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            borderColor: "#f97316",
+            boxShadow: "0 10px 30px rgba(251, 146, 60, 0.16)",
+          }
+        : {
+            y: 30,
+            opacity: 0.75,
+            scale: 0.99,
+            borderColor: "#ffedd5",
+            boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
+          }
+    );
+  }, [controls, inView]);
+
+  return (
+    <motion.div
+      ref={ref}
+      whileHover={{ y: -4, scale: 1.01 }}
+      initial={{ opacity: 0.75, y: 30, scale: 0.99 }}
+      animate={controls}
+      transition={{ type: "spring", stiffness: 180, damping: 22 }}
+      className="group flex h-full flex-col rounded-2xl border bg-white p-5 transition"
+    >
+      <div className="mb-3 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-lg">
+          <span>{item.icon}</span>
+        </div>
+        <h3 className="text-base font-semibold md:text-lg">{item.title}</h3>
+      </div>
+      <p className="flex-1 text-sm text-gray-700">{item.desc}</p>
+      <Link
+        href={item.href}
+        className={`mt-4 inline-flex items-center gap-1 text-xs font-semibold transition ${
+          inView ? "opacity-100 text-amber-700" : "opacity-0 text-amber-700 group-hover:opacity-100"
+        }`}
+      >
+        詳しくみる
+        <span aria-hidden>↗</span>
+      </Link>
+    </motion.div>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-4 py-3 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
+      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-6 py-4 text-white shadow-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="font-semibold tracking-wide">nicchyo 日曜市マップ</div>
           <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく。</div>
         </div>
@@ -172,26 +229,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {pillars.map((item) => (
-              <motion.div
-                key={item.title}
-                whileHover={{ y: -4, scale: 1.01 }}
-                className="group flex h-full flex-col rounded-2xl border border-orange-100 bg-white p-5 shadow-sm transition hover:shadow-lg"
-              >
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-lg">
-                    <span>{item.icon}</span>
-                  </div>
-                  <h3 className="text-base font-semibold md:text-lg">{item.title}</h3>
-                </div>
-                <p className="flex-1 text-sm text-gray-700">{item.desc}</p>
-                <Link
-                  href={item.href}
-                  className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 opacity-0 transition group-hover:opacity-100"
-                >
-                  もっと見る
-                  <span aria-hidden>→</span>
-                </Link>
-              </motion.div>
+              <PillarCard key={item.title} item={item} />
             ))}
           </div>
         </section>
