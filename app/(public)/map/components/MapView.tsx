@@ -55,6 +55,17 @@ function saveBag(items: BagItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
+function MapInstanceSetter({ setInstance }: { setInstance: (map: L.Map | null) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    setInstance(map);
+    return () => setInstance(null);
+  }, [map, setInstance]);
+
+  return null;
+}
+
 function MobileZoomControls() {
   const map = useMap();
 
@@ -188,7 +199,6 @@ export default function MapView({
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        whenCreated={(map) => setMapInstance(map)}
         scrollWheelZoom={!isMobile}
         dragging
         touchZoom={isMobile ? "center" : true}
@@ -204,6 +214,7 @@ export default function MapView({
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
       >
+        <MapInstanceSetter setInstance={setMapInstance} />
         <ImageOverlay url={HANDDRAWN_MAP_IMAGE} bounds={MAP_BOUNDS} opacity={1} zIndex={10} />
 
         {isMobile && <MobileZoomControls />}
