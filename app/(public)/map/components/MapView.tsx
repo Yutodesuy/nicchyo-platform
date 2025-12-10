@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, ImageOverlay, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { shops, Shop } from '../data/shops';
-import ShopDetailModal from './ShopDetailModal';
+import ShopDetailBanner from './ShopDetailBanner';
 import UserLocationMarker from './UserLocationMarker';
 import GrandmaGuide from './GrandmaGuide';
 
@@ -155,11 +155,13 @@ export default function MapView() {
         <UserLocationMarker />
       </MapContainer>
 
-      {/* 店舗詳細モーダル */}
-      <ShopDetailModal
-        shop={selectedShop}
-        onClose={() => setSelectedShop(null)}
-      />
+      {/* 店舗詳細バナー */}
+      {selectedShop && (
+        <ShopDetailBanner
+          shop={selectedShop}
+          onClose={() => setSelectedShop(null)}
+        />
+      )}
 
       {/* おばあちゃんの説明ガイド */}
       <GrandmaGuide />
