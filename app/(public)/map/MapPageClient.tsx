@@ -5,7 +5,7 @@ import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 
-// MapView は Leaflet 依存のためクライアント専用で読み込み
+// MapView は Leaflet を使うので動的読み込み
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
 });
@@ -28,29 +28,31 @@ export default function MapPageClient() {
       <header className="relative z-10 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white px-6 py-4 shadow-lg border-b-4 border-amber-700">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-3xl">🧭</span>
+            <span className="text-3xl">🧺</span>
             <div>
               <h1 className="text-xl font-bold tracking-wide">nicchyo 日曜市マップ</h1>
               <p className="text-xs text-amber-100 mt-0.5">高知市追手筋 1.3km</p>
             </div>
-            <span className="text-3xl">🧺</span>
+            <span className="text-3xl">🧭</span>
           </div>
-          <Link
-            href="/fridge"
-            className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-          >
-            冷蔵庫を確認する
-          </Link>
-          <Link
-            href="/kotodute"
-            className="ml-2 rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-          >
-            ことづてを書く
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/recipes"
+              className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
+            >
+              レシピを見る
+            </Link>
+            <Link
+              href="/kotodute"
+              className="ml-1 rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
+            >
+              ことづてを書く
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* マップエリア */}
+      {/* メイン */}
       <main className="flex-1 relative pb-16 z-10">
         <div className="h-full p-2 md:p-4">
           <div className="h-full bg-white rounded-lg md:rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-200 relative">
@@ -59,7 +61,9 @@ export default function MapPageClient() {
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-[1500] pointer-events-none"></div>
             <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500 rounded-br-lg z-[1500] pointer-events-none"></div>
 
-            <MapView initialShopId={initialShopId} />
+            <MapView
+              initialShopId={initialShopId}
+            />
           </div>
         </div>
       </main>
