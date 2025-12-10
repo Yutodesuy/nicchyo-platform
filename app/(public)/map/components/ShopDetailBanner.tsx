@@ -6,6 +6,7 @@ import type { TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { loadKotodute, KotoduteNote } from "../../../../lib/kotoduteStorage";
+import { shops } from "../data/shops";
 
 type ShopDetailBannerProps = {
   shopId: number;
@@ -24,6 +25,9 @@ export default function ShopDetailBanner({
   const [notes, setNotes] = useState<KotoduteNote[]>([]);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
+
+  // 店舗データを取得
+  const shop = shops.find((s) => s.id === shopId);
 
   useEffect(() => {
     const all = loadKotodute();
@@ -140,14 +144,20 @@ export default function ShopDetailBanner({
               <div className="space-y-2 text-xs text-slate-800">
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">ジャンル</p>
-                  <p className="text-sm font-bold">シャモ鍋</p>
+                  <p className="text-sm font-bold">{shop?.category || 'シャモ鍋'}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold text-slate-500 mb-1">主な商品</p>
                   <ul className="list-disc list-inside space-y-[2px] text-[11px]">
-                    <li>鍋セット</li>
-                    <li>だし</li>
-                    <li>薬味</li>
+                    {shop?.products.slice(0, 3).map((product, idx) => (
+                      <li key={idx}>{product}</li>
+                    )) || (
+                      <>
+                        <li>鍋セット</li>
+                        <li>だし</li>
+                        <li>薬味</li>
+                      </>
+                    )}
                   </ul>
                 </div>
                 <div className="flex items-center gap-1 pt-1">
