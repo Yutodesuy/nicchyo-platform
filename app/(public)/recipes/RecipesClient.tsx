@@ -296,7 +296,7 @@ export default function RecipesClient() {
 
   const headingByFridge =
     fridge.length === 0
-      ? "まずは冷蔵庫に食材を入れてみよう"
+      ? "まずはバッグに食材を入れてみよう"
       : fridge.length === 1
         ? `${fridge[0].name}を買ったあなたにおすすめ`
         : `${fridge
@@ -385,16 +385,16 @@ export default function RecipesClient() {
 
       <main className="flex-1 pb-24">
         <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
-          {/* 冷蔵庫の中身（最上段） */}
+          {/* バッグの中身（最上段） */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
-                  冷蔵庫の中身
+                  バッグの中身
                 </p>
                 <h2 className="text-lg font-bold text-gray-900">登録済み {fridge.length} 件</h2>
                 <p className="text-xs text-gray-600">
-                  マップページの「冷蔵庫」ボタンから追加。ここにある食材を最優先で使います。
+                  マップのバッグに入れた食材を一覧化して、ここからレシピを探します。
                 </p>
               </div>
             </div>

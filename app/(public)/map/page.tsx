@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import MapPageClient from "./MapPageClient";
 
 export const metadata: Metadata = {
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function MapPage() {
-  return <MapPageClient />;
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-gray-700">読み込み中...</div>}>
+      <MapPageClient />
+    </Suspense>
+  );
 }
