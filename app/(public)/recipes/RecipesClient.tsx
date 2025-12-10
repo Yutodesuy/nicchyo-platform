@@ -173,6 +173,11 @@ function loadFridge(): FridgeItem[] {
   }
 }
 
+function saveFridge(items: FridgeItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
 function toDifficultyLabel(difficulty: Recipe["difficulty"]) {
   if (difficulty === "easy") return "かんたん";
   if (difficulty === "normal") return "ふつう";
@@ -183,10 +188,46 @@ export default function RecipesClient() {
   const [fridge, setFridge] = useState<FridgeItem[]>([]);
   const [searchMode, setSearchMode] = useState<"ingredient" | "dish">("ingredient");
   const [query, setQuery] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
 
   useEffect(() => {
-    setFridge(loadFridge());
+    const filtered = loadFridge().filter((item) => {
+      const lower = item.name.trim().toLowerCase();
+      return ingredientCatalog.some(
+        (ing) =>
+          ing.name === item.name ||
+          ing.id === lower ||
+          ing.aliases?.some((a) => a.toLowerCase() === lower)
+      );
+    });
+    setFridge(filtered);
   }, []);
+
+  const handleRemove = (id: string) => {
+    setFridge((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      saveFridge(next);
+      return next;
+    });
+  };
+
+  const handleAdd = (raw?: string) => {
+    const value = (raw ?? addQuery).trim();
+    if (!value) return;
+    setFridge((prev) => {
+      const exists = prev.some((item) => item.name.toLowerCase() === value.toLowerCase());
+      if (exists) return prev;
+      const next: FridgeItem[] = [
+        { id: crypto.randomUUID(), name: value, createdAt: Date.now() },
+        ...prev,
+      ];
+      saveFridge(next);
+      return next;
+    });
+    setAddQuery("");
+    setAddOpen(false);
+  };
 
   const fridgeIngredientIds = useMemo(() => {
     return fridge
@@ -289,21 +330,56 @@ export default function RecipesClient() {
       });
   }, [fridge]);
 
+  const ingredientBadges = useMemo(() => {
+    return fridge
+      .filter((item) => {
+        const lower = item.name.trim().toLowerCase();
+        return ingredientCatalog.some(
+          (ing) =>
+            ing.name === item.name ||
+            ing.id === lower ||
+            ing.aliases?.some((a) => a.toLowerCase() === lower)
+        );
+      })
+      .slice()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((item) => {
+        const id = ingredientCatalog.find(
+          (ing) =>
+            ing.name === item.name ||
+            ing.id === item.name.toLowerCase() ||
+            ing.aliases?.includes(item.name)
+        )?.id;
+        const icon = (id && ingredientIcons[id]) || "🧺";
+        return { ...item, icon };
+      });
+  }, [fridge]);
+
+  const addSuggestions = useMemo(() => {
+    const existing = new Set(fridge.map((f) => f.name.toLowerCase()));
+    const q = addQuery.trim().toLowerCase();
+    return ingredientCatalog
+      .filter((ing) => !existing.has(ing.name.toLowerCase()))
+      .filter((ing) => {
+        if (!q) return true;
+        return (
+          ing.name.toLowerCase().includes(q) ||
+          ing.id.toLowerCase().includes(q) ||
+          ing.aliases?.some((a) => a.toLowerCase().includes(q))
+        );
+      })
+      .slice(0, 8);
+  }, [addQuery, fridge]);
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
       <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-4 py-3 text-white shadow-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em]">nicchyo recipes</p>
-            <h1 className="text-xl font-bold">日曜市で買った食材で作る土佐ごはん</h1>
-            <p className="text-xs text-amber-100">冷蔵庫の中身を最優先にレコメンドします。</p>
+            <h1 className="text-xl font-bold">買い物モードで集めた食材からつくる土佐ごはん</h1>
+            <p className="text-xs text-amber-100">マップの買い物モードで入れた食材だけを使ってレコメンドします。</p>
           </div>
-          <Link
-            href="/fridge"
-            className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-          >
-            冷蔵庫を編集
-          </Link>
         </div>
       </header>
 
@@ -321,20 +397,75 @@ export default function RecipesClient() {
                   マップページの「冷蔵庫」ボタンから追加。ここにある食材を最優先で使います。
                 </p>
               </div>
-              <Link
-                href="/fridge"
-                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100"
-              >
-                冷蔵庫を開く
-              </Link>
             </div>
-            {fridge.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-dashed border-amber-200 bg-white/80 px-4 py-6 text-center text-sm text-gray-700">
-                まだ登録がありません。マップで買った食材を冷蔵庫に入れると、ここに表示されます。
-              </div>
-            ) : (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {fridgeBadges.map((item) => (
+            <div className="mt-3 flex flex-wrap items-start gap-2">
+              {addOpen ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-white px-3 py-3 text-sm text-gray-900 shadow-sm min-w-[260px]">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAdd()}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-600 text-white text-lg font-bold shadow-sm transition hover:bg-amber-500"
+                      aria-label="食材を追加"
+                    >
+                      ＋
+                    </button>
+                    <input
+                      value={addQuery}
+                      onChange={(e) => setAddQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAdd();
+                      }}
+                      className="w-full min-w-[140px] rounded-lg border border-amber-100 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                      placeholder="例: にんじん、ナス、ゆず"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddOpen(false);
+                        setAddQuery("");
+                      }}
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-200 bg-white text-xs font-bold text-amber-700 transition hover:bg-amber-50"
+                      aria-label="追加を閉じる"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-[11px]">
+                    {addSuggestions.length === 0 ? (
+                      <span className="text-gray-500">候補がありません</span>
+                    ) : (
+                      addSuggestions.map((ing) => (
+                        <button
+                          key={ing.id}
+                          type="button"
+                          onClick={() => handleAdd(ing.name)}
+                          className="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-1 font-semibold text-amber-800 transition hover:bg-amber-100"
+                        >
+                          <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
+                          <span>{ing.name}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                >
+                  <span className="text-lg leading-none">＋</span>
+                  食材を追加
+                </button>
+              )}
+
+              {fridge.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-amber-200 bg-white/80 px-4 py-6 text-center text-sm text-gray-700">
+                  まだ登録がありません。マップで買った食材を冷蔵庫に入れると、ここに表示されます。
+                </div>
+              ) : (
+                fridgeBadges.map((item) => (
                   <span
                     key={item.id}
                     className="inline-flex items-center gap-2 rounded-full border border-amber-100 bg-amber-50 px-3 py-2 text-sm text-gray-900 shadow-sm"
@@ -344,10 +475,18 @@ export default function RecipesClient() {
                       {item.icon}
                     </span>
                     <span className="font-semibold">{item.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(item.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 bg-white/90 text-xs font-bold text-amber-700 transition hover:bg-white"
+                      aria-label={`${item.name}を削除`}
+                    >
+                      ×
+                    </button>
                   </span>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           {/* パーソナライズ（冷蔵庫から） */}
