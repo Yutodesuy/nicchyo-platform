@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, ImageOverlay, CircleMarker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import Link from "next/link";
 import { shops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
 import UserLocationMarker from "./UserLocationMarker";
@@ -81,44 +82,33 @@ function MobileZoomControls() {
   );
 }
 
-function MapInstanceSetter({ setInstance }: { setInstance: (map: any) => void }) {
-  const map = useMap();
-
-  useEffect(() => {
-    setInstance(map);
-    return () => setInstance(null);
-  }, [map, setInstance]);
-
-  return null;
-}
-
 type MapViewProps = {
   initialShopId?: number;
 };
 
-export default function MapView({ initialShopId }: MapViewProps) {
+export default function MapView({
+  initialShopId,
+}: MapViewProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [mounted, setMounted] = useState(false);
   const [bagItems, setBagItems] = useState<BagItem[]>([]);
   const [addQuery, setAddQuery] = useState("");
 
-  // Leaflet の再利用エラーを防ぐため、各マウントでユニークな id/key を発行する。
-  const mapIdRef = useRef(`leaflet-map-${crypto.randomUUID()}`);
-  const mapKeyRef = useRef(`map-${crypto.randomUUID()}`);
-  const [mapInstance, setMapInstance] = useState<any>(null);
+  // 開発時の再マウントで key を変えて二重初期化を防ぐ
+  const [mapKey] = useState(() => `map-${crypto.randomUUID()}`);
+  const [mapId] = useState(() => `leaflet-map-${crypto.randomUUID()}`);
 
-  // 初回マウント前に、同じ id の残骸があれば破棄
+  // 残存する Leaflet インスタンスを防ぐ
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const existing = document.getElementById(mapIdRef.current);
+    const existing = document.getElementById("leaflet-map");
     if (existing && (existing as any)._leaflet_id) {
       try {
-        (existing as any)._leaflet_id = undefined;
+        delete (existing as any)._leaflet_id;
       } catch {
-        // ignore
+        (existing as any)._leaflet_id = undefined;
       }
-      existing.innerHTML = "";
     }
   }, []);
 
@@ -131,8 +121,8 @@ export default function MapView({ initialShopId }: MapViewProps) {
     };
 
     detectMobile();
-    window.addEventListener("resize", detectMobile);
-    return () => window.removeEventListener("resize", detectMobile);
+    window.addEventListener('resize', detectMobile);
+    return () => window.removeEventListener('resize', detectMobile);
   }, []);
 
   useEffect(() => {
@@ -142,6 +132,7 @@ export default function MapView({ initialShopId }: MapViewProps) {
   useEffect(() => {
     setBagItems(loadBag());
   }, []);
+
 
   const handleAddToBag = (name: string, fromShopId?: number) => {
     const value = name.trim();
@@ -177,15 +168,15 @@ export default function MapView({ initialShopId }: MapViewProps) {
   // HMR やページ遷移時に既存マップを確実に破棄
   useEffect(() => {
     return () => {
-      if (mapInstance) {
+      if () {
         try {
-          mapInstance.remove();
+          .remove();
         } catch {
           // ignore
         }
       }
       if (typeof window !== "undefined") {
-        const container = document.getElementById(mapIdRef.current);
+        const container = document.getElementById("leaflet-map");
         if (container && (container as any)._leaflet_id) {
           try {
             delete (container as any)._leaflet_id;
@@ -193,12 +184,9 @@ export default function MapView({ initialShopId }: MapViewProps) {
             (container as any)._leaflet_id = undefined;
           }
         }
-        if (container) {
-          container.innerHTML = "";
-        }
       }
     };
-  }, [mapInstance]);
+  }, []);
 
   const productPool = useMemo(() => {
     const set = new Set<string>();
@@ -225,8 +213,8 @@ export default function MapView({ initialShopId }: MapViewProps) {
   return (
     <div className="relative h-full w-full">
       <MapContainer
-        key={mapKeyRef.current}
-        id={mapIdRef.current}
+        key={mapKey}
+        id="leaflet-map"
         center={KOCHI_SUNDAY_MARKET}
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
@@ -258,9 +246,9 @@ export default function MapView({ initialShopId }: MapViewProps) {
             center={[shop.lat, shop.lng]}
             radius={35}
             pathOptions={{
-              fillColor: "#3b82f6",
+              fillColor: '#3b82f6',
               fillOpacity: 0.05,
-              color: "#3b82f6",
+              color: '#3b82f6',
               weight: 2,
               opacity: 0.1,
             }}
@@ -268,9 +256,9 @@ export default function MapView({ initialShopId }: MapViewProps) {
               click: () => setSelectedShop(shop),
               mouseover: (e) => {
                 e.target.setStyle({
-                  fillColor: "#fbbf24",
+                  fillColor: '#fbbf24',
                   fillOpacity: 0.4,
-                  color: "#f59e0b",
+                  color: '#f59e0b',
                   opacity: 1,
                   weight: 4,
                 });
@@ -278,9 +266,9 @@ export default function MapView({ initialShopId }: MapViewProps) {
               },
               mouseout: (e) => {
                 e.target.setStyle({
-                  fillColor: "#3b82f6",
+                  fillColor: '#3b82f6',
                   fillOpacity: 0.05,
-                  color: "#3b82f6",
+                  color: '#3b82f6',
                   opacity: 0.1,
                   weight: 2,
                 });
