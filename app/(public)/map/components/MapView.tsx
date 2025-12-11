@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type L from 'leaflet';
 import { MapContainer, ImageOverlay, CircleMarker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
@@ -55,17 +54,6 @@ function saveBag(items: BagItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-function MapInstanceSetter({ setInstance }: { setInstance: (map: L.Map | null) => void }) {
-  const map = useMap();
-
-  useEffect(() => {
-    setInstance(map);
-    return () => setInstance(null);
-  }, [map, setInstance]);
-
-  return null;
-}
-
 function MobileZoomControls() {
   const map = useMap();
 
@@ -99,15 +87,25 @@ export default function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const [bagItems, setBagItems] = useState<BagItem[]>([]);
   const [addQuery, setAddQuery] = useState("");
 
   // 開発時の再マウントで key を変えて二重初期化を防ぐ
-  const mapKey = useMemo(
-    () => `map-${typeof window !== 'undefined' ? Date.now() : 'ssr'}`,
-    []
-  );
+  const [mapKey] = useState(() => `map-${crypto.randomUUID()}`);
+  const [mapId] = useState(() => `leaflet-map-${crypto.randomUUID()}`);
+
+  // 残存する Leaflet インスタンスを防ぐ
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existing = document.getElementById("leaflet-map");
+    if (existing && (existing as any)._leaflet_id) {
+      try {
+        delete (existing as any)._leaflet_id;
+      } catch {
+        (existing as any)._leaflet_id = undefined;
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const detectMobile = () => {
@@ -165,9 +163,25 @@ export default function MapView({
   // HMR やページ遷移時に既存マップを確実に破棄
   useEffect(() => {
     return () => {
-      mapInstance?.remove();
+      if () {
+        try {
+          .remove();
+        } catch {
+          // ignore
+        }
+      }
+      if (typeof window !== "undefined") {
+        const container = document.getElementById("leaflet-map");
+        if (container && (container as any)._leaflet_id) {
+          try {
+            delete (container as any)._leaflet_id;
+          } catch {
+            (container as any)._leaflet_id = undefined;
+          }
+        }
+      }
     };
-  }, [mapInstance]);
+  }, []);
 
   const productPool = useMemo(() => {
     const set = new Set<string>();
@@ -195,6 +209,7 @@ export default function MapView({
     <div className="relative h-full w-full">
       <MapContainer
         key={mapKey}
+        id="leaflet-map"
         center={KOCHI_SUNDAY_MARKET}
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
