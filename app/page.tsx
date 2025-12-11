@@ -5,38 +5,83 @@ import { useEffect, useRef } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import NavigationBar from "./components/NavigationBar";
 
+// 5つの柱のデータ
 const pillars = [
   {
     title: "マップ",
-    desc: "屋台の位置やおすすめを地図から直感的に確認できます。",
-    href: "/map",
     icon: "🗺️",
+    desc: "500店舗以上の位置情報をもとに、日曜市を自由に散策できるデジタルマップ。",
+    href: "/map",
   },
   {
     title: "おすすめ",
-    desc: "季節の食材や人気店をキュレーションして紹介します。",
-    href: "/recipes",
-    icon: "⭐",
+    icon: "✨",
+    desc: "「初めて来た人」「地元の人」それぞれに合わせたルート提案。",
+    href: "/recommend",
+  },
+  {
+    title: "郷土料理",
+    icon: "🍜",
+    desc: "高知の食文化を知り、市場で出会える料理や食材を紹介。",
+    href: "/food",
   },
   {
     title: "ことづて",
-    desc: "出店者と来場者の声をつなぐ短いメッセージボード。",
-    href: "/posts",
     icon: "💬",
+    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
+    href: "/messages",
   },
   {
-    title: "イベント",
-    desc: "市内で行われる催しをまとめてチェックできます。",
-    href: "/search",
-    icon: "📅",
-  },
-  {
-    title: "体験の記録",
-    desc: "お気に入りのお店やルートをメモとして保存。",
-    href: "/map",
-    icon: "📝",
+    title: "午後イベント",
+    icon: "🎪",
+    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
+    href: "/events",
   },
 ];
+
+// ターゲットユーザーのデータ
+const audiences = [
+  {
+    title: "観光客",
+    icon: "🧳",
+    subtitle: "初めての日曜市でも迷わない",
+    points: [
+      "おすすめルートで効率よく回れる",
+      "郷土料理の知識が身につく",
+      "地元の人の声が聞ける",
+    ],
+  },
+  {
+    title: "地元民",
+    icon: "🏠",
+    subtitle: "日常の買い物がもっと楽しく",
+    points: [
+      "お気に入りの店を記録できる",
+      "新しい発見がある",
+      "出店者と交流できる",
+    ],
+  },
+  {
+    title: "出店者",
+    icon: "🛒",
+    subtitle: "お店の魅力を発信できる",
+    points: [
+      "来場者にメッセージを届けられる",
+      "リピーター獲得につながる",
+      "市場全体の活性化に貢献",
+    ],
+  },
+];
+
+export default function MapPage() {
+  return (
+    <div className="flex flex-col h-screen">
+      {/* ヘッダー */}
+      <header className="bg-slate-800 text-white px-4 py-3 shadow-md z-10">
+        <h1 className="text-lg font-semibold tracking-wide text-center">
+          nicchyo日曜市マップ
+        </h1>
+      </header>
 
 const audiences = [
   {
@@ -266,7 +311,20 @@ export default function HomePage() {
         </section>
       </main>
 
-      <NavigationBar />
+          <footer className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-nicchyo-soft-green/30 pt-4 text-[11px] text-nicchyo-ink/60 md:flex-row">
+            <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
+            <div className="flex gap-4">
+              <Link href="/about" className="hover:text-nicchyo-primary transition">
+                プロジェクトについて
+              </Link>
+              <span className="text-nicchyo-ink/40">/</span>
+              <span className="text-nicchyo-ink/60">
+                Made in Kochi with ❤️
+              </span>
+            </div>
+          </footer>
+        </div>
+      </section>
     </div>
   );
 }
