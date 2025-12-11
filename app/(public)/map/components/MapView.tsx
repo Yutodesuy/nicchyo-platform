@@ -1,22 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { MapContainer, ImageOverlay, CircleMarker, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import Link from "next/link";
-import { shops, Shop } from "../data/shops";
-import ShopDetailBanner from "./ShopDetailBanner";
-import UserLocationMarker from "./UserLocationMarker";
-import GrandmaGuide from "./GrandmaGuide";
+import { useEffect, useState } from 'react';
+import { MapContainer, ImageOverlay, CircleMarker, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { shops, Shop } from '../data/shops';
+import ShopDetailBanner from './ShopDetailBanner';
+import UserLocationMarker from './UserLocationMarker';
+import GrandmaGuide from './GrandmaGuide';
 
-// 高知市日曜市の中心座標とズーム設定
-const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.531];
-const INITIAL_ZOOM = 17;
-const MIN_ZOOM = 16;
-const MAX_ZOOM = 20;
+// 高知市日曜市の中心地点（道の中央）
+const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.53100];
+const INITIAL_ZOOM = 17;  // 初期表示（1.3kmの市場全体が見やすい）
+const MIN_ZOOM = 16;      // 最小ズーム（市場の全体像を確認）
+const MAX_ZOOM = 20;      // 最大ズーム（個別店舗の詳細を見る）
 
-// 手描きマップのオーバーレイ
-const HANDDRAWN_MAP_IMAGE = "/images/maps/placeholder-map.svg";
+// 手書きマップ画像のパス（450x10000px - 300店舗対応、余白削減）
+// マップの向き: 上=西（高知城側）、下=東
+const HANDDRAWN_MAP_IMAGE = '/images/maps/placeholder-map.svg';
+
+// 手書きマップの表示範囲（実測約1.3km - 正確な縮尺）
+// 上側が西（高知城）、下側が東方向（追手筋）
+// 1度の緯度 ≈ 111km、1.3km = 0.0117度
 const MAP_BOUNDS: [[number, number], [number, number]] = [
   [33.565, 133.532],
   [33.5533, 133.53],
@@ -232,6 +236,7 @@ export default function MapView({
         <MapInstanceSetter setInstance={setMapInstance} />
         <ImageOverlay url={HANDDRAWN_MAP_IMAGE} bounds={MAP_BOUNDS} opacity={1} zIndex={10} />
 
+        {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
         {shops.map((shop) => (
@@ -274,11 +279,10 @@ export default function MapView({
         <UserLocationMarker />
       </MapContainer>
 
+      {/* 店舗詳細バナー */}
       {selectedShop && (
         <ShopDetailBanner
           shop={selectedShop}
-          bagCount={bagItems.length}
-          onAddProduct={(name) => handleAddToBag(name, selectedShop.id)}
           onClose={() => setSelectedShop(null)}
         />
       )}
