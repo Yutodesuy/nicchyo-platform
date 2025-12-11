@@ -3,24 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
-
-type Ingredient = {
-  id: string;
-  name: string;
-  aliases?: string[];
-  seasonal?: boolean;
-};
-
-type Recipe = {
-  id: string;
-  title: string;
-  description: string;
-  ingredientIds: string[];
-  ingredients: Ingredient[];
-  cookTime: string;
-  difficulty: "easy" | "normal" | "hard";
-  steps: string[];
-};
+import {
+  ingredientCatalog,
+  ingredientIcons,
+  recipes,
+  seasonalCollections,
+  type Ingredient,
+  type Recipe,
+} from "../../../lib/recipes";
 
 type Contributor = {
   id: string;
@@ -40,76 +30,6 @@ type FridgeItem = {
 };
 
 const STORAGE_KEY = "nicchyo-fridge-items";
-const ingredientCatalog: Ingredient[] = [
-  { id: "carrot", name: "にんじん", aliases: ["人参"] },
-  { id: "eggplant", name: "なす", aliases: ["ナス", "茄子"] },
-  { id: "ginger", name: "しょうが", aliases: ["生姜", "ショウガ"] },
-  { id: "katsuo", name: "かつお", aliases: ["カツオ", "鰹"] },
-  { id: "shiso", name: "大葉", aliases: ["しそ", "シソ"] },
-  { id: "yuzu", name: "ゆず", aliases: ["柚子"] },
-  { id: "rice", name: "ごはん" },
-  { id: "salt", name: "塩" },
-  { id: "buntan", name: "ぶんたん", seasonal: true },
-];
-
-const ingredientIcons: Record<string, string> = {
-  carrot: "🥕",
-  eggplant: "🍆",
-  ginger: "🫚",
-  katsuo: "🐟",
-  shiso: "🌿",
-  yuzu: "🍋",
-  rice: "🍚",
-  salt: "🧂",
-  buntan: "🍊",
-};
-
-const recipes: Recipe[] = [
-  {
-    id: "eggplant-ginger",
-    title: "焼きなすの生姜ぽん酢",
-    description: "焼いて和えるだけのスピード副菜。薬味たっぷりで市場の新鮮さを味わう。",
-    ingredientIds: ["eggplant", "ginger", "salt"],
-    ingredients: [
-      { id: "eggplant", name: "なす", seasonal: true },
-      { id: "ginger", name: "しょうが", seasonal: true },
-      { id: "salt", name: "塩" },
-    ],
-    cookTime: "15分",
-    difficulty: "easy",
-    steps: ["なすを焼いて皮をむく", "ざっくり裂いて生姜と和える", "ぽん酢でさっと味付け"],
-  },
-  {
-    id: "katsuo-don",
-    title: "かつおのタタキ丼",
-    description: "炙りかつおを刻んで薬味たっぷり。仕上げにゆずをしぼる高知の定番。",
-    ingredientIds: ["katsuo", "ginger", "shiso", "yuzu", "rice"],
-    ingredients: [
-      { id: "katsuo", name: "かつお", seasonal: true },
-      { id: "ginger", name: "しょうが" },
-      { id: "shiso", name: "大葉" },
-      { id: "yuzu", name: "ゆず", seasonal: true },
-      { id: "rice", name: "ごはん" },
-    ],
-    cookTime: "20分",
-    difficulty: "normal",
-    steps: ["かつおを薄く刻む", "薬味と和える", "丼に盛りゆずをしぼる"],
-  },
-  {
-    id: "buntan-salad",
-    title: "ぶんたんと大葉のサラダ",
-    description: "柑橘とハーブの爽やかサラダ。ぶんたんは市場の季節もの。",
-    ingredientIds: ["buntan", "shiso", "salt"],
-    ingredients: [
-      { id: "buntan", name: "ぶんたん", seasonal: true },
-      { id: "shiso", name: "大葉" },
-      { id: "salt", name: "塩" },
-    ],
-    cookTime: "10分",
-    difficulty: "easy",
-    steps: ["ぶんたんを房から出す", "大葉を刻む", "塩とオイルで和える"],
-  },
-];
 
 const contributors: Contributor[] = [
   {
@@ -121,46 +41,25 @@ const contributors: Contributor[] = [
   },
   {
     id: "katsuo",
-    name: "かつお兄さん",
+    name: "かつお屋さん",
     profile: "城下でタタキ専門店を営む。薬味合わせが得意。",
     icon: "🧑‍🍳",
     repRecipes: ["かつおのタタキ丼", "冷やしタタキ茶漬け"],
   },
   {
     id: "obaachan",
-    name: "四万十のばあちゃん",
+    name: "四丁目のばあちゃん",
     profile: "郷土汁と保存食を作り続けて60年。日持ちレシピが十八番。",
     icon: "👵",
     repRecipes: ["生姜たっぷり根菜スープ", "鯖の味噌鍋"],
   },
 ];
 
-const seasonalCollections = [
-  {
-    id: "spring",
-    title: "春の新ものレシピ",
-    description: "春野菜をさっと仕上げる小鉢を中心に。",
-    recipeIds: ["eggplant-ginger", "buntan-salad"],
-  },
-  {
-    id: "summer",
-    title: "夏のひんやり土佐ごはん",
-    description: "暑い日でも食べやすい冷たい一品。",
-    recipeIds: ["buntan-salad", "katsuo-don"],
-  },
-  {
-    id: "autumn",
-    title: "秋の香ばしレシピ",
-    description: "香り高い食材で食欲をそそるラインナップ。",
-    recipeIds: ["eggplant-ginger", "katsuo-don"],
-  },
-  {
-    id: "winter",
-    title: "冬のあったか土佐ごはん",
-    description: "体が温まる鍋と汁物を中心に。",
-    recipeIds: ["katsuo-don"],
-  },
-];
+const toDifficultyLabel = (difficulty: Recipe["difficulty"]) => {
+  if (difficulty === "easy") return "かんたん";
+  if (difficulty === "normal") return "ふつう";
+  return "むずかしい";
+};
 
 function loadFridge(): FridgeItem[] {
   if (typeof window === "undefined") return [];
@@ -176,12 +75,6 @@ function loadFridge(): FridgeItem[] {
 function saveFridge(items: FridgeItem[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function toDifficultyLabel(difficulty: Recipe["difficulty"]) {
-  if (difficulty === "easy") return "かんたん";
-  if (difficulty === "normal") return "ふつう";
-  return "むずかしい";
 }
 
 export default function RecipesClient() {
@@ -296,7 +189,7 @@ export default function RecipesClient() {
 
   const headingByFridge =
     fridge.length === 0
-      ? "まずはバッグに食材を入れてみよう"
+      ? "まずバッグに食材を入れてみよう"
       : fridge.length === 1
         ? `${fridge[0].name}を買ったあなたにおすすめ`
         : `${fridge
@@ -377,15 +270,17 @@ export default function RecipesClient() {
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em]">nicchyo recipes</p>
-            <h1 className="text-xl font-bold">買い物モードで集めた食材からつくる土佐ごはん</h1>
-            <p className="text-xs text-amber-100">マップの買い物モードで入れた食材だけを使ってレコメンドします。</p>
+            <h1 className="text-xl font-bold">買い物バッグから作れる土佐ごはん</h1>
+            <p className="text-xs text-amber-100">
+              マップでバッグに入れた食材だけを使ってレコメンドします
+            </p>
           </div>
         </div>
       </header>
 
       <main className="flex-1 pb-24">
         <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
-          {/* バッグの中身（最上段） */}
+          {/* バッグの中身 */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
@@ -394,7 +289,7 @@ export default function RecipesClient() {
                 </p>
                 <h2 className="text-lg font-bold text-gray-900">登録済み {fridge.length} 件</h2>
                 <p className="text-xs text-gray-600">
-                  マップのバッグに入れた食材を一覧化して、ここからレシピを探します。
+                  マップでバッグに入れた食材を一覧化して、ここからレシピを探します
                 </p>
               </div>
             </div>
@@ -417,7 +312,7 @@ export default function RecipesClient() {
                         if (e.key === "Enter") handleAdd();
                       }}
                       className="w-full min-w-[140px] rounded-lg border border-amber-100 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                      placeholder="例: にんじん、ナス、ゆず"
+                      placeholder="例：にんじん、ナス、ゆず"
                     />
                     <button
                       type="button"
@@ -462,7 +357,7 @@ export default function RecipesClient() {
 
               {fridge.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-amber-200 bg-white/80 px-4 py-6 text-center text-sm text-gray-700">
-                  まだ登録がありません。マップで買った食材を冷蔵庫に入れると、ここに表示されます。
+                  まだ登録がありません。マップで買った食材をバッグに入れると、ここに表示されます
                 </div>
               ) : (
                 fridgeBadges.map((item) => (
@@ -489,7 +384,7 @@ export default function RecipesClient() {
             </div>
           </div>
 
-          {/* パーソナライズ（冷蔵庫から） */}
+          {/* 冷蔵庫からのおすすめ */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -497,7 +392,7 @@ export default function RecipesClient() {
                   冷蔵庫からのおすすめ
                 </p>
                 <h2 className="text-lg font-bold text-gray-900">{headingByFridge}</h2>
-                <p className="text-xs text-gray-600">冷蔵庫にある食材と一致するレシピのみを表示します。</p>
+                <p className="text-xs text-gray-600">冷蔵庫にある食材と一致するレシピのみを表示します</p>
               </div>
               <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-800 border border-amber-100">
                 優先度: 最上位
@@ -611,7 +506,7 @@ export default function RecipesClient() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={
                     searchMode === "ingredient"
-                      ? "例：なす、にんじん、しょうが"
+                      ? "例：なす、にんじん、しめじ"
                       : "例：なすのたたき、田舎寿司"
                   }
                   className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
@@ -688,7 +583,7 @@ export default function RecipesClient() {
             )}
           </div>
 
-          {/* 投稿者紹介（優先度低め） */}
+          {/* 投稿者紹介 */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -741,7 +636,7 @@ export default function RecipesClient() {
             </div>
           </div>
 
-          {/* 季節セレクト（優先度低め） */}
+          {/* 季節セレクト */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
