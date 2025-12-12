@@ -9,21 +9,14 @@ import NavigationBar from "./components/NavigationBar";
 const pillars = [
   {
     title: "マップ",
-    icon: "🗺️",
-    desc: "500店舗以上の位置情報をもとに、日曜市を自由に散策できるデジタルマップ。",
+    desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
     href: "/map",
   },
   {
     title: "おすすめ",
+    desc: "季節の食材や人気店をキュレーションして紹介します。",
+    href: "/recipes",
     icon: "✨",
-    desc: "「初めて来た人」「地元の人」それぞれに合わせたルート提案。",
-    href: "/recommend",
-  },
-  {
-    title: "郷土料理",
-    icon: "🍜",
-    desc: "高知の食文化を知り、市場で出会える料理や食材を紹介。",
-    href: "/food",
   },
   {
     title: "ことづて",
@@ -52,24 +45,10 @@ const audiences = [
     ],
   },
   {
-    title: "地元民",
-    icon: "🏠",
-    subtitle: "日常の買い物がもっと楽しく",
-    points: [
-      "お気に入りの店を記録できる",
-      "新しい発見がある",
-      "出店者と交流できる",
-    ],
-  },
-  {
-    title: "出店者",
-    icon: "🛒",
-    subtitle: "お店の魅力を発信できる",
-    points: [
-      "来場者にメッセージを届けられる",
-      "リピーター獲得につながる",
-      "市場全体の活性化に貢献",
-    ],
+    title: "体験・記録",
+    desc: "お気に入りのお店やルートをメモとして保存。",
+    href: "/map",
+    icon: "📝",
   },
 ];
 
@@ -89,9 +68,9 @@ const audiences = [
     subtitle: "どこを回ればいいか知りたい",
     icon: "🧳",
     points: [
-      "目的別ルート提案で迷わず回れる",
+      "目安ルート提案で迷わず回れる",
       "定番スポットと旬の見どころを表示",
-      "徒歩時間や距離の目安を把握",
+      "徒歩時間と距離の目安を把握",
     ],
   },
   {
@@ -100,7 +79,7 @@ const audiences = [
     icon: "🔍",
     points: [
       "その日だけの限定品をピックアップ",
-      "お気に入りの店をブックマーク",
+      "お気に入り店をブックマーク",
       "ことづてで交流や質問ができる",
     ],
   },
@@ -109,7 +88,7 @@ const audiences = [
     subtitle: "お客さんに見つけてもらいたい",
     icon: "🧺",
     points: [
-      "出店位置と商品をシンプルに掲載",
+      "出店位置と商品をシンプルに掲示",
       "おすすめ欄で季節の推しを告知",
       "簡単なアンケートで声を集める",
     ],
@@ -178,7 +157,7 @@ export default function HomePage() {
       <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-6 py-4 text-white shadow-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="font-semibold tracking-wide">nicchyo 日曜市マップ</div>
-          <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく。</div>
+          <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく</div>
         </div>
       </header>
 
@@ -201,7 +180,7 @@ export default function HomePage() {
               >
                 日曜市を、
                 <span className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-                  もっと歩きやすく。
+                  もっと歩きやすく、
                 </span>
               </motion.h1>
 
@@ -227,7 +206,7 @@ export default function HomePage() {
                 >
                   <span className="flex items-center gap-2">
                     マップを見る
-                    <span aria-hidden>→</span>
+                    <span aria-hidden>↗</span>
                   </span>
                 </Link>
                 <Link
@@ -258,7 +237,7 @@ export default function HomePage() {
                 <div className="absolute inset-x-4 bottom-4 h-1 rounded-full bg-orange-200/70" />
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-gray-600">
-                出店の位置・おすすめをリアルタイムにまとめています。お気に入りをブックマークしながら、市場を歩いてみてください。
+                出店位置・おすすめをリアルタイムにまとめています。お気に入りをブックマークしながら、市場を歩いてみてください。
               </p>
             </motion.div>
           </div>
@@ -285,7 +264,7 @@ export default function HomePage() {
             <div className="mb-8 text-center md:text-left">
               <h2 className="text-2xl font-bold md:text-3xl">それぞれの楽しみ方に寄り添う</h2>
               <p className="mt-3 max-w-3xl text-sm text-gray-700 md:text-base">
-                観光客、リピーター、出店者。それぞれの立場で「知りたいこと」を手早く見つけられるよう設計しました。
+                観光客、リピーター、出店者それぞれの立場で「知りたいこと」を手早く見つけられるよう設計しました。
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
