@@ -15,9 +15,9 @@ const pillars = [
   },
   {
     title: "おすすめ",
-    icon: "✨",
-    desc: "季節の食材や人気店をキュレーションして紹介します。",
-    href: "/recipes",
+    icon: "🔍",
+    desc: "お目当ての商品や店舗を素早く検索して見つけられます。",
+    href: "/search",
   },
   {
     title: "ことづて",
@@ -26,7 +26,13 @@ const pillars = [
     href: "/kotodute",
   },
   {
-    title: "午後イベント",
+    title: "土佐の料理レシピ",
+    icon: "🍳",
+    desc: "季節の食材を使った土佐料理のレシピを紹介します。",
+    href: "/recipes",
+  },
+  {
+    title: "午後のイベント",
     icon: "🎪",
     desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
     href: "/events",
