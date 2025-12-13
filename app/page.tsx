@@ -9,23 +9,30 @@ import NavigationBar from "./components/NavigationBar";
 const pillars = [
   {
     title: "マップ",
+    icon: "🗺️",
     desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
     href: "/map",
   },
   {
     title: "おすすめ",
-    desc: "季節の食材や人気店をキュレーションして紹介します。",
-    href: "/recipes",
-    icon: "✨",
+    icon: "🔍",
+    desc: "お目当ての商品や店舗を素早く検索して見つけられます。",
+    href: "/search",
   },
   {
     title: "ことづて",
     icon: "💬",
     desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
-    href: "/messages",
+    href: "/kotodute",
   },
   {
-    title: "午後イベント",
+    title: "土佐の料理レシピ",
+    icon: "🍳",
+    desc: "季節の食材を使った土佐料理のレシピを紹介します。",
+    href: "/recipes",
+  },
+  {
+    title: "午後のイベント",
     icon: "🎪",
     desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
     href: "/events",
@@ -33,35 +40,6 @@ const pillars = [
 ];
 
 // ターゲットユーザーのデータ
-const audiences = [
-  {
-    title: "観光客",
-    icon: "🧳",
-    subtitle: "初めての日曜市でも迷わない",
-    points: [
-      "おすすめルートで効率よく回れる",
-      "郷土料理の知識が身につく",
-      "地元の人の声が聞ける",
-    ],
-  },
-  {
-    title: "体験・記録",
-    desc: "お気に入りのお店やルートをメモとして保存。",
-    href: "/map",
-    icon: "📝",
-  },
-];
-
-export default function MapPage() {
-  return (
-    <div className="flex flex-col h-screen">
-      {/* ヘッダー */}
-      <header className="bg-slate-800 text-white px-4 py-3 shadow-md z-10">
-        <h1 className="text-lg font-semibold tracking-wide text-center">
-          nicchyo日曜市マップ
-        </h1>
-      </header>
-
 const audiences = [
   {
     title: "はじめての来訪",
@@ -290,20 +268,22 @@ export default function HomePage() {
         </section>
       </main>
 
-          <footer className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-nicchyo-soft-green/30 pt-4 text-[11px] text-nicchyo-ink/60 md:flex-row">
-            <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
-            <div className="flex gap-4">
-              <Link href="/about" className="hover:text-nicchyo-primary transition">
-                プロジェクトについて
-              </Link>
-              <span className="text-nicchyo-ink/40">/</span>
-              <span className="text-nicchyo-ink/60">
-                Made in Kochi with ❤️
-              </span>
-            </div>
-          </footer>
+      <footer className="border-t border-orange-100 bg-white px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 text-[11px] text-gray-600 md:flex-row">
+          <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
+          <div className="flex gap-4">
+            <Link href="/about" className="transition hover:text-amber-600">
+              プロジェクトについて
+            </Link>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-600">
+              Made in Kochi with ❤️
+            </span>
+          </div>
         </div>
-      </section>
+      </footer>
+
+      <NavigationBar />
     </div>
   );
 }
