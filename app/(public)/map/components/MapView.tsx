@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, ImageOverlay, CircleMarker, useMap } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { MapContainer, ImageOverlay, CircleMarker, useMap, Tooltip } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
 import UserLocationMarker from "./UserLocationMarker";
 import GrandmaGuide from "./GrandmaGuide";
+import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 
 // 高知市日曜市の中心地点（道の中央）
@@ -30,6 +32,7 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [33.567, 133.533],
   [33.551, 133.529],
 ];
+const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 
 type BagItem = {
   id: string;
@@ -42,6 +45,7 @@ type BagItem = {
 };
 
 const STORAGE_KEY = "nicchyo-fridge-items";
+const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
 
 function loadBag(): BagItem[] {
   if (typeof window === "undefined") return [];
@@ -101,6 +105,9 @@ export default function MapView({
   const [bagItems, setBagItems] = useState<BagItem[]>([]);
   const [addQuery, setAddQuery] = useState("");
   const [highlightIngredient, setHighlightIngredient] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [planOrder, setPlanOrder] = useState<number[]>([]);
+  const mapRef = useRef<L.Map | null>(null);
   // Leaflet の再利用エラーを避けるため、MapContainer の key をユニークにする。
   const mapKeyRef = useRef(`map-${crypto.randomUUID()}`);
 
@@ -191,6 +198,51 @@ export default function MapView({
     });
     return map;
   }, [selectedRecipe]);
+
+  const planOrderMap = useMemo(() => {
+    const m = new Map<number, number>();
+    planOrder.forEach((id, idx) => m.set(id, idx));
+    return m;
+  }, [planOrder]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(AGENT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.order)) {
+        setPlanOrder(parsed.order);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  const handleOpenShop = useCallback((shopId: number) => {
+    const target = shops.find((s) => s.id === shopId);
+    if (target) {
+      setSelectedShop(target);
+      if (mapRef.current) {
+        mapRef.current.flyTo([target.lat, target.lng], Math.max(mapRef.current.getZoom(), 18), {
+          duration: 0.75,
+        });
+      }
+    }
+  }, []);
+
+  const handlePlanUpdate = useCallback((order: number[]) => {
+    setPlanOrder(order);
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(AGENT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        localStorage.setItem(AGENT_STORAGE_KEY, JSON.stringify({ ...parsed, order }));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, []);
 
   if (!mounted) return null;
 
@@ -309,6 +361,7 @@ export default function MapView({
         attributionControl={false}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
+        ref={mapRef}
       >
         <ImageOverlay url={HANDDRAWN_MAP_IMAGE} bounds={MAP_BOUNDS} opacity={1} zIndex={10} />
 
@@ -321,6 +374,7 @@ export default function MapView({
             shopsByIngredient
               .get(highlightIngredient)
               ?.some((s) => s.id === shop.id);
+          const orderIdx = planOrderMap.get(shop.id);
           return (
             <CircleMarker
               key={shop.id}
@@ -355,11 +409,26 @@ export default function MapView({
                   });
                 },
               }}
-            />
+            >
+              {orderIdx !== undefined && (
+                <Tooltip
+                  permanent
+                  direction="top"
+                  offset={[0, -10]}
+                  className="bg-white text-amber-900 border border-amber-300 rounded-full px-2 py-1 text-sm font-bold shadow-md"
+                >
+                  {ORDER_SYMBOLS[orderIdx] ?? `${orderIdx + 1}`}
+                </Tooltip>
+              )}
+            </CircleMarker>
           );
         })}
 
-        <UserLocationMarker />
+        <UserLocationMarker
+          onLocationUpdate={(_, position) => {
+            setUserLocation(position);
+          }}
+        />
       </MapContainer>
 
       {/* 店舗詳細バナー */}
@@ -371,6 +440,11 @@ export default function MapView({
       )}
 
       <GrandmaGuide />
+      <MapAgentAssistant
+        onOpenShop={handleOpenShop}
+        onPlanUpdate={handlePlanUpdate}
+        userLocation={userLocation}
+      />
     </div>
   );
 }
