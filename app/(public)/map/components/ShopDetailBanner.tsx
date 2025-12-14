@@ -1,20 +1,26 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import type { TouchEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Shop } from "../data/shops";
+import { loadKotodute, type KotoduteNote } from "../../../../lib/kotoduteStorage";
 
 type ShopDetailBannerProps = {
   shop: Shop;
+  bagCount: number;
   onClose?: () => void;
 };
 
 export default function ShopDetailBanner({
   shop,
+  bagCount,
   onClose,
 }: ShopDetailBannerProps) {
+  const [availableProducts, setAvailableProducts] = useState<string[]>(shop.products);
+  const [notes, setNotes] = useState<KotoduteNote[]>([]);
   // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
   // キラキラ演出の表示
@@ -23,6 +29,12 @@ export default function ShopDetailBanner({
   const [dragOffset, setDragOffset] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
+
+  useEffect(() => {
+    setAvailableProducts(shop.products);
+    const all = loadKotodute();
+    setNotes(all.filter((n) => n.shopId === shop.id));
+  }, [shop.products]);
 
   // 音声チャイム再生（最適化：useCallbackでメモ化）
   const playChime = useCallback(() => {

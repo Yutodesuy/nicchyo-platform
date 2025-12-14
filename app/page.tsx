@@ -5,12 +5,12 @@ import { useEffect, useRef } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import NavigationBar from "./components/NavigationBar";
 
-// 5つの柱のデータ
 const pillars = [
   {
     title: "マップ",
     desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
     href: "/map",
+    icon: "🗺️",
   },
   {
     title: "おすすめ",
@@ -20,29 +20,15 @@ const pillars = [
   },
   {
     title: "ことづて",
+    desc: "出店者と来場者の声をつなぐ短いメッセージボード。",
+    href: "/posts",
     icon: "💬",
-    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
-    href: "/messages",
   },
   {
-    title: "午後イベント",
-    icon: "🎪",
-    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
-    href: "/events",
-  },
-];
-
-// ターゲットユーザーのデータ
-const audiences = [
-  {
-    title: "観光客",
-    icon: "🧳",
-    subtitle: "初めての日曜市でも迷わない",
-    points: [
-      "おすすめルートで効率よく回れる",
-      "郷土料理の知識が身につく",
-      "地元の人の声が聞ける",
-    ],
+    title: "イベント",
+    desc: "市内で行われる催しをまとめてチェックできます。",
+    href: "/search",
+    icon: "📅",
   },
   {
     title: "体験・記録",
@@ -51,16 +37,6 @@ const audiences = [
     icon: "📝",
   },
 ];
-
-export default function MapPage() {
-  return (
-    <div className="flex flex-col h-screen">
-      {/* ヘッダー */}
-      <header className="bg-slate-800 text-white px-4 py-3 shadow-md z-10">
-        <h1 className="text-lg font-semibold tracking-wide text-center">
-          nicchyo日曜市マップ
-        </h1>
-      </header>
 
 const audiences = [
   {
@@ -290,20 +266,7 @@ export default function HomePage() {
         </section>
       </main>
 
-          <footer className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-nicchyo-soft-green/30 pt-4 text-[11px] text-nicchyo-ink/60 md:flex-row">
-            <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
-            <div className="flex gap-4">
-              <Link href="/about" className="hover:text-nicchyo-primary transition">
-                プロジェクトについて
-              </Link>
-              <span className="text-nicchyo-ink/40">/</span>
-              <span className="text-nicchyo-ink/60">
-                Made in Kochi with ❤️
-              </span>
-            </div>
-          </footer>
-        </div>
-      </section>
+      <NavigationBar />
     </div>
   );
 }
