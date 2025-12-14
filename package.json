@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prepare": "husky install"
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
