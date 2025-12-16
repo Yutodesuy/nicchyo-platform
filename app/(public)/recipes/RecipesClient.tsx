@@ -448,12 +448,18 @@ export default function RecipesClient() {
                       </ul>
                     </div>
                     <div className="flex gap-2">
-                      <button className="w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
                         レシピ詳細へ
-                      </button>
-                      <button className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50">
+                      </Link>
+                      <Link
+                        href={`/map?recipe=${recipe.id}`}
+                        className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
+                      >
                         足りない食材を探す
-                      </button>
+                      </Link>
                     </div>
                   </article>
                 ))}
@@ -573,9 +579,12 @@ export default function RecipesClient() {
                           </span>
                         ))}
                       </div>
-                      <button className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
                         レシピ詳細へ
-                      </button>
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -679,9 +688,12 @@ export default function RecipesClient() {
                         </span>
                       ))}
                     </div>
-                    <button className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                    <Link
+                      href={`/recipes/${recipe.id}`}
+                      className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                    >
                       レシピ詳細へ
-                    </button>
+                    </Link>
                   </div>
                 );
               })}
