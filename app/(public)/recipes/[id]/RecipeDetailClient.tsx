@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { ingredientIcons, recipes, type Recipe } from "../../../../lib/recipes";
 import NavigationBar from "../../../components/NavigationBar";
@@ -38,6 +39,13 @@ export default function RecipeDetailClient({ id }: Props) {
 
   useEffect(() => {
     setBagItems(loadFridge());
+    const handler = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        setBagItems(loadFridge());
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
   }, []);
 
   const bagIngredientIds = useMemo(() => {
@@ -93,7 +101,18 @@ export default function RecipeDetailClient({ id }: Props) {
 
       <div className="mx-auto w-full max-w-5xl px-4">
         <div className="overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl">
-          <div className="aspect-[16/9] w-full bg-gradient-to-br from-amber-100 via-orange-50 to-white" />
+          <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-amber-100 via-orange-50 to-white">
+            {recipe.heroImage && (
+              <Image
+                src={recipe.heroImage}
+                alt={recipe.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 960px"
+                className="object-cover"
+                priority
+              />
+            )}
+          </div>
         </div>
       </div>
 

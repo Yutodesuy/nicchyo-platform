@@ -9,6 +9,7 @@ export type Recipe = {
   id: string;
   title: string;
   description: string;
+  heroImage?: string;
   ingredientIds: string[];
   ingredients: Ingredient[];
   cookTime: string;
@@ -45,6 +46,7 @@ export const recipes: Recipe[] = [
     id: "eggplant-ginger",
     title: "焼きなすの生姜ぽん酢",
     description: "焼いて和えるだけのスピード副菜。薬味たっぷりで市場の新鮮さを味わう。",
+    heroImage: "/images/recipes/eggplant-ginger.jpg",
     ingredientIds: ["eggplant", "ginger", "salt"],
     ingredients: [
       { id: "eggplant", name: "なす", seasonal: true },
@@ -59,6 +61,7 @@ export const recipes: Recipe[] = [
     id: "katsuo-don",
     title: "かつおのタタキ丼",
     description: "炙りかつおを刻んで薬味たっぷり。仕上げにゆずをしぼる高知の定番。",
+    heroImage: "/images/recipes/katsuo-don.jpg",
     ingredientIds: ["katsuo", "ginger", "shiso", "yuzu", "rice"],
     ingredients: [
       { id: "katsuo", name: "かつお", seasonal: true },
@@ -75,6 +78,7 @@ export const recipes: Recipe[] = [
     id: "buntan-salad",
     title: "ぶんたんと大葉のサラダ",
     description: "柑橘とハーブの爽やかサラダ。ぶんたんの季節はぜひ。",
+    heroImage: "/images/recipes/buntan-salad.jpg",
     ingredientIds: ["buntan", "shiso", "salt"],
     ingredients: [
       { id: "buntan", name: "ぶんたん", seasonal: true },

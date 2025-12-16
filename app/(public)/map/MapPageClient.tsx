@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
