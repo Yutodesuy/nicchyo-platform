@@ -4,6 +4,7 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import type { TouchEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Shop } from "../data/shops";
 
 type ShopDetailBannerProps = {
@@ -203,41 +204,56 @@ export default function ShopDetailBanner({
               )}
             </div>
           </div>
-
-          {/* スワイプのヒント */}
-          <div className="py-2 text-center text-[9px] text-slate-400 bg-white border-t border-slate-100">
-            画像をドラッグして切り替え
+          <div className="h-28 w-28 overflow-hidden rounded-2xl bg-white shadow-sm">
+            <Image
+              src="/images/shops/tosahamono.webp"
+              alt={shop.name}
+              width={160}
+              height={160}
+              className="h-full w-full object-cover"
+            />
           </div>
         </div>
 
-        {/* ことづてエリア（下） */}
-        <div className="mt-3 rounded-2xl bg-white/90 px-3 py-2 text-xs text-slate-800">
+        {/* 商品リスト */}
+        <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-xs text-slate-800 shadow-sm">
+          <div className="mb-2 flex items-center gap-1">
+            <span className="rounded-full bg-amber-500 px-2 py-[1px] text-[11px] font-semibold text-white">
+              商品
+            </span>
+            <span className="text-[11px] text-amber-800">このお店の扱い</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {shop.products.map((product) => (
+              <span
+                key={product}
+                className="rounded-full border border-amber-200 bg-white px-2 py-[2px] text-[11px] font-semibold text-amber-800"
+              >
+                {product}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* ことづてセクション */}
+        <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs text-slate-800 shadow-sm border border-lime-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-lime-500 px-2 py-[1px] text-[11px] font-semibold text-white">
                 ことづて
               </span>
-              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">
-                2
-              </span>
+              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">0</span>
             </div>
-            <div className="flex items-center gap-2 text-[11px]">
-              <span>2025/12/03 の投稿</span>
-              <button
-                type="button"
-                className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600 transition-transform hover:scale-105"
-              >
-                投稿する
-              </button>
-            </div>
+            <Link
+              href={`/kotodute?shopId=${shop.id}`}
+              className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600"
+            >
+              投稿・もっと読む
+            </Link>
           </div>
 
-          <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] leading-snug">
-            <div className="text-slate-500">出店者から：なし</div>
-            <div className="mt-1">
-              <span className="mr-1 text-[10px] text-slate-400">07時26分</span>
-              <span>めっちゃ良いの買えた</span>
-            </div>
+          <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
+            ことづてページで、お店の情報や感想を共有できます。
           </div>
         </div>
       </div>

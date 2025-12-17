@@ -8,8 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prepare": "husky install"
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
@@ -25,7 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.555.0",
-    "next": "14.2.5",
+    "next": "^16.0.7",
     "nprogress": "^0.2.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",

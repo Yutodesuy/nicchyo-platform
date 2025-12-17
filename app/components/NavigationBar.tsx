@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
   { name: 'マップ', href: '/map', icon: '🗺️' },
   { name: '検索', href: '/search', icon: '🔍' },
   { name: '料理', href: '/recipes', icon: '🍳' },
-  { name: '投稿', href: '/posts', icon: '✏️' },
+  { name: '投稿', href: '/kotodute', icon: '✏️' },
 ];
 
 export default function NavigationBar() {
