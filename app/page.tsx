@@ -5,48 +5,50 @@ import { useEffect, useRef } from "react";
 import { motion, useAnimation, useInView } from "framer-motion";
 import NavigationBar from "./components/NavigationBar";
 
+// 5つの柱のデータ
 const pillars = [
   {
     title: "マップ",
-    desc: "屋台の位置やおすすめを地図から直感的に確認できます。",
-    href: "/map",
     icon: "🗺️",
+    desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
+    href: "/map",
   },
   {
     title: "おすすめ",
-    desc: "季節の食材や人気店をキュレーションして紹介します。",
-    href: "/recipes",
-    icon: "⭐",
+    icon: "🔍",
+    desc: "お目当ての商品や店舗を素早く検索して見つけられます。",
+    href: "/search",
   },
   {
     title: "ことづて",
-    desc: "出店者と来場者の声をつなぐ短いメッセージボード。",
-    href: "/posts",
     icon: "💬",
+    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
+    href: "/kotodute",
   },
   {
-    title: "イベント",
-    desc: "市内で行われる催しをまとめてチェックできます。",
-    href: "/search",
-    icon: "📅",
+    title: "土佐の料理レシピ",
+    icon: "🍳",
+    desc: "季節の食材を使った土佐料理のレシピを紹介します。",
+    href: "/recipes",
   },
   {
-    title: "体験の記録",
-    desc: "お気に入りのお店やルートをメモとして保存。",
-    href: "/map",
-    icon: "📝",
+    title: "午後のイベント",
+    icon: "🎪",
+    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
+    href: "/events",
   },
 ];
 
+// ターゲットユーザーのデータ
 const audiences = [
   {
     title: "はじめての来訪",
     subtitle: "どこを回ればいいか知りたい",
     icon: "🧳",
     points: [
-      "目的別ルート提案で迷わず回れる",
+      "目安ルート提案で迷わず回れる",
       "定番スポットと旬の見どころを表示",
-      "徒歩時間や距離の目安を把握",
+      "徒歩時間と距離の目安を把握",
     ],
   },
   {
@@ -55,7 +57,7 @@ const audiences = [
     icon: "🔍",
     points: [
       "その日だけの限定品をピックアップ",
-      "お気に入りの店をブックマーク",
+      "お気に入り店をブックマーク",
       "ことづてで交流や質問ができる",
     ],
   },
@@ -64,7 +66,7 @@ const audiences = [
     subtitle: "お客さんに見つけてもらいたい",
     icon: "🧺",
     points: [
-      "出店位置と商品をシンプルに掲載",
+      "出店位置と商品をシンプルに掲示",
       "おすすめ欄で季節の推しを告知",
       "簡単なアンケートで声を集める",
     ],
@@ -133,7 +135,7 @@ export default function HomePage() {
       <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-6 py-4 text-white shadow-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="font-semibold tracking-wide">nicchyo 日曜市マップ</div>
-          <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく。</div>
+          <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく</div>
         </div>
       </header>
 
@@ -156,7 +158,7 @@ export default function HomePage() {
               >
                 日曜市を、
                 <span className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 bg-clip-text text-transparent">
-                  もっと歩きやすく。
+                  もっと歩きやすく、
                 </span>
               </motion.h1>
 
@@ -182,7 +184,7 @@ export default function HomePage() {
                 >
                   <span className="flex items-center gap-2">
                     マップを見る
-                    <span aria-hidden>→</span>
+                    <span aria-hidden>↗</span>
                   </span>
                 </Link>
                 <Link
@@ -213,7 +215,7 @@ export default function HomePage() {
                 <div className="absolute inset-x-4 bottom-4 h-1 rounded-full bg-orange-200/70" />
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-gray-600">
-                出店の位置・おすすめをリアルタイムにまとめています。お気に入りをブックマークしながら、市場を歩いてみてください。
+                出店位置・おすすめをリアルタイムにまとめています。お気に入りをブックマークしながら、市場を歩いてみてください。
               </p>
             </motion.div>
           </div>
@@ -240,7 +242,7 @@ export default function HomePage() {
             <div className="mb-8 text-center md:text-left">
               <h2 className="text-2xl font-bold md:text-3xl">それぞれの楽しみ方に寄り添う</h2>
               <p className="mt-3 max-w-3xl text-sm text-gray-700 md:text-base">
-                観光客、リピーター、出店者。それぞれの立場で「知りたいこと」を手早く見つけられるよう設計しました。
+                観光客、リピーター、出店者それぞれの立場で「知りたいこと」を手早く見つけられるよう設計しました。
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
@@ -265,6 +267,21 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-orange-100 bg-white px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 text-[11px] text-gray-600 md:flex-row">
+          <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
+          <div className="flex gap-4">
+            <Link href="/about" className="transition hover:text-amber-600">
+              プロジェクトについて
+            </Link>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-600">
+              Made in Kochi with ❤️
+            </span>
+          </div>
+        </div>
+      </footer>
 
       <NavigationBar />
     </div>
