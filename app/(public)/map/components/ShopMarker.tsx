@@ -25,9 +25,10 @@ interface ShopMarkerProps {
   onClick: (shop: Shop) => void;
   isSelected?: boolean;
   planOrderIndex?: number;
+  isFavorite?: boolean;
 }
 
-export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex }: ShopMarkerProps) {
+export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
@@ -67,6 +68,28 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex }
           }}
         >
           {ORDER_SYMBOLS[planOrderIndex] ?? `${planOrderIndex + 1}`}
+        </div>
+      )}
+
+      {/* お気に入りマーカー */}
+      {isFavorite && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-15px',
+            backgroundColor: '#fdf2f8',
+            color: '#db2777',
+            border: '2px solid #fbcfe8',
+            borderRadius: '50%',
+            padding: '2px 6px',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            zIndex: 10,
+          }}
+        >
+          ♥
         </div>
       )}
 

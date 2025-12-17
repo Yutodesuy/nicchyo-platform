@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import NavigationBar from '../../components/NavigationBar';
 import { shops } from '../map/data/shops';
@@ -10,6 +10,7 @@ import SearchInput from './components/SearchInput';
 import CategoryFilter from './components/CategoryFilter';
 import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
+import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
 
 /**
  * 店舗検索メインコンポーネント
@@ -19,6 +20,16 @@ export default function SearchClient() {
   const [textQuery, setTextQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [blockNumber, setBlockNumber] = useState('');
+  const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    setFavoriteShopIds(loadFavoriteShopIds());
+  }, []);
+
+  const handleToggleFavorite = (shopId: number) => {
+    const next = toggleFavoriteShopId(shopId);
+    setFavoriteShopIds(next);
+  };
 
   // 検索インデックスを事前構築（初回のみ）
   const searchIndex = useMemo(() => buildSearchIndex(shops), []);
@@ -92,6 +103,8 @@ export default function SearchClient() {
             hasQuery={hasQuery}
             categories={categories}
             onCategoryClick={setCategory}
+            favoriteShopIds={favoriteShopIds}
+            onToggleFavorite={handleToggleFavorite}
           />
         </section>
       </main>

@@ -426,15 +426,16 @@ export default function RecipesClient() {
                         return (
                           <span
                             key={`${recipe.id}-${ing.id}`}
-                            className={`rounded-full px-2 py-1 border ${
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 border ${
                               owned
-                                ? "border-amber-500 bg-amber-100 text-amber-800 font-semibold"
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
                                 : "border-amber-100 bg-white text-gray-700"
                             }`}
                           >
+                            <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                            {owned ? " / 冷蔵庫にあり" : ""}
+                            {owned ? " / バッグにあり" : ""}
                           </span>
                         );
                       })}
@@ -448,12 +449,18 @@ export default function RecipesClient() {
                       </ul>
                     </div>
                     <div className="flex gap-2">
-                      <button className="w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
                         レシピ詳細へ
-                      </button>
-                      <button className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50">
+                      </Link>
+                      <Link
+                        href={`/map?recipe=${recipe.id}`}
+                        className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
+                      >
                         足りない食材を探す
-                      </button>
+                      </Link>
                     </div>
                   </article>
                 ))}
@@ -564,18 +571,31 @@ export default function RecipesClient() {
                       </div>
                       <p className="mt-1 text-[12px] text-gray-700">{recipe.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                        {recipe.ingredients.slice(0, 6).map((ing) => (
-                          <span
-                            key={`${recipe.id}-${ing.id}-search`}
-                            className="rounded-full border border-amber-100 bg-amber-50 px-2 py-1"
-                          >
-                            {ing.name}
-                          </span>
-                        ))}
+                        {recipe.ingredients.slice(0, 6).map((ing) => {
+                          const owned = fridgeIngredientIds.includes(ing.id);
+                          return (
+                            <span
+                              key={`${recipe.id}-${ing.id}-search`}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 ${
+                                owned
+                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
+                                  : "border-amber-100 bg-white text-gray-700"
+                              }`}
+                            >
+                              <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
+                              {ing.name}
+                              {ing.seasonal ? " (旬)" : ""}
+                              {owned ? " / バッグにあり" : ""}
+                            </span>
+                          );
+                        })}
                       </div>
-                      <button className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
                         レシピ詳細へ
-                      </button>
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -669,19 +689,31 @@ export default function RecipesClient() {
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                      {recipe.ingredients.map((ing) => (
-                        <span
-                          key={`${recipe.id}-${ing.id}-season`}
-                          className="rounded-full border border-amber-100 bg-white px-2 py-1"
-                        >
-                          {ing.name}
-                          {ing.seasonal ? " (旬)" : ""}
-                        </span>
-                      ))}
+                      {recipe.ingredients.map((ing) => {
+                        const owned = fridgeIngredientIds.includes(ing.id);
+                        return (
+                          <span
+                            key={`${recipe.id}-${ing.id}-season`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 ${
+                              owned
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
+                                : "border-amber-100 bg-white text-gray-700"
+                            }`}
+                          >
+                            <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
+                            {ing.name}
+                            {ing.seasonal ? " (旬)" : ""}
+                            {owned ? " / バッグにあり" : ""}
+                          </span>
+                        );
+                      })}
                     </div>
-                    <button className="mt-3 w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500">
+                    <Link
+                      href={`/recipes/${recipe.id}`}
+                      className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                    >
                       レシピ詳細へ
-                    </button>
+                    </Link>
                   </div>
                 );
               })}
