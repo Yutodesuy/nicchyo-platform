@@ -1,0 +1,105 @@
+/**
+ * 店舗マーカーコンポーネント
+ *
+ * 【重要】このコンポーネントが「1店舗 = 1描画単位 + 1当たり判定」を実現します
+ *
+ * - 店舗イラスト
+ * - 商品吹き出し
+ * - クリック/ホバー当たり判定
+ * を完全に一体化し、イラストそのものがクリック可能
+ *
+ * 将来のイラスト差し替え・サイズ変更に自動対応
+ */
+
+'use client';
+
+import { Marker } from 'react-leaflet';
+import { divIcon } from 'leaflet';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Shop } from '../data/shops';
+import ShopIllustration from './ShopIllustration';
+import ShopBubble from './ShopBubble';
+
+interface ShopMarkerProps {
+  shop: Shop;
+  onClick: (shop: Shop) => void;
+  isSelected?: boolean;
+}
+
+export default function ShopMarker({ shop, onClick, isSelected }: ShopMarkerProps) {
+  // 店舗イラスト + 吹き出しを含むHTML文字列を生成
+  const iconMarkup = renderToStaticMarkup(
+    <div
+      className="shop-marker-container"
+      style={{
+        position: 'relative',
+        cursor: 'pointer',
+        transition: 'transform 0.2s ease',
+      }}
+    >
+      {/* 商品吹き出し */}
+      <ShopBubble
+        icon={shop.icon}
+        products={shop.products}
+        side={shop.side}
+      />
+
+      {/* 店舗イラスト本体 */}
+      <div
+        className={`shop-illustration-wrapper ${isSelected ? 'selected' : ''}`}
+        style={{
+          filter: isSelected
+            ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))'
+            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+          transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <ShopIllustration
+          type="tent"
+          size="medium"
+          color={getCategoryColor(shop.category)}
+        />
+      </div>
+    </div>
+  );
+
+  // Leaflet DivIconを作成
+  const customIcon = divIcon({
+    html: iconMarkup,
+    className: 'custom-shop-marker', // デフォルトスタイルを無効化
+    iconSize: [60, 60],  // イラストのサイズ
+    iconAnchor: [30, 50], // アンカーポイント（イラストの下部中央）
+  });
+
+  return (
+    <Marker
+      position={[shop.lat, shop.lng]}
+      icon={customIcon}
+      eventHandlers={{
+        click: () => onClick(shop),
+      }}
+    />
+  );
+}
+
+/**
+ * カテゴリーごとに店舗イラストの色を変える
+ * 将来、カラーパレットをデータ化することも可能
+ */
+function getCategoryColor(category: string): string {
+  const colorMap: Record<string, string> = {
+    '野菜': '#2ecc71',
+    '魚介': '#3498db',
+    '果物': '#e74c3c',
+    '花': '#e91e63',
+    '主食': '#f39c12',
+    '乳製品': '#f1c40f',
+    '飲料': '#9b59b6',
+    '工芸品': '#34495e',
+    '衣類': '#1abc9c',
+    '加工品': '#e67e22',
+  };
+
+  return colorMap[category] || '#e74c3c';
+}
