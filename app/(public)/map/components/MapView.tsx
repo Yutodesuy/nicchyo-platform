@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, ImageOverlay, CircleMarker, useMap } from 'react-leaflet';
+import { MapContainer, ImageOverlay, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { shops, Shop } from '../data/shops';
 import ShopDetailBanner from './ShopDetailBanner';
+import ShopMarker from './ShopMarker';
 import UserLocationMarker from './UserLocationMarker';
 import GrandmaGuide from './GrandmaGuide';
 
@@ -14,19 +15,7 @@ const INITIAL_ZOOM = 17;  // 初期表示（1.3kmの市場全体が見やすい�
 const MIN_ZOOM = 16;      // 最小ズーム（市場の全体像を確認）
 const MAX_ZOOM = 20;      // 最大ズーム（個別店舗の詳細を見る）
 
-// 手書きマップ画像のパス（450x10000px - 300店舗対応、余白削減）
-// マップの向き: 上=西（高知城側）、下=東
-const HANDDRAWN_MAP_IMAGE = '/images/maps/placeholder-map.svg';
-
-// 手書きマップの表示範囲（実測約1.3km - 正確な縮尺）
-// 上側が西（高知城）、下側が東方向（追手筋）
-// 1度の緯度 ≈ 111km、1.3km = 0.0117度
-const MAP_BOUNDS: [[number, number], [number, number]] = [
-  [33.56500, 133.53200], // 西側上端（高知城前）
-  [33.55330, 133.53000], // 東側下端（追手筋東端）
-];
-
-// 移動可能範囲を制限（マップより少し広め）
+// 移動可能範囲を制限（日曜市周辺）
 const MAX_BOUNDS: [[number, number], [number, number]] = [
   [33.56700, 133.53300], // 西側上端（余裕あり）
   [33.55100, 133.52900], // 東側下端（余裕あり）
@@ -103,51 +92,16 @@ export default function MapView() {
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
       >
-        <ImageOverlay
-          url={HANDDRAWN_MAP_IMAGE}
-          bounds={MAP_BOUNDS}
-          opacity={1}
-          zIndex={10}
-        />
-
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
 
-        {/* 店舗マーカー - クリック可能（店舗イラストの中央） */}
+        {/* 店舗マーカー - 新アーキテクチャ：イラスト + 当たり判定が完全一致 */}
         {shops.map((shop) => (
-          <CircleMarker
+          <ShopMarker
             key={shop.id}
-            center={[shop.lat, shop.lng]}
-            radius={35}
-            pathOptions={{
-              fillColor: '#3b82f6',
-              fillOpacity: 0.05,
-              color: '#3b82f6',
-              weight: 2,
-              opacity: 0.1,
-            }}
-            eventHandlers={{
-              click: () => setSelectedShop(shop),
-              mouseover: (e) => {
-                e.target.setStyle({
-                  fillColor: '#fbbf24',
-                  fillOpacity: 0.4,
-                  color: '#f59e0b',
-                  opacity: 1,
-                  weight: 4,
-                });
-                e.target.bringToFront();
-              },
-              mouseout: (e) => {
-                e.target.setStyle({
-                  fillColor: '#3b82f6',
-                  fillOpacity: 0.05,
-                  color: '#3b82f6',
-                  opacity: 0.1,
-                  weight: 2,
-                });
-              },
-            }}
+            shop={shop}
+            onClick={setSelectedShop}
+            isSelected={selectedShop?.id === shop.id}
           />
         ))}
 
