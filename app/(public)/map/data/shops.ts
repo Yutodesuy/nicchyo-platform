@@ -14,6 +14,14 @@ export interface Shop {
   icon: string;
   schedule: string; // 出店予定
   message?: string; // 出店者の思い（任意）
+
+  // 【将来の拡張用】店舗イラストのカスタマイズ設定
+  illustration?: {
+    type?: 'tent' | 'stall' | 'custom';    // イラストタイプ
+    size?: 'small' | 'medium' | 'large';   // サイズバリエーション
+    color?: string;                        // カスタムカラー（#HEX形式）
+    customSvg?: string;                    // カスタムSVGパス（差し替え用）
+  };
 }
 
 // 商品カテゴリーとアイコン（吹き出しのアイコンと対応）
