@@ -1,29 +1,72 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
-import type { TouchEvent } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import type { TouchEvent, DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
 
 type ShopDetailBannerProps = {
   shop: Shop;
   onClose?: () => void;
+  onAddToBag?: (name: string, fromShopId?: number) => void;
 };
+
+type BagItem = {
+  name: string;
+};
+
+const STORAGE_KEY = "nicchyo-fridge-items";
+
+function loadBagItems(): BagItem[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as BagItem[];
+  } catch {
+    return [];
+  }
+}
 
 export default function ShopDetailBanner({
   shop,
   onClose,
+  onAddToBag,
 }: ShopDetailBannerProps) {
+  const router = useRouter();
   // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
   // キラキラ演出の表示
   const [sparkle, setSparkle] = useState(false);
   // ドラッグ中のオフセット
   const [dragOffset, setDragOffset] = useState(0);
+  const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
+  const [isBagHover, setIsBagHover] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<string | null>(null);
+  const [bagProductNames, setBagProductNames] = useState<Set<string>>(new Set());
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateBag = () => {
+      const items = loadBagItems();
+      setBagProductNames(
+        new Set(items.map((item) => item.name.trim().toLowerCase()))
+      );
+    };
+    updateBag();
+    const handler = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        updateBag();
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   // 音声チャイム再生（最適化：useCallbackでメモ化）
   const playChime = useCallback(() => {
@@ -83,6 +126,62 @@ export default function ShopDetailBanner({
     setDragOffset(0);
     touchStartX.current = null;
   }, [imagePosition, triggerSparkle]);
+
+  const handleProductDragStart = useCallback(
+    (event: DragEvent<HTMLButtonElement>, product: string) => {
+      event.dataTransfer.setData("text/plain", product);
+      event.dataTransfer.effectAllowed = "move";
+      setDraggedProduct(product);
+    },
+    []
+  );
+
+  const handleProductDragEnd = useCallback(() => {
+    setDraggedProduct(null);
+    setIsBagHover(false);
+  }, []);
+
+  const handleBagDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setIsBagHover(true);
+  }, []);
+
+  const handleBagDragLeave = useCallback(() => {
+    setIsBagHover(false);
+  }, []);
+
+  const handleBagDrop = useCallback(
+    (event: DragEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      const product = event.dataTransfer.getData("text/plain") || draggedProduct;
+      if (product) {
+        setPendingProduct(product);
+      }
+      setIsBagHover(false);
+      setDraggedProduct(null);
+    },
+    [draggedProduct]
+  );
+
+  const handleBagClick = useCallback(() => {
+    router.push("/bag");
+  }, [router]);
+
+  const handleConfirmAdd = useCallback(() => {
+    if (!pendingProduct) return;
+    onAddToBag?.(pendingProduct, shop.id);
+    setBagProductNames((prev) => {
+      const next = new Set(prev);
+      next.add(pendingProduct.trim().toLowerCase());
+      return next;
+    });
+    setPendingProduct(null);
+  }, [onAddToBag, pendingProduct, shop.id]);
+
+  const handleCancelAdd = useCallback(() => {
+    setPendingProduct(null);
+  }, []);
 
   // 画像のスタイルを計算（最適化：useMemoでメモ化）
   const imageStyle = useMemo(() => ({
@@ -204,34 +303,57 @@ export default function ShopDetailBanner({
               )}
             </div>
           </div>
-          <div className="h-28 w-28 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <Image
-              src="/images/shops/tosahamono.webp"
-              alt={shop.name}
-              width={160}
-              height={160}
-              className="h-full w-full object-cover"
-            />
-          </div>
         </div>
 
-        {/* 商品リスト */}
+        {/* 商品一覧 */}
         <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-xs text-slate-800 shadow-sm">
-          <div className="mb-2 flex items-center gap-1">
-            <span className="rounded-full bg-amber-500 px-2 py-[1px] text-[11px] font-semibold text-white">
-              商品
-            </span>
-            <span className="text-[11px] text-amber-800">このお店の扱い</span>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <span className="rounded-full bg-amber-500 px-2 py-[1px] text-[11px] font-semibold text-white">
+                商品
+              </span>
+              <span className="text-[11px] text-amber-800">ドラッグしてバッグへ</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleBagClick}
+              onDragOver={handleBagDragOver}
+              onDragLeave={handleBagDragLeave}
+              onDrop={handleBagDrop}
+              className={`flex items-center gap-2 rounded-full border px-3 py-[3px] text-[11px] font-semibold shadow-sm transition ${
+                isBagHover
+                  ? "border-amber-500 bg-amber-100 text-amber-900"
+                  : "border-amber-200 bg-white text-amber-800"
+              }`}
+              aria-label={"\u8cb7\u3044\u7269\u30ea\u30b9\u30c8\u3078"}
+            >
+              <span className="text-base" aria-hidden>
+                {"\u{1F6CD}"}
+              </span>
+              {"\u30d0\u30c3\u30b0"}
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {shop.products.map((product) => (
-              <span
-                key={product}
-                className="rounded-full border border-amber-200 bg-white px-2 py-[2px] text-[11px] font-semibold text-amber-800"
-              >
-                {product}
-              </span>
-            ))}
+            {shop.products.map((product) => {
+              const isInBag = bagProductNames.has(product.trim().toLowerCase());
+              return (
+                <button
+                  key={product}
+                  type="button"
+                  draggable
+                  onDragStart={(event) => handleProductDragStart(event, product)}
+                  onDragEnd={handleProductDragEnd}
+                  className={`cursor-grab rounded-full border px-2 py-[2px] text-[11px] font-semibold shadow-sm active:cursor-grabbing ${
+                    isInBag
+                      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                      : "border-amber-200 bg-white text-amber-800"
+                  }`}
+                  aria-label={`${product}`}
+                >
+                  {product}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -256,6 +378,32 @@ export default function ShopDetailBanner({
             ことづてページで、お店の情報や感想を共有できます。
           </div>
         </div>
+
+        {pendingProduct && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
+              <p className="text-sm font-semibold text-gray-900">
+                {`\u30d0\u30c3\u30b0\u306b${pendingProduct}\u3092\u5165\u308c\u307e\u3059\u304b\uff1f`}
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelAdd}
+                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  {"\u3044\u3044\u3048"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAdd}
+                  className="rounded-full bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                >
+                  {"\u306f\u3044"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
