@@ -15,6 +15,7 @@ import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
+import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 
 // 道の座標を基準に設定を取得
 const ROAD_BOUNDS = getRoadBounds();
@@ -119,6 +120,7 @@ export default function MapView({
   const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [planOrder, setPlanOrder] = useState<number[]>([]);
+  const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
   // 現在のズームレベルに応じて表示する店舗をフィルタリング
@@ -169,6 +171,19 @@ export default function MapView({
     } catch {
       // ignore parse errors
     }
+  }, []);
+
+  // お気に入りの読み込み
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setFavoriteShopIds(loadFavoriteShopIds());
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === FAVORITE_SHOPS_KEY) {
+        setFavoriteShopIds(loadFavoriteShopIds());
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const recipeIngredients = useMemo(() => {
@@ -257,6 +272,7 @@ export default function MapView({
         {/* Layer 3: 店舗マーカー - ズームレベルに応じて表示密度を調整 */}
         {visibleShops.map((shop) => {
           const orderIdx = planOrderMap.get(shop.id);
+          const isFavorite = favoriteShopIds.includes(shop.id);
 
           return (
             <ShopMarker
@@ -265,6 +281,7 @@ export default function MapView({
               onClick={setSelectedShop}
               isSelected={selectedShop?.id === shop.id}
               planOrderIndex={orderIdx}
+              isFavorite={isFavorite}
             />
           );
         })}

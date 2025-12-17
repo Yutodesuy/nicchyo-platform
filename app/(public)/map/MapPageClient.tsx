@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -68,20 +67,7 @@ export default function MapPageClient() {
             </div>
             <span className="text-3xl">🧭</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/recipes"
-              className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-            >
-              レシピを見る
-            </Link>
-            <Link
-              href="/kotodute"
-              className="ml-1 rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-            >
-              ことづてを書く
-            </Link>
-          </div>
+          
         </div>
       </header>
 

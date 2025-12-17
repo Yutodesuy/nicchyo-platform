@@ -6,13 +6,15 @@ import { memo } from 'react';
 
 interface ShopResultCardProps {
   shop: Shop;
+  isFavorite: boolean;
+  onToggleFavorite?: (shopId: number) => void;
 }
 
 /**
  * 店舗検索結果カードコンポーネント
  * 店舗情報と「地図で見る」リンクを表示
  */
-function ShopResultCard({ shop }: ShopResultCardProps) {
+function ShopResultCard({ shop, isFavorite, onToggleFavorite }: ShopResultCardProps) {
   return (
     <div className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 shadow-sm">
       {/* ヘッダー: アイコン、店舗名、ブロック番号 */}
@@ -26,9 +28,20 @@ function ShopResultCard({ shop }: ShopResultCardProps) {
             <p className="text-xs text-gray-600">{shop.ownerName}</p>
           </div>
         </div>
-        <span className="rounded-full bg-amber-600 px-2 py-1 text-xs font-semibold text-white">
-          #{shop.id}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggleFavorite?.(shop.id)}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold shadow-sm transition ${isFavorite ? 'border-pink-300 bg-pink-500 text-white' : 'border-pink-200 bg-white text-pink-500 hover:bg-pink-50'}`}
+          >
+            {"\u2665"}
+          </button>
+          <span className="rounded-full bg-amber-600 px-2 py-1 text-xs font-semibold text-white">
+            #{shop.id}
+          </span>
+        </div>
       </div>
 
       {/* カテゴリー */}
