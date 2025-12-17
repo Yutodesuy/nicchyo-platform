@@ -91,8 +91,8 @@ function PlaceholderRoad({ config }: { config: RoadConfig }) {
     </svg>
   `;
 
-  // SVGをData URLに変換
-  const svgDataUrl = `data:image/svg+xml;base64,${btoa(svgContent)}`;
+  // SVGをData URLに変換（UTF-8エンコード対応）
+  const svgDataUrl = `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
 
   return (
     <ImageOverlay
