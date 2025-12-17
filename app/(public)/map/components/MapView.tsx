@@ -1,15 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { MapContainer, useMap, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { shops, Shop } from '../data/shops';
-import ShopDetailBanner from './ShopDetailBanner';
-import ShopMarker from './ShopMarker';
-import RoadOverlay from './RoadOverlay';
-import BackgroundOverlay from './BackgroundOverlay';
-import UserLocationMarker from './UserLocationMarker';
-import GrandmaGuide from './GrandmaGuide';
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { shops, Shop } from "../data/shops";
+import ShopDetailBanner from "./ShopDetailBanner";
+import ShopMarker from "./ShopMarker";
+import RoadOverlay from "./RoadOverlay";
+import BackgroundOverlay from "./BackgroundOverlay";
+import UserLocationMarker from "./UserLocationMarker";
+import GrandmaGuide from "./GrandmaGuide";
+import MapAgentAssistant from "./MapAgentAssistant";
+import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 
@@ -32,30 +35,53 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
 ];
 
+const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+
+type BagItem = {
+  id: string;
+  name: string;
+  fromShopId?: number;
+  qty?: string;
+  note?: string;
+  photo?: string;
+  createdAt: number;
+};
+
+const STORAGE_KEY = "nicchyo-fridge-items";
+const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
+
+function loadBag(): BagItem[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as BagItem[];
+  } catch {
+    return [];
+  }
+}
+
+function saveBag(items: BagItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
 // ===== スマホ用のズームボタンコンポーネント =====
 function MobileZoomControls() {
   const map = useMap();
-
-  const handleZoomIn = () => {
-    map.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    map.zoomOut();
-  };
 
   return (
     <div className="pointer-events-none absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
       <button
         type="button"
-        onClick={handleZoomIn}
+        onClick={() => map.zoomIn()}
         className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-white text-xl shadow-lg active:scale-95"
       >
         +
       </button>
       <button
         type="button"
-        onClick={handleZoomOut}
+        onClick={() => map.zoomOut()}
         className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-white text-xl shadow-lg active:scale-95"
       >
         −
@@ -74,26 +100,76 @@ function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null;
 }
 
-export default function MapView() {
+type MapViewProps = {
+  initialShopId?: number;
+  selectedRecipe?: Recipe;
+  showRecipeOverlay?: boolean;
+  onCloseRecipeOverlay?: () => void;
+};
+
+export default function MapView({
+  initialShopId,
+  selectedRecipe,
+  showRecipeOverlay,
+  onCloseRecipeOverlay,
+}: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
+  const mapRef = useRef<L.Map | null>(null);
 
   // 現在のズームレベルに応じて表示する店舗をフィルタリング
   const visibleShops = filterShopsByZoom(shops, currentZoom);
 
   useEffect(() => {
     const detectMobile = () => {
-      if (typeof window === 'undefined') return;
-      const touch = 'ontouchstart' in window;
+      if (typeof window === "undefined") return;
+      const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
     };
 
     detectMobile();
-    window.addEventListener('resize', detectMobile);
-    return () => window.removeEventListener('resize', detectMobile);
+    window.addEventListener("resize", detectMobile);
+    return () => window.removeEventListener("resize", detectMobile);
   }, []);
+
+  useEffect(() => {
+    if (initialShopId) {
+      const shop = shops.find((s) => s.id === initialShopId);
+      if (shop) {
+        setSelectedShop(shop);
+        if (mapRef.current) {
+          mapRef.current.setView([shop.lat, shop.lng], 18);
+        }
+      }
+    }
+  }, [initialShopId]);
+
+  const recipeIngredients = useMemo(() => {
+    if (!selectedRecipe) return [];
+    return selectedRecipe.ingredients.map((ing) => {
+      const iconKey = Object.keys(ingredientIcons).find((key) =>
+        ing.name.toLowerCase().includes(key)
+      );
+      return {
+        name: ing.name,
+        icon: iconKey ? ingredientIcons[iconKey] : "🛒",
+      };
+    });
+  }, [selectedRecipe]);
+
+  const shopsWithIngredients = useMemo(() => {
+    if (!selectedRecipe || recipeIngredients.length === 0) return [];
+    return shops.filter((shop) =>
+      shop.products.some((product) =>
+        recipeIngredients.some((ing) =>
+          product.toLowerCase().includes(ing.name.toLowerCase()) ||
+          ing.name.toLowerCase().includes(product.toLowerCase())
+        )
+      )
+    );
+  }, [selectedRecipe, recipeIngredients]);
 
   return (
     <div className="relative h-full w-full">
@@ -102,20 +178,23 @@ export default function MapView() {
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        scrollWheelZoom={!isMobile}          // スマホではホイールズーム無し
+        scrollWheelZoom={!isMobile}
         dragging={true}
-        touchZoom={isMobile ? 'center' : true} // スマホはピンチズームを中心寄せ
-        doubleClickZoom={!isMobile}          // ダブルタップ誤操作防止
+        touchZoom={isMobile ? "center" : true}
+        doubleClickZoom={!isMobile}
         className="h-full w-full z-0"
         style={{
-          height: '100%',
-          width: '100%',
-          backgroundColor: '#faf8f3',
+          height: "100%",
+          width: "100%",
+          backgroundColor: "#faf8f3",
         }}
-        zoomControl={!isMobile}              // スマホでは標準ズームボタンを非表示
-        attributionControl={false}           // Leaflet表示を非表示
+        zoomControl={!isMobile}
+        attributionControl={false}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
+        ref={(map) => {
+          if (map) mapRef.current = map;
+        }}
       >
         {/* レイヤー構造（下から順に描画） */}
 
@@ -135,6 +214,47 @@ export default function MapView() {
           />
         ))}
 
+        {/* レシピオーバーレイ - 材料が買える店舗を強調表示 */}
+        {showRecipeOverlay && shopsWithIngredients.map((shop, idx) => {
+          const matchingIngredients = recipeIngredients.filter((ing) =>
+            shop.products.some((product) =>
+              product.toLowerCase().includes(ing.name.toLowerCase()) ||
+              ing.name.toLowerCase().includes(product.toLowerCase())
+            )
+          );
+
+          return (
+            <CircleMarker
+              key={`recipe-${shop.id}`}
+              center={[shop.lat, shop.lng]}
+              radius={40}
+              pathOptions={{
+                fillColor: "#f59e0b",
+                fillOpacity: 0.2,
+                color: "#f59e0b",
+                weight: 3,
+                opacity: 0.8,
+              }}
+              eventHandlers={{
+                click: () => setSelectedShop(shop),
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
+                <div className="text-xs">
+                  <div className="font-bold mb-1">{shop.name}</div>
+                  <div className="text-[10px] space-y-0.5">
+                    {matchingIngredients.slice(0, 3).map((ing, i) => (
+                      <div key={i}>
+                        {ing.icon} {ing.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
+
         {/* Layer 4: ユーザー位置マーカー */}
         <UserLocationMarker />
 
@@ -144,6 +264,16 @@ export default function MapView() {
         {/* スマホのときだけ大きめズームボタンを表示 */}
         {isMobile && <MobileZoomControls />}
       </MapContainer>
+
+      {/* レシピオーバーレイ閉じるボタン */}
+      {showRecipeOverlay && onCloseRecipeOverlay && (
+        <button
+          onClick={onCloseRecipeOverlay}
+          className="absolute top-4 right-4 z-[1500] rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-lg hover:bg-gray-50"
+        >
+          レシピモードを閉じる
+        </button>
+      )}
 
       {/* 店舗詳細バナー */}
       {selectedShop && (
@@ -155,6 +285,14 @@ export default function MapView() {
 
       {/* おばあちゃんの説明ガイド */}
       <GrandmaGuide />
+
+      {/* AIエージェントアシスタント */}
+      <MapAgentAssistant
+        onOpenShop={(shopId) => {
+          const shop = shops.find((s) => s.id === shopId);
+          if (shop) setSelectedShop(shop);
+        }}
+      />
     </div>
   );
 }
