@@ -125,7 +125,7 @@ function pickShops(answers: Answers, location: [number, number]): PlanResult {
     answers.favoriteFood && `好きな料理: ${answers.favoriteFood}`,
   ].filter(Boolean);
 
-  const routeNames = ordered.map((s, i) => `${i + 1}. ${s.name}`).join(" → ");
+  const routeNames = ordered.map((s) => `🗒️ ${s.name}`).join(" → ");
 
   return {
     title: answers.purpose
@@ -244,7 +244,7 @@ async function callOpenAI(
       shops: ordered,
       routeHint:
         ordered.length > 0
-          ? `${ordered.map((s, i) => `${i + 1}. ${s.name}`).join(" → ")} の順で回ると移動が短く済みます。`
+          ? `${ordered.map((s) => `🗒️ ${s.name}`).join(" → ")} の順で回ると移動が短く済みます。`
           : parsed.routeHint || "中央通りから北→南に歩くと全体を見やすいです。",
       shoppingList: Array.isArray(parsed.shoppingList) ? parsed.shoppingList.slice(0, 8) : [],
     };

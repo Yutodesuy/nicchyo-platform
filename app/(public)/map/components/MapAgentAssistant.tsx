@@ -330,7 +330,7 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{s.icon}</span>
                                 <span className="font-semibold text-amber-900">
-                                  {idx + 1}. {s.name}
+                                  🗒️ {s.name}
                                 </span>
                               </div>
                               <span className="text-[11px] text-amber-700 underline">マップで見る</span>
