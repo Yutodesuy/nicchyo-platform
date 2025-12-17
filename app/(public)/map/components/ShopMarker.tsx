@@ -24,9 +24,12 @@ interface ShopMarkerProps {
   shop: Shop;
   onClick: (shop: Shop) => void;
   isSelected?: boolean;
+  planOrderIndex?: number;
 }
 
-export default function ShopMarker({ shop, onClick, isSelected }: ShopMarkerProps) {
+export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex }: ShopMarkerProps) {
+  const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
   const iconMarkup = renderToStaticMarkup(
     <div
@@ -43,6 +46,29 @@ export default function ShopMarker({ shop, onClick, isSelected }: ShopMarkerProp
         products={shop.products}
         side={shop.side}
       />
+
+      {/* プランマーカー（エージェントプランがある場合） */}
+      {planOrderIndex !== undefined && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'white',
+            color: '#92400e',
+            border: '2px solid #fbbf24',
+            borderRadius: '50%',
+            padding: '2px 6px',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            zIndex: 10,
+          }}
+        >
+          {ORDER_SYMBOLS[planOrderIndex] ?? `${planOrderIndex + 1}`}
+        </div>
+      )}
 
       {/* 店舗イラスト本体 */}
       <div

@@ -36,6 +36,7 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+const PLAN_MARKER_ICON = "🗒️";
 
 type BagItem = {
   id: string;
@@ -116,10 +117,19 @@ export default function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [planOrder, setPlanOrder] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
   // 現在のズームレベルに応じて表示する店舗をフィルタリング
   const visibleShops = filterShopsByZoom(shops, currentZoom);
+
+  // プラン順序のマップ
+  const planOrderMap = useMemo(() => {
+    const m = new Map<number, number>();
+    planOrder.forEach((id, idx) => m.set(id, idx));
+    return m;
+  }, [planOrder]);
 
   useEffect(() => {
     const detectMobile = () => {
@@ -146,6 +156,21 @@ export default function MapView({
     }
   }, [initialShopId]);
 
+  // エージェントプランの読み込み
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(AGENT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.order)) {
+        setPlanOrder(parsed.order);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
   const recipeIngredients = useMemo(() => {
     if (!selectedRecipe) return [];
     return selectedRecipe.ingredients.map((ing) => {
@@ -170,6 +195,31 @@ export default function MapView({
       )
     );
   }, [selectedRecipe, recipeIngredients]);
+
+  const handleOpenShop = useCallback((shopId: number) => {
+    const target = shops.find((s) => s.id === shopId);
+    if (target) {
+      setSelectedShop(target);
+      if (mapRef.current) {
+        mapRef.current.flyTo([target.lat, target.lng], Math.max(mapRef.current.getZoom(), 18), {
+          duration: 0.75,
+        });
+      }
+    }
+  }, []);
+
+  const handlePlanUpdate = useCallback((order: number[]) => {
+    setPlanOrder(order);
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(AGENT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        localStorage.setItem(AGENT_STORAGE_KEY, JSON.stringify({ ...parsed, order }));
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, []);
 
   return (
     <div className="relative h-full w-full">
@@ -205,17 +255,22 @@ export default function MapView({
         <RoadOverlay />
 
         {/* Layer 3: 店舗マーカー - ズームレベルに応じて表示密度を調整 */}
-        {visibleShops.map((shop) => (
-          <ShopMarker
-            key={shop.id}
-            shop={shop}
-            onClick={setSelectedShop}
-            isSelected={selectedShop?.id === shop.id}
-          />
-        ))}
+        {visibleShops.map((shop) => {
+          const orderIdx = planOrderMap.get(shop.id);
+
+          return (
+            <ShopMarker
+              key={shop.id}
+              shop={shop}
+              onClick={setSelectedShop}
+              isSelected={selectedShop?.id === shop.id}
+              planOrderIndex={orderIdx}
+            />
+          );
+        })}
 
         {/* レシピオーバーレイ - 材料が買える店舗を強調表示 */}
-        {showRecipeOverlay && shopsWithIngredients.map((shop, idx) => {
+        {showRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
               product.toLowerCase().includes(ing.name.toLowerCase()) ||
@@ -256,7 +311,11 @@ export default function MapView({
         })}
 
         {/* Layer 4: ユーザー位置マーカー */}
-        <UserLocationMarker />
+        <UserLocationMarker
+          onLocationUpdate={(_, position) => {
+            setUserLocation(position);
+          }}
+        />
 
         {/* ズームレベル追跡 */}
         <ZoomTracker onZoomChange={setCurrentZoom} />
@@ -288,10 +347,9 @@ export default function MapView({
 
       {/* AIエージェントアシスタント */}
       <MapAgentAssistant
-        onOpenShop={(shopId) => {
-          const shop = shops.find((s) => s.id === shopId);
-          if (shop) setSelectedShop(shop);
-        }}
+        onOpenShop={handleOpenShop}
+        onPlanUpdate={handlePlanUpdate}
+        userLocation={userLocation}
       />
     </div>
   );
