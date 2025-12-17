@@ -236,6 +236,33 @@ export default function MapView({
     }
   }, []);
 
+  const handleAddToBag = useCallback((name: string, fromShopId?: number) => {
+    const value = name.trim();
+    if (!value) return;
+    const items = loadBag();
+    const normalized = value.toLowerCase();
+    const existingIndex = items.findIndex(
+      (item) => item.name.trim().toLowerCase() === normalized
+    );
+    if (existingIndex !== -1) {
+      if (fromShopId && items[existingIndex].fromShopId !== fromShopId) {
+        const next = [...items];
+        next[existingIndex] = {
+          ...next[existingIndex],
+          fromShopId,
+          createdAt: Date.now(),
+        };
+        saveBag(next);
+      }
+      return;
+    }
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    saveBag([{ id, name: value, fromShopId, createdAt: Date.now() }, ...items]);
+  }, []);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -356,6 +383,7 @@ export default function MapView({
         <ShopDetailBanner
           shop={selectedShop}
           onClose={() => setSelectedShop(null)}
+          onAddToBag={handleAddToBag}
         />
       )}
 
