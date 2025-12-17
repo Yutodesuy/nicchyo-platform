@@ -1,7 +1,6 @@
-'use client';
+﻿'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import NavigationBar from '../../components/NavigationBar';
 import { shops } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
@@ -61,12 +60,6 @@ export default function SearchClient() {
               日曜市の300店舗から、お店を検索できます
             </p>
           </div>
-          <Link
-            href="/map"
-            className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md border border-amber-200 hover:bg-amber-50 transition"
-          >
-            マップへ戻る
-          </Link>
         </div>
       </header>
 
@@ -114,3 +107,4 @@ export default function SearchClient() {
     </div>
   );
 }
+
