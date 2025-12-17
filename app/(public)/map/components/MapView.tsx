@@ -10,6 +10,7 @@ import UserLocationMarker from "./UserLocationMarker";
 import GrandmaGuide from "./GrandmaGuide";
 import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
+import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 
 // 高知市日曜市の中心地点（道の中央）
 const KOCHI_SUNDAY_MARKET: [number, number] = [33.55915, 133.53100];
@@ -32,7 +33,7 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [33.567, 133.533],
   [33.551, 133.529],
 ];
-const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+const PLAN_MARKER_ICON = "\u{1F5D2}";
 
 type BagItem = {
   id: string;
@@ -107,6 +108,7 @@ export default function MapView({
   const [highlightIngredient, setHighlightIngredient] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [planOrder, setPlanOrder] = useState<number[]>([]);
+  const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
   // Leaflet の再利用エラーを避けるため、MapContainer の key をユニークにする。
   const mapKeyRef = useRef(`map-${crypto.randomUUID()}`);
@@ -217,6 +219,18 @@ export default function MapView({
     } catch {
       // ignore parse errors
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setFavoriteShopIds(loadFavoriteShopIds());
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === FAVORITE_SHOPS_KEY) {
+        setFavoriteShopIds(loadFavoriteShopIds());
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const handleOpenShop = useCallback((shopId: number) => {
@@ -375,6 +389,7 @@ export default function MapView({
               .get(highlightIngredient)
               ?.some((s) => s.id === shop.id);
           const orderIdx = planOrderMap.get(shop.id);
+          const isFavorite = favoriteShopIds.includes(shop.id);
           return (
             <CircleMarker
               key={shop.id}
@@ -417,7 +432,17 @@ export default function MapView({
                   offset={[0, -10]}
                   className="bg-white text-amber-900 border border-amber-300 rounded-full px-2 py-1 text-sm font-bold shadow-md"
                 >
-                  {ORDER_SYMBOLS[orderIdx] ?? `${orderIdx + 1}`}
+                  {PLAN_MARKER_ICON}
+                </Tooltip>
+              )}
+              {isFavorite && (
+                <Tooltip
+                  permanent
+                  direction="right"
+                  offset={[10, 0]}
+                  className="bg-pink-50 text-pink-600 border border-pink-200 rounded-full px-2 py-1 text-sm font-bold shadow-md"
+                >
+                  {"\u2665"}
                 </Tooltip>
               )}
             </CircleMarker>
