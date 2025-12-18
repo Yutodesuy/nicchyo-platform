@@ -131,13 +131,6 @@ function PillarCard({ item }: { item: Pillar }) {
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-6 py-4 text-white shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="font-semibold tracking-wide">nicchyo 日曜市マップ</div>
-          <div className="text-xs opacity-85">高知の朝を、地図でもっと楽しく</div>
-        </div>
-      </header>
-
       <main className="flex-1">
         {/* Hero */}
         <section className="relative overflow-hidden border-b border-orange-100">
