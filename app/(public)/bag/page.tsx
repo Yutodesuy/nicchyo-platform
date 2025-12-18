@@ -54,8 +54,8 @@ export default function BagPage() {
     const groups = new Map<string, BagItem[]>();
     sortedItems.forEach((item) => {
       const category = item.fromShopId
-        ? shopLookup.get(item.fromShopId)?.category ?? "食材"
-        : "食材";
+        ? shopLookup.get(item.fromShopId)?.category ?? "その他"
+        : "その他";
       const list = groups.get(category) ?? [];
       list.push(item);
       groups.set(category, list);
