@@ -241,21 +241,13 @@ export default function MapView({
     if (!value) return;
     const items = loadBag();
     const normalized = value.toLowerCase();
-    const existingIndex = items.findIndex(
-      (item) => item.name.trim().toLowerCase() === normalized
+    const exists = items.some(
+      (item) =>
+        item.name.trim().toLowerCase() === normalized &&
+        item.fromShopId === fromShopId
     );
-    if (existingIndex !== -1) {
-      if (fromShopId && items[existingIndex].fromShopId !== fromShopId) {
-        const next = [...items];
-        next[existingIndex] = {
-          ...next[existingIndex],
-          fromShopId,
-          createdAt: Date.now(),
-        };
-        saveBag(next);
-      }
-      return;
-    }
+    if (exists) return;
+
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()

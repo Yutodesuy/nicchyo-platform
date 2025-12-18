@@ -7,18 +7,24 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
+import { loadKotodute, type KotoduteNote } from "../../../../lib/kotoduteStorage";
 
 type ShopDetailBannerProps = {
   shop: Shop;
+  bagCount?: number;
   onClose?: () => void;
   onAddToBag?: (name: string, fromShopId?: number) => void;
 };
 
 type BagItem = {
   name: string;
+  fromShopId?: number;
 };
 
 const STORAGE_KEY = "nicchyo-fridge-items";
+
+const buildBagKey = (name: string, shopId?: number) =>
+  `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
 
 function loadBagItems(): BagItem[] {
   if (typeof window === "undefined") return [];
@@ -33,6 +39,7 @@ function loadBagItems(): BagItem[] {
 
 export default function ShopDetailBanner({
   shop,
+  bagCount,
   onClose,
   onAddToBag,
 }: ShopDetailBannerProps) {
@@ -46,7 +53,7 @@ export default function ShopDetailBanner({
   const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
   const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
-  const [bagProductNames, setBagProductNames] = useState<Set<string>>(new Set());
+  const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
 
@@ -54,9 +61,16 @@ export default function ShopDetailBanner({
     if (typeof window === "undefined") return;
     const updateBag = () => {
       const items = loadBagItems();
-      setBagProductNames(
-        new Set(items.map((item) => item.name.trim().toLowerCase()))
-      );
+      const keys = new Set<string>();
+      items.forEach((item) => {
+        const key = buildBagKey(item.name, item.fromShopId);
+        keys.add(key);
+        // 互換性：fromShopId が無い古いデータは any として扱う
+        if (item.fromShopId === undefined) {
+          keys.add(buildBagKey(item.name, undefined));
+        }
+      });
+      setBagProductKeys(keys);
     };
     updateBag();
     const handler = (event: StorageEvent) => {
@@ -164,6 +178,10 @@ export default function ShopDetailBanner({
     [draggedProduct]
   );
 
+  const handleProductTap = useCallback((product: string) => {
+    setPendingProduct(product);
+  }, []);
+
   const handleBagClick = useCallback(() => {
     router.push("/bag");
   }, [router]);
@@ -171,9 +189,9 @@ export default function ShopDetailBanner({
   const handleConfirmAdd = useCallback(() => {
     if (!pendingProduct) return;
     onAddToBag?.(pendingProduct, shop.id);
-    setBagProductNames((prev) => {
+    setBagProductKeys((prev) => {
       const next = new Set(prev);
-      next.add(pendingProduct.trim().toLowerCase());
+      next.add(buildBagKey(pendingProduct, shop.id));
       return next;
     });
     setPendingProduct(null);
@@ -335,7 +353,9 @@ export default function ShopDetailBanner({
           </div>
           <div className="flex flex-wrap gap-2">
             {shop.products.map((product) => {
-              const isInBag = bagProductNames.has(product.trim().toLowerCase());
+              const specificKey = buildBagKey(product, shop.id);
+              const anyKey = buildBagKey(product, undefined);
+              const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
               return (
                 <button
                   key={product}
@@ -343,6 +363,7 @@ export default function ShopDetailBanner({
                   draggable
                   onDragStart={(event) => handleProductDragStart(event, product)}
                   onDragEnd={handleProductDragEnd}
+                  onClick={() => handleProductTap(product)}
                   className={`cursor-grab rounded-full border px-2 py-[2px] text-[11px] font-semibold shadow-sm active:cursor-grabbing ${
                     isInBag
                       ? "border-emerald-300 bg-emerald-100 text-emerald-900"
