@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -28,8 +28,14 @@ function loadBagItems(): BagItem[] {
   }
 }
 
+function saveBagItems(items: BagItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
 export default function BagPage() {
   const [items, setItems] = useState<BagItem[]>([]);
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<BagItem | null>(null);
 
   useEffect(() => {
     setItems(loadBagItems());
@@ -42,6 +48,28 @@ export default function BagPage() {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => b.createdAt - a.createdAt);
   }, [items]);
+
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, BagItem[]>();
+    sortedItems.forEach((item) => {
+      const category = item.fromShopId
+        ? shopLookup.get(item.fromShopId)?.category ?? "食材"
+        : "食材";
+      const list = groups.get(category) ?? [];
+      list.push(item);
+      groups.set(category, list);
+    });
+    return Array.from(groups.entries());
+  }, [sortedItems, shopLookup]);
+
+  const handleRemove = (id: string) => {
+    setItems((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      saveBagItems(next);
+      return next;
+    });
+    setPendingDeleteItem(null);
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
@@ -56,12 +84,6 @@ export default function BagPage() {
               食べ物以外もまとめて確認できます。
             </p>
           </div>
-          <Link
-            href="/map"
-            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-          >
-            マップへ戻る
-          </Link>
         </div>
       </header>
 
@@ -76,53 +98,99 @@ export default function BagPage() {
 
           {sortedItems.length === 0 ? (
             <div className="mt-4 rounded-xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-6 text-center text-sm text-amber-800">
-              まだ登録がありません。マップで買ったものを追加してください。
+              まだ登録がありません。マーケットで買ったものを追加してください。
             </div>
           ) : (
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {sortedItems.map((item) => {
-                const shop = item.fromShopId
-                  ? shopLookup.get(item.fromShopId)
-                  : undefined;
-                return (
-                  <div
-                    key={item.id}
-                    className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{item.name}</h3>
-                        {shop && (
-                          <p className="text-xs text-gray-600">
-                            {shop.name} / #{shop.id}
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-gray-500">
-                        {new Date(item.createdAt).toLocaleDateString("ja-JP")}
-                      </span>
-                    </div>
-                    {(item.qty || item.note) && (
-                      <div className="mt-2 text-xs text-gray-700 space-y-1">
-                        {item.qty && <p>数量: {item.qty}</p>}
-                        {item.note && <p>メモ: {item.note}</p>}
-                      </div>
-                    )}
-                    {item.fromShopId && (
-                      <Link
-                        href={`/map?shop=${item.fromShopId}`}
-                        className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-                      >
-                        マップで見る
-                      </Link>
-                    )}
+            <div className="mt-4 space-y-5">
+              {groupedItems.map(([categoryName, categoryItems]) => (
+                <div key={categoryName} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900">{categoryName}</h3>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-800 border border-amber-100">
+                      {categoryItems.length}件
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {categoryItems.map((item) => {
+                      const shop = item.fromShopId ? shopLookup.get(item.fromShopId) : undefined;
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                              {shop && (
+                                <p className="text-xs text-gray-600">
+                                  {shop.name} / #{shop.id}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <span className="text-[11px] text-gray-500">
+                                {new Date(item.createdAt).toLocaleDateString("ja-JP")}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setPendingDeleteItem(item)}
+                                className="rounded-full border border-red-100 bg-white px-2 py-1 text-[11px] font-semibold text-red-600 shadow-sm transition hover:bg-red-50"
+                                aria-label={`${item.name}を削除`}
+                              >
+                                削除する
+                              </button>
+                            </div>
+                          </div>
+                          {(item.qty || item.note) && (
+                            <div className="mt-2 text-xs text-gray-700 space-y-1">
+                              {item.qty && <p>数量: {item.qty}</p>}
+                              {item.note && <p>メモ: {item.note}</p>}
+                            </div>
+                          )}
+                          {item.fromShopId && (
+                            <Link
+                              href={`/map?shop=${item.fromShopId}`}
+                              className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                            >
+                              マップで見る
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
       </div>
+
+      {pendingDeleteItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
+            <p className="text-sm font-semibold text-gray-900">
+              {`「${pendingDeleteItem.name}」を削除しますか？`}
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteItem(null)}
+                className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemove(pendingDeleteItem.id)}
+                className="rounded-full bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+              >
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <NavigationBar />
     </main>
