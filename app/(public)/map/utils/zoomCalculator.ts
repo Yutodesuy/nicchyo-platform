@@ -12,10 +12,21 @@
  * 【解決策】
  * - 初期表示時は引いた視点（ズームレベルを下げる）
  * - ユーザーがズームインすると詳細が見える
- * - OR ズームレベルに応じて表示する店舗を間引く
+ * - ズームレベルに応じて表示する店舗を「公平に」間引く
+ *
+ * 【公平性の保証】
+ * - 旧実装: position % n === 0 → 特定の店舗だけが常に表示される（不公平）
+ * - 新実装: ハッシュベースの回転式フィルタリング → すべての店舗が公平に表示される
  */
 
 import { getRoadLength } from '../config/roadConfig';
+import {
+  DEFAULT_ILLUSTRATION_SIZE,
+  ILLUSTRATION_SIZES,
+  SPACING_CONFIG,
+  ZOOM_DISPLAY_RULES,
+  getDisplayRuleForZoom,
+} from '../config/displayConfig';
 
 interface ZoomConfig {
   min: number;
@@ -32,18 +43,14 @@ interface ZoomConfig {
  * 最適な初期ズームレベルを計算
  *
  * @param shopCount 店舗数
- * @param iconSizePx イラストサイズ（px）
  * @returns 最適な初期ズームレベル
  */
-export function calculateOptimalInitialZoom(
-  shopCount: number,
-  iconSizePx: number = 60
-): number {
+export function calculateOptimalInitialZoom(shopCount: number): number {
   const roadLengthKm = getRoadLength();
   const shopSpacingKm = roadLengthKm / (shopCount / 2); // 片側あたり
 
-  // 1店舗あたり最低80pxの間隔を確保したい
-  const desiredPixelsPerShop = 80;
+  // 設定から最小ピクセル間隔を取得（将来の変更に対応）
+  const desiredPixelsPerShop = SPACING_CONFIG.minPixelsPerShop;
 
   // ズームレベル計算の簡易式
   // zoom ≈ log2(画面ピクセル / 実際の距離km) + 定数
@@ -71,20 +78,37 @@ export function calculateOptimalInitialZoom(
 export function getZoomConfig(shopCount: number): ZoomConfig {
   const optimalInitial = calculateOptimalInitialZoom(shopCount);
 
+  // displayConfig.ts の設定から閾値を動的に取得
+  const detailRule = ZOOM_DISPLAY_RULES.find((r) => r.filterInterval === 1);
+  const mediumRule = ZOOM_DISPLAY_RULES.find((r) => r.filterInterval === 3);
+  const overviewRule = ZOOM_DISPLAY_RULES.find((r) => r.filterInterval === 10);
+
   return {
     min: 14,
     max: 20,
     initial: optimalInitial,
     thresholds: {
-      overview: 15.0,  // ズーム15未満: 10店舗に1つ表示
-      medium: 16.5,    // ズーム15-16.5: 3店舗に1つ表示
-      detail: 17.0,    // ズーム16.5以上: 全店舗表示
+      overview: overviewRule?.minZoom ?? 15.0,
+      medium: mediumRule?.minZoom ?? 16.5,
+      detail: detailRule?.minZoom ?? 17.0,
     },
   };
 }
 
 /**
  * ズームレベルに応じて表示する店舗をフィルタリング
+ *
+ * 【公平性の保証】
+ * 旧実装: position % n === 0
+ * → position 0, n, 2n, ... の店舗だけが常に表示される（不公平）
+ *
+ * 新実装: ハッシュベースの回転式フィルタリング
+ * → ズーム変化時に表示される店舗が変わり、すべての店舗が公平に表示される
+ *
+ * 仕組み:
+ * - ズームレベルを整数化してオフセットとして使用
+ * - (shop.id + offset) % interval で表示判定
+ * - ズームが変わるとオフセットが変わり、異なる店舗が表示される
  *
  * @param shops 全店舗データ
  * @param currentZoom 現在のズームレベル
@@ -94,23 +118,22 @@ export function filterShopsByZoom<T extends { id: number; position: number }>(
   shops: T[],
   currentZoom: number
 ): T[] {
-  const config = getZoomConfig(shops.length);
+  // 表示ルールを取得
+  const rule = getDisplayRuleForZoom(currentZoom);
 
-  // 詳細表示レベル: 全店舗表示
-  if (currentZoom >= config.thresholds.detail) {
+  // 全店舗表示の場合
+  if (rule.filterInterval === 1) {
     return shops;
   }
 
-  // 中距離レベル: 3店舗に1つ表示
-  if (currentZoom >= config.thresholds.medium) {
-    return shops.filter((shop) => shop.position % 3 === 0);
-  }
+  // 公平な間引きフィルタリング
+  // ズームレベルの整数部分をオフセットとして使用することで、
+  // ズームが変わると表示される店舗も変わる
+  const zoomOffset = Math.floor(currentZoom * 2); // 0.5刻みで変化
 
-  // 俯瞰レベル: 10店舗に1つ表示
-  if (currentZoom >= config.thresholds.overview) {
-    return shops.filter((shop) => shop.position % 10 === 0);
-  }
-
-  // 極端に引いた場合: 20店舗に1つ表示
-  return shops.filter((shop) => shop.position % 20 === 0);
+  return shops.filter((shop) => {
+    // ハッシュベースの判定: (id + offset) % interval === 0
+    // これにより、ズームレベルが変わると異なる店舗が表示される
+    return (shop.id + zoomOffset) % rule.filterInterval === 0;
+  });
 }
