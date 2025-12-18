@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -8,35 +8,32 @@ import NavigationBar from "./components/NavigationBar";
 const pillars = [
   {
     title: "マップ",
-    icon: "🗺️",
+    icon: "\uD83D\uDDFA\uFE0F",
     desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
     href: "/map",
-    icon: "🗺️",
   },
   {
     title: "おすすめ",
-    icon: "🔍",
-    desc: "お目当ての商品や店舗を素早く検索して見つけられます。",
+    icon: "\uD83D\uDD0D",
+    desc: "お目当ての商品やお店を素早く検索して見つけられます。",
     href: "/search",
   },
   {
     title: "ことづて",
-    desc: "出店者と来場者の声をつなぐ短いメッセージボード。",
-    href: "/posts",
-    icon: "💬",
-    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
+    icon: "\uD83D\uDCAC",
+    desc: "出店者と来場者の声をつなぐ短いメッセージボードです。",
     href: "/kotodute",
   },
   {
     title: "土佐の料理レシピ",
-    icon: "🍳",
+    icon: "\uD83C\uDF73",
     desc: "季節の食材を使った土佐料理のレシピを紹介します。",
     href: "/recipes",
   },
   {
     title: "午後のイベント",
-    icon: "🎪",
-    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
+    icon: "\uD83C\uDFAA",
+    desc: "市場が終わった後も楽しめる地域イベントやワークショップを掲載。",
     href: "/events",
   },
 ];
@@ -289,3 +286,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+
+
+

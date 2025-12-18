@@ -11,7 +11,7 @@ import { loadKotodute, type KotoduteNote } from "../../../../lib/kotoduteStorage
 
 type ShopDetailBannerProps = {
   shop: Shop;
-  bagCount: number;
+  bagCount?: number;
   onClose?: () => void;
   onAddToBag?: (name: string, fromShopId?: number) => void;
 };
