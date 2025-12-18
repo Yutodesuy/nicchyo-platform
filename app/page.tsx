@@ -8,36 +8,40 @@ import NavigationBar from "./components/NavigationBar";
 const pillars = [
   {
     title: "マップ",
+    icon: "🗺️",
     desc: "屋台の位置やおすすめを地図で直感的に確認できます。",
     href: "/map",
     icon: "🗺️",
   },
   {
     title: "おすすめ",
-    desc: "季節の食材や人気店をキュレーションして紹介します。",
-    href: "/recipes",
-    icon: "✨",
+    icon: "🔍",
+    desc: "お目当ての商品や店舗を素早く検索して見つけられます。",
+    href: "/search",
   },
   {
     title: "ことづて",
     desc: "出店者と来場者の声をつなぐ短いメッセージボード。",
     href: "/posts",
     icon: "💬",
+    desc: "出店者や訪問者の声を共有し、人と人をつなぐメッセージボード。",
+    href: "/kotodute",
   },
   {
-    title: "イベント",
-    desc: "市内で行われる催しをまとめてチェックできます。",
-    href: "/search",
-    icon: "📅",
+    title: "土佐の料理レシピ",
+    icon: "🍳",
+    desc: "季節の食材を使った土佐料理のレシピを紹介します。",
+    href: "/recipes",
   },
   {
-    title: "体験・記録",
-    desc: "お気に入りのお店やルートをメモとして保存。",
-    href: "/map",
-    icon: "📝",
+    title: "午後のイベント",
+    icon: "🎪",
+    desc: "市場が終わった後も楽しめる、地域イベント・ワークショップ情報。",
+    href: "/events",
   },
 ];
 
+// ターゲットユーザーのデータ
 const audiences = [
   {
     title: "はじめての来訪",
@@ -265,6 +269,21 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-orange-100 bg-white px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 text-[11px] text-gray-600 md:flex-row">
+          <span>© {new Date().getFullYear()} nicchyo – Kochi Sunday Market DX</span>
+          <div className="flex gap-4">
+            <Link href="/about" className="transition hover:text-amber-600">
+              プロジェクトについて
+            </Link>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-600">
+              Made in Kochi with ❤️
+            </span>
+          </div>
+        </div>
+      </footer>
 
       <NavigationBar />
     </div>

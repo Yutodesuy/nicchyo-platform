@@ -1,10 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
 export default function GrandmaGuide() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasAppeared, setHasAppeared] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     // 初回訪問かチェック（localStorage使用）
@@ -30,14 +32,79 @@ export default function GrandmaGuide() {
     setIsExpanded((prev) => !prev);
   }, []);
 
+  const handleMenuToggle = useCallback(() => {
+    setIsMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleMenuClose = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
+
   if (!hasAppeared) return null;
+
+  const menuButton = (
+    <button
+      type="button"
+      onClick={handleMenuToggle}
+      className="fixed top-4 right-4 z-[2100] flex h-12 w-12 items-center justify-center rounded-full border border-amber-200 bg-white/90 shadow-md transition hover:scale-105 active:scale-95"
+      aria-label="Open menu"
+      aria-expanded={isMenuOpen}
+    >
+      <span className="flex flex-col items-center gap-1">
+        <span className="block h-0.5 w-5 rounded-full bg-amber-700" />
+        <span className="block h-0.5 w-5 rounded-full bg-amber-700" />
+        <span className="block h-0.5 w-5 rounded-full bg-amber-700" />
+      </span>
+    </button>
+  );
+
+  const menuPanel = isMenuOpen ? (
+    <div className="fixed top-16 right-4 z-[2090] w-56 rounded-2xl border border-amber-200 bg-white/95 shadow-lg backdrop-blur">
+      <div className="px-4 pt-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+        menu
+      </div>
+      <nav className="flex flex-col gap-1 px-2 pb-3 pt-2 text-sm font-semibold text-gray-800">
+        <Link
+          href="/bag"
+          onClick={handleMenuClose}
+          className="rounded-lg px-3 py-2 transition hover:bg-amber-50"
+        >
+          買い物リスト
+        </Link>
+        <Link
+          href="/user"
+          onClick={handleMenuClose}
+          className="rounded-lg px-3 py-2 transition hover:bg-amber-50"
+        >
+          アカウント情報
+        </Link>
+        <Link
+          href="/faq"
+          onClick={handleMenuClose}
+          className="rounded-lg px-3 py-2 transition hover:bg-amber-50"
+        >
+          FAQ
+        </Link>
+        <Link
+          href="/contact"
+          onClick={handleMenuClose}
+          className="rounded-lg px-3 py-2 transition hover:bg-amber-50"
+        >
+          お問い合わせ
+        </Link>
+      </nav>
+    </div>
+  ) : null;
 
   // 折りたたみ状態（アイコンのみ）
   if (!isExpanded) {
     return (
-      <button
+      <>
+        {menuButton}
+        {menuPanel}
+        <button
         onClick={handleToggle}
-        className="fixed top-4 right-4 z-[2000] group animate-slide-in-right"
+        className="fixed top-20 right-4 z-[2000] group animate-slide-in-right"
         aria-label="ガイドを開く"
       >
         <div className="relative">
@@ -61,12 +128,16 @@ export default function GrandmaGuide() {
           <div className="absolute inset-0 rounded-full bg-amber-400 animate-ping opacity-20"></div>
         </div>
       </button>
+      </>
     );
   }
 
   // 展開状態（フルガイド）
   return (
-    <div className="fixed top-4 right-4 z-[2000] animate-slide-in-right">
+    <>
+      {menuButton}
+      {menuPanel}
+      <div className="fixed top-20 right-4 z-[2000] animate-slide-in-right">
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm border-4 border-amber-600 overflow-hidden">
         {/* 閉じるボタン */}
         <button
@@ -155,5 +226,6 @@ export default function GrandmaGuide() {
         </div>
       </div>
     </div>
+    </>
   );
 }
