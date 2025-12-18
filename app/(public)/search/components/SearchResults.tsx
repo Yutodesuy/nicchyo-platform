@@ -8,14 +8,23 @@ interface SearchResultsProps {
   shops: Shop[];
   hasQuery: boolean;
   categories: string[];
+  favoriteShopIds: number[];
   onCategoryClick?: (category: string) => void;
+  onToggleFavorite?: (shopId: number) => void;
 }
 
 /**
  * 検索結果コンテナコンポーネント
  * 結果件数バッジ、グリッドレイアウト、空状態を管理
  */
-export default function SearchResults({ shops, hasQuery, categories, onCategoryClick }: SearchResultsProps) {
+export default function SearchResults({
+  shops,
+  hasQuery,
+  categories,
+  favoriteShopIds,
+  onCategoryClick,
+  onToggleFavorite,
+}: SearchResultsProps) {
   // 結果がない場合は空状態を表示
   if (shops.length === 0) {
     return <EmptyState hasQuery={hasQuery} categories={categories} onCategoryClick={onCategoryClick} />;
@@ -39,7 +48,12 @@ export default function SearchResults({ shops, hasQuery, categories, onCategoryC
       {/* 検索結果グリッド */}
       <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {shops.map((shop) => (
-          <ShopResultCard key={shop.id} shop={shop} />
+          <ShopResultCard
+            key={shop.id}
+            shop={shop}
+            isFavorite={favoriteShopIds.includes(shop.id)}
+            onToggleFavorite={onToggleFavorite}
+          />
         ))}
       </div>
     </div>

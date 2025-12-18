@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
-import { loadKotodute, saveKotodute, KotoduteNote } from "../../lib/kotoduteStorage";
+import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
 import { useSearchParams } from "next/navigation";
 
@@ -73,7 +73,7 @@ export default function KotoduteClient() {
             </p>
             <h1 className="text-xl font-bold">日曜市のことづて</h1>
             <p className="text-[11px] text-amber-100">
-              #店番号 でお店宛、#all で日曜市全体宛に投稿。閲覧はここか各お店のカードで。
+              #店番号 でお店宛、#all で日曜市全体宛に投稿。閲覧はここか各お店カードで。
             </p>
           </div>
           <Link
@@ -85,19 +85,34 @@ export default function KotoduteClient() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-4xl flex-col gap-5 px-4 py-6">
-        <section className="rounded-2xl border border-orange-100 bg-white/95 p-4 shadow-sm">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
+        <section className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-100 via-yellow-50 to-white p-4 shadow-md">
+          <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
+            <div className="flex items-center gap-3">
+              <div className="h-14 w-14 rounded-full bg-white text-3xl shadow-inner shadow-amber-200/70 border border-amber-200 flex items-center justify-center">
+                ❓
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">campaign</p>
+                <p className="text-lg font-bold text-amber-900">３００コメント達成で日曜市フォトスポット作成決定！！</p>
+                <p className="text-[12px] text-amber-800">みんなの声でフォトスポットをつくろう。応援コメント待ってます！</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-2xl rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-lg">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
             投稿する
           </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-[1.2fr,0.8fr]">
+          <div className="mt-3 flex flex-col gap-4">
             <div className="space-y-2">
               <label className="text-[11px] text-gray-700">本文</label>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="例：#12 で朝どれナスが甘い！ #all は全体向け"
-                className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[96px]"
+                placeholder="例: #12 で朝どれナスが甘かった！ #all は全体向け"
+                className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[120px]"
               />
             </div>
             <div className="space-y-2">
@@ -107,7 +122,7 @@ export default function KotoduteClient() {
                 onChange={(e) => setTargetTag(e.target.value)}
                 className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
               />
-              <div className="flex flex-wrap gap-2 text-[11px] text-gray-700">
+              <div className="flex flex-wrap gap-2 text-[11px] text-gray-700 justify-center md:justify-start">
                 <button
                   type="button"
                   onClick={() => setTargetTag("#all")}
@@ -127,7 +142,7 @@ export default function KotoduteClient() {
                 ))}
               </div>
               <p className="text-[10px] text-gray-500">
-                #all なら全体宛。店宛は #店番号 を入れてください（例: #12）。
+                #all なら全体宛。店宛は #店番号 を入れてください（例 #12 など）
               </p>
             </div>
           </div>
@@ -148,7 +163,7 @@ export default function KotoduteClient() {
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
                 ことづて一覧
               </p>
-              <h2 className="text-lg font-bold text-gray-900">全体と各店のことづて</h2>
+              <h2 className="text-lg font-bold text-gray-900">全体とお店あてのことづて</h2>
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-800 border border-amber-100">
               {filteredNotes.length}件
@@ -180,9 +195,7 @@ export default function KotoduteClient() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
-                            isAll
-                              ? "bg-slate-900 text-white"
-                              : "bg-amber-600 text-white"
+                            isAll ? "bg-slate-900 text-white" : "bg-amber-600 text-white"
                           }`}
                         >
                           {isAll ? "#all" : `#${note.shopId}`}
@@ -193,9 +206,7 @@ export default function KotoduteClient() {
                     </div>
                     <p className="mt-2 text-[13px] leading-relaxed text-gray-800">{note.text}</p>
                     {!isAll && (
-                      <div className="mt-2 text-[11px] text-amber-700 underline">
-                        お店のカードを開く
-                      </div>
+                      <div className="mt-2 text-[11px] text-amber-700 underline">お店のカードを開く</div>
                     )}
                   </Link>
                 );

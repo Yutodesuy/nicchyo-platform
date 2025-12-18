@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import type { TouchEvent } from "react";
+import type { TouchEvent, DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
 import { loadKotodute, type KotoduteNote } from "../../../../lib/kotoduteStorage";
 
@@ -12,29 +13,63 @@ type ShopDetailBannerProps = {
   shop: Shop;
   bagCount: number;
   onClose?: () => void;
+  onAddToBag?: (name: string, fromShopId?: number) => void;
 };
+
+type BagItem = {
+  name: string;
+};
+
+const STORAGE_KEY = "nicchyo-fridge-items";
+
+function loadBagItems(): BagItem[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as BagItem[];
+  } catch {
+    return [];
+  }
+}
 
 export default function ShopDetailBanner({
   shop,
   bagCount,
   onClose,
+  onAddToBag,
 }: ShopDetailBannerProps) {
-  const [availableProducts, setAvailableProducts] = useState<string[]>(shop.products);
-  const [notes, setNotes] = useState<KotoduteNote[]>([]);
+  const router = useRouter();
   // 画像の位置が「左側」か「右側」か
   const [imagePosition, setImagePosition] = useState<"left" | "right">("left");
   // キラキラ演出の表示
   const [sparkle, setSparkle] = useState(false);
   // ドラッグ中のオフセット
   const [dragOffset, setDragOffset] = useState(0);
+  const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
+  const [isBagHover, setIsBagHover] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<string | null>(null);
+  const [bagProductNames, setBagProductNames] = useState<Set<string>>(new Set());
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
 
   useEffect(() => {
-    setAvailableProducts(shop.products);
-    const all = loadKotodute();
-    setNotes(all.filter((n) => n.shopId === shop.id));
-  }, [shop.products]);
+    if (typeof window === "undefined") return;
+    const updateBag = () => {
+      const items = loadBagItems();
+      setBagProductNames(
+        new Set(items.map((item) => item.name.trim().toLowerCase()))
+      );
+    };
+    updateBag();
+    const handler = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        updateBag();
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   // 音声チャイム再生（最適化：useCallbackでメモ化）
   const playChime = useCallback(() => {
@@ -94,6 +129,62 @@ export default function ShopDetailBanner({
     setDragOffset(0);
     touchStartX.current = null;
   }, [imagePosition, triggerSparkle]);
+
+  const handleProductDragStart = useCallback(
+    (event: DragEvent<HTMLButtonElement>, product: string) => {
+      event.dataTransfer.setData("text/plain", product);
+      event.dataTransfer.effectAllowed = "move";
+      setDraggedProduct(product);
+    },
+    []
+  );
+
+  const handleProductDragEnd = useCallback(() => {
+    setDraggedProduct(null);
+    setIsBagHover(false);
+  }, []);
+
+  const handleBagDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setIsBagHover(true);
+  }, []);
+
+  const handleBagDragLeave = useCallback(() => {
+    setIsBagHover(false);
+  }, []);
+
+  const handleBagDrop = useCallback(
+    (event: DragEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      const product = event.dataTransfer.getData("text/plain") || draggedProduct;
+      if (product) {
+        setPendingProduct(product);
+      }
+      setIsBagHover(false);
+      setDraggedProduct(null);
+    },
+    [draggedProduct]
+  );
+
+  const handleBagClick = useCallback(() => {
+    router.push("/bag");
+  }, [router]);
+
+  const handleConfirmAdd = useCallback(() => {
+    if (!pendingProduct) return;
+    onAddToBag?.(pendingProduct, shop.id);
+    setBagProductNames((prev) => {
+      const next = new Set(prev);
+      next.add(pendingProduct.trim().toLowerCase());
+      return next;
+    });
+    setPendingProduct(null);
+  }, [onAddToBag, pendingProduct, shop.id]);
+
+  const handleCancelAdd = useCallback(() => {
+    setPendingProduct(null);
+  }, []);
 
   // 画像のスタイルを計算（最適化：useMemoでメモ化）
   const imageStyle = useMemo(() => ({
@@ -215,93 +306,68 @@ export default function ShopDetailBanner({
               )}
             </div>
           </div>
-          <div className="h-28 w-28 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <Image
-              src="/images/shops/tosahamono.webp"
-              alt={shop.name}
-              width={160}
-              height={160}
-              className="h-full w-full object-cover"
-            />
-          </div>
         </div>
 
+        {/* 商品一覧 */}
         <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-xs text-slate-800 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-amber-500 px-2 py-[1px] text-[11px] font-semibold text-white">
                 商品
               </span>
-              <span className="text-[11px] text-amber-800">このお店の扱い</span>
+              <span className="text-[11px] text-amber-800">ドラッグしてバッグへ</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-white px-2 py-[2px] text-[10px] font-semibold text-amber-800 border border-amber-100">
-                バッグ {bagCount} 点
+            <button
+              type="button"
+              onClick={handleBagClick}
+              onDragOver={handleBagDragOver}
+              onDragLeave={handleBagDragLeave}
+              onDrop={handleBagDrop}
+              className={`flex items-center gap-2 rounded-full border px-3 py-[3px] text-[11px] font-semibold shadow-sm transition ${
+                isBagHover
+                  ? "border-amber-500 bg-amber-100 text-amber-900"
+                  : "border-amber-200 bg-white text-amber-800"
+              }`}
+              aria-label={"\u8cb7\u3044\u7269\u30ea\u30b9\u30c8\u3078"}
+            >
+              <span className="text-base" aria-hidden>
+                {"\u{1F6CD}"}
               </span>
-              <Link
-                href="/recipes"
-                className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-2 py-[6px] text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                バッグを見る
-              </Link>
-            </div>
+              {"\u30d0\u30c3\u30b0"}
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {availableProducts.map((product) => (
-              <button
-                key={product}
-                type="button"
-                className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600 transition-transform hover:scale-105"
-              >
-                <span aria-hidden>➕</span>
-                <span>{product}</span>
-              </button>
-            ))}
+            {shop.products.map((product) => {
+              const isInBag = bagProductNames.has(product.trim().toLowerCase());
+              return (
+                <button
+                  key={product}
+                  type="button"
+                  draggable
+                  onDragStart={(event) => handleProductDragStart(event, product)}
+                  onDragEnd={handleProductDragEnd}
+                  className={`cursor-grab rounded-full border px-2 py-[2px] text-[11px] font-semibold shadow-sm active:cursor-grabbing ${
+                    isInBag
+                      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                      : "border-amber-200 bg-white text-amber-800"
+                  }`}
+                  aria-label={`${product}`}
+                >
+                  {product}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* バッグへのドロップ/ボタン */}
-        <div
-          className="mt-3 flex items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-amber-200 bg-white/90 px-3 py-3 text-xs text-amber-800"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const name = e.dataTransfer.getData("text/plain");
-            if (!name) return;
-            onAddProduct?.(name);
-            setAvailableProducts((prev) => prev.filter((p) => p !== name));
-          }}
-        >
-          <div className="flex items-center gap-3">
-              <div className="relative h-14 w-16">
-                <Image
-                src="/images/bag_illustration.jpg"
-                alt="買い物バッグ"
-                fill
-                sizes="64px"
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <p className="text-[12px] font-semibold">バッグにドロップ</p>
-              <p className="text-[11px] text-amber-700">商品のチップをドラッグ＆ドロップ、またはタップ追加</p>
-            </div>
-          </div>
-          <Link
-            href="/recipes"
-            className="inline-flex items-center gap-1 rounded-full bg-amber-600 px-3 py-2 text-[11px] font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-          >
-            バッグを見る
-          </Link>
-        </div>
-
+        {/* ことづてセクション */}
         <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs text-slate-800 shadow-sm border border-lime-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-lime-500 px-2 py-[1px] text-[11px] font-semibold text-white">
                 ことづて
               </span>
-              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">{notes.length}</span>
+              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">0</span>
             </div>
             <Link
               href={`/kotodute?shopId=${shop.id}`}
@@ -311,27 +377,36 @@ export default function ShopDetailBanner({
             </Link>
           </div>
 
-          {notes.length === 0 ? (
-            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
-              まだ投稿がありません。# {shop.id} で投稿してもらいましょう。
-            </div>
-          ) : (
-            <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] leading-snug space-y-2">
-              {notes.slice(0, 3).map((n) => (
-                <div key={n.id} className="rounded-lg bg-lime-50 px-2 py-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
-                    <span># {shop.id}</span>
-                    <span>
-                      {new Date(n.createdAt).getHours().toString().padStart(2, "0")}:
-                      {new Date(n.createdAt).getMinutes().toString().padStart(2, "0")}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-slate-800">{n.text}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
+            ことづてページで、お店の情報や感想を共有できます。
+          </div>
         </div>
+
+        {pendingProduct && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
+              <p className="text-sm font-semibold text-gray-900">
+                {`\u30d0\u30c3\u30b0\u306b${pendingProduct}\u3092\u5165\u308c\u307e\u3059\u304b\uff1f`}
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelAdd}
+                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  {"\u3044\u3044\u3048"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAdd}
+                  className="rounded-full bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                >
+                  {"\u306f\u3044"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
