@@ -43,7 +43,7 @@ export default function SearchClient() {
   });
 
   // カテゴリー一覧
-  const categories = ['野菜・果物', '食べ物・おやつ', '刃物・工具', '生活雑貨', '植物・苗', '手作り品'];
+  const categories = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
 
   // 検索クエリが入力されているか
   const hasQuery = textQuery.trim() !== '' || category !== null || blockNumber.trim() !== '';

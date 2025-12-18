@@ -167,6 +167,10 @@ export default function ShopDetailBanner({
     [draggedProduct]
   );
 
+  const handleProductTap = useCallback((product: string) => {
+    setPendingProduct(product);
+  }, []);
+
   const handleBagClick = useCallback(() => {
     router.push("/bag");
   }, [router]);
@@ -346,6 +350,7 @@ export default function ShopDetailBanner({
                   draggable
                   onDragStart={(event) => handleProductDragStart(event, product)}
                   onDragEnd={handleProductDragEnd}
+                  onClick={() => handleProductTap(product)}
                   className={`cursor-grab rounded-full border px-2 py-[2px] text-[11px] font-semibold shadow-sm active:cursor-grabbing ${
                     isInBag
                       ? "border-emerald-300 bg-emerald-100 text-emerald-900"
