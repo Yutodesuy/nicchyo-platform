@@ -16,6 +16,7 @@ import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
+import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
 
 // 道の座標を基準に設定を取得
 const ROAD_BOUNDS = getRoadBounds();
@@ -214,9 +215,14 @@ export default function MapView({
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
+      // ズームレベルをチェック: 詳細表示可能レベルまでズームイン
+      const minZoom = getMinZoomForShopDetails();
+      const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
+      const targetZoom = Math.max(currentZoom, minZoom, 18);
+
       setSelectedShop(target);
       if (mapRef.current) {
-        mapRef.current.flyTo([target.lat, target.lng], Math.max(mapRef.current.getZoom(), 18), {
+        mapRef.current.flyTo([target.lat, target.lng], targetZoom, {
           duration: 0.75,
         });
       }
@@ -297,7 +303,22 @@ export default function MapView({
             <ShopMarker
               key={shop.id}
               shop={shop}
-              onClick={setSelectedShop}
+              onClick={(clickedShop) => {
+                // 【公平性の保証】
+                // 縮小時は店舗詳細を開かず、適切なズームレベルまでズームイン
+                if (!canOpenShopDetails(currentZoom)) {
+                  const minZoom = getMinZoomForShopDetails();
+                  if (mapRef.current) {
+                    mapRef.current.flyTo([clickedShop.lat, clickedShop.lng], minZoom, {
+                      duration: 0.75,
+                    });
+                  }
+                  // 詳細は開かない（ズーム後に再度クリックが必要）
+                  return;
+                }
+                // 詳細表示可能なズームレベルの場合のみ開く
+                setSelectedShop(clickedShop);
+              }}
               isSelected={selectedShop?.id === shop.id}
               planOrderIndex={orderIdx}
               isFavorite={isFavorite}

@@ -19,6 +19,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
 import ShopIllustration from './ShopIllustration';
 import ShopBubble from './ShopBubble';
+import {
+  DEFAULT_ILLUSTRATION_SIZE,
+  ILLUSTRATION_SIZES,
+} from '../config/displayConfig';
 
 interface ShopMarkerProps {
   shop: Shop;
@@ -30,6 +34,10 @@ interface ShopMarkerProps {
 
 export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+
+  // 【動的サイズ取得】店舗データまたはデフォルト設定からサイズを決定
+  const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+  const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
 
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
   const iconMarkup = renderToStaticMarkup(
@@ -46,6 +54,7 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
         icon={shop.icon}
         products={shop.products}
         side={shop.side}
+        offset={sizeConfig.bubbleOffset}
       />
 
       {/* プランマーカー（エージェントプランがある場合） */}
@@ -105,20 +114,21 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
         }}
       >
         <ShopIllustration
-          type="tent"
-          size="medium"
-          color={getCategoryColor(shop.category)}
+          type={shop.illustration?.type ?? 'tent'}
+          size={sizeKey}
+          color={shop.illustration?.color ?? getCategoryColor(shop.category)}
+          customSvg={shop.illustration?.customSvg}
         />
       </div>
     </div>
   );
 
-  // Leaflet DivIconを作成
+  // Leaflet DivIconを作成（動的サイズ使用）
   const customIcon = divIcon({
     html: iconMarkup,
     className: 'custom-shop-marker', // デフォルトスタイルを無効化
-    iconSize: [60, 60],  // イラストのサイズ
-    iconAnchor: [30, 50], // アンカーポイント（イラストの下部中央）
+    iconSize: [sizeConfig.width, sizeConfig.height],
+    iconAnchor: sizeConfig.anchor,
   });
 
   return (

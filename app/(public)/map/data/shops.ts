@@ -1,28 +1,23 @@
-﻿// 日曜市の店舗データ（300店舗）
+﻿/**
+ * 日曜市の店舗データ（300店舗）
+ *
+ * 【データ構造の変更】
+ * - Shop型は ../types/shopData.ts で定義
+ * - 出店者編集機能を前提とした構造に変更
+ * - 編集可能/システム/表示設定の3層に分離
+ *
+ * 【将来の移行】
+ * このファイルの静的データは将来的にDBやAPIに置き換わります
+ * - getAllShops() を使ってデータ取得
+ * - UI側はこのファイルを直接importしない
+ */
 
-export interface Shop {
-  id: number;
-  name: string;
-  ownerName: string; // 店主の名前
-  side: 'north' | 'south'; // 北側（左）or 南側（右）
-  position: number; // 0-149の位置
-  lat: number;
-  lng: number;
-  category: string;
-  products: string[];
-  description: string;
-  icon: string;
-  schedule: string; // 出店予定
-  message?: string; // 出店者の思い（任意）
+// 新しい型定義をインポート・エクスポート
+import type { Shop as ShopType } from '../types/shopData';
+export type { Shop } from '../types/shopData';
 
-  // 【将来の拡張用】店舗イラストのカスタマイズ設定
-  illustration?: {
-    type?: 'tent' | 'stall' | 'custom';    // イラストタイプ
-    size?: 'small' | 'medium' | 'large';   // サイズバリエーション
-    color?: string;                        // カスタムカラー（#HEX形式）
-    customSvg?: string;                    // カスタムSVGパス（差し替え用）
-  };
-}
+// ローカルで使用する型エイリアス
+type Shop = ShopType;
 
 // 商品カテゴリーとアイコン（吹き出しのアイコンと対応）
 const categories = [
