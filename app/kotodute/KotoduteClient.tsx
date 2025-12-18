@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +7,7 @@ import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotodut
 import { shops } from "../(public)/map/data/shops";
 import { useSearchParams } from "next/navigation";
 
-const shopOptions = shops.slice(0, 12).map((s) => ({ id: s.id, name: s.name }));
+const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
 
 function formatDate(ts: number) {
   const d = new Date(ts);
@@ -72,16 +72,8 @@ export default function KotoduteClient() {
               nicchyo kotodute
             </p>
             <h1 className="text-xl font-bold">日曜市のことづて</h1>
-            <p className="text-[11px] text-amber-100">
-              #店番号 でお店宛、#all で日曜市全体宛に投稿。閲覧はここか各お店カードで。
-            </p>
+            <p className="text-[11px] text-amber-100">投稿先を選んでひとこと。全体あて・お店あてのことづてを共有できます。</p>
           </div>
-          <Link
-            href="/map"
-            className="rounded-full border border-amber-200 bg-white/90 px-3 py-2 text-xs font-semibold text-amber-800 shadow-md transition hover:bg-amber-50"
-          >
-            マップへ戻る
-          </Link>
         </div>
       </header>
 
@@ -111,39 +103,26 @@ export default function KotoduteClient() {
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="例: #12 で朝どれナスが甘かった！ #all は全体向け"
-                className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[120px]"
+                placeholder="おすすめや感想をひとこと書いてください"
+                className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[64px]"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[11px] text-gray-700">投稿先（#付き）</label>
-              <input
+              <label className="text-[11px] text-gray-700">投稿先</label>
+              <select
                 value={targetTag}
                 onChange={(e) => setTargetTag(e.target.value)}
                 className="w-full rounded-lg border border-orange-100 px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-              />
-              <div className="flex flex-wrap gap-2 text-[11px] text-gray-700 justify-center md:justify-start">
-                <button
-                  type="button"
-                  onClick={() => setTargetTag("#all")}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-semibold text-amber-800"
-                >
-                  #all
-                </button>
-                {shopOptions.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setTargetTag(`#${s.id}`)}
-                    className="rounded-full border border-orange-100 bg-white px-3 py-1 text-[11px] shadow-sm hover:bg-amber-50"
-                  >
-                    #{s.id} {s.name}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-gray-500">
-                #all なら全体宛。店宛は #店番号 を入れてください（例 #12 など）
-              </p>
+              >
+                <option value="#all">全体</option>
+                <optgroup label="お店">
+                  {shopOptions.map((s) => (
+                    <option key={s.id} value={`#${s.id}`}>
+                      {s.name}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
             </div>
           </div>
           <div className="mt-3">
@@ -219,10 +198,12 @@ export default function KotoduteClient() {
       <footer className="py-8">
         <div className="mx-auto max-w-4xl px-4 text-center text-[11px] text-gray-600">
           <p className="font-medium">nicchyo ことづて</p>
-          <p className="mt-1">#番号 で宛先を決めるシンプルな一言掲示板です。</p>
+          <p className="mt-1">宛先を選んで投稿できるシンプルな一言掲示板です。</p>
         </div>
       </footer>
       <NavigationBar />
     </main>
   );
 }
+
+
