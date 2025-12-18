@@ -3,15 +3,20 @@
  *
  * 店舗イラストの横に表示される商品アイコン
  * 静的マークアップ生成に対応（renderToStaticMarkup互換）
+ *
+ * 【動的サイズ対応】
+ * - offset パラメータで店舗イラストサイズに応じた位置調整が可能
+ * - イラストサイズが変わっても自動的に適切な位置に配置される
  */
 
 interface ShopBubbleProps {
   icon: string;
   products: string[];
   side: 'north' | 'south'; // 吹き出しの向き（北側=左、南側=右）
+  offset?: number; // 店舗イラストからのオフセット（px）
 }
 
-export default function ShopBubble({ icon, products, side }: ShopBubbleProps) {
+export default function ShopBubble({ icon, products, side, offset = 35 }: ShopBubbleProps) {
   // 吹き出しの向き（北側は左、南側は右）
   const isNorth = side === 'north';
 
@@ -24,8 +29,8 @@ export default function ShopBubble({ icon, products, side }: ShopBubbleProps) {
       className="shop-bubble pointer-events-none"
       style={{
         position: 'absolute',
-        top: isNorth ? '10px' : '10px',
-        left: isNorth ? '-35px' : '55px',
+        top: '10px',
+        left: isNorth ? `-${offset}px` : `${offset + 20}px`,
       }}
     >
       {/* 吹き出し本体 */}
