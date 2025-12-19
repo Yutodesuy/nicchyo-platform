@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 店舗マーカーコンポーネント
  *
  * 【重要】このコンポーネントが「1店舗 = 1描画単位 + 1当たり判定」を実現します
@@ -147,18 +147,17 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
  * 将来、カラーパレットをデータ化することも可能
  */
 function getCategoryColor(category: string): string {
+  // グリーン系で統一。カテゴリーで微調整のみ。
   const colorMap: Record<string, string> = {
-    '野菜': '#2ecc71',
-    '魚介': '#3498db',
-    '果物': '#e74c3c',
-    '花': '#e91e63',
-    '主食': '#f39c12',
-    '乳製品': '#f1c40f',
-    '飲料': '#9b59b6',
-    '工芸品': '#34495e',
-    '衣類': '#1abc9c',
-    '加工品': '#e67e22',
+    '食材': '#22c55e',
+    '食べ物': '#16a34a',
+    '道具・工具': '#15803d',
+    '生活雑貨': '#22c55e',
+    '植物・苗': '#16a34a',
+    'アクセサリー': '#22c55e',
+    '手作り・工芸': '#15803d',
   };
 
-  return colorMap[category] || '#e74c3c';
+  return colorMap[category] || '#22c55e';
 }
+
