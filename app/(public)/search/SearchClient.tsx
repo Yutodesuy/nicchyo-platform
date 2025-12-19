@@ -50,21 +50,8 @@ export default function SearchClient() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      {/* ヘッダー */}
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-4 py-3 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em]">nicchyo search</p>
-            <h1 className="text-xl font-bold">店舗検索</h1>
-            <p className="text-[11px] text-amber-100">
-              日曜市の300店舗から、お店を検索できます
-            </p>
-          </div>
-        </div>
-      </header>
-
       {/* メインコンテンツ */}
-      <main className="flex-1 pb-24">
+      <main className="flex-1 pb-24 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
           {/* 検索フォーム */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
