@@ -252,6 +252,22 @@ export default function HamburgerMenu() {
                     </li>
                   )}
 
+                  {permissions.isGeneralUser && (
+                    <li>
+                      <Link
+                        href="/badges"
+                        onClick={closeMenu}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                      >
+                        <span className="text-xl">🏅</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">バッジ</p>
+                          <p className="text-xs text-gray-500">獲得した記念バッジを見る</p>
+                        </div>
+                      </Link>
+                    </li>
+                  )}
+
                   {/* 共通メニュー */}
                   <li>
                     <Link
