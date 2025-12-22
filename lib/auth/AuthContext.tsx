@@ -51,19 +51,40 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import type { User, UserRole, PermissionCheck } from './types';
 
 /**
- * ユーザー情報（ダミー）
+ * ダミーアカウント定義
+ *
+ * 【現在の実装】
+ * - 開発・テスト用に複数のroleを持つアカウントを用意
  *
  * 【将来の実装】
- * Firebase User 型に置き換え
+ * - Firebase Authentication で実際のユーザー認証
+ * - Custom Claims で role を管理
+ * - Firestore でユーザープロフィールを管理
  */
-export interface DummyUser {
-  id: string;
-  name: string;
-  email: string;
-  role?: 'owner' | 'admin' | 'visitor'; // 将来の権限管理用
-}
+export const DUMMY_ACCOUNTS: Record<UserRole, User> = {
+  super_admin: {
+    id: 'dummy-super-admin',
+    name: '高知市管理者',
+    email: 'admin@kochi-city.jp',
+    role: 'super_admin',
+  },
+  vendor: {
+    id: 'dummy-vendor-001',
+    name: '山田商店',
+    email: 'yamada@nicchyo-vendor.jp',
+    role: 'vendor',
+    vendorId: 1, // 仮に店舗ID=1に紐付け
+  },
+  general_user: {
+    id: 'dummy-user-001',
+    name: '観光客太郎',
+    email: 'user@example.com',
+    role: 'general_user',
+  },
+};
 
 /**
  * 認証コンテキストの型定義
@@ -72,17 +93,20 @@ interface AuthContextType {
   /** ログイン状態 */
   isLoggedIn: boolean;
 
-  /** ユーザー情報（ダミー） */
-  user: DummyUser | null;
+  /** ユーザー情報 */
+  user: User | null;
 
-  /** ログイン処理（ダミー） */
-  login: (userName?: string) => void;
+  /** ログイン処理（ダミー：roleを指定してログイン） */
+  login: (role: UserRole) => void;
 
   /** ログアウト処理（ダミー） */
   logout: () => void;
 
   /** ローディング状態 */
   isLoading: boolean;
+
+  /** 権限チェック用ヘルパー */
+  permissions: PermissionCheck;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -96,7 +120,7 @@ const STORAGE_KEY = 'nicchyo-auth-dummy';
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<DummyUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // 初期化: ローカルストレージからログイン状態を復元
@@ -118,10 +142,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
+   * 権限チェック用ヘルパー
+   *
+   * ログイン中のユーザーの権限を判定する各種メソッドを提供
+   */
+  const permissions: PermissionCheck = {
+    isSuperAdmin: user?.role === 'super_admin',
+    isVendor: user?.role === 'vendor',
+    isGeneralUser: user?.role === 'general_user',
+
+    canEditShop: (shopId: number) => {
+      if (user?.role === 'super_admin') return true;
+      if (user?.role === 'vendor' && user.vendorId === shopId) return true;
+      return false;
+    },
+
+    canManageAllShops: user?.role === 'super_admin',
+  };
+
+  /**
    * ログイン処理（ダミー）
    *
    * 【現在】
-   * - ユーザー名を受け取り、ダミーのユーザーオブジェクトを作成
+   * - roleを受け取り、対応するダミーアカウントでログイン
    * - ローカルストレージに保存
    *
    * 【将来：Firebase Auth への移行】
@@ -131,6 +174,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    *   try {
    *     const credential = await signInWithEmailAndPassword(auth, email, password);
    *     // onAuthStateChanged で自動的に user が更新される
+   *     // Custom Claims から role を取得
+   *     const idTokenResult = await credential.user.getIdTokenResult();
+   *     const role = idTokenResult.claims.role as UserRole;
+   *     // Firestore からユーザープロフィールを取得
+   *     const userDoc = await getDoc(doc(db, 'users', credential.user.uid));
+   *     const userData = userDoc.data();
+   *     setUser({
+   *       id: credential.user.uid,
+   *       email: credential.user.email!,
+   *       name: userData.name,
+   *       role: role,
+   *       vendorId: userData.vendorId,
+   *     });
    *   } catch (error) {
    *     console.error('Login failed:', error);
    *     throw error;
@@ -140,21 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * };
    * ```
    */
-  const login = (userName: string = 'テストユーザー') => {
-    const dummyUser: DummyUser = {
-      id: 'dummy-' + Date.now(),
-      name: userName,
-      email: 'dummy@example.com',
-      role: 'visitor',
-    };
+  const login = (role: UserRole) => {
+    const selectedUser = DUMMY_ACCOUNTS[role];
 
-    setUser(dummyUser);
+    setUser(selectedUser);
     setIsLoggedIn(true);
 
     // ローカルストレージに保存
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: dummyUser }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: selectedUser }));
       } catch (error) {
         console.error('Failed to save auth state:', error);
       }
@@ -198,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, isLoading, permissions }}>
       {children}
     </AuthContext.Provider>
   );
