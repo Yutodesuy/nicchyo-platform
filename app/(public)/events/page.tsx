@@ -10,21 +10,8 @@ export const metadata: Metadata = {
 export default function EventsPage() {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      {/* ヘッダー */}
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white px-6 py-4 shadow-lg">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-3xl">🎪</span>
-            <div>
-              <h1 className="text-xl font-bold tracking-wide">午後のイベント</h1>
-              <p className="text-xs text-amber-100 mt-0.5">市場の後も、楽しみは続く</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* メインコンテンツ */}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pb-20 pt-4">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* 準備中メッセージ */}
           <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 text-center border-4 border-amber-200">
