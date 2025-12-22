@@ -38,8 +38,9 @@ export default function ShopIllustration({
 
   // デフォルトのテント型イラスト
   if (type === 'tent') {
-    const tentColor = color || '#e74c3c';
-    const tentDark = color ? adjustColor(color, -20) : '#c0392b';
+    // デフォルトの屋根色をグリーン系に変更
+    const tentColor = color || '#22c55e';
+    const tentDark = color ? adjustColor(color, -20) : '#16a34a';
 
     return (
       <svg

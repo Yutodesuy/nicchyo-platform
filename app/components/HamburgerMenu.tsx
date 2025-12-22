@@ -235,6 +235,23 @@ export default function HamburgerMenu() {
                     </li>
                   )}
 
+                  {/* 一般ユーザー用メニュー */}
+                  {permissions.isGeneralUser && (
+                    <li>
+                      <Link
+                        href="/bag"
+                        onClick={closeMenu}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                      >
+                        <span className="text-xl">👜</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">bag（買い物リスト）</p>
+                          <p className="text-xs text-gray-500">登録した買い物リストを見る</p>
+                        </div>
+                      </Link>
+                    </li>
+                  )}
+
                   {/* 共通メニュー */}
                   <li>
                     <Link
