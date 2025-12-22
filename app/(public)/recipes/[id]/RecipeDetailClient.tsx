@@ -64,41 +64,7 @@ export default function RecipeDetailClient({ id }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 bg-gradient-to-b from-amber-50 via-orange-50 to-white min-h-screen pb-24">
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white shadow-md">
-        <div className="relative mx-auto flex max-w-5xl flex-col gap-2 px-4 py-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-orange-100">
-                nicchyo recipes
-              </p>
-              <h1 className="text-2xl font-bold">{recipe.title}</h1>
-              <p className="text-sm text-amber-100">{recipe.description}</p>
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                {recipe.ingredients.map((ing) => (
-                  <span
-                    key={ing.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-amber-900 border border-amber-100 shadow-sm"
-                  >
-                    <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
-                    {ing.name}
-                    {ing.seasonal ? " (旬)" : ""}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2 text-[11px] font-semibold">
-              <span className="rounded-full bg-white/90 px-3 py-1 text-amber-800 shadow-sm">
-                ⏱ {recipe.cookTime}
-              </span>
-              <span className="rounded-full bg-white/90 px-3 py-1 text-amber-800 shadow-sm">
-                難易度: {difficultyLabel[recipe.difficulty]}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex flex-col gap-6 bg-gradient-to-b from-amber-50 via-orange-50 to-white min-h-screen pb-24 pt-4">
       <div className="mx-auto w-full max-w-5xl px-4">
         <div className="overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl">
           <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-amber-100 via-orange-50 to-white">

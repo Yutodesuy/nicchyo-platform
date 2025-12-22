@@ -64,19 +64,7 @@ export default function KotoduteClient() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      <header className="sticky top-0 z-20 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-orange-100">
-              nicchyo kotodute
-            </p>
-            <h1 className="text-xl font-bold">日曜市のことづて</h1>
-            <p className="text-[11px] text-amber-100">投稿先を選んでひとこと。全体あて・お店あてのことづてを共有できます。</p>
-          </div>
-        </div>
-      </header>
-
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
         <section className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-100 via-yellow-50 to-white p-4 shadow-md">
           <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">

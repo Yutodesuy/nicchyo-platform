@@ -6,19 +6,7 @@ import NavigationBar from "../../components/NavigationBar";
 export default function UserPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-4 py-3 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="font-semibold tracking-wide">マイページ</div>
-          <Link
-            href="/map"
-            className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/30 active:scale-95"
-          >
-            地図へ戻る
-          </Link>
-        </div>
-      </header>
-
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 pt-4">
         {/* ユーザー情報 */}
         <section className="rounded-2xl border border-amber-100 bg-white/90 p-4 shadow-md">
           <div className="flex items-center gap-4">
