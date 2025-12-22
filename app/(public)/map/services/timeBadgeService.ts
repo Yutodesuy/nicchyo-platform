@@ -25,6 +25,15 @@ export type TimeBadgeResult = {
 const STORAGE_KEY = 'nicchyo-time-badges';
 const BOUNDS = getRoadBounds();
 
+function normalizeBounds(bounds: [[number, number], [number, number]]) {
+  const [nw, se] = bounds;
+  const minLat = Math.min(nw[0], se[0]);
+  const maxLat = Math.max(nw[0], se[0]);
+  const minLng = Math.min(nw[1], se[1]);
+  const maxLng = Math.max(nw[1], se[1]);
+  return { minLat, maxLat, minLng, maxLng };
+}
+
 function loadProgress(): StoredProgress {
   if (typeof window === 'undefined') return { slots: {} };
   try {
@@ -60,9 +69,15 @@ function formatSlot(now: Date): string {
     .padStart(2, '0')}`;
 }
 
+const NORMALIZED = normalizeBounds(BOUNDS);
+
 function isInsideBounds(pos: Position) {
-  const [nw, se] = BOUNDS;
-  return pos.lat <= nw[0] && pos.lat >= se[0] && pos.lng >= nw[1] && pos.lng <= se[1];
+  return (
+    pos.lat >= NORMALIZED.minLat &&
+    pos.lat <= NORMALIZED.maxLat &&
+    pos.lng >= NORMALIZED.minLng &&
+    pos.lng <= NORMALIZED.maxLng
+  );
 }
 
 function todayString(now: Date) {
