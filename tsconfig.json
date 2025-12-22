@@ -15,7 +15,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "plugins": [
       {
         "name": "next"
@@ -23,11 +23,14 @@
     ],
     "target": "ES2017",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
     "next-env.d.ts",
+    "types/**/*.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx",
