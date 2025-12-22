@@ -10,6 +10,8 @@ import CategoryFilter from './components/CategoryFilter';
 import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
+import GrandmaChatter from '../map/components/GrandmaChatter';
+import { grandmaSearchComments } from '../map/data/grandmaCommentsSearch';
 
 /**
  * 店舗検索メインコンポーネント
@@ -49,9 +51,9 @@ export default function SearchClient() {
   const hasQuery = textQuery.trim() !== '' || category !== null || blockNumber.trim() !== '';
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-24">
       {/* メインコンテンツ */}
-      <main className="flex-1 pb-24 pt-4">
+      <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
           {/* 検索フォーム */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
@@ -91,6 +93,7 @@ export default function SearchClient() {
 
       {/* ナビゲーションバー */}
       <NavigationBar />
+      <GrandmaChatter comments={grandmaSearchComments} titleLabel="検索ばあちゃん" />
     </div>
   );
 }

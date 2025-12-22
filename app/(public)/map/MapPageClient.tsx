@@ -20,6 +20,7 @@ export default function MapPageClient() {
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showRecipeOverlay, setShowRecipeOverlay] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -123,8 +124,10 @@ export default function MapPageClient() {
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
+              agentOpen={agentOpen}
+              onAgentToggle={setAgentOpen}
             />
-            <GrandmaChatter />
+            <GrandmaChatter onOpenAgent={() => setAgentOpen(true)} titleLabel="マップばあちゃん" />
           </div>
         </div>
       </main>
