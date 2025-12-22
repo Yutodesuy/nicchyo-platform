@@ -56,21 +56,6 @@ export default function MapPageClient() {
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-tl from-yellow-200 to-amber-200 rounded-full blur-3xl opacity-20"></div>
       </div>
 
-      {/* ヘッダー */}
-      <header className="relative z-10 bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 text-white px-6 py-4 shadow-lg border-b-4 border-amber-700">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-3xl">🧺</span>
-            <div>
-              <h1 className="text-xl font-bold tracking-wide">nicchyo 日曜市マップ</h1>
-              <p className="text-xs text-amber-100 mt-0.5">高知市追手筋 1.3km</p>
-            </div>
-            <span className="text-3xl">🧭</span>
-          </div>
-          
-        </div>
-      </header>
-
       {/* メイン */}
       <main className="flex-1 relative pb-16 z-10">
         <div className="h-full p-2 md:p-4">

@@ -266,19 +266,7 @@ export default function RecipesClient() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
-      <header className="bg-gradient-to-r from-amber-600 via-orange-500 to-amber-600 px-4 py-3 text-white shadow-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em]">nicchyo recipes</p>
-            <h1 className="text-xl font-bold">買い物バッグから作れる土佐ごはん</h1>
-            <p className="text-xs text-amber-100">
-              マップでバッグに入れた食材だけを使ってレコメンドします
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 pb-24">
+      <main className="flex-1 pb-24 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
           {/* バッグの中身 */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
