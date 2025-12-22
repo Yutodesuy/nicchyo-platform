@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
 import GrandmaChatter from "./components/GrandmaChatter";
+import { useTimeBadge } from "./hooks/useTimeBadge";
+import { BadgeModal } from "./components/BadgeModal";
 
 // MapView は Leaflet を使うので動的読み込み
 const MapView = dynamic(() => import("./components/MapView"), {
@@ -21,6 +23,8 @@ export default function MapPageClient() {
   const [showBanner, setShowBanner] = useState(false);
   const [showRecipeOverlay, setShowRecipeOverlay] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
+  const { priority, clearPriority } = useTimeBadge();
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -127,7 +131,33 @@ export default function MapPageClient() {
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
             />
-            <GrandmaChatter onOpenAgent={() => setAgentOpen(true)} titleLabel="マップばあちゃん" />
+            <GrandmaChatter
+              onOpenAgent={() => setAgentOpen(true)}
+              titleLabel="マップばあちゃん"
+              priorityMessage={
+                priority
+                  ? {
+                      text: `${priority.badge.slot}に日曜市に訪れました！ ${priority.badge.badge.title} (${priority.badge.tierIcon} ${priority.badge.tierTitle})`,
+                      badgeTitle: priority.badge.badge.title,
+                      badgeIcon: priority.badge.tierIcon,
+                    }
+                  : null
+              }
+              onPriorityClick={() => setShowBadgeModal(true)}
+              onPriorityDismiss={clearPriority}
+            />
+            <BadgeModal
+              open={showBadgeModal && !!priority}
+              onClose={() => {
+                setShowBadgeModal(false);
+                clearPriority();
+              }}
+              title={priority?.badge.badge.title ?? ""}
+              slot={priority?.badge.slot ?? ""}
+              tierTitle={priority?.badge.tierTitle ?? ""}
+              tierIcon={priority?.badge.tierIcon ?? ""}
+              count={priority?.badge.count ?? 0}
+            />
           </div>
         </div>
       </main>

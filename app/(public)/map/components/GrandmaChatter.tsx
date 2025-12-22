@@ -12,16 +12,29 @@ type GrandmaChatterProps = {
   onOpenAgent?: () => void;
   comments?: typeof grandmaCommentPool;
   titleLabel?: string;
+  priorityMessage?: {
+    text: string;
+    badgeTitle?: string;
+    badgeIcon?: string;
+  } | null;
+  onPriorityClick?: () => void;
+  onPriorityDismiss?: () => void;
 };
 
 export default function GrandmaChatter({
   onOpenAgent,
   comments,
   titleLabel = 'マップばあちゃん',
+  priorityMessage,
+  onPriorityClick,
+  onPriorityDismiss,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
-  const current = useMemo(() => pool.find((c) => c.id === currentId) ?? pool[0], [pool, currentId]);
+  const current = useMemo(
+    () => pool.find((c) => c.id === currentId) ?? pool[0],
+    [pool, currentId]
+  );
   const [isActionOpen, setIsActionOpen] = useState(false);
   const [askText, setAskText] = useState('');
 
@@ -72,7 +85,7 @@ export default function GrandmaChatter({
 
         <button
           type="button"
-          onClick={handleNext}
+          onClick={priorityMessage ? onPriorityClick : handleNext}
           className="group relative max-w-[280px] sm:max-w-sm rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl"
           aria-label="次のコメントを表示"
         >
@@ -86,22 +99,26 @@ export default function GrandmaChatter({
 
           <div className="flex items-start gap-3">
             <span className="text-xl" aria-hidden>
-              {current.icon ?? genreIcon(current.genre)}
+              {priorityMessage?.badgeIcon ?? current.icon ?? genreIcon(current.genre)}
             </span>
             <div className="space-y-1">
-              <p className="text-base leading-relaxed text-gray-900">{current.text}</p>
-              {current.link && (
+              <p className="text-base leading-relaxed text-gray-900">
+                {priorityMessage ? priorityMessage.text : current.text}
+              </p>
+              {current.link && !priorityMessage && (
                 <Link
                   href={current.link.href}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
                 >
-              {current.link.label}
-              <span aria-hidden>→</span>
-            </Link>
-          )}
-          <p className="text-[11px] text-gray-500">タップすると次のひと言を見る</p>
-        </div>
-      </div>
+                  {current.link.label}
+                  <span aria-hidden>→</span>
+                </Link>
+              )}
+              <p className="text-[11px] text-gray-500">
+                {priorityMessage ? 'タップでバッジを見る' : 'タップすると次のひと言を見る'}
+              </p>
+            </div>
+          </div>
         </button>
       </div>
 
