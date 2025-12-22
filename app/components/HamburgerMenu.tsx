@@ -17,10 +17,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
+import type { UserRole } from '@/lib/auth/types';
 
 export default function HamburgerMenu() {
   const [isOpen, setIsOpen] = useState(false);
-  const { isLoggedIn, user, login, logout } = useAuth();
+  const { isLoggedIn, user, login, logout, permissions } = useAuth();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
@@ -29,14 +30,15 @@ export default function HamburgerMenu() {
    * ダミーログイン処理
    *
    * 【現在】
-   * - ユーザー名を固定で設定
+   * - roleを選択してログイン
    *
    * 【将来】
    * - ログインフォームを表示
    * - Firebase Auth でメール/パスワード認証
+   * - Custom Claims から role を取得
    */
-  const handleLogin = () => {
-    login('テスト出店者'); // ダミーのユーザー名
+  const handleLogin = (role: UserRole) => {
+    login(role);
     closeMenu();
   };
 
@@ -108,11 +110,23 @@ export default function HamburgerMenu() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-white text-xl font-bold">
                     {user.name.charAt(0)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-800">
                       {user.name}
                     </p>
-                    <p className="text-xs text-gray-600">ログイン中</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-600">ログイン中</p>
+                      {permissions.isSuperAdmin && (
+                        <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                          管理者
+                        </span>
+                      )}
+                      {permissions.isVendor && (
+                        <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                          出店者
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -131,23 +145,97 @@ export default function HamburgerMenu() {
               {isLoggedIn ? (
                 <>
                   {/* ログイン時のメニュー */}
-                  <li>
-                    <Link
-                      href="/my-shop"
-                      onClick={closeMenu}
-                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
-                    >
-                      <span className="text-xl">🏪</span>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">マイ店舗管理</p>
-                        <p className="text-xs text-gray-500">準備中</p>
-                      </div>
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                        Coming Soon
-                      </span>
-                    </Link>
-                  </li>
 
+                  {/* スーパー管理者専用メニュー */}
+                  {permissions.isSuperAdmin && (
+                    <>
+                      <li>
+                        <div className="rounded-lg bg-red-50 px-3 py-2 mb-2">
+                          <p className="text-xs font-semibold text-red-700 flex items-center gap-1">
+                            <span>🔐</span>
+                            管理者メニュー
+                          </p>
+                        </div>
+                      </li>
+
+                      <li>
+                        <Link
+                          href="/admin/shops"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
+                        >
+                          <span className="text-xl">🏪</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">店舗管理</p>
+                            <p className="text-xs text-gray-500">全店舗の閲覧・編集</p>
+                          </div>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            準備中
+                          </span>
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          href="/admin/users"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
+                        >
+                          <span className="text-xl">👥</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">ユーザー管理</p>
+                            <p className="text-xs text-gray-500">出店者アカウント管理</p>
+                          </div>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            準備中
+                          </span>
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          href="/admin/moderation"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
+                        >
+                          <span className="text-xl">🛡️</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">投稿モデレーション</p>
+                            <p className="text-xs text-gray-500">不適切な投稿の管理</p>
+                          </div>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            準備中
+                          </span>
+                        </Link>
+                      </li>
+
+                      <li>
+                        <div className="my-3 border-t border-gray-200" />
+                      </li>
+                    </>
+                  )}
+
+                  {/* 出店者メニュー */}
+                  {permissions.isVendor && (
+                    <li>
+                      <Link
+                        href="/my-shop"
+                        onClick={closeMenu}
+                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                      >
+                        <span className="text-xl">🏪</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">マイ店舗管理</p>
+                          <p className="text-xs text-gray-500">準備中</p>
+                        </div>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                          Coming Soon
+                        </span>
+                      </Link>
+                    </li>
+                  )}
+
+                  {/* 共通メニュー */}
                   <li>
                     <Link
                       href="/my-profile"
@@ -183,26 +271,69 @@ export default function HamburgerMenu() {
                 <>
                   {/* 未ログイン時のメニュー */}
                   <li>
+                    <div className="rounded-lg bg-gray-50 p-4 mb-3">
+                      <p className="text-xs font-semibold text-gray-700 mb-2">
+                        ログイン（テスト版）
+                      </p>
+                      <p className="text-xs text-gray-600 leading-relaxed mb-3">
+                        開発テスト用のログイン機能です。
+                        役割を選択してログインできます。
+                      </p>
+                    </div>
+                  </li>
+
+                  <li>
                     <button
-                      onClick={handleLogin}
-                      className="flex w-full items-center gap-3 rounded-lg bg-amber-500 px-4 py-3 text-white shadow-md transition hover:bg-amber-600"
+                      onClick={() => handleLogin('super_admin')}
+                      className="flex w-full items-center gap-3 rounded-lg border-2 border-red-200 bg-red-50 px-4 py-3 text-gray-700 transition hover:bg-red-100"
                     >
-                      <span className="text-xl">🔑</span>
+                      <span className="text-xl">🔐</span>
                       <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">ログイン（仮）</p>
-                        <p className="text-xs opacity-90">
-                          テスト用のログイン機能です
+                        <p className="text-sm font-semibold">管理者でログイン</p>
+                        <p className="text-xs text-gray-600">
+                          高知市・高専（全権限）
                         </p>
                       </div>
                     </button>
                   </li>
 
                   <li>
-                    <div className="mt-4 rounded-lg bg-gray-50 p-4">
-                      <p className="text-xs text-gray-600 leading-relaxed">
-                        ※ 現在はテスト版のため、実際の認証は行いません。
+                    <button
+                      onClick={() => handleLogin('vendor')}
+                      className="flex w-full items-center gap-3 rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 text-gray-700 transition hover:bg-blue-100"
+                    >
+                      <span className="text-xl">🏪</span>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-semibold">出店者でログイン</p>
+                        <p className="text-xs text-gray-600">
+                          山田商店（店舗ID: 1）
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+
+                  <li>
+                    <button
+                      onClick={() => handleLogin('general_user')}
+                      className="flex w-full items-center gap-3 rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-3 text-gray-700 transition hover:bg-gray-100"
+                    >
+                      <span className="text-xl">👤</span>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-semibold">一般ユーザーでログイン</p>
+                        <p className="text-xs text-gray-600">
+                          観光客（閲覧のみ）
+                        </p>
+                      </div>
+                    </button>
+                  </li>
+
+                  <li>
+                    <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        <span className="font-semibold">💡 将来の実装：</span>
                         <br />
-                        将来的には出店者様ご自身で店舗情報を管理できるようになります。
+                        Firebase Authentication でメール/パスワード認証を行い、
+                        役割（role）はカスタムクレームで管理します。
                       </p>
                     </div>
                   </li>
