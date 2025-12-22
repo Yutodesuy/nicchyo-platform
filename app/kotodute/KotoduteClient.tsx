@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
+import GrandmaChatter from "../(public)/map/components/GrandmaChatter";
+import { grandmaKotoduteComments } from "../(public)/map/data/grandmaCommentsKotodute";
 import { useSearchParams } from "next/navigation";
 
 const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
@@ -64,7 +66,7 @@ export default function KotoduteClient() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-28 pt-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
         <section className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-100 via-yellow-50 to-white p-4 shadow-md">
           <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
@@ -190,6 +192,7 @@ export default function KotoduteClient() {
         </div>
       </footer>
       <NavigationBar />
+      <GrandmaChatter comments={grandmaKotoduteComments} titleLabel="ことづてばあちゃん" />
     </main>
   );
 }

@@ -108,6 +108,8 @@ type MapViewProps = {
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
+  agentOpen?: boolean;
+  onAgentToggle?: (open: boolean) => void;
 };
 
 export default function MapView({
@@ -115,6 +117,8 @@ export default function MapView({
   selectedRecipe,
   showRecipeOverlay,
   onCloseRecipeOverlay,
+  agentOpen,
+  onAgentToggle,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
@@ -408,6 +412,9 @@ export default function MapView({
         onOpenShop={handleOpenShop}
         onPlanUpdate={handlePlanUpdate}
         userLocation={userLocation}
+        isOpen={agentOpen}
+        onToggle={onAgentToggle}
+        hideLauncher
       />
     </div>
   );
