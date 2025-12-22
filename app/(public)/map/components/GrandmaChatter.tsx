@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { grandmaCommentPool, pickNextComment } from '../services/grandmaCommentService';
 
 const AUTO_ROTATE_MS = 60000;
-const PLACEHOLDER_IMAGE = '/images/grandma-placeholder.svg';
+const PLACEHOLDER_IMAGE = '/images/obaasan.webp';
 
 export default function GrandmaChatter() {
   const pool = grandmaCommentPool;
@@ -31,13 +31,13 @@ export default function GrandmaChatter() {
   return (
     <div className="fixed bottom-20 right-3 z-[1400] sm:right-4">
       <div className="flex items-end gap-2 sm:gap-3">
-        <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0">
+        <div className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0">
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg border-2 border-amber-500" />
           <div className="absolute inset-1 rounded-full overflow-hidden border border-white shadow-inner bg-white">
             <img
               src={PLACEHOLDER_IMAGE}
               alt="おばあちゃん"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-center scale-110"
             />
           </div>
         </div>
@@ -45,28 +45,28 @@ export default function GrandmaChatter() {
         <button
           type="button"
           onClick={handleNext}
-          className="group relative max-w-[240px] sm:max-w-xs rounded-2xl border-2 border-amber-400 bg-white/95 px-3 py-3 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl"
+          className="group relative max-w-[280px] sm:max-w-sm rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl"
           aria-label="次のコメントを表示"
         >
           <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
           <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
 
-          <div className="flex items-start gap-2">
-            <span className="text-lg" aria-hidden>
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden>
               {current.icon ?? genreIcon(current.genre)}
             </span>
             <div className="space-y-1">
-              <p className="text-sm leading-relaxed text-gray-900">{current.text}</p>
+              <p className="text-base leading-relaxed text-gray-900">{current.text}</p>
               {current.link && (
                 <Link
                   href={current.link.href}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
                 >
                   {current.link.label}
                   <span aria-hidden>→</span>
                 </Link>
               )}
-              <p className="text-[10px] text-gray-500">タップすると次のひと言を見る</p>
+              <p className="text-[11px] text-gray-500">タップすると次のひと言を見る</p>
             </div>
           </div>
         </button>
