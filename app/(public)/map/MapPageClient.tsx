@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
+import GrandmaChatter from "./components/GrandmaChatter";
 
 // MapView は Leaflet を使うので動的読み込み
 const MapView = dynamic(() => import("./components/MapView"), {
@@ -123,6 +124,7 @@ export default function MapPageClient() {
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
             />
+            <GrandmaChatter />
           </div>
         </div>
       </main>
