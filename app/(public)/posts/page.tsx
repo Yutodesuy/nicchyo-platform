@@ -9,15 +9,8 @@ export const metadata: Metadata = {
 export default function PostsPage() {
   return (
     <div className="flex flex-col h-screen">
-      {/* ヘッダー */}
-      <header className="bg-slate-800 text-white px-4 py-3 shadow-md z-10">
-        <h1 className="text-lg font-semibold tracking-wide text-center">
-          ✏️ 投稿（ことづて）
-        </h1>
-      </header>
-
       {/* メインコンテンツ */}
-      <main className="flex-1 bg-gray-50 p-4 pb-20 overflow-y-auto">
+      <main className="flex-1 bg-gray-50 p-4 pb-20 overflow-y-auto pt-4">
         <div className="max-w-2xl mx-auto">
           {/* 投稿ボックス */}
           <div className="bg-white rounded-lg p-4 shadow-sm mb-6">
