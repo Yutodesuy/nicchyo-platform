@@ -16,7 +16,7 @@ export function useTimeBadge() {
       tickingRef.current = true;
 
       const now = new Date();
-      // geolocationを取得（タイムアウト短め）
+      // Keep geolocation lightweight; low frequency and low accuracy
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const res = claimTimeBadge(now, {
@@ -25,7 +25,7 @@ export function useTimeBadge() {
           });
           if (res) {
             setPriority({
-              message: `${res.slot}に日曜市に訪れました！`,
+              message: `${res.slot}に日曜市へ訪れました！`,
               badge: res,
             });
           }

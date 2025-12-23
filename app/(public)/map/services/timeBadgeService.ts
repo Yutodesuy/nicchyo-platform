@@ -98,7 +98,7 @@ function computeTier(badge: TimeBadge, count: number) {
 }
 
 /**
- * スロットを処理してバッジ結果を返す。条件外や重複は null。
+ * Try to claim a time badge; returns null if conditions are not met.
  */
 export function claimTimeBadge(now: Date, pos: Position): TimeBadgeResult | null {
   if (!isSunday(now)) return null;
@@ -113,7 +113,7 @@ export function claimTimeBadge(now: Date, pos: Position): TimeBadgeResult | null
   const progress = loadProgress();
   const slotProgress = progress.slots[slot] ?? { count: 0, lastDate: '' };
 
-  // 同じ日・同じスロットでの重複防止
+  // Only once per slot per day
   if (slotProgress.lastDate === today) {
     return null;
   }

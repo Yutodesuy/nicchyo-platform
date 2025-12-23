@@ -11,7 +11,7 @@ describe('GrandmaChatter', () => {
     const first = grandmaCommentPool[0];
     expect(screen.getByText(first.text)).toBeInTheDocument();
 
-    const button = screen.getByRole('button', { name: '次のコメントを表示' });
+    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
     fireEvent.click(button);
 
     const second = grandmaCommentPool[1];
