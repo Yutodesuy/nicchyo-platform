@@ -9,11 +9,11 @@ export interface GrandmaComment {
   text: string;
   genre: GrandmaCommentGenre;
   /**
-   * 表示アイコン。未指定ならジャンルのデフォルトを使用。
+   * Optional icon or emoji to distinguish the genre (speech bubble badge)
    */
   icon?: string;
   /**
-   * 導線がある場合に設定。例: map/recipes/events など。
+   * Optional link for deep navigation (e.g., map/recipes/events)
    */
   link?: {
     href: string;

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
@@ -9,7 +9,6 @@ import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
 
-// MapView は Leaflet を使うので動的読み込み
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
 });
@@ -55,7 +54,7 @@ export default function MapPageClient() {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      {/* 背景装飾 */}
+      {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0icGF0dGVybiIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSIjZDk3NzA2IiBvcGFjaXR5PSIwLjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjcGF0dGVybikiLz48L3N2Zz4=')]"></div>
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
@@ -77,7 +76,7 @@ export default function MapPageClient() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
-                        今日の土佐料理
+                        本日のおすすめレシピ
                       </p>
                       <h2 className="text-lg font-bold text-gray-900">{recommendedRecipe.title}</h2>
                       <p className="text-xs text-gray-700">{recommendedRecipe.description}</p>
@@ -97,7 +96,7 @@ export default function MapPageClient() {
                         key={ing.id}
                         className="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-1 font-semibold text-amber-800"
                       >
-                        <span aria-hidden>🍲</span>
+                        <span aria-hidden>🥕</span>
                         {ing.name}
                         {ing.seasonal ? " (旬)" : ""}
                       </span>
@@ -109,14 +108,14 @@ export default function MapPageClient() {
                       onClick={handleAcceptRecipe}
                       className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
                     >
-                      この料理をつくりたい！
+                      このレシピを見る
                     </button>
                     <button
                       type="button"
                       onClick={() => router.push("/recipes")}
                       className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
                     >
-                      ほかの料理をみる
+                      ほかのレシピを探す
                     </button>
                   </div>
                 </div>
@@ -137,7 +136,7 @@ export default function MapPageClient() {
               priorityMessage={
                 priority
                   ? {
-                      text: `${priority.badge.slot}に日曜市に訪れました！ ${priority.badge.badge.title} (${priority.badge.tierIcon} ${priority.badge.tierTitle})`,
+                      text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
                       badgeTitle: priority.badge.badge.title,
                       badgeIcon: priority.badge.tierIcon,
                     }
@@ -166,3 +165,5 @@ export default function MapPageClient() {
     </div>
   );
 }
+
+

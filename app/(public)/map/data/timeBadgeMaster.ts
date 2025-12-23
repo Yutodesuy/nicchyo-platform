@@ -15,14 +15,14 @@ export type TimeBadge = {
 };
 
 const TIERS: TimeBadgeTier[] = [
-  { count: 1, title: 'Bronze', icon: '🥉' },
-  { count: 3, title: 'Silver', icon: '🥈' },
-  { count: 5, title: 'Gold', icon: '🥇' },
+  { count: 1, title: 'ブロンズ', icon: '🥉' },
+  { count: 3, title: 'シルバー', icon: '🥈' },
+  { count: 5, title: 'ゴールド', icon: '🥇' },
 ];
 
 /**
- * 5:00〜17:00 の30分刻みスロット用バッジ。
- * スロットごとにタイトルを変え、tierは共通。
+ * 5:00〜17:00 の30分刻みで来訪バッジを定義
+ * 来訪回数に応じて tier が上がる
  */
 export const timeBadgeMaster: TimeBadge[] = (() => {
   const slots: string[] = [];
@@ -33,7 +33,7 @@ export const timeBadgeMaster: TimeBadge[] = (() => {
   return slots.map((slot) => ({
     slot,
     title: `${slot} 来訪バッジ`,
-    icon: '🕰️',
+    icon: '⏰',
     tiers: TIERS,
     genre: 'event',
   }));

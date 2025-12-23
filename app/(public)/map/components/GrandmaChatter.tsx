@@ -8,15 +8,17 @@ import { grandmaCommentPool, pickNextComment } from '../services/grandmaCommentS
 const AUTO_ROTATE_MS = 60000;
 const PLACEHOLDER_IMAGE = '/images/obaasan.webp';
 
+type PriorityMessage = {
+  text: string;
+  badgeTitle?: string;
+  badgeIcon?: string;
+};
+
 type GrandmaChatterProps = {
   onOpenAgent?: () => void;
   comments?: typeof grandmaCommentPool;
   titleLabel?: string;
-  priorityMessage?: {
-    text: string;
-    badgeTitle?: string;
-    badgeIcon?: string;
-  } | null;
+  priorityMessage?: PriorityMessage | null;
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
 };
@@ -24,7 +26,7 @@ type GrandmaChatterProps = {
 export default function GrandmaChatter({
   onOpenAgent,
   comments,
-  titleLabel = 'マップばあちゃん',
+  titleLabel = 'おせっかいばあちゃん',
   priorityMessage,
   onPriorityClick,
   onPriorityDismiss,
@@ -60,25 +62,25 @@ export default function GrandmaChatter({
   const handleImageClick = () => setIsActionOpen((prev) => !prev);
   const handleAskSubmit = () => {
     if (!askText.trim()) return;
-    // TODO: API送信を実装する
+    // TODO: Wire to AI API
     setAskText('');
   };
 
   return (
-    <div className="fixed bottom-20 right-3 z-[1400] sm:right-4">
-      <div className="flex items-end gap-2 sm:gap-3">
+    <div className="fixed bottom-20 left-3 z-[1400] sm:left-4">
+      <div className="relative flex items-end gap-2 sm:gap-3">
         <button
           type="button"
           onClick={handleImageClick}
-          className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0"
+          className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40"
           aria-label="おばあちゃんメニューを開く"
         >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg border-2 border-amber-500" />
-          <div className="absolute inset-1 rounded-full overflow-hidden border border-white shadow-inner bg-white">
+          <div className="absolute inset-0 rounded-full border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
+          <div className="absolute inset-1 overflow-hidden rounded-full border border-white bg-white shadow-inner">
             <img
               src={PLACEHOLDER_IMAGE}
-              alt="おばあちゃん"
-              className="h-full w-full object-cover object-center scale-110"
+              alt="おせっかいばあちゃん"
+              className="h-full w-full scale-110 object-cover object-center"
             />
           </div>
         </button>
@@ -86,8 +88,8 @@ export default function GrandmaChatter({
         <button
           type="button"
           onClick={priorityMessage ? onPriorityClick : handleNext}
-          className="group relative max-w-[280px] sm:max-w-sm rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl"
-          aria-label="次のコメントを表示"
+          className="group relative max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm"
+          aria-label="ばあちゃんのコメントを開く"
         >
           <div className="absolute -top-3 left-3">
             <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
@@ -115,57 +117,69 @@ export default function GrandmaChatter({
                 </Link>
               )}
               <p className="text-[11px] text-gray-500">
-                {priorityMessage ? 'タップでバッジを見る' : 'タップすると次のひと言を見る'}
+                {priorityMessage ? '最優先のイベントだよ' : 'タップすると次のコメントを見るよ'}
               </p>
+              {priorityMessage && onPriorityDismiss && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPriorityDismiss();
+                  }}
+                  className="text-[11px] font-semibold text-amber-700 underline"
+                >
+                  通知を閉じる
+                </button>
+              )}
             </div>
           </div>
         </button>
-      </div>
 
-      {isActionOpen && (
-        <div className="absolute -top-2 right-0 mb-3 w-[min(320px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl z-[1450]">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-bold text-amber-900">おせっかいメニュー</p>
-            <button
-              type="button"
-              className="text-xs text-amber-700 underline"
-              onClick={() => setIsActionOpen(false)}
-            >
-              閉じる
-            </button>
-          </div>
-
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 shadow-inner space-y-2">
-            <p className="text-xs font-semibold text-amber-800">AIに相談（準備中）</p>
-            <textarea
-              value={askText}
-              onChange={(e) => setAskText(e.target.value)}
-              className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-              placeholder="聞きたいことを書いてね（送信でAIに渡します）"
-              rows={2}
-            />
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-amber-700/80">送信するとAIに渡します（準備中）</p>
+        {isActionOpen && (
+          <div className="absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-bold text-amber-900">おせっかいメニュー</p>
               <button
                 type="button"
-                onClick={handleAskSubmit}
-                className="rounded-lg bg-amber-600 px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-amber-500"
+                className="text-xs text-amber-700 underline"
+                onClick={() => setIsActionOpen(false)}
               >
-                送信
+                とじる
               </button>
             </div>
-          </div>
 
-          <div className="mt-3">
-            <ActionButton
-              label="お店＆料理提案"
-              description="目的に合わせて立ち寄り先を考える"
-              icon="💬"
-              onClick={handleAgent}
-            />
+            <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 shadow-inner">
+              <p className="text-xs font-semibold text-amber-800">AIに相談（見た目のみ）</p>
+              <textarea
+                value={askText}
+                onChange={(e) => setAskText(e.target.value)}
+                className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="食べたいものや困りごとを書いてね"
+                rows={2}
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-amber-700/80">送信するとAIに届く想定です</p>
+                <button
+                  type="button"
+                  onClick={handleAskSubmit}
+                  className="rounded-lg bg-amber-600 px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-amber-500"
+                >
+                  送信
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <ActionButton
+                label="お店＆料理提案"
+                description="おすすめをまとめて教えるよ"
+                icon="🧭"
+                onClick={handleAgent}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -185,7 +199,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left shadow-sm transition hover:border-amber-300 hover:-translate-y-[1px]"
+      className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300"
     >
       <div className="flex items-center gap-2">
         <span className="text-lg">{icon}</span>
@@ -201,13 +215,13 @@ function ActionButton({
 function genreIcon(genre: string) {
   switch (genre) {
     case 'event':
-      return '⭐';
+      return '🔔';
     case 'notice':
-      return 'ℹ️';
+      return '📢';
     case 'tutorial':
-      return '📖';
+      return '🧭';
     case 'monologue':
     default:
-      return '💭';
+      return '💬';
   }
 }
