@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker } from "react-leaflet";
@@ -10,7 +10,6 @@ import ShopMarker from "./ShopMarker";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
-import GrandmaGuide from "./GrandmaGuide";
 import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
@@ -18,26 +17,26 @@ import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
 
-// 道の座標を基準に設定を取得
+// Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
 const KOCHI_SUNDAY_MARKET: [number, number] = [
-  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // 緯度の中心
-  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // 経度の中心
+  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // latitude center
+  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
 ];
 
-// ズーム設定を動的に計算
+// Zoom config by shop count
 const ZOOM_CONFIG = getZoomConfig(shops.length);
-const INITIAL_ZOOM = ZOOM_CONFIG.initial;  // 店舗が重ならない最適ズーム
+const INITIAL_ZOOM = ZOOM_CONFIG.initial;
 const MIN_ZOOM = ZOOM_CONFIG.min;
 const MAX_ZOOM = ZOOM_CONFIG.max;
 
-// 移動可能範囲を制限（道の範囲より少し広め）
+// Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = [
   [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
   [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
 ];
 
-const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+const ORDER_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const PLAN_MARKER_ICON = "🗒️";
 
 type BagItem = {
@@ -69,7 +68,7 @@ function saveBag(items: BagItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// ===== スマホ用のズームボタンコンポーネント =====
+// ===== Mobile zoom buttons =====
 function MobileZoomControls() {
   const map = useMap();
 
@@ -93,7 +92,6 @@ function MobileZoomControls() {
   );
 }
 
-// ズームレベル追跡コンポーネント
 function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   useMapEvents({
     zoomend: (e) => {
@@ -108,6 +106,8 @@ type MapViewProps = {
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
+  agentOpen?: boolean;
+  onAgentToggle?: (open: boolean) => void;
 };
 
 export default function MapView({
@@ -115,6 +115,8 @@ export default function MapView({
   selectedRecipe,
   showRecipeOverlay,
   onCloseRecipeOverlay,
+  agentOpen,
+  onAgentToggle,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
@@ -124,10 +126,8 @@ export default function MapView({
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  // 現在のズームレベルに応じて表示する店舗をフィルタリング
   const visibleShops = filterShopsByZoom(shops, currentZoom);
 
-  // プラン順序のマップ
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
     planOrder.forEach((id, idx) => m.set(id, idx));
@@ -159,7 +159,6 @@ export default function MapView({
     }
   }, [initialShopId]);
 
-  // エージェントプランの読み込み
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -174,7 +173,6 @@ export default function MapView({
     }
   }, []);
 
-  // お気に入りの読み込み
   useEffect(() => {
     if (typeof window === "undefined") return;
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -195,7 +193,7 @@ export default function MapView({
       );
       return {
         name: ing.name,
-        icon: iconKey ? ingredientIcons[iconKey] : "🛒",
+        icon: iconKey ? ingredientIcons[iconKey] : "🛍️",
       };
     });
   }, [selectedRecipe]);
@@ -215,7 +213,6 @@ export default function MapView({
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
-      // ズームレベルをチェック: 詳細表示可能レベルまでズームイン
       const minZoom = getMinZoomForShopDetails();
       const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
       const targetZoom = Math.max(currentZoom, minZoom, 18);
@@ -286,15 +283,15 @@ export default function MapView({
           if (map) mapRef.current = map;
         }}
       >
-        {/* レイヤー構造（下から順に描画） */}
+        {}
 
-        {/* Layer 1: 背景オーバーレイ（将来の拡張用） */}
+        {}
         <BackgroundOverlay />
 
-        {/* Layer 2: 道路オーバーレイ */}
+        {}
         <RoadOverlay />
 
-        {/* Layer 3: 店舗マーカー - ズームレベルに応じて表示密度を調整 */}
+        {}
         {visibleShops.map((shop) => {
           const orderIdx = planOrderMap.get(shop.id);
           const isFavorite = favoriteShopIds.includes(shop.id);
@@ -304,8 +301,6 @@ export default function MapView({
               key={shop.id}
               shop={shop}
               onClick={(clickedShop) => {
-                // 【公平性の保証】
-                // 縮小時は店舗詳細を開かず、適切なズームレベルまでズームイン
                 if (!canOpenShopDetails(currentZoom)) {
                   const minZoom = getMinZoomForShopDetails();
                   if (mapRef.current) {
@@ -313,10 +308,8 @@ export default function MapView({
                       duration: 0.75,
                     });
                   }
-                  // 詳細は開かない（ズーム後に再度クリックが必要）
                   return;
                 }
-                // 詳細表示可能なズームレベルの場合のみ開く
                 setSelectedShop(clickedShop);
               }}
               isSelected={selectedShop?.id === shop.id}
@@ -326,7 +319,7 @@ export default function MapView({
           );
         })}
 
-        {/* レシピオーバーレイ - 材料が買える店舗を強調表示 */}
+        {}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
@@ -367,21 +360,21 @@ export default function MapView({
           );
         })}
 
-        {/* Layer 4: ユーザー位置マーカー */}
+        {}
         <UserLocationMarker
           onLocationUpdate={(_, position) => {
             setUserLocation(position);
           }}
         />
 
-        {/* ズームレベル追跡 */}
+        {}
         <ZoomTracker onZoomChange={setCurrentZoom} />
 
-        {/* スマホのときだけ大きめズームボタンを表示 */}
+        {}
         {isMobile && <MobileZoomControls />}
       </MapContainer>
 
-      {/* レシピオーバーレイ閉じるボタン */}
+      {}
       {showRecipeOverlay && onCloseRecipeOverlay && (
         <button
           onClick={onCloseRecipeOverlay}
@@ -391,7 +384,6 @@ export default function MapView({
         </button>
       )}
 
-      {/* 店舗詳細バナー */}
       {selectedShop && (
         <ShopDetailBanner
           shop={selectedShop}
@@ -400,14 +392,13 @@ export default function MapView({
         />
       )}
 
-      {/* おばあちゃんの説明ガイド */}
-      <GrandmaGuide />
-
-      {/* AIエージェントアシスタント */}
       <MapAgentAssistant
         onOpenShop={handleOpenShop}
         onPlanUpdate={handlePlanUpdate}
         userLocation={userLocation}
+        isOpen={agentOpen}
+        onToggle={onAgentToggle}
+        hideLauncher
       />
     </div>
   );

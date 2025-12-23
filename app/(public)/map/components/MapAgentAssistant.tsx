@@ -1,7 +1,7 @@
 'use client';
 
-import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type Answers = {
   purpose?: string;
@@ -38,65 +38,88 @@ type MapAgentAssistantProps = {
   onOpenShop?: (shopId: number) => void;
   onPlanUpdate?: (order: number[]) => void;
   userLocation?: [number, number] | null;
+  isOpen?: boolean;
+  onToggle?: (open: boolean) => void;
+  hideLauncher?: boolean;
 };
 
-const STORAGE_KEY = "nicchyo-map-agent-plan";
+const STORAGE_KEY = 'nicchyo-map-agent-plan';
 
-export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocation }: MapAgentAssistantProps) {
-  const [isOpen, setIsOpen] = useState(false);
+const QUESTIONS: AgentQuestion[] = [
+  {
+    id: 'purpose',
+    prompt: '今日の目的は？（例: 観光ついでに買い物）',
+    placeholder: '観光しながら地元の味を探したい',
+  },
+  {
+    id: 'needs',
+    prompt: '何を買いたい？',
+    placeholder: '野菜の詰め合わせ / ご当地おやつ など',
+  },
+  {
+    id: 'visitCount',
+    prompt: '何件くらい寄りたい？',
+    placeholder: '3件 など数字で入力',
+    helper: '時間がなければ2件、たっぷり回るなら4件以上がおすすめ',
+  },
+  {
+    id: 'favoriteFood',
+    prompt: '好きな料理・ジャンルは？',
+    placeholder: '郷土料理 / 海鮮 / 揚げ物 など',
+  },
+];
+
+export default function MapAgentAssistant({
+  onOpenShop,
+  onPlanUpdate,
+  userLocation,
+  isOpen,
+  onToggle,
+  hideLauncher = false,
+}: MapAgentAssistantProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [answers, setAnswers] = useState<Answers>({});
   const [step, setStep] = useState(0);
-  const [currentInput, setCurrentInput] = useState("");
+  const [currentInput, setCurrentInput] = useState('');
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
 
-  const questions: AgentQuestion[] = useMemo(() => {
-    const purpose = answers.purpose?.trim();
-    const needs = answers.needs?.trim();
-    return [
-      {
-        id: "purpose",
-        prompt: "今日の目的は？（例: 観光ついでに買い物）",
-        placeholder: "観光しながら地元の味を探したい",
-      },
-      {
-        id: "needs",
-        prompt: purpose ? `何を買いたい？（目的: ${purpose}）` : "何を買いたい？",
-        placeholder: "野菜の詰め合わせ / ご当地おやつ など",
-      },
-      {
-        id: "visitCount",
-        prompt: "何件くらい回りたい？",
-        placeholder: "3件 など数字で入力",
-        helper: "時間がなければ2件、たっぷり回るなら4件以上がおすすめ",
-      },
-      {
-        id: "favoriteFood",
-        prompt: needs ? `好きな料理・ジャンルは？（欲しいもの: ${needs}）` : "好きな料理・ジャンルは？",
-        placeholder: "郷土料理 / 海鮮 / 揚げ物 など",
-      },
-    ];
-  }, [answers.purpose, answers.needs]);
+  const open = typeof isOpen === 'boolean' ? isOpen : internalOpen;
+  const currentQuestion = useMemo(() => QUESTIONS[step], [step]);
 
-  const currentQuestion = questions[step];
+  const toggle = useCallback(() => {
+    const next = !open;
+    onToggle?.(next);
+    if (isOpen === undefined) {
+      setInternalOpen(next);
+    }
+  }, [open, onToggle, isOpen]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as { plan?: PlanResult; order?: number[] };
       if (parsed.plan) {
         setPlan(parsed.plan);
-        setStep(questions.length);
+        setStep(QUESTIONS.length);
         onPlanUpdate?.(parsed.order ?? parsed.plan.shops.map((s) => s.id));
       }
     } catch {
-      // ignore parse errors
+      // ignore
     }
-  }, [onPlanUpdate, questions.length]);
+  }, [onPlanUpdate]);
+
+  const persistPlan = (data: PlanResult) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ plan: data, order: data.shops.map((s) => s.id) })
+    );
+  };
 
   const handleSubmit = useCallback(async () => {
     if (!currentQuestion || plan) return;
@@ -106,34 +129,27 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
     const nextAnswers = { ...answers, [currentQuestion.id]: value };
     setAnswers(nextAnswers);
     setNotes((prev) => [...prev, { id: currentQuestion.id, q: currentQuestion.prompt, a: value }]);
-    setCurrentInput("");
+    setCurrentInput('');
     setPlan(null);
 
-    const isLast = step >= questions.length - 1;
+    const isLast = step >= QUESTIONS.length - 1;
     if (isLast) {
       setStep((prev) => prev + 1);
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/map-agent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const res = await fetch('/api/map-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers: nextAnswers, location: userLocation }),
         });
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
         const data = (await res.json()) as PlanResult;
         setPlan(data);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({ plan: data, order: data.shops.map((s) => s.id) })
-          );
-        }
+        persistPlan(data);
         onPlanUpdate?.(data.shops.map((s) => s.id));
       } catch (e) {
-        setError("提案の生成に失敗しました。少し待ってから再度お試しください。");
+        setError('提案の生成に失敗しました。少し待ってから再度お試しください。');
         onPlanUpdate?.([]);
       } finally {
         setLoading(false);
@@ -142,52 +158,50 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
       setStep((prev) => prev + 1);
       onPlanUpdate?.([]);
     }
-  }, [answers, currentInput, currentQuestion, onPlanUpdate, questions.length, step, userLocation]);
+  }, [answers, currentInput, currentQuestion, onPlanUpdate, plan, step, userLocation]);
 
   const handleEdit = useCallback(
     (id: keyof Answers) => {
-      const targetIndex = questions.findIndex((q) => q.id === id);
+      const targetIndex = QUESTIONS.findIndex((q) => q.id === id);
       if (targetIndex === -1) return;
 
       const newAnswers: Answers = { ...answers };
-      questions.slice(targetIndex).forEach((q) => {
-        delete newAnswers[q.id];
-      });
+      QUESTIONS.slice(targetIndex).forEach((q) => delete newAnswers[q.id]);
 
       setAnswers(newAnswers);
       setNotes((prev) =>
-        prev.filter((note) => questions.findIndex((q) => q.id === note.id) < targetIndex)
+        prev.filter((note) => QUESTIONS.findIndex((q) => q.id === note.id) < targetIndex)
       );
       setStep(targetIndex);
-      setCurrentInput(answers[id] ?? "");
+      setCurrentInput(answers[id] ?? '');
       setPlan(null);
       setError(null);
       setLoading(false);
       onPlanUpdate?.([]);
-      if (typeof window !== "undefined") {
+      if (typeof window !== 'undefined') {
         localStorage.removeItem(STORAGE_KEY);
       }
     },
-    [answers, onPlanUpdate, questions]
+    [answers, onPlanUpdate]
   );
 
   const handleReset = useCallback(() => {
     setAnswers({});
     setNotes([]);
-    setCurrentInput("");
+    setCurrentInput('');
     setPlan(null);
     setStep(0);
     setError(null);
     setLoading(false);
     onPlanUpdate?.([]);
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [onPlanUpdate]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
+      if (e.key === 'Enter') {
         e.preventDefault();
         handleSubmit();
       }
@@ -197,23 +211,25 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
 
   return (
     <>
-      <button
-        type="button"
-        className="absolute left-4 bottom-4 z-[1400] group"
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-label="AI買い物エージェントを開く"
-      >
-        <div className="relative">
-          <div className="h-14 w-14 rotate-2 rounded-md bg-gradient-to-br from-amber-200 via-yellow-200 to-amber-100 shadow-xl border border-amber-300 flex items-center justify-center text-2xl transition-transform group-hover:scale-105">
-            🗒️
+      {!hideLauncher && (
+        <button
+          type="button"
+          className="absolute left-4 bottom-4 z-[1400] group"
+          onClick={toggle}
+          aria-label="AI買い物エージェントを開く"
+        >
+          <div className="relative">
+            <div className="h-14 w-14 rotate-2 rounded-md bg-gradient-to-br from-amber-200 via-yellow-200 to-amber-100 shadow-xl border border-amber-300 flex items-center justify-center text-2xl transition-transform group-hover:scale-105">
+              🗒️
+            </div>
+            <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 text-[10px] font-bold text-white flex items-center justify-center shadow">
+              !
+            </div>
           </div>
-          <div className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 text-[10px] font-bold text-white flex items-center justify-center shadow">
-            !
-          </div>
-        </div>
-      </button>
+        </button>
+      )}
 
-      {isOpen && (
+      {open && (
         <div className="absolute left-4 bottom-20 z-[1400] w-[min(420px,90vw)]">
           <div className="relative max-h-[70vh] overflow-y-auto pr-1">
             <div className="absolute -top-3 right-6 rotate-6 h-6 w-6 bg-amber-300 rounded-sm shadow-md" />
@@ -224,7 +240,7 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                 <button
                   type="button"
                   className="text-xs text-amber-700 underline"
-                  onClick={() => setIsOpen(false)}
+                  onClick={toggle}
                 >
                   とじる
                 </button>
@@ -253,11 +269,9 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                             onClick={handleSubmit}
                             className="rounded-md bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-amber-500 transition"
                           >
-                            この内容で進む
+                            この回答で進む
                           </button>
-                          <span className="text-[11px] text-amber-700/70">
-                            1問ずつ聞きます。Enterでも送信できます。
-                          </span>
+                          <span className="text-[11px] text-amber-700/70">Enter でも送信できます</span>
                         </div>
                       </div>
                     ) : (
@@ -319,7 +333,7 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                     <div className="space-y-2">
                       <p className="text-[11px] font-semibold text-amber-700">立ち寄り先</p>
                       <div className="space-y-2">
-                        {plan.shops.map((s, idx) => (
+                        {plan.shops.map((s) => (
                           <button
                             key={s.id}
                             type="button"
@@ -329,9 +343,7 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{s.icon}</span>
-                                <span className="font-semibold text-amber-900">
-                                  🗒️ {s.name}
-                                </span>
+                                <span className="font-semibold text-amber-900">{s.name}</span>
                               </div>
                               <span className="text-[11px] text-amber-700 underline">マップで見る</span>
                             </div>
@@ -342,7 +354,7 @@ export default function MapAgentAssistant({ onOpenShop, onPlanUpdate, userLocati
                     </div>
                     {plan.shoppingList.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[11px] font-semibold text-amber-700">買うものメモ</p>
+                        <p className="text-[11px] font-semibold text-amber-700">買い物メモ</p>
                         <div className="flex flex-wrap gap-2 text-xs">
                           {plan.shoppingList.map((item) => (
                             <span
