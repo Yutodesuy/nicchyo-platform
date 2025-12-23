@@ -11,6 +11,8 @@ import {
   type Ingredient,
   type Recipe,
 } from "../../../lib/recipes";
+import GrandmaChatter from "../map/components/GrandmaChatter";
+import { grandmaRecipeComments } from "../map/data/grandmaCommentsRecipes";
 
 type Contributor = {
   id: string;
@@ -266,7 +268,7 @@ export default function RecipesClient() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900">
-      <main className="flex-1 pb-24 pt-4">
+      <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
           {/* バッグの中身 */}
           <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
@@ -711,6 +713,7 @@ export default function RecipesClient() {
       </main>
 
       <NavigationBar />
+      <GrandmaChatter comments={grandmaRecipeComments} titleLabel="料理ばあちゃん" />
     </div>
   );
 }
