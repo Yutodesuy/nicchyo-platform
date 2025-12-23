@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker } from "react-leaflet";
@@ -10,7 +10,6 @@ import ShopMarker from "./ShopMarker";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
-import GrandmaGuide from "./GrandmaGuide";
 import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
@@ -18,26 +17,26 @@ import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
 
-// 道の座標を基準に設定を取得
+// 驕薙・蠎ｧ讓吶ｒ蝓ｺ貅悶↓險ｭ螳壹ｒ蜿門ｾ・
 const ROAD_BOUNDS = getRoadBounds();
 const KOCHI_SUNDAY_MARKET: [number, number] = [
-  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // 緯度の中心
-  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // 経度の中心
+  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // 邱ｯ蠎ｦ縺ｮ荳ｭ蠢・
+  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // 邨悟ｺｦ縺ｮ荳ｭ蠢・
 ];
 
-// ズーム設定を動的に計算
+// 繧ｺ繝ｼ繝險ｭ螳壹ｒ蜍慕噪縺ｫ險育ｮ・
 const ZOOM_CONFIG = getZoomConfig(shops.length);
-const INITIAL_ZOOM = ZOOM_CONFIG.initial;  // 店舗が重ならない最適ズーム
+const INITIAL_ZOOM = ZOOM_CONFIG.initial;  // 蠎苓・縺碁㍾縺ｪ繧峨↑縺・怙驕ｩ繧ｺ繝ｼ繝
 const MIN_ZOOM = ZOOM_CONFIG.min;
 const MAX_ZOOM = ZOOM_CONFIG.max;
 
-// 移動可能範囲を制限（道の範囲より少し広め）
+// 遘ｻ蜍募庄閭ｽ遽・峇繧貞宛髯撰ｼ磯％縺ｮ遽・峇繧医ｊ蟆代＠蠎・ａ・・
 const MAX_BOUNDS: [[number, number], [number, number]] = [
   [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
   [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
 ];
 
-const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+const ORDER_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const PLAN_MARKER_ICON = "🗒️";
 
 type BagItem = {
@@ -69,7 +68,7 @@ function saveBag(items: BagItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// ===== スマホ用のズームボタンコンポーネント =====
+// ===== 繧ｹ繝槭・逕ｨ縺ｮ繧ｺ繝ｼ繝繝懊ち繝ｳ繧ｳ繝ｳ繝昴・繝阪Φ繝・=====
 function MobileZoomControls() {
   const map = useMap();
 
@@ -87,13 +86,13 @@ function MobileZoomControls() {
         onClick={() => map.zoomOut()}
         className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-white text-xl shadow-lg active:scale-95"
       >
-        −
+        竏・
       </button>
     </div>
   );
 }
 
-// ズームレベル追跡コンポーネント
+// 繧ｺ繝ｼ繝繝ｬ繝吶Ν霑ｽ霍｡繧ｳ繝ｳ繝昴・繝阪Φ繝・
 function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   useMapEvents({
     zoomend: (e) => {
@@ -128,10 +127,10 @@ export default function MapView({
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  // 現在のズームレベルに応じて表示する店舗をフィルタリング
+  // 迴ｾ蝨ｨ縺ｮ繧ｺ繝ｼ繝繝ｬ繝吶Ν縺ｫ蠢懊§縺ｦ陦ｨ遉ｺ縺吶ｋ蠎苓・繧偵ヵ繧｣繝ｫ繧ｿ繝ｪ繝ｳ繧ｰ
   const visibleShops = filterShopsByZoom(shops, currentZoom);
 
-  // プラン順序のマップ
+  // 繝励Λ繝ｳ鬆・ｺ上・繝槭ャ繝・
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
     planOrder.forEach((id, idx) => m.set(id, idx));
@@ -163,7 +162,7 @@ export default function MapView({
     }
   }, [initialShopId]);
 
-  // エージェントプランの読み込み
+  // 繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝医・繝ｩ繝ｳ縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -178,7 +177,7 @@ export default function MapView({
     }
   }, []);
 
-  // お気に入りの読み込み
+  // 縺頑ｰ励↓蜈･繧翫・隱ｭ縺ｿ霎ｼ縺ｿ
   useEffect(() => {
     if (typeof window === "undefined") return;
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -199,7 +198,7 @@ export default function MapView({
       );
       return {
         name: ing.name,
-        icon: iconKey ? ingredientIcons[iconKey] : "🛒",
+        icon: iconKey ? ingredientIcons[iconKey] : "將",
       };
     });
   }, [selectedRecipe]);
@@ -219,7 +218,7 @@ export default function MapView({
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
-      // ズームレベルをチェック: 詳細表示可能レベルまでズームイン
+      // 繧ｺ繝ｼ繝繝ｬ繝吶Ν繧偵メ繧ｧ繝・け: 隧ｳ邏ｰ陦ｨ遉ｺ蜿ｯ閭ｽ繝ｬ繝吶Ν縺ｾ縺ｧ繧ｺ繝ｼ繝繧､繝ｳ
       const minZoom = getMinZoomForShopDetails();
       const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
       const targetZoom = Math.max(currentZoom, minZoom, 18);
@@ -290,15 +289,15 @@ export default function MapView({
           if (map) mapRef.current = map;
         }}
       >
-        {/* レイヤー構造（下から順に描画） */}
+        {/* 繝ｬ繧､繝､繝ｼ讒矩・井ｸ九°繧蛾・↓謠冗判・・*/}
 
-        {/* Layer 1: 背景オーバーレイ（将来の拡張用） */}
+        {/* Layer 1: 閭梧勹繧ｪ繝ｼ繝舌・繝ｬ繧､・亥ｰ・擂縺ｮ諡｡蠑ｵ逕ｨ・・*/}
         <BackgroundOverlay />
 
-        {/* Layer 2: 道路オーバーレイ */}
+        {/* Layer 2: 驕楢ｷｯ繧ｪ繝ｼ繝舌・繝ｬ繧､ */}
         <RoadOverlay />
 
-        {/* Layer 3: 店舗マーカー - ズームレベルに応じて表示密度を調整 */}
+        {/* Layer 3: 蠎苓・繝槭・繧ｫ繝ｼ - 繧ｺ繝ｼ繝繝ｬ繝吶Ν縺ｫ蠢懊§縺ｦ陦ｨ遉ｺ蟇・ｺｦ繧定ｪｿ謨ｴ */}
         {visibleShops.map((shop) => {
           const orderIdx = planOrderMap.get(shop.id);
           const isFavorite = favoriteShopIds.includes(shop.id);
@@ -308,8 +307,8 @@ export default function MapView({
               key={shop.id}
               shop={shop}
               onClick={(clickedShop) => {
-                // 【公平性の保証】
-                // 縮小時は店舗詳細を開かず、適切なズームレベルまでズームイン
+                // 縲仙・蟷ｳ諤ｧ縺ｮ菫晁ｨｼ縲・
+                // 邵ｮ蟆乗凾縺ｯ蠎苓・隧ｳ邏ｰ繧帝幕縺九★縲・←蛻・↑繧ｺ繝ｼ繝繝ｬ繝吶Ν縺ｾ縺ｧ繧ｺ繝ｼ繝繧､繝ｳ
                 if (!canOpenShopDetails(currentZoom)) {
                   const minZoom = getMinZoomForShopDetails();
                   if (mapRef.current) {
@@ -317,10 +316,10 @@ export default function MapView({
                       duration: 0.75,
                     });
                   }
-                  // 詳細は開かない（ズーム後に再度クリックが必要）
+                  // 隧ｳ邏ｰ縺ｯ髢九°縺ｪ縺・ｼ医ぜ繝ｼ繝蠕後↓蜀榊ｺｦ繧ｯ繝ｪ繝・け縺悟ｿ・ｦ・ｼ・
                   return;
                 }
-                // 詳細表示可能なズームレベルの場合のみ開く
+                // 隧ｳ邏ｰ陦ｨ遉ｺ蜿ｯ閭ｽ縺ｪ繧ｺ繝ｼ繝繝ｬ繝吶Ν縺ｮ蝣ｴ蜷医・縺ｿ髢九￥
                 setSelectedShop(clickedShop);
               }}
               isSelected={selectedShop?.id === shop.id}
@@ -330,7 +329,7 @@ export default function MapView({
           );
         })}
 
-        {/* レシピオーバーレイ - 材料が買える店舗を強調表示 */}
+        {/* 繝ｬ繧ｷ繝斐が繝ｼ繝舌・繝ｬ繧､ - 譚先侭縺瑚ｲｷ縺医ｋ蠎苓・繧貞ｼｷ隱ｿ陦ｨ遉ｺ */}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
@@ -371,31 +370,31 @@ export default function MapView({
           );
         })}
 
-        {/* Layer 4: ユーザー位置マーカー */}
+        {/* Layer 4: 繝ｦ繝ｼ繧ｶ繝ｼ菴咲ｽｮ繝槭・繧ｫ繝ｼ */}
         <UserLocationMarker
           onLocationUpdate={(_, position) => {
             setUserLocation(position);
           }}
         />
 
-        {/* ズームレベル追跡 */}
+        {/* 繧ｺ繝ｼ繝繝ｬ繝吶Ν霑ｽ霍｡ */}
         <ZoomTracker onZoomChange={setCurrentZoom} />
 
-        {/* スマホのときだけ大きめズームボタンを表示 */}
+        {/* 繧ｹ繝槭・縺ｮ縺ｨ縺阪□縺大､ｧ縺阪ａ繧ｺ繝ｼ繝繝懊ち繝ｳ繧定｡ｨ遉ｺ */}
         {isMobile && <MobileZoomControls />}
       </MapContainer>
 
-      {/* レシピオーバーレイ閉じるボタン */}
+      {/* 繝ｬ繧ｷ繝斐が繝ｼ繝舌・繝ｬ繧､髢峨§繧九・繧ｿ繝ｳ */}
       {showRecipeOverlay && onCloseRecipeOverlay && (
         <button
           onClick={onCloseRecipeOverlay}
           className="absolute top-4 right-4 z-[1500] rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-lg hover:bg-gray-50"
         >
-          レシピモードを閉じる
+          繝ｬ繧ｷ繝斐Δ繝ｼ繝峨ｒ髢峨§繧・
         </button>
       )}
 
-      {/* 店舗詳細バナー */}
+      {/* 蠎苓・隧ｳ邏ｰ繝舌リ繝ｼ */}
       {selectedShop && (
         <ShopDetailBanner
           shop={selectedShop}
@@ -404,10 +403,7 @@ export default function MapView({
         />
       )}
 
-      {/* おばあちゃんの説明ガイド */}
-      <GrandmaGuide />
-
-      {/* AIエージェントアシスタント */}
+      {/* 縺翫・縺ゅ■繧・ｓ縺ｮ隱ｬ譏弱ぎ繧､繝・*/}{/* AI繧ｨ繝ｼ繧ｸ繧ｧ繝ｳ繝医い繧ｷ繧ｹ繧ｿ繝ｳ繝・*/}
       <MapAgentAssistant
         onOpenShop={handleOpenShop}
         onPlanUpdate={handlePlanUpdate}
@@ -419,3 +415,5 @@ export default function MapView({
     </div>
   );
 }
+
+
