@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import NavigationBar from '../../components/NavigationBar';
 import { listTimeBadgeProgress, type TimeBadgeProgress } from '../map/services/timeBadgeService';
+import { getShoppingProgress, SHOPPING_SEGMENTS } from './services/shoppingBadgeService';
 
 export default function BadgesPage() {
   const [badges, setBadges] = useState<TimeBadgeProgress[]>([]);
+  const [shoppingUnlocked, setShoppingUnlocked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setBadges(listTimeBadgeProgress());
+    const shopping = getShoppingProgress();
+    setShoppingUnlocked(shopping.unlocked);
   }, []);
 
   const collected = badges.filter((b) => b.count > 0).length;
@@ -84,6 +88,78 @@ export default function BadgesPage() {
               <span role="img" aria-label="flower">🌼</span>
             </div>
             <p className="mt-2 text-xs text-amber-800">後日イラストに差し替え予定です。</p>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-emerald-100 bg-white/95 p-5 shadow-sm space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">お買い物バッジ</h2>
+              <p className="text-sm text-gray-700">
+                bag に入れたカテゴリに応じて塗り絵が色付きます。色がついたパートは獲得済みです。
+              </p>
+            </div>
+            <a
+              href="/badges/shopping"
+              className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
+            >
+              お買い物バッジを見る
+            </a>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-xs font-semibold text-gray-600">塗り絵（仮の線画）</p>
+            <div className="relative mx-auto flex h-40 w-full max-w-md items-center justify-center">
+              <svg viewBox="0 0 260 140" className="h-full w-full">
+                {SHOPPING_SEGMENTS.map((seg, idx) => {
+                  const x = 20 + idx * 40;
+                  const y = 30 + (idx % 2) * 40;
+                  const unlocked = shoppingUnlocked.has(seg.id);
+                  return (
+                    <g key={seg.id}>
+                      <rect
+                        x={x}
+                        y={y}
+                        width={30}
+                        height={60}
+                        rx={6}
+                        className="stroke-gray-700"
+                        strokeWidth={2}
+                        fill={unlocked ? seg.color : 'white'}
+                        fillOpacity={unlocked ? 1 : 0}
+                      />
+                      <rect
+                        x={x}
+                        y={y}
+                        width={30}
+                        height={60}
+                        rx={6}
+                        fill="none"
+                        className="stroke-gray-700"
+                        strokeDasharray="4 3"
+                        strokeWidth={2}
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+              <div className="pointer-events-none absolute inset-0 rounded-2xl border border-dashed border-gray-400" aria-hidden />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
+              {SHOPPING_SEGMENTS.map((seg) => (
+                <div key={seg.id} className="flex items-center gap-2">
+                  <span
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300"
+                    style={{ backgroundColor: shoppingUnlocked.has(seg.id) ? seg.color : 'white' }}
+                    aria-hidden
+                  />
+                  <span>{seg.label}</span>
+                  <span className="text-[10px] text-gray-500">
+                    {shoppingUnlocked.has(seg.id) ? '獲得' : '未獲得'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       </div>
