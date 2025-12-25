@@ -117,3 +117,51 @@ export function getRoadLength(): number {
   // 1度 ≈ 111km
   return latDiff * 111;
 }
+
+/**
+ * 日曜市エリアの境界（maxBounds用）
+ * パン操作の制限範囲を定義
+ *
+ * 【目的】
+ * - ユーザーが日曜市エリア外へパン（移動）できないようにする
+ * - Leaflet の maxBounds パラメータで使用
+ *
+ * 【マージンの設計】
+ * - 道路範囲に適度なマージンを追加（視認性のため）
+ * - marginLat: 0.002 ≈ 約200m（緯度方向）
+ * - marginLng: 0.001 ≈ 約100m（経度方向）
+ *
+ * @returns マップの境界 [[北西], [南東]]
+ */
+export function getSundayMarketBounds(): [[number, number], [number, number]] {
+  const bounds = ROAD_CONFIG.bounds;
+
+  // 道路範囲に適度なマージンを追加（視認性のため）
+  const marginLat = 0.002;  // 約200m
+  const marginLng = 0.001;  // 約100m
+
+  return [
+    [bounds[0][0] + marginLat, bounds[0][1] + marginLng],  // 北西
+    [bounds[1][0] - marginLat, bounds[1][1] - marginLng],  // 南東
+  ];
+}
+
+/**
+ * ズーム範囲の適切な設定を取得
+ *
+ * 【目的】
+ * - 日曜市マップに最適なズーム範囲を提供
+ * - ユーザーエクスペリエンスの向上
+ *
+ * 【ズーム範囲の設計根拠】
+ * - min: 14 - これ以上引くと日曜市エリアが小さすぎて見づらい
+ * - max: 20 - これ以上寄ると個別店舗の画像が荒れる
+ *
+ * @returns ズーム範囲 { min, max }
+ */
+export function getRecommendedZoomBounds(): { min: number; max: number } {
+  return {
+    min: 14,   // これ以上引くと日曜市エリアが小さすぎる
+    max: 20,   // これ以上寄ると個別店舗の画像が荒れる
+  };
+}
