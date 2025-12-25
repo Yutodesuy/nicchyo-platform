@@ -31,7 +31,7 @@ export default function SearchResults({
   }
 
   return (
-    <div className="rounded-2xl border border-orange-100 bg-white/95 p-4 shadow-sm">
+    <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm">
       {/* ヘッダー: タイトルと結果件数 */}
       <div className="flex items-center justify-between">
         <div>
