@@ -30,22 +30,27 @@ export interface IllustrationSize {
 
 /**
  * イラストサイズのプリセット
+ *
+ * 【構造改善】イラストサイズを縮小して視覚的な間隔を確保
+ * - small: 40px → 35px（密集感軽減）
+ * - medium: 60px → 50px（拡大時でも重なりにくく）
+ * - 物理座標は変更できないため、イラストサイズで調整
  */
 export const ILLUSTRATION_SIZES: Record<
   'small' | 'medium' | 'large',
   IllustrationSize
 > = {
   small: {
-    width: 40,
-    height: 40,
-    anchor: [20, 35], // 下部中央
-    bubbleOffset: 25,
+    width: 35,    // 【構造改善】40→35px
+    height: 35,   // 【構造改善】40→35px
+    anchor: [18, 30], // 下部中央（サイズに合わせて調整）
+    bubbleOffset: 22,
   },
   medium: {
-    width: 60,
-    height: 60,
-    anchor: [30, 50], // 下部中央
-    bubbleOffset: 35,
+    width: 50,    // 【構造改善】60→50px
+    height: 50,   // 【構造改善】60→50px
+    anchor: [25, 42], // 下部中央（サイズに合わせて調整）
+    bubbleOffset: 30,
   },
   large: {
     width: 80,
@@ -66,15 +71,17 @@ export const DEFAULT_ILLUSTRATION_SIZE: 'small' | 'medium' | 'large' =
 /**
  * ズームレベルに応じたイラストサイズを動的に取得
  *
+ * 【段階構造に合わせた閾値】VIEW_MODE と完全に同期
+ *
  * 【目的】
- * - 縮小時の重なり防止（店舗間隔4.3m、イラスト60pxでは物理的に重なる）
+ * - 縮小時の重なり防止（店舗間隔4.3m、イラスト大きすぎは物理的に重なる）
  * - スマホ画面での視認性確保
  * - 段階的な情報開示（ズームインするほど詳細が見える）
  *
  * 【設計根拠】
- * - ズーム17.5以上: medium (60px) - 十分なスペースがあり、詳細表示に適している
- * - ズーム16.0-17.5: small (40px) - 重なりを防ぎつつ、店舗の存在を示す
- * - ズーム16.0未満: small (40px) - 俯瞰表示、重なり防止を最優先
+ * - ズーム18.5以上: medium (50px) - DETAIL モード（詳細閲覧）
+ * - ズーム17.5-18.5: small (35px) - INTERMEDIATE モード（エリア探索）
+ * - ズーム17.5未満: small (35px) - OVERVIEW モード（全体俯瞰）
  *
  * @param currentZoom 現在のズームレベル
  * @returns イラストサイズ ('small' | 'medium' | 'large')
@@ -82,13 +89,13 @@ export const DEFAULT_ILLUSTRATION_SIZE: 'small' | 'medium' | 'large' =
 export function getIllustrationSizeForZoom(
   currentZoom: number
 ): 'small' | 'medium' | 'large' {
+  if (currentZoom >= 18.5) {
+    return 'medium'; // 【段階構造】詳細閲覧: 50px（18.0→18.5）
+  }
   if (currentZoom >= 17.5) {
-    return 'medium'; // 詳細表示: 60px
+    return 'small'; // 【段階構造】エリア探索: 35px（17.0→17.5）
   }
-  if (currentZoom >= 16.0) {
-    return 'small'; // 中間表示: 40px（重なり防止）
-  }
-  return 'small'; // 俯瞰表示: 40px（重なり防止最優先）
+  return 'small'; // 全体俯瞰: 35px（重なり防止最優先）
 }
 
 /**
@@ -313,38 +320,60 @@ export interface ViewModeConfig {
 /**
  * 表示モード設定（ズームレベルから決定）
  *
- * 【Phase 3.5】重なり防止強化 + スマホファースト対応
- * - minZoom: より高いズームから詳細表示（重なり防止）
- * - filterInterval: より積極的な間引き（3→5、10→15）
- * - mobileFilterInterval: スマホ専用の間引き（画面が小さいため、さらに積極的）
+ * 【意味のある段階構造】各段階に明確な役割を持たせる
+ *
+ * ┌─────────────────────────────────────┐
+ * │ OVERVIEW（16.0-17.5）幅1.5         │
+ * │ 役割：全体俯瞰                      │
+ * │ 体験：「日曜市のどこに何があるか把握」│
+ * │ 表示：10店舗程度（300の3%）         │
+ * └─────────────────────────────────────┘
+ * ┌─────────────────────────────────────┐
+ * │ INTERMEDIATE（17.5-18.5）幅1.0     │
+ * │ 役割：エリア探索                    │
+ * │ 体験：「店舗の存在が分かる」        │
+ * │ 表示：20-30店舗程度（300の7-10%）   │
+ * └─────────────────────────────────────┘
+ * ┌─────────────────────────────────────┐
+ * │ DETAIL（18.5以上）                 │
+ * │ 役割：個別店舗識別・詳細閲覧        │
+ * │ 体験：「店舗名・商品が読める」      │
+ * │ 表示：50-60店舗程度（300の17-20%）  │
+ * └─────────────────────────────────────┘
+ *
+ * 【設計原則】
+ * - 各段階で表示内容・密度・情報量が明確に異なる
+ * - ズーム範囲の幅を変えて、段階間の差を明確化
+ * - スマホ利用を最優先（指での操作、視認性）
+ * - 物理座標は変更不可のため、間引きで視覚的な間隔を確保
  */
 export const VIEW_MODE_CONFIGS: ViewModeConfig[] = [
   {
     mode: ViewMode.DETAIL,
-    minZoom: 17.5,  // 17.0 → 17.5 に引き上げ（重なり防止）
-    filterInterval: 1,
-    mobileFilterInterval: 2,  // スマホでは2店舗に1つ（画面が小さいため）
+    minZoom: 18.5,  // 【段階構造】18.0 → 18.5（詳細閲覧に適したズーム）
+    filterInterval: 5,  // 【段階構造】3 → 5（50-60店舗を表示、300の17-20%）
+    mobileFilterInterval: 8,  // 【段階構造】5 → 8（スマホで快適な密度）
     allowShopDetails: true,
     allowMarkerInteraction: true,
-    description: '詳細モード - 全店舗の詳細情報を表示可能',
+    description: '詳細閲覧 - 店舗名・商品が読める、詳細バナー表示',
   },
   {
     mode: ViewMode.INTERMEDIATE,
-    minZoom: 16.5,  // 16.0 → 16.5 に引き上げ（重なり防止）
-    filterInterval: 5,  // 3 → 5 に増やす（より積極的な間引き）
-    mobileFilterInterval: 8,  // スマホでは8店舗に1つ
+    minZoom: 17.5,  // 【段階構造】17.0 → 17.5（エリア探索に適したズーム）
+    filterInterval: 15,  // 【段階構造】10 → 15（20-30店舗を表示、300の7-10%）
+    mobileFilterInterval: 20,  // 【段階構造】15 → 20（スマホでより明確な差）
     allowShopDetails: false,
     allowMarkerInteraction: true,
-    description: '中間モード - タップで詳細へズームアップ',
+    description: 'エリア探索 - 店舗の存在が分かる、詳細は表示しない',
   },
   {
     mode: ViewMode.OVERVIEW,
-    minZoom: 0,
-    filterInterval: 15,  // 10 → 15 に増やす（より積極的な間引き）
-    mobileFilterInterval: 20,  // スマホでは20店舗に1つ
+    minZoom: 16.0,  // 【段階構造】16.0維持（全体俯瞰、MIN_ZOOMと一致）
+    filterInterval: 30,  // 【段階構造】25 → 30（10店舗程度を表示、300の3%）
+    mobileFilterInterval: 40,  // 【段階構造】35 → 40（スマホで超シンプル）
     allowShopDetails: false,
     allowMarkerInteraction: true,
-    description: '俯瞰モード - 全体を見渡す',
+    description: '全体俯瞰 - 日曜市のどこに何があるか把握、詳細なし',
   },
 ];
 

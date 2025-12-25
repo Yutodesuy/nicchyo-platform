@@ -352,8 +352,9 @@ export default function MapView({
                   // 詳細モード: 詳細バナーを表示
                   setSelectedShop(clickedShop);
                 } else {
-                  // 【Phase 3.5】OVERVIEW/INTERMEDIATE: 周辺エリア中心にズームアップ
-                  // 特定店舗を強調しすぎない、公平な挙動
+                  // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
+                  // OVERVIEW → INTERMEDIATE（17.5）
+                  // INTERMEDIATE → DETAIL（18.5）
 
                   // 周辺店舗を検索（緯度±0.001度、経度±0.0005度 ≈ 半径100m程度）
                   const nearbyShops = shops.filter(s =>
@@ -376,7 +377,16 @@ export default function MapView({
                     centerLng = nearbyShops.reduce((sum, s) => sum + s.lng, 0) / nearbyShops.length;
                   }
 
-                  const targetZoom = getMinZoomForShopDetails();
+                  // 【段階的ズームアップ】現在のモードに応じて次の段階へ
+                  let targetZoom: number;
+                  if (viewMode.mode === ViewMode.OVERVIEW) {
+                    // OVERVIEW → INTERMEDIATE（エリア探索）へ
+                    targetZoom = 17.5;
+                  } else {
+                    // INTERMEDIATE → DETAIL（詳細閲覧）へ
+                    targetZoom = 18.5;
+                  }
+
                   if (mapRef.current) {
                     mapRef.current.flyTo(
                       [centerLat, centerLng],  // ピンポイントではなく、周辺エリアの中心
