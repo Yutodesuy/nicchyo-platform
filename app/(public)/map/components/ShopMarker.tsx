@@ -22,6 +22,7 @@ import ShopBubble from './ShopBubble';
 import {
   DEFAULT_ILLUSTRATION_SIZE,
   ILLUSTRATION_SIZES,
+  getIllustrationSizeForZoom,
 } from '../config/displayConfig';
 
 interface ShopMarkerProps {
@@ -30,13 +31,24 @@ interface ShopMarkerProps {
   isSelected?: boolean;
   planOrderIndex?: number;
   isFavorite?: boolean;
+  currentZoom?: number;  // 【Phase 3.5】動的サイズ調整用
 }
 
-export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite }: ShopMarkerProps) {
+export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite, currentZoom }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 
-  // 【動的サイズ取得】店舗データまたはデフォルト設定からサイズを決定
-  const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+  // 【Phase 3.5】動的サイズ取得：ズームレベルに応じたサイズを決定
+  // - ズーム17.5以上: medium (60px) - 詳細表示に適したサイズ
+  // - ズーム16.0-17.5: small (40px) - 重なり防止
+  // - ズーム16.0未満: small (40px) - 重なり防止最優先
+  let sizeKey: 'small' | 'medium' | 'large';
+  if (currentZoom !== undefined) {
+    // ズームレベルが提供されている場合は、動的にサイズを決定
+    sizeKey = getIllustrationSizeForZoom(currentZoom);
+  } else {
+    // フォールバック: 店舗データまたはデフォルト設定からサイズを決定
+    sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+  }
   const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
 
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
@@ -109,7 +121,6 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
           filter: isSelected
             ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))'
             : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-          transform: isSelected ? 'scale(1.1)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
       >
@@ -124,11 +135,19 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
   );
 
   // Leaflet DivIconを作成（動的サイズ使用）
+  // 選択時は1.1倍に拡大し、当たり判定も同時に拡大
+  const sizeMultiplier = isSelected ? 1.1 : 1.0;
   const customIcon = divIcon({
     html: iconMarkup,
     className: 'custom-shop-marker', // デフォルトスタイルを無効化
-    iconSize: [sizeConfig.width, sizeConfig.height],
-    iconAnchor: sizeConfig.anchor,
+    iconSize: [
+      sizeConfig.width * sizeMultiplier,
+      sizeConfig.height * sizeMultiplier
+    ],
+    iconAnchor: [
+      sizeConfig.anchor[0] * sizeMultiplier,
+      sizeConfig.anchor[1] * sizeMultiplier
+    ],
   });
 
   return (

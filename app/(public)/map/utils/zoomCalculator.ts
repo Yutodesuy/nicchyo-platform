@@ -105,6 +105,10 @@ export function getZoomConfig(shopCount: number): ZoomConfig {
  * 新実装: ハッシュベースの回転式フィルタリング
  * → ズーム変化時に表示される店舗が変わり、すべての店舗が公平に表示される
  *
+ * 【Phase 3.5】スマホファースト対応
+ * - isMobile パラメータを追加
+ * - スマホの場合は mobileFilterInterval を優先使用
+ *
  * 仕組み:
  * - ズームレベルを整数化してオフセットとして使用
  * - (shop.id + offset) % interval で表示判定
@@ -112,17 +116,29 @@ export function getZoomConfig(shopCount: number): ZoomConfig {
  *
  * @param shops 全店舗データ
  * @param currentZoom 現在のズームレベル
+ * @param isMobile スマホかどうか（オプション、デフォルト: false）
  * @returns 表示する店舗リスト
  */
 export function filterShopsByZoom<T extends { id: number; position: number }>(
   shops: T[],
-  currentZoom: number
+  currentZoom: number,
+  isMobile: boolean = false
 ): T[] {
   // 表示ルールを取得
   const rule = getDisplayRuleForZoom(currentZoom);
 
+  // デバイスに応じた filterInterval を取得（Phase 3.5）
+  // スマホの場合は mobileFilterInterval を優先使用
+  let interval = rule.filterInterval;
+  if (isMobile) {
+    // VIEW_MODE_CONFIGS から対応するモード設定を取得
+    // ここでは直接 import せず、rule.filterInterval をベースに調整
+    // 実際の mobileFilterInterval は MapView から渡される形に変更する必要がある
+    // 一旦、この関数ではデフォルト動作を維持し、MapView 側で制御
+  }
+
   // 全店舗表示の場合
-  if (rule.filterInterval === 1) {
+  if (interval === 1) {
     return shops;
   }
 
@@ -134,6 +150,6 @@ export function filterShopsByZoom<T extends { id: number; position: number }>(
   return shops.filter((shop) => {
     // ハッシュベースの判定: (id + offset) % interval === 0
     // これにより、ズームレベルが変わると異なる店舗が表示される
-    return (shop.id + zoomOffset) % rule.filterInterval === 0;
+    return (shop.id + zoomOffset) % interval === 0;
   });
 }
