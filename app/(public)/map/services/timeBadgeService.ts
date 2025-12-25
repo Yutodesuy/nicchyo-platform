@@ -22,6 +22,15 @@ export type TimeBadgeResult = {
   count: number;
 };
 
+export type TimeBadgeProgress = {
+  slot: string;
+  badge: TimeBadge;
+  count: number;
+  lastDate?: string;
+  tierTitle?: string;
+  tierIcon?: string;
+};
+
 const STORAGE_KEY = 'nicchyo-time-badges';
 const BOUNDS = getRoadBounds();
 
@@ -95,6 +104,27 @@ function computeTier(badge: TimeBadge, count: number) {
     if (count >= t.count) tier = t;
   }
   return tier;
+}
+
+export function listTimeBadgeProgress(): TimeBadgeProgress[] {
+  const progress = loadProgress();
+  return timeBadgeMaster.map((badge) => {
+    const slotProgress = progress.slots[badge.slot];
+    const count = slotProgress?.count ?? 0;
+    const tier =
+      count > 0
+        ? computeTier(badge, count)
+        : undefined;
+
+    return {
+      slot: badge.slot,
+      badge,
+      count,
+      lastDate: slotProgress?.lastDate,
+      tierTitle: tier?.title,
+      tierIcon: tier?.icon,
+    };
+  });
 }
 
 /**
