@@ -13,8 +13,8 @@ const navItems: NavItem[] = [
   { name: 'ホーム', href: '/', icon: '🏠' },
   { name: 'マップ', href: '/map', icon: '🗺️' },
   { name: '検索', href: '/search', icon: '🔍' },
-  { name: '料理', href: '/recipes', icon: '🍳' },
-  { name: '投稿', href: '/kotodute', icon: '✏️' },
+  { name: 'レシピ', href: '/recipes', icon: '🍳' },
+  { name: 'ことづて', href: '/kotodute', icon: '✉️' },
 ];
 
 export default function NavigationBar() {
@@ -30,9 +30,7 @@ export default function NavigationBar() {
               key={item.name}
               href={item.href}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive
-                  ? 'text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                isActive ? 'text-amber-700' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <span className="text-2xl mb-1">{item.icon}</span>
