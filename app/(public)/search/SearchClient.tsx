@@ -55,9 +55,14 @@ export default function SearchClient() {
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
+          <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Search</p>
+            <h2 className="mt-1 text-4xl font-bold text-gray-900">検索ボックス</h2>
+            <p className="mt-1 text-xl text-gray-700">キーワードとカテゴリからお店を探す</p>
+          </div>
+
           {/* 検索フォーム */}
-          <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">検索</p>
+          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
 
             {/* テキスト検索 */}
             <div className="mt-3">
