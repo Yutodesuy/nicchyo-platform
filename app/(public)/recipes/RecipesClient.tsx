@@ -152,8 +152,18 @@ export default function RecipesClient() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 text-lg">
       <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
+          <header className="relative overflow-hidden rounded-3xl border border-amber-100 bg-white/95 px-6 py-5 shadow-sm text-center">
+            <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-100 to-orange-200 blur-3xl opacity-50" aria-hidden />
+            <div className="absolute -left-10 -bottom-6 h-32 w-32 rounded-full bg-gradient-to-br from-yellow-100 to-amber-200 blur-3xl opacity-50" aria-hidden />
+            <div className="relative">
+              <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Recipes</p>
+              <h1 className="mt-1 text-4xl font-bold text-gray-900">レシピ</h1>
+              <p className="mt-1 text-xl text-gray-700">日曜市の食材で作るおすすめ料理集</p>
+            </div>
+          </header>
+
           {/* 冷蔵庫リスト */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+          <div className="rounded-2xl border-2 border-orange-300 bg-gradient-to-br from-sky-50 via-white to-sky-100 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">冷蔵庫リスト</p>
