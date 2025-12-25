@@ -304,13 +304,13 @@ export default function RecipesClient() {
                     <div className="flex gap-3">
                       <Link
                         href={`/recipes/${recipe.id}`}
-                        className="w-full rounded-lg bg-amber-600 px-5 py-3.5 text-lg font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                        className="w-full rounded-lg bg-amber-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
                       >
                         レシピ詳細へ
                       </Link>
                       <Link
                         href={`/map?recipe=${recipe.id}`}
-                        className="w-full rounded-lg border border-amber-200 bg-white px-5 py-3.5 text-lg font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
+                        className="w-full rounded-lg border border-amber-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
                       >
                         食材をマップで探す
                       </Link>
