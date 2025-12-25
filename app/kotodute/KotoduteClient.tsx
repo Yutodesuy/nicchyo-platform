@@ -68,6 +68,12 @@ export default function KotoduteClient() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-28 pt-4">
       <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
+        <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+          <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Kotodute</p>
+          <h2 className="mt-1 text-4xl font-bold text-gray-900">ことづて</h2>
+          <p className="mt-1 text-xl text-gray-700">日曜市の感想やおすすめを気軽にシェア</p>
+        </div>
+
         <section className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-100 via-yellow-50 to-white p-4 shadow-md">
           <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:text-left">
             <div className="flex items-center gap-3">
