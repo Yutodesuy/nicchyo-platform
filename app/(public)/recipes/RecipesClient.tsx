@@ -507,7 +507,7 @@ export default function RecipesClient() {
       </main>
 
       <NavigationBar />
-      <GrandmaChatter comments={grandmaRecipeComments} titleLabel="料理ばあちゃん" />
+      <GrandmaChatter comments={grandmaRecipeComments} titleLabel="料理ばあちゃん" fullWidth />
     </div>
   );
 }
