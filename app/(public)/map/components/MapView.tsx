@@ -11,7 +11,7 @@ import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
-import { ingredientIcons, type Recipe } from "../../../../lib/recipes";
+import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
@@ -43,6 +43,7 @@ type BagItem = {
   id: string;
   name: string;
   fromShopId?: number;
+  category?: string;
   qty?: string;
   note?: string;
   photo?: string;
@@ -66,6 +67,21 @@ function loadBag(): BagItem[] {
 function saveBag(items: BagItem[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function isIngredientName(name: string) {
+  const lower = name.trim().toLowerCase();
+  return ingredientCatalog.some(
+    (ing) =>
+      ing.name.toLowerCase().includes(lower) ||
+      lower.includes(ing.name.toLowerCase()) ||
+      ing.id.toLowerCase() === lower ||
+      ing.id.toLowerCase().includes(lower) ||
+      ing.aliases?.some(
+        (alias) =>
+          alias.toLowerCase().includes(lower) || lower.includes(alias.toLowerCase())
+      )
+  );
 }
 
 // ===== Mobile zoom buttons =====
@@ -255,7 +271,8 @@ export default function MapView({
       typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    saveBag([{ id, name: value, fromShopId, createdAt: Date.now() }, ...items]);
+    const category = isIngredientName(value) ? "食材" : undefined;
+    saveBag([{ id, name: value, fromShopId, category, createdAt: Date.now() }, ...items]);
   }, []);
 
   return (
