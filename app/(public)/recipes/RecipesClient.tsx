@@ -11,6 +11,7 @@ import {
   seasonalCollections,
   type Recipe,
 } from "../../../lib/recipes";
+import { shops } from "../map/data/shops";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import { grandmaRecipeComments } from "../map/data/grandmaCommentsRecipes";
 
@@ -20,6 +21,8 @@ const STORAGE_KEY = "nicchyo-fridge-items";
 type FridgeItem = {
   id: string;
   name: string;
+  fromShopId?: number;
+  category?: string;
   createdAt: number;
 };
 
@@ -54,7 +57,6 @@ const difficultyLabel = (difficulty: Recipe["difficulty"]) => {
 
 export default function RecipesClient() {
   const [fridge, setFridge] = useState<FridgeItem[]>([]);
-  const [addQuery, setAddQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
@@ -63,20 +65,41 @@ export default function RecipesClient() {
     setFridge(loadFridge());
   }, []);
 
+  const shopCategoryById = useMemo(() => {
+    return new Map(shops.map((shop) => [shop.id, shop.category]));
+  }, []);
+
+  const findIngredientMatch = (name: string) => {
+    const lower = name.trim().toLowerCase();
+    return ingredientCatalog.find(
+      (ing) =>
+        ing.name.toLowerCase().includes(lower) ||
+        lower.includes(ing.name.toLowerCase()) ||
+        ing.id.toLowerCase() === lower ||
+        ing.id.toLowerCase().includes(lower) ||
+        ing.aliases?.some(
+          (alias) =>
+            alias.toLowerCase().includes(lower) ||
+            lower.includes(alias.toLowerCase())
+        )
+    );
+  };
+
+  const fridgeIngredients = useMemo(() => {
+    return fridge.filter((item) => {
+      if (item.category) return item.category === "食材";
+      if (item.fromShopId) return shopCategoryById.get(item.fromShopId) === "食材";
+      return false;
+    });
+  }, [fridge, shopCategoryById]);
+
   const fridgeIngredientIds = useMemo(() => {
-    return fridge
+    return fridgeIngredients
       .map((item) => {
-        const lower = item.name.trim().toLowerCase();
-        const hit = ingredientCatalog.find(
-          (ing) =>
-            ing.name.toLowerCase().includes(lower) ||
-            ing.id.toLowerCase() === lower ||
-            ing.aliases?.some((a) => a.toLowerCase().includes(lower))
-        );
-        return hit?.id;
+        return findIngredientMatch(item.name)?.id;
       })
       .filter(Boolean) as string[];
-  }, [fridge]);
+  }, [fridgeIngredients]);
 
   const ranked: RankedRecipe[] = useMemo(() => {
     return recipes
@@ -122,16 +145,18 @@ export default function RecipesClient() {
     return seasonalCollections.find((c) => c.id === season) ?? seasonalCollections[0];
   })();
 
-  const handleAdd = (value?: string) => {
-    const v = (value ?? addQuery).trim();
+  const handleAdd = (value: string) => {
+    const v = value.trim();
     if (!v) return;
     setFridge((prev) => {
       if (prev.some((i) => i.name.toLowerCase() === v.toLowerCase())) return prev;
-      const next: FridgeItem[] = [{ id: crypto.randomUUID(), name: v, createdAt: Date.now() }, ...prev];
+      const next: FridgeItem[] = [
+        { id: crypto.randomUUID(), name: v, category: "食材", createdAt: Date.now() },
+        ...prev,
+      ];
       saveFridge(next);
       return next;
     });
-    setAddQuery("");
     setAddOpen(false);
   };
 
@@ -144,9 +169,9 @@ export default function RecipesClient() {
   };
 
   const headingByFridge = (() => {
-    if (fridge.length === 0) return "まずはbagに食材を入れてみよう";
-    if (fridge.length === 1) return `${fridge[0].name}を買ったあなたにおすすめ`;
-    return `${fridge.slice(0, 2).map((f) => f.name).join("と")}を買ったあなたにおすすめ`;
+    if (fridgeIngredients.length === 0) return "まずはbagに食材を入れてみよう";
+    if (fridgeIngredients.length === 1) return `${fridgeIngredients[0].name}を買ったあなたにおすすめ`;
+    return `${fridgeIngredients.slice(0, 2).map((f) => f.name).join("と")}を買ったあなたにおすすめ`;
   })();
 
   return (
@@ -168,42 +193,36 @@ export default function RecipesClient() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">冷蔵庫リスト</p>
-                <h2 className="text-xl font-bold text-gray-900">登録済み {fridge.length} 件</h2>
+                <h2 className="text-xl font-bold text-gray-900">登録済み {fridgeIngredients.length} 件</h2>
                 <p className="text-sm text-gray-700">レシピに使いたい食材を bag に入れておくと、おすすめレシピが見つけやすくなります。</p>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-start gap-3">
               {addOpen ? (
-                <div className="flex flex-col gap-2 rounded-xl border-2 border-amber-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm min-w-[260px]">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 rounded-xl border-2 border-amber-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm min-w-[260px]">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-amber-800">食材を選ぶ</p>
                     <button
                       type="button"
-                      onClick={() => handleAdd()}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-600 text-white text-xl font-bold shadow-sm transition hover:bg-amber-500"
-                      aria-label="食材を追加"
-                    >
-                      ＋
-                    </button>
-                    <input
-                      value={addQuery}
-                      onChange={(e) => setAddQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleAdd();
-                      }}
-                      className="w-full min-w-[140px] rounded-lg border border-amber-200 px-3 py-2.5 text-base focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                      placeholder="例：にんじん、なす、きゅうり"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddOpen(false);
-                        setAddQuery("");
-                      }}
+                      onClick={() => setAddOpen(false)}
                       className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300 bg-white text-sm font-bold text-amber-700 transition hover:bg-amber-50"
                       aria-label="追加を閉じる"
                     >
                       ×
                     </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {ingredientCatalog.map((ing) => (
+                      <button
+                        key={ing.id}
+                        type="button"
+                        onClick={() => handleAdd(ing.name)}
+                        className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-amber-50"
+                      >
+                        <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
+                        {ing.name}
+                      </button>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -217,12 +236,12 @@ export default function RecipesClient() {
                 </button>
               )}
 
-              {fridge.length === 0 ? (
+              {fridgeIngredients.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-4 py-6 text-center text-base text-gray-800">
                   まだ登録がありません。マーケットで買った食材を bag に入れると、ここに表示されます。
                 </div>
               ) : (
-                fridge.map((item) => (
+                fridgeIngredients.map((item) => (
                   <span
                     key={item.id}
                     className="inline-flex items-center gap-2 rounded-full border-2 border-amber-300 bg-amber-50 px-4 py-2 text-base text-gray-900 shadow-sm"

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
 import { shops } from "../map/data/shops";
+import { ingredientCatalog } from "../../../lib/recipes";
 
 type BagItem = {
   id: string;
   name: string;
   fromShopId?: number;
+  category?: string;
   qty?: string;
   note?: string;
   photo?: string;
@@ -51,11 +53,29 @@ export default function BagPage() {
   }, [items]);
 
   const groupedItems = useMemo(() => {
+    const isIngredient = (name: string) => {
+      const lower = name.trim().toLowerCase();
+      return ingredientCatalog.some(
+        (ing) =>
+          ing.name.toLowerCase().includes(lower) ||
+          lower.includes(ing.name.toLowerCase()) ||
+          ing.id.toLowerCase() === lower ||
+          ing.id.toLowerCase().includes(lower) ||
+          ing.aliases?.some(
+            (alias) =>
+              alias.toLowerCase().includes(lower) ||
+              lower.includes(alias.toLowerCase())
+          )
+      );
+    };
+
     const groups = new Map<string, BagItem[]>();
     sortedItems.forEach((item) => {
-      const category = item.fromShopId
-        ? shopLookup.get(item.fromShopId)?.category ?? "その他"
-        : "その他";
+      const category =
+        item.category ??
+        (isIngredient(item.name) ? "食材" : undefined) ??
+        (item.fromShopId ? shopLookup.get(item.fromShopId)?.category : undefined) ??
+        "その他";
       const list = groups.get(category) ?? [];
       list.push(item);
       groups.set(category, list);
