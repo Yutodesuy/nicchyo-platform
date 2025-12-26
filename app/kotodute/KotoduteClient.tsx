@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
-import GrandmaChatter from "../(public)/map/components/GrandmaChatter";
-import { grandmaKotoduteComments } from "../(public)/map/data/grandmaCommentsKotodute";
 import { useSearchParams } from "next/navigation";
 
 const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
@@ -198,7 +196,6 @@ export default function KotoduteClient() {
         </div>
       </footer>
       <NavigationBar />
-      <GrandmaChatter comments={grandmaKotoduteComments} titleLabel="ことづてばあちゃん" />
     </main>
   );
 }

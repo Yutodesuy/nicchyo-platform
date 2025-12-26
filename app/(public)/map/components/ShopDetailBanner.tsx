@@ -210,7 +210,7 @@ export default function ShopDetailBanner({
   }), [imagePosition, dragOffset]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-3xl bg-[#c8f58a] p-3 shadow-2xl">
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
