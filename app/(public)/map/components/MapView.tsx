@@ -43,7 +43,11 @@ const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
 // Zoom config by shop count
 const ZOOM_CONFIG = getZoomConfig(shops.length);
-const INITIAL_ZOOM = ZOOM_CONFIG.initial;
+// 【スマホUX最適化】デフォルトズームを18.0に設定
+// - 計算値（16-17程度）では引きすぎて「今どこにいるか」分かりにくい
+// - 18.0から開始することで、「適度に拡大された状態」で開始
+// - ユーザーは必要に応じて縮小操作で全体把握できる
+const INITIAL_ZOOM = 18.0; // 従来: ZOOM_CONFIG.initial（16-17程度）
 const MIN_ZOOM = ZOOM_BOUNDS.min; // Use recommended zoom bounds
 const MAX_ZOOM = ZOOM_BOUNDS.max; // Use recommended zoom bounds
 
