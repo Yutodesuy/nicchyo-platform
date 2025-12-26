@@ -207,8 +207,10 @@ export const SPACING_CONFIG: SpacingConfig = {
   minPixelsPerShop: 80,
 
   // 道路幅のオフセット（道路の中心線からの距離）
-  // 1.3km の道路に対して 50m ≈ 0.038 (3.8%)
-  roadWidthOffsetRatio: 0.038,
+  // 【スマホUX改善】道幅を狭くして店舗を主役に
+  // - 従来: 1.3km の道路に対して 50m ≈ 0.038 (3.8%)
+  // - 改善後: 1.3km の道路に対して 33m ≈ 0.025 (2.5%)
+  roadWidthOffsetRatio: 0.025,
 };
 
 /**
