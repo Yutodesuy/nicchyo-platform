@@ -131,6 +131,11 @@ export default function RecipeDetailClient({ id }: Props) {
             ))}
           </ol>
         </section>
+        {recipe.author && (
+          <p className="text-sm font-semibold text-amber-800">
+            投稿者: {recipe.author}
+          </p>
+        )}
 
         <section className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <Link
