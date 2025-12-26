@@ -23,6 +23,7 @@ import {
   DEFAULT_ILLUSTRATION_SIZE,
   ILLUSTRATION_SIZES,
   getIllustrationSizeForZoom,
+  getIllustrationScaleForZoom,
 } from '../config/displayConfig';
 
 interface ShopMarkerProps {
@@ -37,14 +38,17 @@ interface ShopMarkerProps {
 export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite, currentZoom }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 
-  // 【Phase 3.5】動的サイズ取得：ズームレベルに応じたサイズを決定
-  // - ズーム17.5以上: medium (60px) - 詳細表示に適したサイズ
-  // - ズーム16.0-17.5: small (40px) - 重なり防止
-  // - ズーム16.0未満: small (40px) - 重なり防止最優先
+  // 【連続的スケーリング】ズームレベルに応じたサイズとスケールを決定
+  // - ベースサイズ: small (45px) / medium (60px)
+  // - スケール係数: ズーム18.0で1.0、前後で0.18/zoomの変化
+  // - 結果: 背景の拡大・縮小に合わせてイラストも自然にスケール
   let sizeKey: 'small' | 'medium' | 'large';
+  let zoomScale = 1.0;
+
   if (currentZoom !== undefined) {
-    // ズームレベルが提供されている場合は、動的にサイズを決定
+    // ズームレベルが提供されている場合は、動的にサイズとスケールを決定
     sizeKey = getIllustrationSizeForZoom(currentZoom);
+    zoomScale = getIllustrationScaleForZoom(currentZoom);
   } else {
     // フォールバック: 店舗データまたはデフォルト設定からサイズを決定
     sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
@@ -134,19 +138,23 @@ export default function ShopMarker({ shop, onClick, isSelected, planOrderIndex, 
     </div>
   );
 
-  // Leaflet DivIconを作成（動的サイズ使用）
-  // 選択時は1.1倍に拡大し、当たり判定も同時に拡大
+  // Leaflet DivIconを作成（連続的スケーリング適用）
+  // - zoomScale: ズームレベルに応じた連続的なスケール係数
+  // - sizeMultiplier: 選択時の強調表示（1.1倍）
+  // - 結果: 背景と一緒に自然に拡大・縮小するイラスト
   const sizeMultiplier = isSelected ? 1.1 : 1.0;
+  const totalScale = zoomScale * sizeMultiplier;
+
   const customIcon = divIcon({
     html: iconMarkup,
     className: 'custom-shop-marker', // デフォルトスタイルを無効化
     iconSize: [
-      sizeConfig.width * sizeMultiplier,
-      sizeConfig.height * sizeMultiplier
+      sizeConfig.width * totalScale,
+      sizeConfig.height * totalScale
     ],
     iconAnchor: [
-      sizeConfig.anchor[0] * sizeMultiplier,
-      sizeConfig.anchor[1] * sizeMultiplier
+      sizeConfig.anchor[0] * totalScale,
+      sizeConfig.anchor[1] * totalScale
     ],
   });
 
