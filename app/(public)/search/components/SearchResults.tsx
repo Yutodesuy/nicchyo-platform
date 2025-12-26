@@ -11,6 +11,7 @@ interface SearchResultsProps {
   favoriteShopIds: number[];
   onCategoryClick?: (category: string) => void;
   onToggleFavorite?: (shopId: number) => void;
+  onSelectShop?: (shop: Shop) => void;
 }
 
 /**
@@ -24,6 +25,7 @@ export default function SearchResults({
   favoriteShopIds,
   onCategoryClick,
   onToggleFavorite,
+  onSelectShop,
 }: SearchResultsProps) {
   // 結果がない場合は空状態を表示
   if (shops.length === 0) {
@@ -53,6 +55,7 @@ export default function SearchResults({
             shop={shop}
             isFavorite={favoriteShopIds.includes(shop.id)}
             onToggleFavorite={onToggleFavorite}
+            onSelectShop={onSelectShop}
           />
         ))}
       </div>
