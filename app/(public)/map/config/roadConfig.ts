@@ -58,9 +58,10 @@ export const ROAD_CONFIG: RoadConfig = {
   centerLine: 133.53100,
 
   // 道幅の半分（北側/南側のオフセット）
-  // 【注意】この値は後方互換性のため残していますが、
-  // getRoadWidthOffset() 関数で動的に計算した値を使用することを推奨
-  widthOffset: 0.0006,
+  // 【スマホUX改善】道幅を狭くして店舗を主役に
+  // - 従来: 0.0006（やや広め）
+  // - 改善後: 0.0004（店舗イラストが引き立つ適度な幅）
+  widthOffset: 0.0004,
 
   // 表示設定
   opacity: 0.9,
@@ -100,11 +101,11 @@ export function getRoadWidthOffset(useDynamic: boolean = false): number {
   // 動的計算: 道路の長さに対する比率で計算
   // displayConfig をここで import すると循環依存になる可能性があるため、
   // 現時点では固定値を返す（将来の拡張用）
-  // TODO: displayConfig の SPACING_CONFIG.roadWidthOffsetRatio を使用
+  // 【スマホUX改善】道幅比率を縮小（0.038 → 0.025）
   const roadLengthDegrees = Math.abs(
     ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]
   );
-  const ratio = 0.038; // SPACING_CONFIG.roadWidthOffsetRatio と同期
+  const ratio = 0.025; // 【改善】0.038 → 0.025（道を狭くして店舗を主役に）
   return roadLengthDegrees * ratio;
 }
 

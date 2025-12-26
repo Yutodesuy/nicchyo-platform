@@ -65,22 +65,25 @@ function PlaceholderRoad({ config }: { config: RoadConfig }) {
   const [[latNW, lngNW], [latSE, lngSE]] = config.bounds;
 
   // SVG要素を生成
+  // 【スマホUX改善】道幅を狭くして店舗イラストを主役に
+  // - 従来: x=20〜80（60%幅）
+  // - 改善後: x=30〜70（40%幅）店舗が引き立つ適度な道幅
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1000" preserveAspectRatio="none">
       <!-- 背景（道路の地面） -->
-      <rect x="0" y="0" width="100" height="1000" fill="#d4c5b0" opacity="0.9"/>
+      <rect x="0" y="0" width="100" height="1000" fill="#d4c5b0" opacity="0.85"/>
 
       <!-- 道路の縁石（左） -->
-      <line x1="20" y1="0" x2="20" y2="1000" stroke="#9a8a7a" stroke-width="1" opacity="0.6"/>
+      <line x1="30" y1="0" x2="30" y2="1000" stroke="#9a8a7a" stroke-width="0.8" opacity="0.5"/>
 
       <!-- 道路の縁石（右） -->
-      <line x1="80" y1="0" x2="80" y2="1000" stroke="#9a8a7a" stroke-width="1" opacity="0.6"/>
+      <line x1="70" y1="0" x2="70" y2="1000" stroke="#9a8a7a" stroke-width="0.8" opacity="0.5"/>
 
       <!-- 中央線（破線） -->
-      <line x1="50" y1="0" x2="50" y2="1000" stroke="#a89070" stroke-width="0.5" stroke-dasharray="10,10" opacity="0.4"/>
+      <line x1="50" y1="0" x2="50" y2="1000" stroke="#a89070" stroke-width="0.4" stroke-dasharray="10,10" opacity="0.3"/>
 
       <!-- 微細なテクスチャ（道の質感） -->
-      <rect x="0" y="0" width="100" height="1000" fill="url(#roadTexture)" opacity="0.1"/>
+      <rect x="0" y="0" width="100" height="1000" fill="url(#roadTexture)" opacity="0.08"/>
 
       <defs>
         <pattern id="roadTexture" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
