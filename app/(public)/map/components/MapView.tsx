@@ -398,10 +398,10 @@ export default function MapView({
                   let targetZoom: number;
                   if (viewMode.mode === ViewMode.OVERVIEW) {
                     // OVERVIEW → INTERMEDIATE（エリア探索）へ
-                    targetZoom = 17.5;
+                    targetZoom = 18.0;  // 【スマホUX】17.5 → 18.0
                   } else {
                     // INTERMEDIATE → DETAIL（詳細閲覧）へ
-                    targetZoom = 18.5;
+                    targetZoom = 19.0;  // 【スマホUX】18.5 → 19.0
                   }
 
                   if (mapRef.current) {
