@@ -10,8 +10,6 @@ import CategoryFilter from './components/CategoryFilter';
 import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
-import GrandmaChatter from '../map/components/GrandmaChatter';
-import { grandmaSearchComments } from '../map/data/grandmaCommentsSearch';
 
 /**
  * 店舗検索メインコンポーネント
@@ -98,7 +96,6 @@ export default function SearchClient() {
 
       {/* ナビゲーションバー */}
       <NavigationBar />
-      <GrandmaChatter comments={grandmaSearchComments} titleLabel="検索ばあちゃん" />
     </div>
   );
 }
