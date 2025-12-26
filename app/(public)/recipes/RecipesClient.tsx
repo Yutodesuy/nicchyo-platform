@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
@@ -263,15 +264,27 @@ export default function RecipesClient() {
                     key={recipe.id}
                     className="flex flex-col gap-3 rounded-xl border-2 border-orange-300 bg-amber-50/60 px-4 py-4 text-xl"
                   >
+                    <div className="flex flex-wrap items-center gap-2 text-base text-gray-800">
+                      <span className="rounded-full bg-white px-3 py-1 border border-amber-100">🕒 {recipe.cookTime}</span>
+                      <span className="rounded-full bg-white px-3 py-1 border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
+                    </div>
+                    {recipe.heroImage && (
+                      <div className="overflow-hidden rounded-xl border border-amber-100 bg-white/80">
+                        <Image
+                          src={recipe.heroImage}
+                          alt={`${recipe.title}の写真`}
+                          width={720}
+                          height={420}
+                          className="h-40 w-full object-cover"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="text-2xl font-semibold text-gray-900">{recipe.title}</h3>
                         <p className="text-lg text-gray-800">{recipe.description}</p>
                       </div>
-                      <div className="flex flex-col items-end gap-2 text-lg text-gray-800">
-                        <span className="rounded-full bg-white px-4 py-2 text-base border border-amber-100">⏱ {recipe.cookTime}</span>
-                        <span className="rounded-full bg-white px-4 py-2 text-base border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
-                      </div>
+                      
                     </div>
                     <div className="flex flex-wrap gap-3 text-lg">
                       {recipe.ingredients.map((ing) => {
@@ -292,14 +305,6 @@ export default function RecipesClient() {
                           </span>
                         );
                       })}
-                    </div>
-                    <div className="rounded-lg border border-amber-100 bg-white/80 px-5 py-4 text-xl text-gray-900">
-                      <p className="font-semibold text-amber-800">作り方（抜粋）</p>
-                      <ul className="mt-3 list-disc pl-6 space-y-3">
-                        {recipe.steps.slice(0, 3).map((step) => (
-                          <li key={step}>{step}</li>
-                        ))}
-                      </ul>
                     </div>
                     <div className="flex gap-3">
                       <Link
@@ -383,9 +388,24 @@ export default function RecipesClient() {
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
                   {searchResults.map((recipe) => (
                     <div key={`${recipe.id}-search`} className="rounded-lg border-2 border-amber-200 bg-white px-4 py-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-800">
+                          <span className="rounded-full bg-white px-3 py-1 border border-amber-100">🕒 {recipe.cookTime}</span>
+                        <span className="rounded-full bg-white px-3 py-1 border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
+                      </div>
+                      {recipe.heroImage && (
+                        <div className="mt-2 mb-3 overflow-hidden rounded-lg border border-amber-100 bg-white/80">
+                          <Image
+                            src={recipe.heroImage}
+                            alt={`${recipe.title}の写真`}
+                            width={640}
+                            height={360}
+                            className="h-36 w-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div className="flex items-start gap-2">
                         <p className="text-xl font-semibold text-gray-900">{recipe.title}</p>
-                        <span className="rounded-full bg-amber-50 px-3 py-[4px] text-sm border border-amber-100">{recipe.cookTime}</span>
+                        
                       </div>
                       <p className="mt-1 text-base text-gray-700">{recipe.description}</p>
                       <div className="mt-2 flex flex-wrap gap-2 text-base">
@@ -465,12 +485,27 @@ export default function RecipesClient() {
                 if (!recipe) return null;
                 return (
                   <div key={`seasonal-${id}`} className="rounded-xl border-2 border-orange-200 bg-amber-50/60 px-4 py-3 text-lg">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-800">
+                      <span className="rounded-full bg-white px-3 py-1 border border-amber-100">🕒 {recipe.cookTime}</span>
+                      <span className="rounded-full bg-white px-3 py-1 border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
+                    </div>
+                    {recipe.heroImage && (
+                      <div className="mt-2 mb-3 overflow-hidden rounded-lg border border-amber-100 bg-white/80">
+                        <Image
+                          src={recipe.heroImage}
+                          alt={`${recipe.title}の写真`}
+                          width={640}
+                          height={360}
+                          className="h-36 w-full object-cover"
+                        />
+                      </div>
+                    )}
+                      <div className="flex items-start gap-2">
                       <div>
                         <p className="text-xl font-semibold text-gray-900">{recipe.title}</p>
                         <p className="text-base text-gray-700">{recipe.description}</p>
                       </div>
-                      <span className="rounded-full bg-white px-3 py-[4px] text-sm font-semibold text-amber-800 border border-amber-100">{recipe.cookTime}</span>
+                      
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-base">
                       {recipe.ingredients.map((ing) => {
@@ -511,3 +546,5 @@ export default function RecipesClient() {
     </div>
   );
 }
+
+
