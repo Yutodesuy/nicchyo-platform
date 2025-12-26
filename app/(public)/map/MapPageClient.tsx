@@ -133,6 +133,7 @@ export default function MapPageClient() {
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
               titleLabel="マップばあちゃん"
+              fullWidth
               priorityMessage={
                 priority
                   ? {
