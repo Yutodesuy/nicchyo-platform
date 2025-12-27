@@ -14,7 +14,7 @@ import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
-import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
+import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
 
 // Map bounds (Sunday market)
@@ -230,8 +230,17 @@ export default function MapView({
         setFavoriteShopIds(loadFavoriteShopIds());
       }
     };
+    const handleFavoriteUpdate = (event: Event) => {
+      if (event.type === FAVORITE_SHOPS_UPDATED_EVENT) {
+        setFavoriteShopIds(loadFavoriteShopIds());
+      }
+    };
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener(FAVORITE_SHOPS_UPDATED_EVENT, handleFavoriteUpdate);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, handleFavoriteUpdate);
+    };
   }, []);
 
   const recipeIngredients = useMemo(() => {

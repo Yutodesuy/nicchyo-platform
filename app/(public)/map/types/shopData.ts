@@ -53,6 +53,15 @@ export interface ShopEditableData {
   /** 店舗の説明文 */
   description: string;
 
+  /** 得意料理（郷土料理名 or なし） */
+  specialtyDish?: string;
+
+  /** 出店者について（自由記述） */
+  aboutVendor?: string;
+
+  /** 出店スタイル（自由記述） */
+  stallStyle?: string;
+
   /** 出店予定・営業時間 */
   schedule: string;
 
@@ -219,6 +228,9 @@ export const EDITABLE_FIELDS: (keyof ShopEditableData)[] = [
   'icon',
   'products',
   'description',
+  'specialtyDish',
+  'aboutVendor',
+  'stallStyle',
   'schedule',
   'message',
   'images',
