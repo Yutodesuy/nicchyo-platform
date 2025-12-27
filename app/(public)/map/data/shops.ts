@@ -89,6 +89,18 @@ const categories = [
   },
 ];
 
+function getShopProducts(categoryProducts: string[], seed: number): string[] {
+  const count = 4 + (seed % 4);
+  const start = (seed * 3) % categoryProducts.length;
+  const selection: string[] = [];
+
+  for (let i = 0; i < count; i++) {
+    selection.push(categoryProducts[(start + i) % categoryProducts.length]);
+  }
+
+  return selection;
+}
+
 // 店主の名前のサンプル
 const ownerNames = [
   '田中 花子', '山田 太郎', '佐藤 美咲', '鈴木 健太',
@@ -151,8 +163,9 @@ for (let i = 0; i < 150; i++) {
   // 30%の確率でメッセージを追加
   const message = Math.random() > 0.7 ? messages[i % messages.length] : undefined;
 
+  const currentId = shopId++;
   shops.push({
-    id: shopId++,
+    id: currentId,
     name: `${category.name}のお店 ${i + 1}`,
     ownerName,
     side: 'north',
@@ -160,7 +173,7 @@ for (let i = 0; i < 150; i++) {
     lat,
     lng,
     category: category.name,
-    products: category.products,
+    products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
     icon: category.icon,
     schedule,
@@ -178,8 +191,9 @@ for (let i = 0; i < 150; i++) {
   // 30%の確率でメッセージを追加
   const message = Math.random() > 0.7 ? messages[(i + 5) % messages.length] : undefined;
 
+  const currentId = shopId++;
   shops.push({
-    id: shopId++,
+    id: currentId,
     name: `${category.name}のお店 ${i + 151}`,
     ownerName,
     side: 'south',
@@ -187,7 +201,7 @@ for (let i = 0; i < 150; i++) {
     lat,
     lng,
     category: category.name,
-    products: category.products,
+    products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
     icon: category.icon,
     schedule,
