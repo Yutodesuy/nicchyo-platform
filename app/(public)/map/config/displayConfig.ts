@@ -123,14 +123,16 @@ export function getIllustrationScaleForZoom(currentZoom: number): number {
   const baseScale = 1.0;
 
   // ズーム1段階あたりのスケール変化率
-  // 0.18 = ズーム1.0で約18%の変化（控えめで自然）
-  const scalePerZoom = 0.18;
+  // 【修正】0.18 → 0.35（ズーム1.0で約35%の変化、より積極的な拡大）
+  // - ズーム20.0: スケール 1.70（70%拡大）
+  // - ズーム16.0: スケール 0.30（70%縮小）
+  const scalePerZoom = 0.35;
 
   // 線形補間でスケール計算
   const scale = baseScale + (currentZoom - baseZoom) * scalePerZoom;
 
-  // 安全範囲: 0.5 〜 1.8（極端な縮小・拡大を防ぐ）
-  return Math.max(0.5, Math.min(1.8, scale));
+  // 安全範囲: 0.3 〜 2.0（より広範囲のスケーリング）
+  return Math.max(0.3, Math.min(2.0, scale));
 }
 
 /**
@@ -150,40 +152,26 @@ export interface ZoomDisplayRule {
 }
 
 /**
- * ズーム段階別の表示ルール
+ * ズーム段階別の表示ルール（2段階表示）
  *
- * 【公平性の保証】
- * - filterInterval を使った間引きは「回転式」で公平に配分
- * - 特定の店舗だけが常に表示されることはない
+ * 【2段階表示】
+ * - 拡大時: 全店舗表示（filterInterval = 1）
+ * - 縮小時: 丁目別フィルタリング（filterInterval = 0）
  */
 export const ZOOM_DISPLAY_RULES: ZoomDisplayRule[] = [
   {
-    minZoom: 17.0,
-    filterInterval: 1, // 全店舗表示
+    minZoom: 18.0,
+    filterInterval: 1, // 拡大時: 全店舗表示（300店舗）
     allowShopDetails: true,
     allowShopInfo: true,
-    description: '詳細表示 - 全店舗',
-  },
-  {
-    minZoom: 16.5,
-    filterInterval: 3, // 3店舗に1つ
-    allowShopDetails: false,
-    allowShopInfo: true,
-    description: '中距離表示',
-  },
-  {
-    minZoom: 15.0,
-    filterInterval: 10, // 10店舗に1つ
-    allowShopDetails: false,
-    allowShopInfo: true,
-    description: '俯瞰表示',
+    description: '拡大時 - 全店舗',
   },
   {
     minZoom: 0,
-    filterInterval: 20, // 20店舗に1つ
+    filterInterval: 0, // 縮小時: 丁目別フィルタリング（14店舗）
     allowShopDetails: false,
-    allowShopInfo: false,
-    description: '広域表示',
+    allowShopInfo: true,
+    description: '縮小時 - 丁目別代表店舗',
   },
 ];
 
@@ -324,17 +312,14 @@ export function getOptimalSpacing(
 }
 
 /**
- * マップの表示モード（Phase 3）
- * Googleマップライクな段階的表示を実現
+ * マップの表示モード（2段階表示）
+ * シンプルで直感的な拡大・縮小操作を実現
  */
 export enum ViewMode {
-  /** 俯瞰モード: 店舗アイコンのみ、詳細情報表示禁止 */
+  /** 縮小時: 各丁目から2店舗（左右1つずつ）、計14店舗表示 */
   OVERVIEW = 'OVERVIEW',
 
-  /** 中間モード: 店舗アイコン、タップで自然ズームアップ */
-  INTERMEDIATE = 'INTERMEDIATE',
-
-  /** 詳細モード: 詳細バナー表示可能 */
+  /** 拡大時: 全300店舗を表示 */
   DETAIL = 'DETAIL',
 }
 
@@ -355,65 +340,51 @@ export interface ViewModeConfig {
 }
 
 /**
- * 表示モード設定（ズームレベルから決定）
+ * 表示モード設定（2段階表示）
  *
- * 【スマホUX根本改善】連続的スケーリング × 最適間隔で自然な操作感
+ * 【シンプルな2段階表示】
  *
  * ┌─────────────────────────────────────┐
- * │ OVERVIEW（16.0-18.0）幅2.0         │
- * │ 役割：全体俯瞰                      │
- * │ 体験：「日曜市のどこに何があるか把握」│
- * │ 表示：5-6店舗（1.7-2%）            │
- * │ イラスト：連続的スケール（縮小）   │
+ * │ OVERVIEW（16.0-18.0未満）          │
+ * │ 役割：縮小時、全体俯瞰              │
+ * │ 体験：「日曜市の7丁目を把握」       │
+ * │ 表示：14店舗（各丁目から左右1つずつ）│
+ * │ イラスト：縮小表示                  │
+ * │ タップ：その丁目にズームイン        │
  * └─────────────────────────────────────┘
  * ┌─────────────────────────────────────┐
- * │ INTERMEDIATE（18.0-19.0）幅1.0     │
- * │ 役割：エリア探索（デフォルト）      │
- * │ 体験：「店舗配置が明確、重なりゼロ」│
- * │ 表示：7-10店舗（2.5-3%）           │
- * │ イラスト：連続的スケール（基準）   │
- * └─────────────────────────────────────┘
- * ┌─────────────────────────────────────┐
- * │ DETAIL（19.0以上）                 │
- * │ 役割：詳細閲覧                      │
- * │ 体験：「画面横幅に6-8店舗、快適」   │
- * │ 表示：17-25店舗（6-8%）            │
- * │ イラスト：連続的スケール（拡大）   │
+ * │ DETAIL（18.0以上）                 │
+ * │ 役割：拡大時、詳細閲覧              │
+ * │ 体験：「全店舗を見渡せる」          │
+ * │ 表示：300店舗すべて                 │
+ * │ イラスト：拡大表示                  │
+ * │ タップ：店舗詳細を表示              │
  * └─────────────────────────────────────┘
  *
  * 【設計原則】
- * - 連続的スケーリング：背景と一緒にイラストも自然に拡大・縮小
- * - デフォルトズーム18.0：「今どこにいるか」が直感的に分かる
- * - 最適間隔：拡大・縮小どちらでも重ならない根本的な間隔設計
- * - スマホファースト：画面横幅に6-8店舗が収まる快適な密度
+ * - 2段階のシンプルな切り替え
+ * - 縮小時は丁目別に代表店舗を表示（論理的な7分割）
+ * - 拡大時は全店舗を表示
+ * - デフォルトズーム18.0：拡大時（全店舗表示）
  */
 export const VIEW_MODE_CONFIGS: ViewModeConfig[] = [
   {
     mode: ViewMode.DETAIL,
-    minZoom: 19.0,  // 【スマホUX】19.0（詳細閲覧に適したズーム）
-    filterInterval: 12,  // 【根本改善】10 → 12（25店舗 = 8%、画面に6-8店舗）
-    mobileFilterInterval: 18,  // 【根本改善】15 → 18（17店舗 = 6%、快適な間隔）
+    minZoom: 18.0,  // 【2段階表示】拡大時（デフォルト）
+    filterInterval: 1,  // 全店舗表示（300店舗すべて）
+    mobileFilterInterval: 1,  // 全店舗表示
     allowShopDetails: true,
     allowMarkerInteraction: true,
-    description: '詳細閲覧 - 大きく見やすいイラスト、画面横幅に6-8店舗',
-  },
-  {
-    mode: ViewMode.INTERMEDIATE,
-    minZoom: 18.0,  // 【スマホUX】18.0（エリア探索、デフォルト表示）
-    filterInterval: 30,  // 【根本改善】25 → 30（10店舗 = 3%、重なり完全防止）
-    mobileFilterInterval: 40,  // 【根本改善】35 → 40（7-8店舗 = 2.5%、超快適）
-    allowShopDetails: false,
-    allowMarkerInteraction: true,
-    description: 'エリア探索 - デフォルト表示、店舗配置が明確、重なりゼロ',
+    description: '拡大時 - 全300店舗を表示',
   },
   {
     mode: ViewMode.OVERVIEW,
-    minZoom: 16.0,  // 【スマホUX】16.0（全体俯瞰、MIN_ZOOMと一致）
-    filterInterval: 50,  // 【根本改善】40 → 50（6店舗 = 2%、超シンプル）
-    mobileFilterInterval: 60,  // 【根本改善】50 → 60（5店舗 = 1.7%、最小限）
+    minZoom: 16.0,  // 【2段階表示】縮小時
+    filterInterval: 0,  // 【特殊】丁目別フィルタリング（後述）
+    mobileFilterInterval: 0,  // 【特殊】丁目別フィルタリング（後述）
     allowShopDetails: false,
     allowMarkerInteraction: true,
-    description: '全体俯瞰 - 日曜市全体の配置把握、最小限の店舗表示',
+    description: '縮小時 - 各丁目から2店舗（計14店舗）',
   },
 ];
 
