@@ -128,6 +128,7 @@ export default function MapAgentAssistant({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [showNotes, setShowNotes] = useState(false);
 
   const open = typeof isOpen === 'boolean' ? isOpen : internalOpen;
   const questions = useMemo(() => getQuestions(answers), [answers]);
@@ -266,6 +267,7 @@ export default function MapAgentAssistant({
   const handleReset = useCallback(() => {
     setAnswers({});
     setNotes([]);
+    setShowNotes(false);
     setCurrentSelection(null);
     setPlan(null);
     setStep(0);
@@ -368,26 +370,36 @@ export default function MapAgentAssistant({
                 )}
 
                 {notes.length > 0 && !plan && (
-                  <div className="rounded-md bg-white/70 border border-dashed border-amber-300 p-3 space-y-2">
-                    <div className="text-xs font-semibold text-amber-700">これまでのメモ</div>
-                    {notes.map((note) => (
-                      <div
-                        key={note.id}
-                        className="rounded bg-amber-50 px-2 py-2 shadow-inner flex flex-col gap-1"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] text-amber-700">{note.q}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(note.id)}
-                            className="text-[11px] text-amber-700 underline"
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes((prev) => !prev)}
+                      className="text-xs font-semibold text-sky-600 underline"
+                    >
+                      これまでのメモ
+                    </button>
+                    {showNotes && (
+                      <div className="rounded-md bg-white/70 border border-dashed border-amber-300 p-3 space-y-2">
+                        {notes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="rounded bg-amber-50 px-2 py-2 shadow-inner flex flex-col gap-1"
                           >
-                            編集
-                          </button>
-                        </div>
-                        <p className="text-sm font-semibold">{note.a}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[11px] text-amber-700">{note.q}</p>
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(note.id)}
+                                className="text-[11px] text-amber-700 underline"
+                              >
+                                編集
+                              </button>
+                            </div>
+                            <p className="text-sm font-semibold">{note.a}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
 
