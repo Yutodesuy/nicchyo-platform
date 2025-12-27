@@ -230,7 +230,7 @@ export default function MapAgentAssistant({
       )}
 
       {open && (
-        <div className="absolute left-4 bottom-20 z-[1400] w-[min(420px,90vw)]">
+        <div className="absolute left-4 bottom-48 z-[2200] w-[min(420px,90vw)]">
           <div className="relative max-h-[70vh] overflow-y-auto pr-1">
             <div className="absolute -top-3 right-6 rotate-6 h-6 w-6 bg-amber-300 rounded-sm shadow-md" />
             <div className="absolute -top-5 right-16 -rotate-3 h-5 w-5 bg-amber-200 rounded-sm shadow-md" />
