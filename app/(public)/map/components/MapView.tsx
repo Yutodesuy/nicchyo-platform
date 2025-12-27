@@ -487,7 +487,7 @@ export default function MapView({
             onAddToBag={handleAddToBag}
           />
           {canNavigate && (
-            <div className="fixed bottom-28 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
+            <div className="fixed bottom-20 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
               <button
                 type="button"
                 onClick={() => handleSelectByOffset(-1)}
