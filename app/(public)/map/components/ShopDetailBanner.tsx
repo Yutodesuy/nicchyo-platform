@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
 import { loadKotodute, type KotoduteNote } from "../../../../lib/kotoduteStorage";
+import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds, toggleFavoriteShopId } from "../../../../lib/favoriteShops";
 
 type ShopDetailBannerProps = {
   shop: Shop;
@@ -54,6 +55,7 @@ export default function ShopDetailBanner({
   const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
+  const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const touchStartX = useRef<number | null>(null);
   const initialPosition = useRef<"left" | "right">("left");
 
@@ -81,6 +83,30 @@ export default function ShopDetailBanner({
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateFavorites = () => {
+      setFavoriteShopIds(loadFavoriteShopIds());
+    };
+    updateFavorites();
+    const handler = (event: StorageEvent) => {
+      if (event.key === FAVORITE_SHOPS_KEY) {
+        updateFavorites();
+      }
+    };
+    const updateHandler = (event: Event) => {
+      if (event.type === FAVORITE_SHOPS_UPDATED_EVENT) {
+        updateFavorites();
+      }
+    };
+    window.addEventListener("storage", handler);
+    window.addEventListener(FAVORITE_SHOPS_UPDATED_EVENT, updateHandler);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, updateHandler);
+    };
+  }, [shop.id]);
 
   // 音声チャイム再生（最適化：useCallbackでメモ化）
   const playChime = useCallback(() => {
@@ -186,6 +212,13 @@ export default function ShopDetailBanner({
     router.push("/bag");
   }, [router]);
 
+  const isFavorite = favoriteShopIds.includes(shop.id);
+
+  const handleToggleFavorite = useCallback(() => {
+    const next = toggleFavoriteShopId(shop.id);
+    setFavoriteShopIds(next);
+  }, [shop.id]);
+
   const handleConfirmAdd = useCallback(() => {
     if (!pendingProduct) return;
     onAddToBag?.(pendingProduct, shop.id);
@@ -215,7 +248,7 @@ export default function ShopDetailBanner({
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
               {shop.name}
             </h2>
             <p className="text-[11px] text-slate-600">
@@ -223,13 +256,14 @@ export default function ShopDetailBanner({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-1 text-[11px] text-pink-500 shadow-sm transition-transform hover:scale-105"
+                                    <button
+              className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
               type="button"
-              aria-label="お気に入りに追加"
+              onClick={handleToggleFavorite}
+              aria-label={isFavorite ? "\u304a\u6c17\u306b\u5165\u308a\u3092\u89e3\u9664" : "\u304a\u6c17\u306b\u5165\u308a\u306b\u8ffd\u52a0"}
             >
-              <span>❤️</span>
-              <span>お気に入り</span>
+              <span>{isFavorite ? "\u2665" : "\u2661"}</span>
+              <span>{isFavorite ? "\u304a\u6c17\u306b\u5165\u308a\u6e08\u307f" : "\u304a\u6c17\u306b\u5165\u308a"}</span>
             </button>
             <button
               onClick={onClose}
@@ -255,43 +289,29 @@ export default function ShopDetailBanner({
             <div className="flex-1 px-4 py-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="inline-block rounded-full bg-emerald-500 px-2 py-[2px] text-[9px] font-semibold text-white">
-                  出店者の思い
+                  出店者について
                 </div>
-                <p className="text-xs leading-snug text-slate-800">
-                  {shop.message || shop.description}
+                <p className="text-[14px] leading-snug text-slate-800">
+                  {shop.aboutVendor || shop.message || shop.description}
                 </p>
-                <div className="rounded-lg bg-yellow-100 px-2 py-2">
-                  <p className="text-[9px] font-semibold text-amber-800">出店予定</p>
-                  <p className="text-[10px] text-slate-700 mt-1">{shop.schedule}</p>
-                </div>
               </div>
             </div>
 
-            {/* 右側テキスト：商品情報 */}
             <div className="flex-1 px-4 py-3 flex flex-col justify-between pl-8">
               <div className="space-y-2 text-xs text-slate-800">
-                <div>
-                  <p className="text-[10px] font-semibold text-slate-500 mb-1">ジャンル</p>
-                  <p className="text-sm font-bold">{shop.category}</p>
+                <div className="rounded-lg bg-yellow-100 px-2 py-2">
+                  <p className="text-[9px] font-semibold text-amber-800">出店スタイル</p>
+                  <p className="text-[14px] text-slate-700 mt-1">
+                    {shop.stallStyle ?? shop.schedule}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-500 mb-1">主な商品</p>
-                  <ul className="list-disc list-inside space-y-[2px] text-[11px]">
-                    {shop.products.slice(0, 3).map((product, idx) => (
-                      <li key={idx}>{product}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex items-center gap-1 pt-1">
-                  <span className="text-lg">{shop.icon}</span>
-                  <span className="text-[10px] font-semibold">
-                    {shop.side === 'north' ? '北側' : '南側'} {shop.position + 1}番
-                  </span>
+                  <p className="text-[10px] font-semibold text-slate-500 mb-1">得意料理</p>
+                  <p className="text-sm font-bold">{shop.specialtyDish ?? "なし"}</p>
                 </div>
               </div>
             </div>
 
-            {/* 画像：上に浮かんで左右に動く */}
             <div
               className={`absolute top-0 h-full flex-shrink-0 transition-all ${
                 dragOffset === 0 ? "duration-300" : "duration-0"
@@ -328,9 +348,9 @@ export default function ShopDetailBanner({
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-amber-500 px-2 py-[1px] text-[11px] font-semibold text-white">
-                商品
+                商品名
               </span>
-              <span className="text-[11px] text-amber-800">ドラッグしてバッグへ</span>
+              <span className="text-[11px] text-amber-800">タップ/ドラッグでバッグへ</span>
             </div>
             <button
               type="button"
