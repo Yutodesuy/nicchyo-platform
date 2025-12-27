@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker } from "react-leaflet";
+import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops, Shop } from "../data/shops";
@@ -84,6 +84,15 @@ function isIngredientName(name: string) {
   );
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ===== Mobile zoom buttons =====
 function MobileZoomControls() {
   const map = useMap();
@@ -124,6 +133,8 @@ type MapViewProps = {
   onCloseRecipeOverlay?: () => void;
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
+  searchShopIds?: number[];
+  searchLabel?: string;
 };
 
 export default function MapView({
@@ -133,6 +144,8 @@ export default function MapView({
   onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
+  searchShopIds,
+  searchLabel,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
@@ -143,6 +156,26 @@ export default function MapView({
   const mapRef = useRef<L.Map | null>(null);
 
   const visibleShops = filterShopsByZoom(shops, currentZoom);
+  const normalizedSearchLabel = searchLabel?.trim() || "検索結果";
+  const searchIdSet = useMemo(() => {
+    if (!searchShopIds || searchShopIds.length === 0) return null;
+    return new Set(searchShopIds);
+  }, [searchShopIds]);
+  const searchShops = useMemo(() => {
+    if (!searchIdSet) return [];
+    return shops.filter((shop) => searchIdSet.has(shop.id));
+  }, [searchIdSet]);
+  const searchMarkerIcon = useMemo(() => {
+    if (!searchIdSet) return null;
+    const safeLabel = escapeHtml(normalizedSearchLabel);
+    return L.divIcon({
+      className: "",
+      html: `<div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(255,255,255,0.96);border:2px solid #f59e0b;border-radius:18px;font-size:12px;font-weight:700;color:#92400e;box-shadow:0 6px 12px rgba(0,0,0,0.18);line-height:1.3;text-align:center;white-space:nowrap;">
+        <span aria-hidden="true">🔍</span>
+        <span style="display:inline-block;white-space:nowrap;">${safeLabel}</span>
+      </div>`,
+    });
+  }, [searchIdSet, normalizedSearchLabel]);
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -358,6 +391,19 @@ export default function MapView({
             />
           );
         })}
+
+        {}
+        {searchMarkerIcon && searchShops.map((shop) => (
+          <Marker
+            key={`search-${shop.id}`}
+            position={[shop.lat, shop.lng]}
+            icon={searchMarkerIcon}
+            zIndexOffset={1200}
+            eventHandlers={{
+              click: () => setSelectedShop(shop),
+            }}
+          />
+        ))}
 
         {}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {
