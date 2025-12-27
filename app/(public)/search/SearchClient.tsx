@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import NavigationBar from '../../components/NavigationBar';
-import { shops } from '../map/data/shops';
+import { shops, type Shop } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
@@ -10,6 +10,7 @@ import CategoryFilter from './components/CategoryFilter';
 import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
+import ShopDetailBanner from '../map/components/ShopDetailBanner';
 
 /**
  * 店舗検索メインコンポーネント
@@ -20,6 +21,8 @@ export default function SearchClient() {
   const [category, setCategory] = useState<string | null>(null);
   const [blockNumber, setBlockNumber] = useState('');
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -47,6 +50,35 @@ export default function SearchClient() {
 
   // 検索クエリが入力されているか
   const hasQuery = textQuery.trim() !== '' || category !== null || blockNumber.trim() !== '';
+  const selectedIndex = useMemo(() => {
+    if (!selectedShop) return -1;
+    return filteredShops.findIndex((shop) => shop.id === selectedShop.id);
+  }, [filteredShops, selectedShop]);
+
+  const canNavigate = filteredShops.length > 1 && selectedIndex >= 0;
+
+  const handleSelectByOffset = useCallback((offset: number) => {
+    if (!canNavigate) return;
+    const nextIndex = (selectedIndex + offset + filteredShops.length) % filteredShops.length;
+    setSelectedShop(filteredShops[nextIndex]);
+  }, [canNavigate, filteredShops, selectedIndex]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  }, []);
+
+  const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (!canNavigate || touchStartY.current === null) return;
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
+    const delta = endY - touchStartY.current;
+    const threshold = 40;
+    if (delta <= -threshold) {
+      handleSelectByOffset(1);
+    } else if (delta >= threshold) {
+      handleSelectByOffset(-1);
+    }
+    touchStartY.current = null;
+  }, [canNavigate, handleSelectByOffset]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-24">
@@ -90,9 +122,40 @@ export default function SearchClient() {
             onCategoryClick={setCategory}
             favoriteShopIds={favoriteShopIds}
             onToggleFavorite={handleToggleFavorite}
+            onSelectShop={setSelectedShop}
           />
         </section>
       </main>
+
+      {selectedShop && (
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <ShopDetailBanner
+            shop={selectedShop}
+            onClose={() => setSelectedShop(null)}
+          />
+          {canNavigate && (
+            <div className="fixed bottom-28 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleSelectByOffset(-1)}
+                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+              >
+                ←前へ
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectByOffset(1)}
+                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+              >
+                次へ→
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ナビゲーションバー */}
       <NavigationBar />
