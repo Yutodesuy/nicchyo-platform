@@ -243,8 +243,8 @@ export default function ShopDetailBanner({
   }), [imagePosition, dragOffset]);
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-3xl bg-[#c8f58a] p-3 shadow-2xl">
+    <div className="fixed inset-x-0 top-16 bottom-16 z-[2000] flex items-stretch justify-center bg-black/40 px-4 py-4">
+      <div className="w-full max-w-4xl rounded-3xl bg-[#c8f58a] p-3 shadow-2xl h-full overflow-y-auto">
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
           <div>
@@ -257,7 +257,7 @@ export default function ShopDetailBanner({
           </div>
           <div className="flex items-center gap-2">
                                     <button
-              className={`flex items-center gap-1 rounded-full px-2 py-1 text-[11px] shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
+              className={`flex items-center gap-2 rounded-full mr-4 px-4 py-2 text-sm shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
               type="button"
               onClick={handleToggleFavorite}
               aria-label={isFavorite ? "\u304a\u6c17\u306b\u5165\u308a\u3092\u89e3\u9664" : "\u304a\u6c17\u306b\u5165\u308a\u306b\u8ffd\u52a0"}
@@ -267,7 +267,7 @@ export default function ShopDetailBanner({
             </button>
             <button
               onClick={onClose}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow transition-transform hover:scale-110"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow transition-transform hover:scale-110"
               type="button"
               aria-label="閉じる"
             >
