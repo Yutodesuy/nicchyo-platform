@@ -12,10 +12,21 @@ import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
-import { getRoadBounds } from '../config/roadConfig';
+import {
+  getRoadBounds,
+  getSundayMarketBounds,
+  getRecommendedZoomBounds,
+} from '../config/roadConfig';
 import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
-import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
+import {
+  getMinZoomForShopDetails,
+  getOptimalSpacing,
+  getViewModeForZoom,
+  ViewMode,
+  canShowShopDetailBanner,
+  getFilterIntervalForDevice,
+} from '../config/displayConfig';
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -24,17 +35,25 @@ const KOCHI_SUNDAY_MARKET: [number, number] = [
   (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
 ];
 
+// Sunday Market area boundaries (restrict pan operations to this area)
+const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
+
+// Recommended zoom bounds (optimal range for Sunday Market)
+const ZOOM_BOUNDS = getRecommendedZoomBounds();
+
 // Zoom config by shop count
 const ZOOM_CONFIG = getZoomConfig(shops.length);
-const INITIAL_ZOOM = ZOOM_CONFIG.initial;
-const MIN_ZOOM = ZOOM_CONFIG.min;
-const MAX_ZOOM = ZOOM_CONFIG.max;
+// 【スマホUX最適化】デフォルトズームを18.0に設定
+// - 計算値（16-17程度）では引きすぎて「今どこにいるか」分かりにくい
+// - 18.0から開始することで、「適度に拡大された状態」で開始
+// - ユーザーは必要に応じて縮小操作で全体把握できる
+const INITIAL_ZOOM = 18.0; // 従来: ZOOM_CONFIG.initial（16-17程度）
+const MIN_ZOOM = ZOOM_BOUNDS.min; // Use recommended zoom bounds
+const MAX_ZOOM = ZOOM_BOUNDS.max; // Use recommended zoom bounds
 
+// DEPRECATED: Use SUNDAY_MARKET_BOUNDS instead
 // Allow a slight pan margin outside road bounds
-const MAX_BOUNDS: [[number, number], [number, number]] = [
-  [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
-  [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
-];
+const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
 const ORDER_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8"];
 const PLAN_MARKER_ICON = "🗒️";
@@ -135,6 +154,7 @@ export default function MapView({
   onAgentToggle,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(0);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -142,7 +162,24 @@ export default function MapView({
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  const visibleShops = filterShopsByZoom(shops, currentZoom);
+  // 【2段階表示】ズームレベルに応じた店舗フィルタリング
+  // - 拡大時（zoom 18.0+）: 全300店舗を表示
+  // - 縮小時（zoom 16.0-18.0）: 各丁目から2店舗（計14店舗）を表示
+  const visibleShops = useMemo(() => {
+    // filterShopsByZoom を使用して統一的なフィルタリングを実行
+    return filterShopsByZoom(shops, currentZoom, isMobile);
+  }, [currentZoom, isMobile]);
+
+  // 【Phase 3】表示モードに応じて詳細バナーのレンダリング自体を制御
+  // CSS で隠すのではなく、コンポーネント自体をレンダリングしない（公平性の徹底）
+  const shouldRenderDetailBanner = canShowShopDetailBanner(currentZoom);
+
+  // レスポンシブ対応: 画面サイズとズームレベルに応じた最適間隔を計算
+  // Phase 3のクラスタリング実装で使用予定
+  const optimalSpacing = useMemo(() => {
+    if (screenWidth === 0) return 80; // 初期値
+    return getOptimalSpacing(screenWidth, currentZoom);
+  }, [screenWidth, currentZoom]);
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -156,6 +193,7 @@ export default function MapView({
       const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
+      setScreenWidth(window.innerWidth);
     };
 
     detectMobile();
@@ -298,6 +336,18 @@ export default function MapView({
     }
   }, [canNavigate, selectedShopIndex]);
 
+  // 【おばあちゃんチャット対応】ズームレベルに応じた動的パディング
+  // 縮小時は広い範囲を表示するため、より多くのパディングが必要
+  const mapBottomPadding = useMemo(() => {
+    if (currentZoom < 18.0) {
+      // 縮小時（OVERVIEW）: より多くのパディング
+      return isMobile ? "360px" : "320px";
+    } else {
+      // 拡大時（DETAIL）: 標準パディング
+      return isMobile ? "280px" : "240px";
+    }
+  }, [currentZoom, isMobile]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -314,6 +364,7 @@ export default function MapView({
           height: "100%",
           width: "100%",
           backgroundColor: "#faf8f3",
+          paddingBottom: mapBottomPadding,
         }}
         zoomControl={!isMobile}
         attributionControl={false}
@@ -340,17 +391,60 @@ export default function MapView({
             <ShopMarker
               key={shop.id}
               shop={shop}
+              currentZoom={currentZoom}
               onClick={(clickedShop) => {
-                if (!canOpenShopDetails(currentZoom)) {
-                  const minZoom = getMinZoomForShopDetails();
-                  if (mapRef.current) {
-                    mapRef.current.flyTo([clickedShop.lat, clickedShop.lng], minZoom, {
-                      duration: 0.75,
-                    });
+                const viewMode = getViewModeForZoom(currentZoom);
+
+                if (viewMode.mode === ViewMode.DETAIL) {
+                  // 詳細モード: 詳細バナーを表示
+                  setSelectedShop(clickedShop);
+                } else {
+                  // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
+                  // OVERVIEW → INTERMEDIATE（17.5）
+                  // INTERMEDIATE → DETAIL（18.5）
+
+                  // 周辺店舗を検索（緯度±0.001度、経度±0.0005度 ≈ 半径100m程度）
+                  const nearbyShops = shops.filter(s =>
+                    Math.abs(s.lat - clickedShop.lat) < 0.001 &&
+                    Math.abs(s.lng - clickedShop.lng) < 0.0005
+                  );
+
+                  // 周辺店舗が1店舗のみの場合は、その店舗を中心にする
+                  // 複数ある場合は、周辺エリアの重心を計算
+                  let centerLat: number;
+                  let centerLng: number;
+
+                  if (nearbyShops.length === 0) {
+                    // フォールバック: クリックした店舗を中心にする
+                    centerLat = clickedShop.lat;
+                    centerLng = clickedShop.lng;
+                  } else {
+                    // 周辺店舗の重心を計算
+                    centerLat = nearbyShops.reduce((sum, s) => sum + s.lat, 0) / nearbyShops.length;
+                    centerLng = nearbyShops.reduce((sum, s) => sum + s.lng, 0) / nearbyShops.length;
                   }
-                  return;
+
+                  // 【段階的ズームアップ】現在のモードに応じて次の段階へ
+                  let targetZoom: number;
+                  if (viewMode.mode === ViewMode.OVERVIEW) {
+                    // OVERVIEW → INTERMEDIATE（エリア探索）へ
+                    targetZoom = 18.0;  // 【スマホUX】17.5 → 18.0
+                  } else {
+                    // INTERMEDIATE → DETAIL（詳細閲覧）へ
+                    targetZoom = 19.0;  // 【スマホUX】18.5 → 19.0
+                  }
+
+                  if (mapRef.current) {
+                    mapRef.current.flyTo(
+                      [centerLat, centerLng],  // ピンポイントではなく、周辺エリアの中心
+                      targetZoom,
+                      {
+                        duration: 0.75,
+                        easeLinearity: 0.25, // 自然な減速カーブ
+                      }
+                    );
+                  }
                 }
-                setSelectedShop(clickedShop);
               }}
               isSelected={selectedShop?.id === shop.id}
               planOrderIndex={orderIdx}
@@ -424,7 +518,10 @@ export default function MapView({
         </button>
       )}
 
-      {selectedShop && (
+      {/* 詳細バナー: 詳細モード（ズーム17以上）のときのみレンダリング */}
+      {/* 【Phase 3】公平性の徹底: CSS で隠すのではなく、レンダリング自体を制御 */}
+      {/* + ナビゲーションボタン機能（main からマージ） */}
+      {shouldRenderDetailBanner && selectedShop && (
         <>
           <ShopDetailBanner
             shop={selectedShop}
