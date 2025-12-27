@@ -40,7 +40,7 @@ export default function MapPageClient() {
     }
     if (!dismissed) {
       setRecommendedRecipe(daily);
-      setShowBanner(true);
+      // setShowBanner(true);
     } else if (todayId) {
       const match = pickDailyRecipe();
       setRecommendedRecipe(match);
