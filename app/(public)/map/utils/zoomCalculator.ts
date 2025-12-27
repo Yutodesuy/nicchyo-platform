@@ -96,45 +96,90 @@ export function getZoomConfig(shopCount: number): ZoomConfig {
 }
 
 /**
+ * 各丁目から代表店舗を1つずつ選択
+ *
+ * 【2段階表示 - 縮小時専用】
+ * - 各丁目（一丁目～七丁目）から北側・南側それぞれ1店舗を選択
+ * - 合計14店舗（7丁目 × 2サイド）を表示
+ * - 論理的な7分割（視覚的に分割するわけではない）
+ *
+ * @param shops 全店舗データ（chomeフィールド必須）
+ * @returns 各丁目から1店舗ずつ（計14店舗）
+ */
+export function filterShopsByChome<T extends { id: number; position: number; chome?: string; side: 'north' | 'south' }>(
+  shops: T[]
+): T[] {
+  const chomeNames = ['六丁目', '五丁目', '四丁目', '三丁目', '二丁目', '一丁目', '七丁目'];
+  const result: T[] = [];
+
+  // デバッグ: chomeフィールドを持つ店舗を確認
+  const shopsWithChome = shops.filter(s => s.chome !== undefined && s.chome !== null);
+
+  // chomeフィールドがない場合のフォールバック
+  if (shopsWithChome.length === 0) {
+    console.warn('[filterShopsByChome] No shops with chome field found. Using position-based fallback.');
+    // 位置ベースのフォールバック: 等間隔で14店舗を選択
+    const interval = Math.floor(shops.length / 14);
+    for (let i = 0; i < 14 && i * interval < shops.length; i++) {
+      result.push(shops[i * interval]);
+    }
+    return result;
+  }
+
+  // 各丁目ごとに処理
+  for (const chomeName of chomeNames) {
+    // 北側から1店舗選択（中央付近の店舗を選択）
+    const northShops = shops.filter(s => s.chome === chomeName && s.side === 'north');
+    if (northShops.length > 0) {
+      const middleIndex = Math.floor(northShops.length / 2);
+      result.push(northShops[middleIndex]);
+    }
+
+    // 南側から1店舗選択（中央付近の店舗を選択）
+    const southShops = shops.filter(s => s.chome === chomeName && s.side === 'south');
+    if (southShops.length > 0) {
+      const middleIndex = Math.floor(southShops.length / 2);
+      result.push(southShops[middleIndex]);
+    }
+  }
+
+  // 結果が空の場合のフォールバック
+  if (result.length === 0) {
+    console.warn('[filterShopsByChome] No shops found in chome filtering. Using fallback.');
+    const interval = Math.floor(shops.length / 14);
+    for (let i = 0; i < 14 && i * interval < shops.length; i++) {
+      result.push(shops[i * interval]);
+    }
+  }
+
+  console.log(`[filterShopsByChome] Selected ${result.length} shops from ${shops.length} total shops`);
+  return result;
+}
+
+/**
  * ズームレベルに応じて表示する店舗をフィルタリング
  *
- * 【公平性の保証】
- * 旧実装: position % n === 0
- * → position 0, n, 2n, ... の店舗だけが常に表示される（不公平）
- *
- * 新実装: ハッシュベースの回転式フィルタリング
- * → ズーム変化時に表示される店舗が変わり、すべての店舗が公平に表示される
- *
- * 【Phase 3.5】スマホファースト対応
- * - isMobile パラメータを追加
- * - スマホの場合は mobileFilterInterval を優先使用
- *
- * 仕組み:
- * - ズームレベルを整数化してオフセットとして使用
- * - (shop.id + offset) % interval で表示判定
- * - ズームが変わるとオフセットが変わり、異なる店舗が表示される
+ * 【2段階表示対応】
+ * - filterInterval === 0: 丁目別フィルタリング（縮小時、14店舗）
+ * - filterInterval === 1: 全店舗表示（拡大時、300店舗）
  *
  * @param shops 全店舗データ
  * @param currentZoom 現在のズームレベル
  * @param isMobile スマホかどうか（オプション、デフォルト: false）
  * @returns 表示する店舗リスト
  */
-export function filterShopsByZoom<T extends { id: number; position: number }>(
+export function filterShopsByZoom<T extends { id: number; position: number; chome?: string; side: 'north' | 'south' }>(
   shops: T[],
   currentZoom: number,
   isMobile: boolean = false
 ): T[] {
   // 表示ルールを取得
   const rule = getDisplayRuleForZoom(currentZoom);
-
-  // デバイスに応じた filterInterval を取得（Phase 3.5）
-  // スマホの場合は mobileFilterInterval を優先使用
   let interval = rule.filterInterval;
-  if (isMobile) {
-    // VIEW_MODE_CONFIGS から対応するモード設定を取得
-    // ここでは直接 import せず、rule.filterInterval をベースに調整
-    // 実際の mobileFilterInterval は MapView から渡される形に変更する必要がある
-    // 一旦、この関数ではデフォルト動作を維持し、MapView 側で制御
+
+  // 【2段階表示】filterInterval === 0 の場合は丁目別フィルタリング
+  if (interval === 0) {
+    return filterShopsByChome(shops);
   }
 
   // 全店舗表示の場合
@@ -142,14 +187,9 @@ export function filterShopsByZoom<T extends { id: number; position: number }>(
     return shops;
   }
 
-  // 公平な間引きフィルタリング
-  // ズームレベルの整数部分をオフセットとして使用することで、
-  // ズームが変わると表示される店舗も変わる
-  const zoomOffset = Math.floor(currentZoom * 2); // 0.5刻みで変化
-
+  // 公平な間引きフィルタリング（従来の方式、今は使用しない）
+  const zoomOffset = Math.floor(currentZoom * 2);
   return shops.filter((shop) => {
-    // ハッシュベースの判定: (id + offset) % interval === 0
-    // これにより、ズームレベルが変わると異なる店舗が表示される
     return (shop.id + zoomOffset) % interval === 0;
   });
 }

@@ -162,22 +162,12 @@ export default function MapView({
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  // 【Phase 3.5】デバイス対応フィルタリング
-  // スマホの場合は mobileFilterInterval を優先使用
+  // 【2段階表示】ズームレベルに応じた店舗フィルタリング
+  // - 拡大時（zoom 18.0+）: 全300店舗を表示
+  // - 縮小時（zoom 16.0-18.0）: 各丁目から2店舗（計14店舗）を表示
   const visibleShops = useMemo(() => {
-    const viewMode = getViewModeForZoom(currentZoom);
-    const interval = getFilterIntervalForDevice(viewMode, isMobile);
-
-    // 全店舗表示の場合
-    if (interval === 1) {
-      return shops;
-    }
-
-    // 公平な間引きフィルタリング（zoomCalculator.ts と同じロジック）
-    const zoomOffset = Math.floor(currentZoom * 2);
-    return shops.filter((shop) => {
-      return (shop.id + zoomOffset) % interval === 0;
-    });
+    // filterShopsByZoom を使用して統一的なフィルタリングを実行
+    return filterShopsByZoom(shops, currentZoom, isMobile);
   }, [currentZoom, isMobile]);
 
   // 【Phase 3】表示モードに応じて詳細バナーのレンダリング自体を制御
@@ -346,6 +336,18 @@ export default function MapView({
     }
   }, [canNavigate, selectedShopIndex]);
 
+  // 【おばあちゃんチャット対応】ズームレベルに応じた動的パディング
+  // 縮小時は広い範囲を表示するため、より多くのパディングが必要
+  const mapBottomPadding = useMemo(() => {
+    if (currentZoom < 18.0) {
+      // 縮小時（OVERVIEW）: より多くのパディング
+      return isMobile ? "360px" : "320px";
+    } else {
+      // 拡大時（DETAIL）: 標準パディング
+      return isMobile ? "280px" : "240px";
+    }
+  }, [currentZoom, isMobile]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -362,6 +364,7 @@ export default function MapView({
           height: "100%",
           width: "100%",
           backgroundColor: "#faf8f3",
+          paddingBottom: mapBottomPadding,
         }}
         zoomControl={!isMobile}
         attributionControl={false}
