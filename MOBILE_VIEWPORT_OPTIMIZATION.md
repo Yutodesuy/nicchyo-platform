@@ -96,6 +96,7 @@ export default function ViewportHeightUpdater() {
 
 #### MapPageClient.tsx
 ```typescript
+{% raw %}
 // ❌ Before
 <div className="h-screen pb-16">
   <main className="flex-1">
@@ -111,6 +112,7 @@ export default function ViewportHeightUpdater() {
   <GrandmaChatter /> {/* fixed position */}
   <NavigationBar />  {/* fixed position */}
 </div>
+{% endraw %}
 ```
 
 **効果**: 地図が全画面表示、UIはオーバーレイ（圧迫しない）
@@ -136,6 +138,7 @@ export function MenuProvider({ children }: { children: ReactNode }) {
 
 #### AppHeader.tsx
 ```typescript
+{% raw %}
 export default function AppHeader() {
   const { isMenuOpen } = useMenu();
 
@@ -151,6 +154,7 @@ export default function AppHeader() {
     </header>
   );
 }
+{% endraw %}
 ```
 
 #### HamburgerMenu.tsx
@@ -182,6 +186,7 @@ export default function HamburgerMenu() {
 
 #### NavigationBar.tsx
 ```typescript
+{% raw %}
 export default function NavigationBar() {
   return (
     <nav
@@ -196,6 +201,7 @@ export default function NavigationBar() {
     </nav>
   );
 }
+{% endraw %}
 ```
 
 **効果**:

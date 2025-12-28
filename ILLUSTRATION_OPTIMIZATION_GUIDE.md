@@ -125,6 +125,7 @@ const iconMarkup = renderToStaticMarkup(
 #### 実装例
 
 ```typescript
+{% raw %}
 // スプライトシート定義
 const SPRITE_POSITIONS = {
   'shop-001': { x: 0, y: 0, width: 60, height: 60 },
@@ -142,6 +143,7 @@ const SPRITE_POSITIONS = {
     height: `${pos.height}px`,
   }}
 />
+{% endraw %}
 ```
 
 ### 5. キャッシュ戦略
