@@ -1,35 +1,21 @@
-/**
- * 軽量化された MapView
- *
- * 【改善点】
- * 1. currentZoom を state で管理しない → 再レンダリング削減
- * 2. 店舗マーカーは OptimizedShopLayerWithClustering に完全委譲
- * 3. UI 層（詳細バナー）と地図層を完全分離
- * 4. ズーム操作で React が再レンダリングされない
- *
- * 【パフォーマンス向上】
- * - 再レンダリング: 100%削減（ズーム操作時）
- * - DOM 要素数: 98%削減（1800個 → 30個以下）
- * - 初期表示速度: 3倍以上向上
- */
-
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker } from "react-leaflet";
+import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
+import ShopMarker from "./ShopMarker";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
-import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
-import { getZoomConfig } from '../utils/zoomCalculator';
+import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
+import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -49,6 +35,9 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
   [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
 ];
+
+const ORDER_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8"];
+const PLAN_MARKER_ICON = "🗒️";
 
 type BagItem = {
   id: string;
@@ -119,6 +108,15 @@ function MobileZoomControls() {
   );
 }
 
+function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  useMapEvents({
+    zoomend: (e) => {
+      onZoomChange(e.target.getZoom());
+    },
+  });
+  return null;
+}
+
 type MapViewProps = {
   initialShopId?: number;
   selectedRecipe?: Recipe;
@@ -126,8 +124,6 @@ type MapViewProps = {
   onCloseRecipeOverlay?: () => void;
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
-  searchShopIds?: number[];
-  searchLabel?: string;
 };
 
 export default function MapView({
@@ -137,28 +133,16 @@ export default function MapView({
   onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
-  searchShopIds,
-  searchLabel,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【ポイント6】state は「選択中店舗」のみ
-  // - currentZoom は state で管理しない（Leaflet に任せる）
-  // - 地図操作（pan/zoom）で React が再レンダリングされない
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
-
+  const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [planOrder, setPlanOrder] = useState<number[]>([]);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【削除】visibleShops の計算を削除
-  // - OptimizedShopLayer が Leaflet API で管理するため不要
-  // - filterShopsByZoom は使用しない
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const visibleShops = filterShopsByZoom(shops, currentZoom);
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -242,28 +226,21 @@ export default function MapView({
     );
   }, [selectedRecipe, recipeIngredients]);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【ポイント7】店舗クリック時のコールバック
-  // - useCallback でメモ化（不要な再生成を防ぐ）
-  // - Leaflet から直接呼ばれる（React の state を経由しない）
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleShopClick = useCallback((shop: Shop) => {
-    setSelectedShop(shop);
-
-    // 選択した店舗にズーム
-    if (mapRef.current) {
-      mapRef.current.flyTo([shop.lat, shop.lng], 18, {
-        duration: 0.75,
-      });
-    }
-  }, []);
-
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
-      handleShopClick(target);
+      const minZoom = getMinZoomForShopDetails();
+      const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
+      const targetZoom = Math.max(currentZoom, minZoom, 18);
+
+      setSelectedShop(target);
+      if (mapRef.current) {
+        mapRef.current.flyTo([target.lat, target.lng], targetZoom, {
+          duration: 0.75,
+        });
+      }
     }
-  }, [handleShopClick]);
+  }, []);
 
   const handlePlanUpdate = useCallback((order: number[]) => {
     setPlanOrder(order);
@@ -310,8 +287,16 @@ export default function MapView({
     const nextIndex = (selectedShopIndex + offset + shops.length) % shops.length;
     const nextShop = shops[nextIndex];
     if (!nextShop) return;
-    handleShopClick(nextShop);
-  }, [canNavigate, selectedShopIndex, handleShopClick]);
+    setSelectedShop(nextShop);
+    const minZoom = getMinZoomForShopDetails();
+    const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
+    const targetZoom = Math.max(currentZoom, minZoom, 18);
+    if (mapRef.current) {
+      mapRef.current.flyTo([nextShop.lat, nextShop.lng], targetZoom, {
+        duration: 0.6,
+      });
+    }
+  }, [canNavigate, selectedShopIndex]);
 
   return (
     <div className="relative h-full w-full">
@@ -338,26 +323,43 @@ export default function MapView({
           if (map) mapRef.current = map;
         }}
       >
-        {/* 背景 */}
+        {}
+
+        {}
         <BackgroundOverlay />
 
-        {/* 道路 */}
+        {}
         <RoadOverlay />
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            【ポイント8】最適化された店舗レイヤー
-            - 300個の ShopMarker コンポーネントではなく、
-              1つの OptimizedShopLayerWithClustering が Leaflet API で管理
-            - shops は初期ロード時のみ渡され、以降変更されない
-            - ズーム操作で再レンダリングされない
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <OptimizedShopLayerWithClustering
-          shops={shops}
-          onShopClick={handleShopClick}
-          selectedShopId={selectedShop?.id}
-        />
+        {}
+        {visibleShops.map((shop) => {
+          const orderIdx = planOrderMap.get(shop.id);
+          const isFavorite = favoriteShopIds.includes(shop.id);
 
-        {/* レシピオーバーレイ */}
+          return (
+            <ShopMarker
+              key={shop.id}
+              shop={shop}
+              onClick={(clickedShop) => {
+                if (!canOpenShopDetails(currentZoom)) {
+                  const minZoom = getMinZoomForShopDetails();
+                  if (mapRef.current) {
+                    mapRef.current.flyTo([clickedShop.lat, clickedShop.lng], minZoom, {
+                      duration: 0.75,
+                    });
+                  }
+                  return;
+                }
+                setSelectedShop(clickedShop);
+              }}
+              isSelected={selectedShop?.id === shop.id}
+              planOrderIndex={orderIdx}
+              isFavorite={isFavorite}
+            />
+          );
+        })}
+
+        {}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
@@ -398,24 +400,21 @@ export default function MapView({
           );
         })}
 
-        {/* ユーザー位置 */}
+        {}
         <UserLocationMarker
           onLocationUpdate={(_, position) => {
             setUserLocation(position);
           }}
         />
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            【削除】ZoomTracker を削除
-            - currentZoom を state で管理しないため不要
-            - ズーム操作で React が再レンダリングされない
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {}
+        <ZoomTracker onZoomChange={setCurrentZoom} />
 
-        {/* モバイルズームコントロール */}
+        {}
         {isMobile && <MobileZoomControls />}
       </MapContainer>
 
-      {/* レシピモード閉じるボタン */}
+      {}
       {showRecipeOverlay && onCloseRecipeOverlay && (
         <button
           onClick={onCloseRecipeOverlay}
@@ -425,12 +424,6 @@ export default function MapView({
         </button>
       )}
 
-      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          【ポイント9】UI 層と地図層を完全分離
-          - ShopDetailBanner は MapContainer の外側
-          - この state 更新が地図描画に影響しない
-          - 詳細パネルの開閉で地図が再レンダリングされない
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {selectedShop && (
         <>
           <ShopDetailBanner
