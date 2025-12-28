@@ -1,21 +1,21 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, useMapEvents, Tooltip, CircleMarker, Marker } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
-import ShopMarker from "./ShopMarker";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
-import { getZoomConfig, filterShopsByZoom } from '../utils/zoomCalculator';
+import { getZoomConfig } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import { canOpenShopDetails, getMinZoomForShopDetails } from '../config/displayConfig';
+import ShopMarker from "./ShopMarker";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -35,9 +35,6 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
   [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
 ];
-
-const ORDER_SYMBOLS = ["1", "2", "3", "4", "5", "6", "7", "8"];
-const PLAN_MARKER_ICON = "🗒️";
 
 type BagItem = {
   id: string;
@@ -117,15 +114,6 @@ function MobileZoomControls() {
   );
 }
 
-function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
-  useMapEvents({
-    zoomend: (e) => {
-      onZoomChange(e.target.getZoom());
-    },
-  });
-  return null;
-}
-
 type MapViewProps = {
   initialShopId?: number;
   selectedRecipe?: Recipe;
@@ -149,13 +137,11 @@ export default function MapView({
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
-  const [currentZoom, setCurrentZoom] = useState(INITIAL_ZOOM);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [planOrder, setPlanOrder] = useState<number[]>([]);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+  const [planOrder, setPlanOrder] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
-  const visibleShops = filterShopsByZoom(shops, currentZoom);
   const normalizedSearchLabel = searchLabel?.trim() || "検索結果";
   const searchIdSet = useMemo(() => {
     if (!searchShopIds || searchShopIds.length === 0) return null;
@@ -176,12 +162,6 @@ export default function MapView({
       </div>`,
     });
   }, [searchIdSet, normalizedSearchLabel]);
-
-  const planOrderMap = useMemo(() => {
-    const m = new Map<number, number>();
-    planOrder.forEach((id, idx) => m.set(id, idx));
-    return m;
-  }, [planOrder]);
 
   useEffect(() => {
     const detectMobile = () => {
@@ -210,20 +190,6 @@ export default function MapView({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(AGENT_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed?.order)) {
-        setPlanOrder(parsed.order);
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     setFavoriteShopIds(loadFavoriteShopIds());
     const handleStorage = (event: StorageEvent) => {
       if (event.key === FAVORITE_SHOPS_KEY) {
@@ -242,6 +208,28 @@ export default function MapView({
       window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, handleFavoriteUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(AGENT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed?.order)) {
+        setPlanOrder(parsed.order);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  const planOrderMap = useMemo(() => {
+    const map = new Map<number, number>();
+    planOrder.forEach((id, index) => {
+      map.set(id, index);
+    });
+    return map;
+  }, [planOrder]);
 
   const recipeIngredients = useMemo(() => {
     if (!selectedRecipe) return [];
@@ -268,21 +256,29 @@ export default function MapView({
     );
   }, [selectedRecipe, recipeIngredients]);
 
+  const handleShopClick = useCallback((shop: Shop) => {
+    const minZoom = getMinZoomForShopDetails();
+    const current = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
+    if (!canOpenShopDetails(current)) {
+      if (mapRef.current) {
+        mapRef.current.flyTo([shop.lat, shop.lng], minZoom, { duration: 0.75 });
+      }
+      return;
+    }
+    setSelectedShop(shop);
+    if (mapRef.current) {
+      mapRef.current.flyTo([shop.lat, shop.lng], Math.max(current, minZoom, 18), {
+        duration: 0.75,
+      });
+    }
+  }, []);
+
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
-      const minZoom = getMinZoomForShopDetails();
-      const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
-      const targetZoom = Math.max(currentZoom, minZoom, 18);
-
-      setSelectedShop(target);
-      if (mapRef.current) {
-        mapRef.current.flyTo([target.lat, target.lng], targetZoom, {
-          duration: 0.75,
-        });
-      }
+      handleShopClick(target);
     }
-  }, []);
+  }, [handleShopClick]);
 
   const handlePlanUpdate = useCallback((order: number[]) => {
     setPlanOrder(order);
@@ -329,16 +325,8 @@ export default function MapView({
     const nextIndex = (selectedShopIndex + offset + shops.length) % shops.length;
     const nextShop = shops[nextIndex];
     if (!nextShop) return;
-    setSelectedShop(nextShop);
-    const minZoom = getMinZoomForShopDetails();
-    const currentZoom = mapRef.current?.getZoom() ?? INITIAL_ZOOM;
-    const targetZoom = Math.max(currentZoom, minZoom, 18);
-    if (mapRef.current) {
-      mapRef.current.flyTo([nextShop.lat, nextShop.lng], targetZoom, {
-        duration: 0.6,
-      });
-    }
-  }, [canNavigate, selectedShopIndex]);
+    handleShopClick(nextShop);
+  }, [canNavigate, selectedShopIndex, handleShopClick]);
 
   return (
     <div className="relative h-full w-full">
@@ -373,33 +361,16 @@ export default function MapView({
         {}
         <RoadOverlay />
 
-        {}
-        {visibleShops.map((shop) => {
-          const orderIdx = planOrderMap.get(shop.id);
-          const isFavorite = favoriteShopIds.includes(shop.id);
-
-          return (
-            <ShopMarker
-              key={shop.id}
-              shop={shop}
-              onClick={(clickedShop) => {
-                if (!canOpenShopDetails(currentZoom)) {
-                  const minZoom = getMinZoomForShopDetails();
-                  if (mapRef.current) {
-                    mapRef.current.flyTo([clickedShop.lat, clickedShop.lng], minZoom, {
-                      duration: 0.75,
-                    });
-                  }
-                  return;
-                }
-                setSelectedShop(clickedShop);
-              }}
-              isSelected={selectedShop?.id === shop.id}
-              planOrderIndex={orderIdx}
-              isFavorite={isFavorite}
-            />
-          );
-        })}
+        {shops.map((shop) => (
+          <ShopMarker
+            key={shop.id}
+            shop={shop}
+            onClick={handleShopClick}
+            isSelected={selectedShop?.id === shop.id}
+            planOrderIndex={planOrderMap.get(shop.id)}
+            isFavorite={favoriteShopIds.includes(shop.id)}
+          />
+        ))}
 
         {}
         {searchMarkerIcon && searchShops.map((shop) => (
@@ -461,9 +432,6 @@ export default function MapView({
             setUserLocation(position);
           }}
         />
-
-        {}
-        <ZoomTracker onZoomChange={setCurrentZoom} />
 
         {}
         {isMobile && <MobileZoomControls />}
