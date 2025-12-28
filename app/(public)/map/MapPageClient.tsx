@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
+import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
@@ -17,6 +18,7 @@ export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialShopIdParam = searchParams?.get("shop");
+  const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -24,6 +26,10 @@ export default function MapPageClient() {
   const [agentOpen, setAgentOpen] = useState(false);
   const { priority, clearPriority } = useTimeBadge();
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
+    ids: number[];
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -34,12 +40,28 @@ export default function MapPageClient() {
     }
     if (!dismissed) {
       setRecommendedRecipe(daily);
-      setShowBanner(true);
+      // setShowBanner(true);
     } else if (todayId) {
       const match = pickDailyRecipe();
       setRecommendedRecipe(match);
     }
   }, []);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("search");
+    if (!enabled) {
+      setSearchMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "";
+    const payload = loadSearchMapPayload();
+    if (payload) {
+      setSearchMarkerPayload(payload);
+    } else if (labelParam) {
+      setSearchMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
 
   const handleAcceptRecipe = () => {
     setShowRecipeOverlay(true);
@@ -129,6 +151,8 @@ export default function MapPageClient() {
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
+              searchShopIds={searchMarkerPayload?.ids}
+              searchLabel={searchMarkerPayload?.label}
             />
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
