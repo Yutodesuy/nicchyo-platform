@@ -3,21 +3,19 @@
  *
  * - ロール別のリンクを出し分け
  * - デモ用に AuthContext の login を呼び出す簡易ログインボタンを用意
+ * - MenuContext と連動してヘッダーの表示を制御
  */
 
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useMenu } from '@/lib/ui/MenuContext';
 import type { UserRole } from '@/lib/auth/types';
 
 export default function HamburgerMenu() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isMenuOpen, toggleMenu, closeMenu } = useMenu();
   const { isLoggedIn, user, login, logout, permissions } = useAuth();
-
-  const toggleMenu = () => setIsOpen((v) => !v);
-  const closeMenu = () => setIsOpen(false);
 
   const handleLogin = (role: UserRole) => {
     login(role);
@@ -31,10 +29,10 @@ export default function HamburgerMenu() {
 
   return (
     <>
-      {/* ハンバーガーボタン */}
+      {/* ハンバーガーボタン（固定位置・オーバーレイ） */}
       <button
         onClick={toggleMenu}
-        className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg"
+        className="fixed top-4 right-4 z-[10002] flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg"
         aria-label="メニュー"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,35 +40,30 @@ export default function HamburgerMenu() {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d={isOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'}
+            d={isMenuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'}
           />
         </svg>
       </button>
 
       {/* 背景オーバーレイ */}
-      {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={closeMenu} />
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm" onClick={closeMenu} />
       )}
 
       {/* スライドメニュー */}
       <div
-        className={`fixed right-0 top-0 z-50 h-full w-80 max-w-[90vw] transform bg-white shadow-2xl transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed right-0 top-0 z-[9999] h-[100dvh] h-[calc(var(--vh,1vh)*100)] w-80 max-w-[90vw] transform bg-white shadow-2xl transition-transform duration-300 ${
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{
+          paddingTop: 'calc(4rem + var(--safe-top, 0px))', // ヘッダー高さ + safe-area
+          paddingBottom: 'var(--safe-bottom, 0px)',
+        }}
       >
         <div className="flex h-full flex-col">
           {/* ヘッダー */}
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center border-b border-gray-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-800">メニュー</h2>
-            <button
-              onClick={closeMenu}
-              className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100"
-              aria-label="閉じる"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* プロフィール表示 */}

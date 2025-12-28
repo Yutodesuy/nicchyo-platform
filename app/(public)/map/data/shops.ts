@@ -89,6 +89,47 @@ const categories = [
   },
 ];
 
+function getShopProducts(categoryProducts: string[], seed: number): string[] {
+  const count = 4 + (seed % 4);
+  const start = (seed * 3) % categoryProducts.length;
+  const selection: string[] = [];
+
+  for (let i = 0; i < count; i++) {
+    selection.push(categoryProducts[(start + i) % categoryProducts.length]);
+  }
+
+  return selection;
+}
+
+const specialtyDishes = [
+  "かつおのたたき",
+  "いなか寿司",
+  "皿鉢料理",
+  "ゆず味噌",
+  "うつぼの唐揚げ",
+  "ぐる煮",
+];
+
+const vendorDescriptions = [
+  "旬の恵みを届けたくて続けています。気軽に声をかけてください。",
+  "地元の味を守りたい一心で作っています。おすすめがあれば教えます。",
+  "家族で営む小さなお店です。毎週の出会いを楽しみにしています。",
+  "朝採れや作りたてを大切にしています。安心して選んでください。",
+  "地域の人も旅の人も、ほっとできる場所になれば嬉しいです。",
+];
+
+const stallStyles = [
+  "朝7時ごろから昼過ぎまで。雨天はお休みします。雑談は多めです。",
+  "午前中心に出店。雨天でも可能な限り営業します。雑談は控えめです。",
+  "朝早くから開けています。雨天時は短縮営業です。雑談はほどほどです。",
+  "毎週日曜の午前に出店。雨の日はお休みです。雑談は多めです。",
+  "昼前後まで出店。雨天は様子を見て判断します。雑談は控えめです。",
+];
+
+function pickBySeed<T>(items: T[], seed: number): T {
+  return items[seed % items.length];
+}
+
 // 店主の名前のサンプル
 const ownerNames = [
   '田中 花子', '山田 太郎', '佐藤 美咲', '鈴木 健太',
@@ -167,8 +208,13 @@ for (let i = 0; i < 150; i++) {
   // 30%の確率でメッセージを追加
   const message = Math.random() > 0.7 ? messages[i % messages.length] : undefined;
 
+  const currentId = shopId++;
+  const specialtyDish =
+    category.name === "食材" || category.name === "食べ物"
+      ? pickBySeed(specialtyDishes, currentId)
+      : "なし";
   shops.push({
-    id: shopId++,
+    id: currentId,
     name: `${category.name}のお店 ${i + 1}`,
     ownerName,
     side: 'north',
@@ -177,8 +223,11 @@ for (let i = 0; i < 150; i++) {
     lng,
     chome: getChomeFromPosition(i),
     category: category.name,
-    products: category.products,
+    products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
+    specialtyDish,
+    aboutVendor: pickBySeed(vendorDescriptions, currentId),
+    stallStyle: pickBySeed(stallStyles, currentId),
     icon: category.icon,
     schedule,
     message,
@@ -195,8 +244,13 @@ for (let i = 0; i < 150; i++) {
   // 30%の確率でメッセージを追加
   const message = Math.random() > 0.7 ? messages[(i + 5) % messages.length] : undefined;
 
+  const currentId = shopId++;
+  const specialtyDish =
+    category.name === "食材" || category.name === "食べ物"
+      ? pickBySeed(specialtyDishes, currentId)
+      : "なし";
   shops.push({
-    id: shopId++,
+    id: currentId,
     name: `${category.name}のお店 ${i + 151}`,
     ownerName,
     side: 'south',
@@ -205,8 +259,11 @@ for (let i = 0; i < 150; i++) {
     lng,
     chome: getChomeFromPosition(i),
     category: category.name,
-    products: category.products,
+    products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
+    specialtyDish,
+    aboutVendor: pickBySeed(vendorDescriptions, currentId),
+    stallStyle: pickBySeed(stallStyles, currentId),
     icon: category.icon,
     schedule,
     message,

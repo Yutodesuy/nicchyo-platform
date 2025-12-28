@@ -16,6 +16,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
+    "types": ["vitest/globals"],
     "plugins": [
       {
         "name": "next"
