@@ -34,6 +34,11 @@ import {
 } from '../config/roadConfig';
 import { getZoomConfig } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
+import {
+  getViewModeForZoom,
+  ViewMode,
+  canShowShopDetailBanner,
+} from '../config/displayConfig';
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -251,16 +256,56 @@ export default function MapView({
   }, [selectedRecipe, recipeIngredients]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【ポイント7】店舗クリック時のコールバック
+  // 【ポイント7】店舗クリック時のコールバック（段階的ズームアップ対応）
   // - useCallback でメモ化（不要な再生成を防ぐ）
   // - Leaflet から直接呼ばれる（React の state を経由しない）
+  // - ViewMode に応じて段階的にズームアップ
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleShopClick = useCallback((shop: Shop) => {
-    setSelectedShop(shop);
+  const handleShopClick = useCallback((clickedShop: Shop) => {
+    if (!mapRef.current) return;
 
-    // 選択した店舗にズーム
-    if (mapRef.current) {
-      mapRef.current.flyTo([shop.lat, shop.lng], 18, {
+    const currentZoom = mapRef.current.getZoom();
+    const viewMode = getViewModeForZoom(currentZoom);
+
+    if (viewMode.mode === ViewMode.DETAIL) {
+      // 詳細モード: 詳細バナーを表示
+      setSelectedShop(clickedShop);
+    } else {
+      // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
+      // OVERVIEW → INTERMEDIATE（18.0）
+      // INTERMEDIATE → DETAIL（18.5）
+
+      // 周辺店舗を検索（緯度±0.001度、経度±0.0005度 ≈ 半径100m程度）
+      const nearbyShops = shops.filter(s =>
+        Math.abs(s.lat - clickedShop.lat) < 0.001 &&
+        Math.abs(s.lng - clickedShop.lng) < 0.0005
+      );
+
+      // 周辺店舗の重心を計算
+      let centerLat: number;
+      let centerLng: number;
+
+      if (nearbyShops.length === 0) {
+        // フォールバック: クリックした店舗を中心にする
+        centerLat = clickedShop.lat;
+        centerLng = clickedShop.lng;
+      } else {
+        // 周辺店舗の重心を計算
+        centerLat = nearbyShops.reduce((sum, s) => sum + s.lat, 0) / nearbyShops.length;
+        centerLng = nearbyShops.reduce((sum, s) => sum + s.lng, 0) / nearbyShops.length;
+      }
+
+      // 【段階的ズームアップ】現在のモードに応じて次の段階へ
+      let targetZoom: number;
+      if (viewMode.mode === ViewMode.OVERVIEW) {
+        // OVERVIEW → INTERMEDIATE（エリア探索）へ
+        targetZoom = 18.0;
+      } else {
+        // INTERMEDIATE → DETAIL（詳細閲覧）へ
+        targetZoom = 18.5;
+      }
+
+      mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
         duration: 0.75,
       });
     }
