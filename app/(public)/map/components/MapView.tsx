@@ -126,6 +126,8 @@ type MapViewProps = {
   onCloseRecipeOverlay?: () => void;
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
+  searchShopIds?: number[];
+  searchLabel?: string;
 };
 
 export default function MapView({
@@ -135,6 +137,8 @@ export default function MapView({
   onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
+  searchShopIds,
+  searchLabel,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
 
