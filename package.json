@@ -12,6 +12,8 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@hookform/resolvers": "^3.3.4",
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
     "@prisma/client": "5.12.0",
