@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { vi } from 'vitest';
 import GrandmaChatter from '../components/GrandmaChatter';
 import { grandmaCommentPool } from '../services/grandmaCommentService';
 
@@ -23,7 +23,10 @@ describe('GrandmaChatter', () => {
     render(<GrandmaChatter />);
 
     const second = grandmaCommentPool[1];
-    vi.advanceTimersByTime(60000);
+
+    act(() => {
+      vi.advanceTimersByTime(60000);
+    });
 
     expect(screen.getByText(second.text)).toBeInTheDocument();
     vi.useRealTimers();
