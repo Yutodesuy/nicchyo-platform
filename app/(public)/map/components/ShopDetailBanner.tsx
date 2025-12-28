@@ -104,6 +104,14 @@ export default function ShopDetailBanner({
     };
   }, [shop.id]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    document.body.classList.add("shop-banner-open");
+    return () => {
+      document.body.classList.remove("shop-banner-open");
+    };
+  }, []);
+
   const handleProductDragStart = useCallback(
     (event: DragEvent<HTMLButtonElement>, product: string) => {
       event.dataTransfer.setData("text/plain", product);
@@ -172,8 +180,8 @@ export default function ShopDetailBanner({
   }, []);
 
   return (
-    <div className="fixed inset-x-0 top-16 bottom-16 z-[2000] flex items-stretch justify-center bg-black/40 px-4 py-4">
-      <div className="h-[calc(100%-4rem)] w-full max-w-4xl overflow-y-auto rounded-3xl bg-[#c8f58a] p-3 shadow-2xl">
+    <div className="fixed inset-0 z-[10050] flex items-stretch justify-center bg-black/40 px-4 py-4">
+      <div className="h-[calc(100%-4rem)] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-3 shadow-2xl">
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
           <div>
@@ -220,7 +228,7 @@ export default function ShopDetailBanner({
         </div>
 
         {/* 商品名 */}
-        <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm text-slate-800 shadow-sm">
+        <div className="mt-3 rounded-2xl border border-orange-300 bg-amber-50/60 px-3 py-2 text-sm text-slate-800 shadow-sm">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-amber-500 px-2 py-[1px] text-sm font-semibold text-white">
@@ -275,17 +283,17 @@ export default function ShopDetailBanner({
         </div>
 
         <div className="mt-3 space-y-2">
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-yellow-100">
+          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
             <p className="text-[11px] font-semibold text-amber-700">出店スタイル</p>
             <p className="mt-1 text-base text-slate-700">{shop.stallStyle ?? shop.schedule}</p>
           </div>
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-emerald-100">
+          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
             <p className="text-[11px] font-semibold text-emerald-700">出店者の想い・こだわり</p>
             <p className="mt-1 text-base leading-snug text-slate-800">
               {shop.aboutVendor || shop.message || shop.description}
             </p>
           </div>
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-amber-100">
+          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
             <p className="text-[11px] font-semibold text-amber-700">得意料理</p>
             <p className="mt-1 text-base font-semibold text-slate-900">
               {shop.specialtyDish ?? "なし"}
@@ -294,7 +302,7 @@ export default function ShopDetailBanner({
         </div>
 
         {/* ことづてセクション */}
-        <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs text-slate-800 shadow-sm border border-lime-100">
+        <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs text-slate-800 shadow-sm border border-orange-300">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <span className="rounded-full bg-lime-500 px-2 py-[1px] text-[11px] font-semibold text-white">
