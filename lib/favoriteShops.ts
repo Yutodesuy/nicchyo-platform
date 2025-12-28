@@ -1,4 +1,5 @@
 export const FAVORITE_SHOPS_KEY = "nicchyo-favorite-shops";
+export const FAVORITE_SHOPS_UPDATED_EVENT = "nicchyo-favorite-shops-updated";
 
 function normalizeIds(value: unknown): number[] {
   if (!Array.isArray(value)) return [];
@@ -23,6 +24,7 @@ export function saveFavoriteShopIds(ids: number[]) {
   if (typeof window === "undefined") return;
   const normalized = normalizeIds(ids);
   localStorage.setItem(FAVORITE_SHOPS_KEY, JSON.stringify(normalized));
+  window.dispatchEvent(new CustomEvent(FAVORITE_SHOPS_UPDATED_EVENT, { detail: normalized }));
 }
 
 export function toggleFavoriteShopId(id: number): number[] {
