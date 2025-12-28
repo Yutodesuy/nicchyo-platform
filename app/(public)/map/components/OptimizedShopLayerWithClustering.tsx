@@ -20,7 +20,11 @@ import L from 'leaflet';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
+import ShopIllustration from './ShopIllustration';
+import ShopBubble from './ShopBubble';
+import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 
 interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
@@ -35,7 +39,7 @@ export default function OptimizedShopLayerWithClustering({
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
-  const markersRef = useRef<Map<number, L.CircleMarker>>(new Map());
+  const markersRef = useRef<Map<number, L.Marker>>(new Map());
 
   useEffect(() => {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -88,20 +92,56 @@ export default function OptimizedShopLayerWithClustering({
     clusterGroupRef.current = markers;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 【ポイント6】Canvas レンダラーで軽量描画
-    // - 各マーカーは Canvas で描画（DOM 要素ではない）
-    // - クラスタ化されていないマーカーも軽量
+    // 【ポイント6】店舗イラスト付きマーカー
+    // - divIcon でHTMLベースのアイコンを作成
+    // - ShopIllustration + ShopBubble を表示
+    // - クラスタリングは維持（ズームアウト時は軽量）
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const canvasRenderer = L.canvas({ padding: 0.5 });
 
     shops.forEach((shop) => {
-      const marker = L.circleMarker([shop.lat, shop.lng], {
-        renderer: canvasRenderer,
-        radius: 8,
-        fillColor: getCategoryColor(shop.category),
-        fillOpacity: 0.8,
-        color: '#fff',
-        weight: 2,
+      // イラストサイズを取得
+      const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+      const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
+
+      // 店舗イラスト + 吹き出しを含むHTML文字列を生成
+      const iconMarkup = renderToStaticMarkup(
+        <div
+          className="shop-marker-container"
+          style={{
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          {/* 商品吹き出し */}
+          <ShopBubble
+            icon={shop.icon}
+            products={shop.products}
+            side={shop.side}
+            offset={sizeConfig.bubbleOffset}
+          />
+
+          {/* 店舗イラスト */}
+          <ShopIllustration
+            type={shop.illustration?.type}
+            size={sizeKey}
+            color={shop.illustration?.color}
+            customSvg={shop.illustration?.customSvg}
+          />
+        </div>
+      );
+
+      // divIcon を作成
+      const customIcon = L.divIcon({
+        html: iconMarkup,
+        className: 'custom-shop-marker',
+        iconSize: [sizeConfig.width, sizeConfig.height],
+        iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
+      });
+
+      // マーカーを作成
+      const marker = L.marker([shop.lat, shop.lng], {
+        icon: customIcon,
       });
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -110,13 +150,6 @@ export default function OptimizedShopLayerWithClustering({
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       marker.on('click', () => {
         onShopClick(shop);
-      });
-
-      // ツールチップ（店舗名）を追加
-      marker.bindTooltip(shop.name, {
-        permanent: false,
-        direction: 'top',
-        offset: [0, -10],
       });
 
       // クラスタグループに追加
@@ -137,24 +170,20 @@ export default function OptimizedShopLayerWithClustering({
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント8】選択中店舗のスタイル更新
-  // - クラスタ内のマーカーでもスタイル変更可能
+  // - 選択状態をCSSクラスで表現
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {
-      if (shopId === selectedShopId) {
-        marker.setStyle({
-          radius: 12,
-          weight: 3,
-          fillOpacity: 1.0,
-        });
-        // 選択された店舗を中心に表示
-        marker.bringToFront();
-      } else {
-        marker.setStyle({
-          radius: 8,
-          weight: 2,
-          fillOpacity: 0.8,
-        });
+      const icon = marker.getElement();
+      if (icon) {
+        if (shopId === selectedShopId) {
+          icon.classList.add('shop-marker-selected');
+          // 選択された店舗を前面に表示
+          marker.setZIndexOffset(1000);
+        } else {
+          icon.classList.remove('shop-marker-selected');
+          marker.setZIndexOffset(0);
+        }
       }
     });
 
