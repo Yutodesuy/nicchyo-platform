@@ -122,6 +122,9 @@ export interface ShopSystemData {
   /** 道路の北側/南側（変更不可） */
   side: 'north' | 'south';
 
+  /** 丁目セクション（日曜市の区画、変更不可） */
+  chome?: '一丁目' | '二丁目' | '三丁目' | '四丁目' | '五丁目' | '六丁目' | '七丁目';
+
   /** 表示優先度（運営管理、将来の実装用） */
   priority?: number;
 
@@ -248,6 +251,7 @@ export const SYSTEM_FIELDS: (keyof ShopSystemData)[] = [
   'lat',
   'lng',
   'side',
+  'chome',
   'priority',
   'approvalStatus',
   'createdAt',
