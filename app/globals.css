@@ -54,11 +54,6 @@ body {
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
 }
 
-body.shop-banner-open .hamburger-menu-button {
-  display: none;
-  pointer-events: none;
-}
-
 /* スクロールバー */
 ::-webkit-scrollbar {
   width: 8px;
