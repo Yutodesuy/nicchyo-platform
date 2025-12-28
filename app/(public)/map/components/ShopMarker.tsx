@@ -146,7 +146,7 @@ const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrd
       }}
     />
   );
-}
+});
 
 /**
  * カテゴリーごとに店舗イラストの色を変える
