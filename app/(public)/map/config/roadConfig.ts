@@ -26,7 +26,7 @@ export const ROAD_CONFIG: RoadConfig = {
     [33.54160, 133.53000],
   ],
   centerLine: 133.53100,
-  widthOffset: 0.0004,
+  widthOffset: 0.0002,
   opacity: 0.9,
   zIndex: 50,
   segments: [
