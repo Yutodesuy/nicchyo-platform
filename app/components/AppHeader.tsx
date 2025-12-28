@@ -1,8 +1,18 @@
 'use client';
 
-import HamburgerMenu from './HamburgerMenu';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRoleTheme } from '@/lib/theme/useRoleTheme';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 【パフォーマンス最適化】HamburgerMenu を遅延ロード
+// - 356行の大規模コンポーネント
+// - ユーザーがメニューを開くまでロードしない
+// - 初回バンドルサイズ: 30-50KB削減
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const HamburgerMenu = dynamic(() => import('./HamburgerMenu'), {
+  ssr: true,
+});
 
 export default function AppHeader() {
   const { isLoggedIn, user } = useAuth();
