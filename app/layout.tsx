@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth/AuthContext";
 import { MenuProvider } from "@/lib/ui/MenuContext";
 import { BagProvider } from "@/lib/storage/BagContext";
 import AppHeader from "./components/AppHeader";
+import HamburgerMenu from "./components/HamburgerMenu";
 import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
 
 export const metadata: Metadata = {
@@ -39,6 +40,9 @@ export default function RootLayout({
             <MenuProvider>
               {/* ヘッダ: オーバーレイ（メニュー開閉で表示/非表示） */}
               <AppHeader />
+
+              {/* ハンバーガーメニュー: 常に表示（独立配置） */}
+              <HamburgerMenu />
 
               {/* メインコンテンツ: padding なし（全画面表示） */}
               {children}

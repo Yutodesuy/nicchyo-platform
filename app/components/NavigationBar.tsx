@@ -39,7 +39,7 @@ export default function NavigationBar() {
         paddingBottom: 'var(--safe-bottom, 0px)', // iOS ホームインジケーター対応
       }}
     >
-      <div className="mx-auto flex h-14 max-w-lg items-center justify-around">
+      <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -50,7 +50,7 @@ export default function NavigationBar() {
                 isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              <span className="text-xl" aria-hidden="true">{item.icon}</span>
+              <span className="text-lg" aria-hidden="true">{item.icon}</span>
               <span className="text-[10px] font-medium">{item.name}</span>
             </Link>
           );
