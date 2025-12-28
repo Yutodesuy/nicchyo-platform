@@ -26,7 +26,7 @@ export const ROAD_CONFIG: RoadConfig = {
     [33.55330, 133.53000],
   ],
   centerLine: 133.53100,
-  widthOffset: 0.0002,
+  widthOffset: 0.0001,
   opacity: 0.9,
   zIndex: 50,
   segments: [
@@ -112,7 +112,7 @@ export function getSundayMarketBounds(): [[number, number], [number, number]] {
 }
 
 export function getRecommendedZoomBounds(): { min: number; max: number } {
-  return { min: 15, max: 20 };
+  return { min: 15, max: 21 };
 }
 
 export function getPaddedRoadBounds(
