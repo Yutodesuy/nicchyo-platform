@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
+import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
@@ -17,6 +18,7 @@ export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialShopIdParam = searchParams?.get("shop");
+  const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -24,6 +26,10 @@ export default function MapPageClient() {
   const [agentOpen, setAgentOpen] = useState(false);
   const { priority, clearPriority } = useTimeBadge();
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
+    ids: number[];
+    label: string;
+  } | null>(null);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -34,12 +40,28 @@ export default function MapPageClient() {
     }
     if (!dismissed) {
       setRecommendedRecipe(daily);
-      setShowBanner(true);
+      // setShowBanner(true);
     } else if (todayId) {
       const match = pickDailyRecipe();
       setRecommendedRecipe(match);
     }
   }, []);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("search");
+    if (!enabled) {
+      setSearchMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "";
+    const payload = loadSearchMapPayload();
+    if (payload) {
+      setSearchMarkerPayload(payload);
+    } else if (labelParam) {
+      setSearchMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
 
   const handleAcceptRecipe = () => {
     setShowRecipeOverlay(true);
@@ -56,15 +78,13 @@ export default function MapPageClient() {
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0icGF0dGVybiIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSIjZDk3NzA2IiBvcGFjaXR5PSIwLjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjcGF0dGVybikiLz48L3N2Zz4=')]"></div>
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-tl from-yellow-200 to-amber-200 rounded-full blur-3xl opacity-20"></div>
       </div>
 
       {/* メイン */}
       <main className="flex-1 relative pb-16 z-10">
-        <div className="h-full p-2 md:p-4">
-          <div className="h-full bg-white rounded-lg md:rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-200 relative">
+        <div className="h-full relative">
             <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-lg z-[1500] pointer-events-none"></div>
             <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-lg z-[1500] pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-[1500] pointer-events-none"></div>
@@ -129,10 +149,13 @@ export default function MapPageClient() {
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
+              searchShopIds={searchMarkerPayload?.ids}
+              searchLabel={searchMarkerPayload?.label}
             />
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
               titleLabel="マップばあちゃん"
+              fullWidth
               priorityMessage={
                 priority
                   ? {
@@ -158,7 +181,6 @@ export default function MapPageClient() {
               count={priority?.badge.count ?? 0}
             />
           </div>
-        </div>
       </main>
 
       <NavigationBar />

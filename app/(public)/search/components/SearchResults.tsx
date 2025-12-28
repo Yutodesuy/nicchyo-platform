@@ -11,11 +11,14 @@ interface SearchResultsProps {
   favoriteShopIds: number[];
   onCategoryClick?: (category: string) => void;
   onToggleFavorite?: (shopId: number) => void;
+  onSelectShop?: (shop: Shop) => void;
+  onOpenMap?: () => void;
+  mapLabel?: string;
 }
 
 /**
- * 検索結果コンテナコンポーネント
- * 結果件数バッジ、グリッドレイアウト、空状態を管理
+ * 検索結果コンチE��コンポ�EネンチE
+ * 結果件数バッジ、グリチE��レイアウト、空状態を管琁E
  */
 export default function SearchResults({
   shops,
@@ -24,14 +27,17 @@ export default function SearchResults({
   favoriteShopIds,
   onCategoryClick,
   onToggleFavorite,
+  onSelectShop,
+  onOpenMap,
+  mapLabel,
 }: SearchResultsProps) {
-  // 結果がない場合は空状態を表示
+  // 結果がなぁE��合�E空状態を表示
   if (shops.length === 0) {
     return <EmptyState hasQuery={hasQuery} categories={categories} onCategoryClick={onCategoryClick} />;
   }
 
   return (
-    <div className="rounded-2xl border border-orange-100 bg-white/95 p-4 shadow-sm">
+    <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm">
       {/* ヘッダー: タイトルと結果件数 */}
       <div className="flex items-center justify-between">
         <div>
@@ -45,7 +51,17 @@ export default function SearchResults({
         </span>
       </div>
 
-      {/* 検索結果グリッド */}
+      {onOpenMap && (
+        <button
+          type="button"
+          onClick={onOpenMap}
+          className="mt-4 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+        >
+          マップで見る{mapLabel ? `（${mapLabel}）` : ''}
+        </button>
+      )}
+
+      {/* 検索結果グリチE�� */}
       <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {shops.map((shop) => (
           <ShopResultCard
@@ -53,6 +69,7 @@ export default function SearchResults({
             shop={shop}
             isFavorite={favoriteShopIds.includes(shop.id)}
             onToggleFavorite={onToggleFavorite}
+            onSelectShop={onSelectShop}
           />
         ))}
       </div>
