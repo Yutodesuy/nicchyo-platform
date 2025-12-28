@@ -1,8 +1,9 @@
 ﻿'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import NavigationBar from '../../components/NavigationBar';
-import { shops } from '../map/data/shops';
+import { shops, type Shop } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
@@ -10,18 +11,21 @@ import CategoryFilter from './components/CategoryFilter';
 import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
-import GrandmaChatter from '../map/components/GrandmaChatter';
-import { grandmaSearchComments } from '../map/data/grandmaCommentsSearch';
+import ShopDetailBanner from '../map/components/ShopDetailBanner';
+import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
 
 /**
  * 店舗検索メインコンポーネント
  * 日曜市の300店舗を高速検索
  */
 export default function SearchClient() {
+  const router = useRouter();
   const [textQuery, setTextQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [blockNumber, setBlockNumber] = useState('');
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -49,15 +53,67 @@ export default function SearchClient() {
 
   // 検索クエリが入力されているか
   const hasQuery = textQuery.trim() !== '' || category !== null || blockNumber.trim() !== '';
+  const selectedIndex = useMemo(() => {
+    if (!selectedShop) return -1;
+    return filteredShops.findIndex((shop) => shop.id === selectedShop.id);
+  }, [filteredShops, selectedShop]);
+
+  const canNavigate = filteredShops.length > 1 && selectedIndex >= 0;
+
+  const searchLabel = useMemo(() => {
+    const trimmedText = textQuery.trim();
+    if (trimmedText) return trimmedText;
+    if (category) return category;
+    const trimmedBlock = blockNumber.trim();
+    if (trimmedBlock) return `ブロック${trimmedBlock}`;
+    return '検索結果';
+  }, [textQuery, category, blockNumber]);
+
+  const handleSelectByOffset = useCallback((offset: number) => {
+    if (!canNavigate) return;
+    const nextIndex = (selectedIndex + offset + filteredShops.length) % filteredShops.length;
+    setSelectedShop(filteredShops[nextIndex]);
+  }, [canNavigate, filteredShops, selectedIndex]);
+
+  const handleOpenMap = useCallback(() => {
+    if (filteredShops.length === 0) return;
+    saveSearchMapPayload({
+      ids: filteredShops.map((shop) => shop.id),
+      label: searchLabel,
+    });
+    router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
+  }, [filteredShops, router, searchLabel]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  }, []);
+
+  const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (!canNavigate || touchStartY.current === null) return;
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
+    const delta = endY - touchStartY.current;
+    const threshold = 40;
+    if (delta <= -threshold) {
+      handleSelectByOffset(1);
+    } else if (delta >= threshold) {
+      handleSelectByOffset(-1);
+    }
+    touchStartY.current = null;
+  }, [canNavigate, handleSelectByOffset]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-24">
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
+          <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Search</p>
+            <h2 className="mt-1 text-4xl font-bold text-gray-900">検索ボックス</h2>
+            <p className="mt-1 text-xl text-gray-700">キーワードとカテゴリからお店を探す</p>
+          </div>
+
           {/* 検索フォーム */}
-          <div className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">検索</p>
+          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
 
             {/* テキスト検索 */}
             <div className="mt-3">
@@ -87,13 +143,45 @@ export default function SearchClient() {
             onCategoryClick={setCategory}
             favoriteShopIds={favoriteShopIds}
             onToggleFavorite={handleToggleFavorite}
+            onSelectShop={setSelectedShop}
+            onOpenMap={handleOpenMap}
+            mapLabel={searchLabel}
           />
         </section>
       </main>
 
+      {selectedShop && (
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <ShopDetailBanner
+            shop={selectedShop}
+            onClose={() => setSelectedShop(null)}
+          />
+          {canNavigate && (
+            <div className="fixed bottom-20 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleSelectByOffset(-1)}
+                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+              >
+                ←前へ
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectByOffset(1)}
+                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+              >
+                次へ→
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ナビゲーションバー */}
       <NavigationBar />
-      <GrandmaChatter comments={grandmaSearchComments} titleLabel="検索ばあちゃん" />
     </div>
   );
 }

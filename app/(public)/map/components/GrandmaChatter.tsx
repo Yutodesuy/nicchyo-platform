@@ -21,6 +21,7 @@ type GrandmaChatterProps = {
   priorityMessage?: PriorityMessage | null;
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
+  fullWidth?: boolean;
 };
 
 export default function GrandmaChatter({
@@ -30,6 +31,7 @@ export default function GrandmaChatter({
   priorityMessage,
   onPriorityClick,
   onPriorityDismiss,
+  fullWidth = false,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -66,17 +68,36 @@ export default function GrandmaChatter({
     setAskText('');
   };
 
+  const shellClassName = fullWidth
+    ? 'fixed bottom-20 left-0 right-0 z-[1400]'
+    : 'fixed bottom-20 left-3 z-[1400] sm:left-4';
+  const containerClassName = fullWidth
+    ? 'relative flex w-full flex-col items-center gap-2'
+    : 'relative flex items-end gap-2 sm:gap-3';
+  const avatarClassName = fullWidth
+    ? 'relative h-28 w-28 shrink-0 sm:h-32 sm:w-32'
+    : 'relative h-44 w-44 shrink-0 sm:h-52 sm:w-52';
+  const bubbleClassName = fullWidth
+    ? 'group relative w-full rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl'
+    : 'group relative max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm';
+  const labelClassName = fullWidth
+    ? 'absolute -top-3 left-1/2 -translate-x-1/2'
+    : 'absolute -top-3 left-3';
+  const actionMenuClassName = fullWidth
+    ? 'absolute -top-2 left-1/2 z-[1450] mb-3 w-[min(420px,92vw)] -translate-x-1/2 translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl'
+    : 'absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl';
+
   return (
-    <div className="fixed bottom-20 left-3 z-[1400] sm:left-4">
-      <div className="relative flex items-end gap-2 sm:gap-3">
+    <div className={shellClassName}>
+      <div className={containerClassName}>
         <button
           type="button"
           onClick={handleImageClick}
-          className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40"
+          className={avatarClassName}
           aria-label="おばあちゃんメニューを開く"
         >
-          <div className="absolute inset-0 rounded-full border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
-          <div className="absolute inset-1 overflow-hidden rounded-full border border-white bg-white shadow-inner">
+          <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
+          <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
             <img
               src={PLACEHOLDER_IMAGE}
               alt="おせっかいばあちゃん"
@@ -88,16 +109,20 @@ export default function GrandmaChatter({
         <button
           type="button"
           onClick={priorityMessage ? onPriorityClick : handleNext}
-          className="group relative max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm"
+          className={bubbleClassName}
           aria-label="ばあちゃんのコメントを開く"
         >
-          <div className="absolute -top-3 left-3">
+          <div className={labelClassName}>
             <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
               {titleLabel}
             </span>
           </div>
-          <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
-          <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
+          {!fullWidth && (
+            <>
+              <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
+              <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
+            </>
+          )}
 
           <div className="flex items-start gap-3">
             <span className="text-xl" aria-hidden>
@@ -136,7 +161,7 @@ export default function GrandmaChatter({
         </button>
 
         {isActionOpen && (
-          <div className="absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl">
+          <div className={actionMenuClassName}>
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-bold text-amber-900">おせっかいメニュー</p>
               <button
