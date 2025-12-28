@@ -39,3 +39,49 @@ html, body {
 .animate-slide-in-right {
   animation: slide-in-right 0.6s ease-out forwards;
 }
+
+/* ===== マップ軽量化: クラスタアイコン ===== */
+
+/* クラスタアイコンのコンテナ */
+.custom-cluster-icon {
+  background: transparent;
+  border: none;
+}
+
+/* クラスタアイコン共通スタイル */
+.cluster-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.cluster-icon:hover {
+  transform: scale(1.1);
+}
+
+/* クラスタサイズ別スタイル */
+.cluster-small {
+  background-color: #22c55e; /* 緑: 小規模（10店舗以下） */
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+}
+
+.cluster-medium {
+  background-color: #f59e0b; /* オレンジ: 中規模（11-50店舗） */
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.cluster-large {
+  background-color: #ef4444; /* 赤: 大規模（51店舗以上） */
+  width: 50px;
+  height: 50px;
+  font-size: 16px;
+}
