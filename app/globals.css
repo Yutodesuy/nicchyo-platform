@@ -16,6 +16,15 @@
 }
 
 /* safe-area対応（iOS切り欠き・Android ジェスチャーバー） */
+/* フォールバック: 先にデフォルト値を定義 */
+:root {
+  --safe-top: 0px;
+  --safe-bottom: 0px;
+  --safe-left: 0px;
+  --safe-right: 0px;
+}
+
+/* ブラウザがサポートしている場合は上書き */
 @supports (padding: env(safe-area-inset-top)) {
   :root {
     --safe-top: env(safe-area-inset-top);
@@ -23,14 +32,6 @@
     --safe-left: env(safe-area-inset-left);
     --safe-right: env(safe-area-inset-right);
   }
-}
-
-/* フォールバック */
-:root {
-  --safe-top: 0px;
-  --safe-bottom: 0px;
-  --safe-left: 0px;
-  --safe-right: 0px;
 }
 
 /* ===== nicchyo 全体の基本設定 ===== */
