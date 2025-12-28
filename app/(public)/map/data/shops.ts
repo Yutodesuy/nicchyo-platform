@@ -14,6 +14,7 @@
 
 // 新しい型定義をインポート・エクスポート
 import type { Shop as ShopType } from '../types/shopData';
+import { getRoadBounds, getRoadCenterLine, getRoadWidthOffset } from '../config/roadConfig';
 export type { Shop } from '../types/shopData';
 
 // ローカルで使用する型エイリアス
@@ -167,18 +168,20 @@ const messages = [
   '無農薬・有機栽培にこだわっています。安心安全な野菜をどうぞ。',
 ];
 
-// 300店舗を生成（実測1.3kmに基づく正確な配置）
+// 300店舗を生成（道路範囲内に等間隔で配置）
 export const shops: Shop[] = [];
 
-// 実際の日曜市の範囲（1.3km）
-const startLat = 33.56500;  // 高知城前（西側）
-const endLat = 33.55330;    // 追手筋東端（東側）
+const [northWest, southEast] = getRoadBounds();
+const startLat = northWest[0];
+const endLat = southEast[0];
+const perSide = 150;
 const latRange = startLat - endLat;
-const latStep = latRange / 150;
+const latStep = latRange / (perSide - 1);
 
-const centerLng = 133.53100;    // 道の中心の経度
-const lngOffsetNorth = -0.0006; // 北側（左）のオフセット（道幅約50m）
-const lngOffsetSouth = 0.0006;  // 南側（右）のオフセット
+const centerLng = getRoadCenterLine();
+const widthOffset = getRoadWidthOffset();
+const lngOffsetNorth = -widthOffset;
+const lngOffsetSouth = widthOffset;
 
 let shopId = 1;
 
@@ -199,7 +202,7 @@ function getChomeFromPosition(position: number): '一丁目' | '二丁目' | '�
 }
 
 // 北側（左側）の150店舗
-for (let i = 0; i < 150; i++) {
+for (let i = 0; i < perSide; i++) {
   const category = categories[i % categories.length];
   const lat = startLat - (i * latStep);
   const lng = centerLng + lngOffsetNorth;
@@ -235,7 +238,7 @@ for (let i = 0; i < 150; i++) {
 }
 
 // 南側（右側）の150店舗
-for (let i = 0; i < 150; i++) {
+for (let i = 0; i < perSide; i++) {
   const category = categories[i % categories.length];
   const lat = startLat - (i * latStep);
   const lng = centerLng + lngOffsetSouth;

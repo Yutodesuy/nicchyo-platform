@@ -1,258 +1,130 @@
 /**
- * 道路設定ファイル
- *
- * 【重要】このファイルが「道の真実の源泉（Single Source of Truth）」です
- *
- * - 道のイラスト差し替えはここで行う
- * - 座標はすべてここを基準にする
- * - 店舗配置もこの座標を参照する
+ * Road config (single source of truth).
  */
 
 export interface RoadSegment {
-  name: string;              // セグメント名（例: "一丁目"）
-  bounds: [[number, number], [number, number]]; // セグメントの範囲
-  centerLine: number;        // このセグメントの中心線
+  name: string;
+  bounds: [[number, number], [number, number]];
+  centerLine: number;
 }
 
 export interface RoadConfig {
-  type: 'placeholder' | 'illustration' | 'custom' | 'curved'; // 曲線タイプ追加
-  imagePath?: string;        // カスタムイラストのパス
-  bounds: [[number, number], [number, number]]; // 表示範囲（緯度経度）
-  opacity?: number;          // 透明度
-  zIndex?: number;           // レイヤー順序
-  centerLine: number;        // 道の中心線（経度）- 後方互換性のため保持
-  widthOffset: number;       // 道幅の半分（経度差分）
-  segments?: RoadSegment[];  // 曲線道路用のセグメント配列
+  type: 'placeholder' | 'illustration' | 'custom' | 'curved';
+  imagePath?: string;
+  bounds: [[number, number], [number, number]];
+  opacity?: number;
+  zIndex?: number;
+  centerLine: number;
+  widthOffset: number;
+  segments?: RoadSegment[];
 }
 
-/**
- * 日曜市の道路設定
- *
- * 【座標の意味】
- * - bounds: 道路が表示される範囲（緯度経度）
- * - 北西端（高知城前）から南東端（追手筋東端）まで約1.3km
- * - centerLine: 道路の中心線（店舗配置の基準）
- * - widthOffset: 道路の北側/南側のオフセット（動的計算）
- *
- * 【イラスト差し替え方法】
- * 1. SVGまたは画像ファイルを public/images/maps/ に配置
- * 2. type を 'custom' に変更
- * 3. imagePath にファイルパスを指定
- *
- * 例:
- * ```
- * type: 'custom',
- * imagePath: '/images/maps/sunday-market-road.svg',
- * ```
- *
- * 【動的間隔計算】
- * widthOffset は getRoadWidthOffset() 関数で動的に計算されます
- * - displayConfig.ts の SPACING_CONFIG.roadWidthOffsetRatio を使用
- * - 道路の長さに対する比率として計算（将来の変更に対応）
- */
 export const ROAD_CONFIG: RoadConfig = {
-  // 直線の道を使用
   type: 'placeholder',
-
-  // 道の表示範囲（実際の日曜市開催範囲）- 全体のバウンディングボックス
   bounds: [
-    [33.56500, 133.53200], // 北西端（高知城前）
-    [33.55330, 133.53000], // 南東端（追手筋東端）
+    [33.56500, 133.53200],
+    [33.54160, 133.53000],
   ],
-
-  // 道の中心線（後方互換性のため保持、曲線の場合は各セグメントの中心線を使用）
   centerLine: 133.53100,
-
-  // 道幅の半分（北側/南側のオフセット）
-  // 【スマホUX改善】道幅を狭くして店舗を主役に
   widthOffset: 0.0004,
-
-  // 表示設定
   opacity: 0.9,
-  zIndex: 50, // 背景より上、店舗より下
-
-  // 【PDF対応】曲線道路のセグメント（1丁目～7丁目）
-  // PDFの地図に基づいて実際の道の曲線を再現
+  zIndex: 50,
   segments: [
     {
-      name: '六丁目',
+      name: 'Sixth',
       bounds: [
-        [33.56500, 133.53150], // 北西端（高知城前）
+        [33.56500, 133.53150],
         [33.56333, 133.53050],
       ],
-      centerLine: 133.53100, // やや西寄り
+      centerLine: 133.53100,
     },
     {
-      name: '五丁目',
+      name: 'Fifth',
       bounds: [
         [33.56333, 133.53170],
         [33.56166, 133.53070],
       ],
-      centerLine: 133.53120, // 少し東へカーブ
+      centerLine: 133.53120,
     },
     {
-      name: '四丁目',
+      name: 'Fourth',
       bounds: [
         [33.56166, 133.53180],
         [33.55999, 133.53080],
       ],
-      centerLine: 133.53130, // カーブのピーク
+      centerLine: 133.53130,
     },
     {
-      name: '三丁目',
+      name: 'Third',
       bounds: [
         [33.55999, 133.53170],
         [33.55832, 133.53070],
       ],
-      centerLine: 133.53120, // 戻り始める
+      centerLine: 133.53120,
     },
     {
-      name: '二丁目',
+      name: 'Second',
       bounds: [
         [33.55832, 133.53150],
         [33.55665, 133.53050],
       ],
-      centerLine: 133.53100, // 中央に戻る
+      centerLine: 133.53100,
     },
     {
-      name: '一丁目',
+      name: 'First',
       bounds: [
         [33.55665, 133.53130],
-        [33.55498, 133.53030],
+        [33.55500, 133.53030],
       ],
-      centerLine: 133.53080, // やや西へ
-    },
-    {
-      name: '七丁目',
-      bounds: [
-        [33.55498, 133.53120],
-        [33.55330, 133.53020],
-      ],
-      centerLine: 133.53070, // 南東端
+      centerLine: 133.53080,
     },
   ],
 };
 
-/**
- * 道の範囲を取得（他のモジュールから参照用）
- */
 export function getRoadBounds(): [[number, number], [number, number]] {
   return ROAD_CONFIG.bounds;
 }
 
-/**
- * 道の中心線を取得（店舗配置用）
- */
 export function getRoadCenterLine(): number {
-  return ROAD_CONFIG.centerLine;
+  return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
 }
 
-/**
- * 道幅オフセットを取得（店舗配置用）
- *
- * 【動的計算】
- * - displayConfig から比率を取得して動的に計算
- * - 道路の長さが変わっても自動的に適切な間隔になる
- *
- * @param useDynamic 動的計算を使用するか（デフォルト: false、後方互換性のため）
- * @returns 道幅オフセット（経度）
- */
 export function getRoadWidthOffset(useDynamic: boolean = false): number {
   if (!useDynamic) {
-    // 後方互換性: 既存の固定値を返す
     return ROAD_CONFIG.widthOffset;
   }
 
-  // 動的計算: 道路の長さに対する比率で計算
-  // displayConfig をここで import すると循環依存になる可能性があるため、
-  // 現時点では固定値を返す（将来の拡張用）
-  // 【スマホUX改善】道幅比率を縮小（0.038 → 0.025）
   const roadLengthDegrees = Math.abs(
     ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]
   );
-  const ratio = 0.025; // 【改善】0.038 → 0.025（道を狭くして店舗を主役に）
+  const ratio = 0.038;
   return roadLengthDegrees * ratio;
 }
 
-/**
- * 道の長さを計算（km）
- */
 export function getRoadLength(): number {
   const [start, end] = ROAD_CONFIG.bounds;
   const latDiff = Math.abs(start[0] - end[0]);
-  // 1度 ≈ 111km
   return latDiff * 111;
 }
 
-/**
- * 日曜市エリアの境界（maxBounds用）
- * パン操作の制限範囲を定義
- *
- * 【目的】
- * - ユーザーが日曜市エリア外へパン（移動）できないようにする
- * - Leaflet の maxBounds パラメータで使用
- *
- * 【マージンの設計】
- * - 道路範囲に適度なマージンを追加（視認性のため）
- * - marginLat: 0.002 ≈ 約200m（緯度方向）
- * - marginLng: 0.001 ≈ 約100m（経度方向）
- *
- * @returns マップの境界 [[北西], [南東]]
- */
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
+  return getPaddedRoadBounds(0.02);
+}
+
+export function getRecommendedZoomBounds(): { min: number; max: number } {
+  return { min: 15, max: 19 };
+}
+
+export function getPaddedRoadBounds(
+  paddingRatio: number = 0.05
+): [[number, number], [number, number]] {
   const bounds = ROAD_CONFIG.bounds;
-
-  // 道路範囲に適度なマージンを追加（視認性のため）
-  const marginLat = 0.002;  // 約200m
-  const marginLng = 0.001;  // 約100m
-
+  const latRange = Math.abs(bounds[0][0] - bounds[1][0]);
+  const lngRange = Math.abs(bounds[0][1] - bounds[1][1]);
+  const marginLat = latRange * paddingRatio;
+  const marginLng = lngRange * paddingRatio;
   return [
-    [bounds[0][0] + marginLat, bounds[0][1] + marginLng],  // 北西
-    [bounds[1][0] - marginLat, bounds[1][1] - marginLng],  // 南東
+    [bounds[0][0] + marginLat, bounds[0][1] + marginLng],
+    [bounds[1][0] - marginLat, bounds[1][1] - marginLng],
   ];
 }
-
-/**
- * ズーム範囲の適切な設定を取得
- *
- * 【目的】
- * - 日曜市マップに最適なズーム範囲を提供
- * - ユーザーエクスペリエンスの向上
- * - 過剰な縮小を防止し、「意味のある範囲」に制限
- *
- * 【ズーム範囲の設計根拠】
- * - min: 16 - 日曜市全体が把握できる程度を上限とし、過剰な俯瞰を防止
- *   （従来の14は縮小されすぎて意味のない状態になっていた）
- * - max: 20 - これ以上寄ると個別店舗の画像が荒れる
- *
- * 【構造改善】
- * - ズーム範囲を狭めることで、「常に気持ちよく見えるマップ」を実現
- * - 物理座標は変更できないため、視覚的な設計で間隔を確保
- *
- * @returns ズーム範囲 { min, max }
- */
-export function getRecommendedZoomBounds(): { min: number; max: number } {
-  return {
-    min: 16,   // 【構造改善】過剰な縮小を防止（14→16）
-    max: 20,   // これ以上寄ると個別店舗の画像が荒れる
-  };
-}
-
-/**
- * 【元に戻す機能】曲線道路から直線道路に戻す
- *
- * 元の直線の道に戻したい場合は、roadConfig.backup.tsの内容を参照するか、
- * 以下のように ROAD_CONFIG.type を 'placeholder' に変更してください：
- *
- * ```typescript
- * export const ROAD_CONFIG: RoadConfig = {
- *   type: 'placeholder',  // 'curved' から 'placeholder' に変更
- *   // ... 残りの設定はそのまま
- * };
- * ```
- *
- * または、segments プロパティを削除して type を 'placeholder' にすることでも
- * 直線の道に戻すことができます。
- *
- * バックアップファイル: app/(public)/map/config/roadConfig.backup.ts
- */
