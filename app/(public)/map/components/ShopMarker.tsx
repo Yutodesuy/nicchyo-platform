@@ -28,6 +28,8 @@ import ShopBubble from './ShopBubble';
 import {
   DEFAULT_ILLUSTRATION_SIZE,
   ILLUSTRATION_SIZES,
+  getIllustrationSizeForZoom,
+  getIllustrationScaleForZoom,
 } from '../config/displayConfig';
 
 interface ShopMarkerProps {
@@ -36,13 +38,27 @@ interface ShopMarkerProps {
   isSelected?: boolean;
   planOrderIndex?: number;
   isFavorite?: boolean;
+  currentZoom?: number;  // 【Phase 3.5】動的サイズ調整用
 }
 
-const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite }: ShopMarkerProps) {
+const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite, currentZoom }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
 
-  // 【動的サイズ取得】店舗データまたはデフォルト設定からサイズを決定
-  const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+  // 【連続的スケーリング】ズームレベルに応じたサイズとスケールを決定
+  // - ベースサイズ: small (45px) / medium (60px)
+  // - スケール係数: ズーム18.0で1.0、前後で0.18/zoomの変化
+  // - 結果: 背景の拡大・縮小に合わせてイラストも自然にスケール
+  let sizeKey: 'small' | 'medium' | 'large';
+  let zoomScale = 1.0;
+
+  if (currentZoom !== undefined) {
+    // ズームレベルが提供されている場合は、動的にサイズとスケールを決定
+    sizeKey = getIllustrationSizeForZoom(currentZoom);
+    zoomScale = getIllustrationScaleForZoom(currentZoom);
+  } else {
+    // フォールバック: 店舗データまたはデフォルト設定からサイズを決定
+    sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
+  }
   const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
 
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
@@ -115,7 +131,6 @@ const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrd
           filter: isSelected
             ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))'
             : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-          transform: isSelected ? 'scale(1.1)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
       >
@@ -129,12 +144,24 @@ const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrd
     </div>
   );
 
-  // Leaflet DivIconを作成（動的サイズ使用）
+  // Leaflet DivIconを作成（連続的スケーリング適用）
+  // - zoomScale: ズームレベルに応じた連続的なスケール係数
+  // - sizeMultiplier: 選択時の強調表示（1.1倍）
+  // - 結果: 背景と一緒に自然に拡大・縮小するイラスト
+  const sizeMultiplier = isSelected ? 1.1 : 1.0;
+  const totalScale = zoomScale * sizeMultiplier;
+
   const customIcon = divIcon({
     html: iconMarkup,
     className: 'custom-shop-marker', // デフォルトスタイルを無効化
-    iconSize: [sizeConfig.width, sizeConfig.height],
-    iconAnchor: sizeConfig.anchor,
+    iconSize: [
+      sizeConfig.width * totalScale,
+      sizeConfig.height * totalScale
+    ],
+    iconAnchor: [
+      sizeConfig.anchor[0] * totalScale,
+      sizeConfig.anchor[1] * totalScale
+    ],
   });
 
   return (

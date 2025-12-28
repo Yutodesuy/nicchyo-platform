@@ -8,21 +8,14 @@
  * - 店舗配置もこの座標を参照する
  */
 
-export interface RoadSegment {
-  name: string;              // セグメント名（例: "一丁目"）
-  bounds: [[number, number], [number, number]]; // セグメントの範囲
-  centerLine: number;        // このセグメントの中心線
-}
-
 export interface RoadConfig {
-  type: 'placeholder' | 'illustration' | 'custom' | 'curved'; // 曲線タイプ追加
+  type: 'placeholder' | 'illustration' | 'custom';
   imagePath?: string;        // カスタムイラストのパス
   bounds: [[number, number], [number, number]]; // 表示範囲（緯度経度）
   opacity?: number;          // 透明度
   zIndex?: number;           // レイヤー順序
-  centerLine: number;        // 道の中心線（経度）- 後方互換性のため保持
+  centerLine: number;        // 道の中心線（経度）
   widthOffset: number;       // 道幅の半分（経度差分）
-  segments?: RoadSegment[];  // 曲線道路用のセグメント配列
 }
 
 /**
@@ -51,86 +44,28 @@ export interface RoadConfig {
  * - 道路の長さに対する比率として計算（将来の変更に対応）
  */
 export const ROAD_CONFIG: RoadConfig = {
-  // 直線の道を使用
+  // 現在はプレースホルダー（仮の道）を使用
+  // 実際の道のイラストができたら type: 'custom' に変更
   type: 'placeholder',
 
-  // 道の表示範囲（実際の日曜市開催範囲）- 全体のバウンディングボックス
+  // 道の表示範囲（実際の日曜市開催範囲）
   bounds: [
     [33.56500, 133.53200], // 北西端（高知城前）
     [33.55330, 133.53000], // 南東端（追手筋東端）
   ],
 
-  // 道の中心線（後方互換性のため保持、曲線の場合は各セグメントの中心線を使用）
+  // 道の中心線（店舗配置の基準線）
   centerLine: 133.53100,
 
   // 道幅の半分（北側/南側のオフセット）
   // 【スマホUX改善】道幅を狭くして店舗を主役に
+  // - 従来: 0.0006（やや広め）
+  // - 改善後: 0.0004（店舗イラストが引き立つ適度な幅）
   widthOffset: 0.0004,
 
   // 表示設定
   opacity: 0.9,
   zIndex: 50, // 背景より上、店舗より下
-
-  // 【PDF対応】曲線道路のセグメント（1丁目～7丁目）
-  // PDFの地図に基づいて実際の道の曲線を再現
-  segments: [
-    {
-      name: '六丁目',
-      bounds: [
-        [33.56500, 133.53150], // 北西端（高知城前）
-        [33.56333, 133.53050],
-      ],
-      centerLine: 133.53100, // やや西寄り
-    },
-    {
-      name: '五丁目',
-      bounds: [
-        [33.56333, 133.53170],
-        [33.56166, 133.53070],
-      ],
-      centerLine: 133.53120, // 少し東へカーブ
-    },
-    {
-      name: '四丁目',
-      bounds: [
-        [33.56166, 133.53180],
-        [33.55999, 133.53080],
-      ],
-      centerLine: 133.53130, // カーブのピーク
-    },
-    {
-      name: '三丁目',
-      bounds: [
-        [33.55999, 133.53170],
-        [33.55832, 133.53070],
-      ],
-      centerLine: 133.53120, // 戻り始める
-    },
-    {
-      name: '二丁目',
-      bounds: [
-        [33.55832, 133.53150],
-        [33.55665, 133.53050],
-      ],
-      centerLine: 133.53100, // 中央に戻る
-    },
-    {
-      name: '一丁目',
-      bounds: [
-        [33.55665, 133.53130],
-        [33.55498, 133.53030],
-      ],
-      centerLine: 133.53080, // やや西へ
-    },
-    {
-      name: '七丁目',
-      bounds: [
-        [33.55498, 133.53120],
-        [33.55330, 133.53020],
-      ],
-      centerLine: 133.53070, // 南東端
-    },
-  ],
 };
 
 /**
@@ -237,22 +172,3 @@ export function getRecommendedZoomBounds(): { min: number; max: number } {
     max: 20,   // これ以上寄ると個別店舗の画像が荒れる
   };
 }
-
-/**
- * 【元に戻す機能】曲線道路から直線道路に戻す
- *
- * 元の直線の道に戻したい場合は、roadConfig.backup.tsの内容を参照するか、
- * 以下のように ROAD_CONFIG.type を 'placeholder' に変更してください：
- *
- * ```typescript
- * export const ROAD_CONFIG: RoadConfig = {
- *   type: 'placeholder',  // 'curved' から 'placeholder' に変更
- *   // ... 残りの設定はそのまま
- * };
- * ```
- *
- * または、segments プロパティを削除して type を 'placeholder' にすることでも
- * 直線の道に戻すことができます。
- *
- * バックアップファイル: app/(public)/map/config/roadConfig.backup.ts
- */

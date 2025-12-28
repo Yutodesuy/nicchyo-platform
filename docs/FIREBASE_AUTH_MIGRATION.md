@@ -157,6 +157,7 @@ service cloud.firestore {
 **`lib/auth/AuthContext.tsx` の変更**
 
 ```typescript
+{% raw %}
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -271,6 +272,7 @@ export function useAuth() {
   }
   return context;
 }
+{% endraw %}
 ```
 
 ### ステップ 2: HamburgerMenu をログインフォームに対応
