@@ -2,6 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== viewport高さシステム（モバイル対応） ===== */
+
+/**
+ * モバイルブラウザのアドレスバー対応
+ * - 100dvh: モダンブラウザ（Dynamic Viewport Height）
+ * - --vh: フォールバック用CSS変数（window.innerHeight基準）
+ *
+ * 使い方: h-[100dvh] または h-[calc(var(--vh,1vh)*100)]
+ */
+:root {
+  --vh: 1vh; /* JavaScriptで動的に更新 */
+}
+
+/* safe-area対応（iOS切り欠き・Android ジェスチャーバー） */
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+    --safe-left: env(safe-area-inset-left);
+    --safe-right: env(safe-area-inset-right);
+  }
+}
+
+/* フォールバック */
+:root {
+  --safe-top: 0px;
+  --safe-bottom: 0px;
+  --safe-left: 0px;
+  --safe-right: 0px;
+}
+
 /* ===== nicchyo 全体の基本設定 ===== */
 
 html, body {
@@ -9,6 +40,17 @@ html, body {
   margin: 0;
   background: #FFFAF0;
   color: #3A3A3A;
+  /* モバイル用: タッチ操作最適化 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* オーバースクロール防止（iOS Safari） */
+  overscroll-behavior: none;
+}
+
+/* body に viewport 高さを設定 */
+body {
+  height: 100dvh; /* モダンブラウザ */
+  height: calc(var(--vh, 1vh) * 100); /* フォールバック */
 }
 
 /* スクロールバー */
