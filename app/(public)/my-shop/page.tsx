@@ -1,6 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { applyShopEdits, saveShopEdits, SHOP_EDITS_UPDATED_EVENT } from "@/lib/shopEdits";
+import { shops as baseShops } from "../map/data/shops";
+import type { ShopEditableData } from "../map/types/shopData";
 
 type FormState = {
   name: string;
@@ -74,14 +78,65 @@ const EMPTY_FORM: FormState = {
   website: "",
 };
 
+function splitCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function MyShopPage() {
+  const { user, permissions } = useAuth();
+  const vendorId = user?.vendorId ?? null;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [initialized, setInitialized] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [editsVersion, setEditsVersion] = useState(0);
 
   const iconOptions = useMemo(() => {
     if (!form.category) return [];
     return CATEGORY_ICONS[form.category] ?? [];
   }, [form.category]);
+
+  const vendorShop = useMemo(() => {
+    if (!vendorId) return null;
+    const merged = applyShopEdits(baseShops);
+    return merged.find((shop) => shop.id === vendorId) ?? null;
+  }, [vendorId, editsVersion]);
+
+  useEffect(() => {
+    if (!vendorShop || initialized) return;
+    setForm({
+      name: vendorShop.name ?? "",
+      ownerName: vendorShop.ownerName ?? "",
+      category: vendorShop.category ?? "",
+      icon: vendorShop.icon ?? "",
+      stallStyle: vendorShop.stallStyle ?? "",
+      schedule: vendorShop.schedule ?? "",
+      productsText: vendorShop.products?.join(", ") ?? "",
+      description: vendorShop.description ?? "",
+      specialtyDish: vendorShop.specialtyDish ?? "",
+      aboutVendor: vendorShop.aboutVendor ?? "",
+      message: vendorShop.message ?? "",
+      imageMain: vendorShop.images?.main ?? "",
+      imageThumb: vendorShop.images?.thumbnail ?? "",
+      imageAdditional: vendorShop.images?.additional?.join(", ") ?? "",
+      instagram: vendorShop.socialLinks?.instagram ?? "",
+      facebook: vendorShop.socialLinks?.facebook ?? "",
+      twitter: vendorShop.socialLinks?.twitter ?? "",
+      website: vendorShop.socialLinks?.website ?? "",
+    });
+    setInitialized(true);
+  }, [vendorShop, initialized]);
+
+  useEffect(() => {
+    const handleEditsUpdate = () => {
+      setEditsVersion((prev) => prev + 1);
+    };
+    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
+    return () => window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
+  }, []);
 
   useEffect(() => {
     if (!form.category) {
@@ -95,7 +150,7 @@ export default function MyShopPage() {
 
   const handleChange =
     (key: keyof FormState) =>
-    (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const value = event.target.value;
       setForm((prev) => ({ ...prev, [key]: value }));
       if (errors[key]) {
@@ -103,8 +158,9 @@ export default function MyShopPage() {
       }
     };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setStatusMessage("");
     const nextErrors: Partial<Record<keyof FormState, string>> = {};
     REQUIRED_FIELDS.forEach((key) => {
       if (!form[key].trim()) {
@@ -115,7 +171,41 @@ export default function MyShopPage() {
       setErrors(nextErrors);
       return;
     }
-    // TODO: save form
+
+    if (!vendorId || !permissions.isVendor) {
+      setStatusMessage("出店者としてログインしてください。");
+      return;
+    }
+
+    const edits: Partial<ShopEditableData> = {
+      name: form.name.trim(),
+      ownerName: form.ownerName.trim(),
+      category: form.category.trim(),
+      icon: form.icon.trim(),
+      products: splitCsv(form.productsText),
+      description: form.description.trim(),
+      specialtyDish: form.specialtyDish.trim() || undefined,
+      aboutVendor: form.aboutVendor.trim() || undefined,
+      stallStyle: form.stallStyle.trim() || undefined,
+      schedule: form.schedule.trim(),
+      message: form.message.trim() || undefined,
+      images: {
+        main: form.imageMain.trim() || undefined,
+        thumbnail: form.imageThumb.trim() || undefined,
+        additional: splitCsv(form.imageAdditional),
+      },
+      socialLinks: {
+        instagram: form.instagram.trim() || undefined,
+        facebook: form.facebook.trim() || undefined,
+        twitter: form.twitter.trim() || undefined,
+        website: form.website.trim() || undefined,
+      },
+      lastUpdated: Date.now(),
+      updatedBy: user?.id,
+    };
+
+    saveShopEdits(vendorId, edits);
+    setStatusMessage("更新内容をマップに反映しました。");
   };
 
   const requiredMark = (
@@ -424,6 +514,12 @@ export default function MyShopPage() {
               </label>
             </div>
           </section>
+
+          {statusMessage && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              {statusMessage}
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
             <button
