@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMapLoading } from "./components/MapLoadingProvider";
 
 const MapView = dynamic(() => import("./(public)/map/components/MapView"), {
   ssr: false,
@@ -10,6 +11,7 @@ const MapView = dynamic(() => import("./(public)/map/components/MapView"), {
 
 export default function HomePage() {
   const router = useRouter();
+  const { startMapLoading } = useMapLoading();
   const [loaded, setLoaded] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
@@ -66,6 +68,7 @@ export default function HomePage() {
               type="button"
               onClick={(event) => {
                 setRevealed(true);
+                startMapLoading();
                 window.setTimeout(() => {
                   router.push("/map");
                 }, 350);

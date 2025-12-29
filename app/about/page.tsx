@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import NavigationBar from "../components/NavigationBar";
+import MapLink from "../components/MapLink";
 
 export const metadata = {
   title: "about | nicchyo",
@@ -38,7 +39,7 @@ const pillars = [
     desc: "市場が終わった後も楽しめる地域イベントやワークショップを掲載。",
     href: "/events",
   },
-];
+] as const;
 
 const audiences = [
   {
@@ -71,7 +72,7 @@ const audiences = [
       "簡単なアンケートで声を集める",
     ],
   },
-];
+] as const;
 
 const coreValues = [
   "日曜市の空気感を壊さずにデジタルで補助する",
@@ -100,12 +101,12 @@ export default function AboutPage() {
                 日曜市をもっと歩きやすく、もっと知りやすくするための小さなデジタル実験です。
               </p>
             </div>
-            <Link
+            <MapLink
               href="/map"
               className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
             >
               マップを見る
-            </Link>
+            </MapLink>
           </div>
         </header>
 
@@ -117,12 +118,12 @@ export default function AboutPage() {
               マップで位置を確認しながら、おすすめやイベント、ことづてをチェックできます。
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link
+              <MapLink
                 href="/map"
                 className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-300/40 transition hover:bg-amber-500"
               >
                 マップを見る
-              </Link>
+              </MapLink>
               <Link
                 href="/search"
                 className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs text-gray-800 transition hover:border-gray-300"
@@ -228,12 +229,12 @@ export default function AboutPage() {
               >
                 メールで連絡
               </Link>
-              <Link
+              <MapLink
                 href="/map"
                 className="rounded-full border border-orange-200 bg-white px-4 py-2 font-semibold text-orange-700 shadow-sm hover:bg-orange-50"
               >
                 日曜市マップへ戻る
-              </Link>
+              </MapLink>
             </div>
           </section>
         </div>
