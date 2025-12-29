@@ -173,7 +173,7 @@ export default function MapPageClient() {
             )}
 
             {showVendorPrompt && vendorShopName && (
-              <div className="absolute left-4 right-4 top-4 z-[1300]">
+              <div className="absolute left-4 right-4 top-1/2 z-[1300] -translate-y-1/2">
                 <div className="rounded-2xl border border-amber-200 bg-white/95 p-4 shadow-xl">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -193,6 +193,15 @@ export default function MapPageClient() {
                       ×
                     </button>
                   </div>
+                  {(vendorShop?.images?.main || "/images/shops/tosahamono.webp") && (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
+                      <img
+                        src={vendorShop?.images?.main ?? "/images/shops/tosahamono.webp"}
+                        alt={`${vendorShopName}の写真`}
+                        className="h-40 w-full object-cover object-center"
+                      />
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <button
                       type="button"
