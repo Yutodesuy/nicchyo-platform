@@ -30,16 +30,30 @@ interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
   onShopClick: (shop: Shop) => void;
   selectedShopId?: number;
+  favoriteShopIds?: number[];
 }
 
 export default function OptimizedShopLayerWithClustering({
   shops,
   onShopClick,
   selectedShopId,
+  favoriteShopIds,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
+  const favoriteSetRef = useRef<Set<number>>(new Set());
+  const prevFavoriteSetRef = useRef<Set<number>>(new Set());
+
+  const setMarkerFavorite = (marker: L.Marker, isFavorite: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isFavorite) {
+      icon.classList.add('is-favorite');
+    } else {
+      icon.classList.remove('is-favorite');
+    }
+  };
 
   useEffect(() => {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -106,13 +120,16 @@ export default function OptimizedShopLayerWithClustering({
       // 店舗イラスト + 吹き出しを含むHTML文字列を生成
       const iconMarkup = renderToStaticMarkup(
         <div
-          className="shop-marker-container"
+          className={`shop-marker-container shop-side-${shop.side}`}
           style={{
             position: 'relative',
             cursor: 'pointer',
             transition: 'transform 0.2s ease',
           }}
         >
+          <div className="shop-favorite-badge" aria-hidden="true">
+            &#10084;
+          </div>
           {/* 商品吹き出し */}
           <ShopBubble
             icon={shop.icon}
@@ -151,6 +168,9 @@ export default function OptimizedShopLayerWithClustering({
       marker.on('click', () => {
         onShopClick(shop);
       });
+      marker.on('add', () => {
+        setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
+      });
 
       // クラスタグループに追加
       markers.addLayer(marker);
@@ -172,6 +192,29 @@ export default function OptimizedShopLayerWithClustering({
   // 【ポイント8】選択中店舗のスタイル更新
   // - 選択状態をCSSクラスで表現
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  useEffect(() => {
+    favoriteSetRef.current = new Set(favoriteShopIds ?? []);
+    const nextFavorites = favoriteSetRef.current;
+    const prevFavorites = prevFavoriteSetRef.current;
+    const changed = new Set<number>();
+
+    prevFavorites.forEach((id) => {
+      if (!nextFavorites.has(id)) changed.add(id);
+    });
+    nextFavorites.forEach((id) => {
+      if (!prevFavorites.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerFavorite(marker, nextFavorites.has(id));
+      }
+    });
+
+    prevFavoriteSetRef.current = nextFavorites;
+  }, [favoriteShopIds]);
+
   useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {
       const icon = marker.getElement();
