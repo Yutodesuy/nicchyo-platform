@@ -1,15 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useState, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 type MapLoadingContextValue = {
   isMapLoading: boolean;
   startMapLoading: () => void;
   stopMapLoading: () => void;
+  markMapReady: () => void;
 };
 
 const MapLoadingContext = createContext<MapLoadingContextValue | null>(null);
+
+const MIN_LOADING_MS = 500;
 
 export function useMapLoading() {
   const value = useContext(MapLoadingContext);
@@ -21,11 +24,39 @@ export function useMapLoading() {
 
 export default function MapLoadingProvider({ children }: { children: React.ReactNode }) {
   const [isMapLoading, setIsMapLoading] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
   const pathname = usePathname();
+  const startedAtRef = useRef<number | null>(null);
+  const stopTimerRef = useRef<number | null>(null);
+
+  const scheduleStop = () => {
+    if (stopTimerRef.current !== null) {
+      window.clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+    if (!isMapLoading) return;
+    const startedAt = startedAtRef.current ?? Date.now();
+    const elapsed = Date.now() - startedAt;
+    const remaining = Math.max(MIN_LOADING_MS - elapsed, 0);
+    stopTimerRef.current = window.setTimeout(() => {
+      setIsMapLoading(false);
+      setIsMapReady(false);
+      startedAtRef.current = null;
+      stopTimerRef.current = null;
+    }, remaining);
+  };
 
   useEffect(() => {
-    if (isMapLoading) {
-      setIsMapLoading(false);
+    if (!isMapLoading) return;
+    if (isMapReady) {
+      scheduleStop();
+    }
+  }, [isMapLoading, isMapReady]);
+
+  useEffect(() => {
+    if (!isMapLoading) return;
+    if (pathname && !pathname.startsWith("/map")) {
+      scheduleStop();
     }
   }, [pathname, isMapLoading]);
 
@@ -34,9 +65,22 @@ export default function MapLoadingProvider({ children }: { children: React.React
       isMapLoading,
       startMapLoading: () => {
         if (pathname?.startsWith("/map")) return;
+        if (stopTimerRef.current !== null) {
+          window.clearTimeout(stopTimerRef.current);
+          stopTimerRef.current = null;
+        }
+        startedAtRef.current = Date.now();
+        setIsMapReady(false);
         setIsMapLoading(true);
       },
-      stopMapLoading: () => setIsMapLoading(false),
+      stopMapLoading: () => {
+        setIsMapReady(true);
+        scheduleStop();
+      },
+      markMapReady: () => {
+        setIsMapReady(true);
+        scheduleStop();
+      },
     }),
     [isMapLoading, pathname]
   );
