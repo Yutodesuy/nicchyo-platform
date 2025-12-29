@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import NavigationBar from "@/app/components/NavigationBar";
 import { applyShopEdits, saveShopEdits, SHOP_EDITS_UPDATED_EVENT } from "@/lib/shopEdits";
 import { shops as baseShops } from "../map/data/shops";
 import type { ShopEditableData } from "../map/types/shopData";
@@ -537,6 +538,7 @@ export default function MyShopPage() {
           </div>
         </form>
       </div>
+      <NavigationBar />
     </div>
   );
 }
