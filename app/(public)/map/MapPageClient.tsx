@@ -2,13 +2,16 @@
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
+import { useAuth } from "../../../lib/auth/AuthContext";
+import { shops as baseShops } from "./data/shops";
+import { applyShopEdits } from "../../../lib/shopEdits";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -17,6 +20,7 @@ const MapView = dynamic(() => import("./components/MapView"), {
 export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, permissions } = useAuth();
   const initialShopIdParam = searchParams?.get("shop");
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
@@ -26,10 +30,19 @@ export default function MapPageClient() {
   const [agentOpen, setAgentOpen] = useState(false);
   const { priority, clearPriority } = useTimeBadge();
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [showVendorPrompt, setShowVendorPrompt] = useState(false);
+  const [vendorShopName, setVendorShopName] = useState<string | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
+  const vendorShopId = user?.vendorId ?? null;
+
+  const vendorShop = useMemo(() => {
+    if (!vendorShopId) return null;
+    const merged = applyShopEdits(baseShops);
+    return merged.find((shop) => shop.id === vendorShopId) ?? null;
+  }, [vendorShopId]);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -63,6 +76,17 @@ export default function MapPageClient() {
     }
   }, [searchParams, searchParamsKey]);
 
+  useEffect(() => {
+    if (!permissions.isVendor || !vendorShopId) return;
+    if (!vendorShop) return;
+    const key = `nicchyo-vendor-prompt-${vendorShopId}`;
+    const already = typeof window !== "undefined" && localStorage.getItem(key);
+    if (already) return;
+    setVendorShopName(vendorShop.name);
+    setShowVendorPrompt(true);
+    localStorage.setItem(key, "dismissed");
+  }, [permissions.isVendor, vendorShopId, vendorShop]);
+
   const handleAcceptRecipe = () => {
     setShowRecipeOverlay(true);
     setShowBanner(false);
@@ -72,6 +96,12 @@ export default function MapPageClient() {
   const handleDismissBanner = () => {
     setShowBanner(false);
     localStorage.setItem("nicchyo-daily-recipe-dismissed", "true");
+  };
+
+  const handleOpenVendorBanner = () => {
+    if (!vendorShopId) return;
+    router.push(`/map?shop=${vendorShopId}`);
+    setShowVendorPrompt(false);
   };
 
   return (
@@ -136,6 +166,47 @@ export default function MapPageClient() {
                       className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
                     >
                       ほかのレシピを探す
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showVendorPrompt && vendorShopName && (
+              <div className="absolute left-4 right-4 top-4 z-[1300]">
+                <div className="rounded-2xl border border-amber-200 bg-white/95 p-4 shadow-xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                        出店者向け
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                        {vendorShopName} のショップバナーを開きますか？
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowVendorPrompt(false)}
+                      className="h-8 w-8 rounded-full border border-amber-200 bg-white text-xs font-bold text-amber-700 shadow-sm hover:bg-amber-50"
+                      aria-label="閉じる"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={handleOpenVendorBanner}
+                      className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+                    >
+                      ショップバナーを開く
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowVendorPrompt(false)}
+                      className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                    >
+                      後で
                     </button>
                   </div>
                 </div>
