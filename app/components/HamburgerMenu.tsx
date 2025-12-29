@@ -32,7 +32,7 @@ export default function HamburgerMenu() {
       {/* ハンバーガーボタン（固定位置・オーバーレイ） */}
       <button
         onClick={toggleMenu}
-        className="fixed top-4 right-4 z-[10002] flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg"
+        className="hamburger-button fixed top-4 right-4 z-[10002] flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg"
         aria-label="メニュー"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

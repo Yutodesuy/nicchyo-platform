@@ -143,3 +143,7 @@ body {
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   z-index: 1000 !important;
 }
+
+body.shop-banner-open .hamburger-button {
+  display: none;
+}
