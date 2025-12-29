@@ -132,7 +132,6 @@ export default function GrandmaChatter({
   const handleAvatarPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
     dragStateRef.current.pointerId = null;
-    dragStateRef.current.moved = false;
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
