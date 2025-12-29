@@ -144,6 +144,34 @@ body {
   z-index: 1000 !important;
 }
 
+.shop-favorite-badge {
+  position: absolute;
+  top: -14px;
+  right: -12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #f97316;
+  background: #ffffff;
+  color: #f97316;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.shop-side-north .shop-favorite-badge {
+  left: -12px;
+  right: auto;
+}
+
+.custom-shop-marker.is-favorite .shop-favorite-badge {
+  display: inline-flex;
+}
+
 body.shop-banner-open .hamburger-button {
   display: none;
 }
