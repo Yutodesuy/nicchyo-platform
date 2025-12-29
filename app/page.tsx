@@ -13,7 +13,6 @@ export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
   const [loaded, setLoaded] = useState(false);
-  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     setLoaded(true);
@@ -23,12 +22,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-amber-50 text-gray-900">
       <section className="relative h-screen w-screen overflow-hidden">
         <div
-          className={`absolute inset-0 scale-[1.04] transition-all duration-700 ease-out ${
-            revealed
-              ? "blur-0 opacity-100"
-              : loaded
-                ? "blur-md opacity-70"
-                : "blur-xl opacity-0"
+          className={`absolute inset-0 scale-[1.04] transition-opacity duration-300 ${
+            loaded ? "opacity-100" : "opacity-0"
           }`}
         >
           <MapView />
@@ -67,7 +62,6 @@ export default function HomePage() {
             <button
               type="button"
               onClick={(event) => {
-                setRevealed(true);
                 startMapLoading();
                 window.setTimeout(() => {
                   router.push("/map");
