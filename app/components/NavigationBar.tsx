@@ -17,7 +17,11 @@ const navItems: NavItem[] = [
   { name: "ことづて", href: "/kotodute", icon: "chat" },
 ];
 
-export default function NavigationBar() {
+type NavigationBarProps = {
+  activeHref?: string;
+};
+
+export default function NavigationBar({ activeHref }: NavigationBarProps) {
   const pathname = usePathname();
   const { startMapLoading } = useMapLoading();
 
@@ -28,7 +32,7 @@ export default function NavigationBar() {
     >
       <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = (activeHref ?? pathname) === item.href;
           const handleClick = item.href === "/map" ? startMapLoading : undefined;
           return (
             <Link
