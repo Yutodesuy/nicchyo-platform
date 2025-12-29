@@ -42,6 +42,8 @@ export default function GrandmaChatter({
   const [isActionOpen, setIsActionOpen] = useState(false);
   const [askText, setAskText] = useState('');
   const [avatarOffset, setAvatarOffset] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const pendingOffsetRef = useRef<number | null>(null);
   const dragStateRef = useRef<{
     startX: number;
     startOffset: number;
@@ -91,9 +93,11 @@ export default function GrandmaChatter({
     setAskText('');
   };
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
+    const viewWidth = document.documentElement.clientWidth;
     const min = avatarOffset - rect.left;
-    const max = avatarOffset + (window.innerWidth - rect.right);
+    const max = avatarOffset + (viewWidth - rect.right);
     dragStateRef.current = {
       startX: event.clientX,
       startOffset: avatarOffset,
@@ -106,6 +110,7 @@ export default function GrandmaChatter({
   };
   const handleAvatarPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
+    event.preventDefault();
     const delta = event.clientX - dragStateRef.current.startX;
     const next = Math.max(
       dragStateRef.current.min,
@@ -114,30 +119,47 @@ export default function GrandmaChatter({
     if (Math.abs(delta) > 4) {
       dragStateRef.current.moved = true;
     }
-    setAvatarOffset(next);
+    pendingOffsetRef.current = next;
+    if (rafRef.current === null) {
+      rafRef.current = window.requestAnimationFrame(() => {
+        if (pendingOffsetRef.current !== null) {
+          setAvatarOffset(pendingOffsetRef.current);
+        }
+        rafRef.current = null;
+      });
+    }
   };
   const handleAvatarPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
     dragStateRef.current.pointerId = null;
+    dragStateRef.current.moved = false;
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (pendingOffsetRef.current !== null) {
+      setAvatarOffset(pendingOffsetRef.current);
+      pendingOffsetRef.current = null;
+    }
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
   const shellClassName = fullWidth
-    ? 'fixed bottom-20 left-0 right-0 z-[1400]'
-    : 'fixed bottom-20 left-3 z-[1400] sm:left-4';
+    ? 'fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none'
+    : 'fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none';
   const containerClassName = fullWidth
-    ? 'relative flex w-full flex-col items-center gap-2'
-    : 'relative flex items-end gap-2 sm:gap-3';
+    ? 'relative flex w-full flex-col items-center gap-2 pointer-events-none'
+    : 'relative flex items-end gap-2 sm:gap-3 pointer-events-none';
   const avatarClassName = fullWidth
     ? 'relative h-28 w-28 shrink-0 sm:h-32 sm:w-32'
     : 'relative h-44 w-44 shrink-0 sm:h-52 sm:w-52';
   const bubbleClassName = fullWidth
-    ? 'group relative z-[1000] w-full rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl'
-    : 'group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm';
+    ? 'group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto'
+    : 'group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto';
   const labelClassName = 'absolute top-full left-1/2 -translate-x-1/2';
   const actionMenuClassName = fullWidth
-    ? 'absolute -top-2 left-1/2 z-[1450] mb-3 w-[min(420px,92vw)] -translate-x-1/2 translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl'
-    : 'absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl';
+    ? 'absolute -top-2 left-1/2 z-[1450] mb-3 w-[min(420px,92vw)] -translate-x-1/2 translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl pointer-events-auto'
+    : 'absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl pointer-events-auto';
 
   return (
     <div className={shellClassName}>
@@ -158,7 +180,7 @@ export default function GrandmaChatter({
           onPointerMove={handleAvatarPointerMove}
           onPointerUp={handleAvatarPointerUp}
           onPointerCancel={handleAvatarPointerUp}
-          className={`${avatarClassName} relative z-0`}
+          className={`${avatarClassName} relative z-0 pointer-events-auto`}
           style={{ touchAction: 'none' }}
           aria-label="おばあちゃんメニューを開く"
         >
