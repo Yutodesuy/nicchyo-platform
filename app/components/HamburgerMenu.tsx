@@ -11,16 +11,10 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useMenu } from '@/lib/ui/MenuContext';
-import type { UserRole } from '@/lib/auth/types';
 
 export default function HamburgerMenu() {
   const { isMenuOpen, toggleMenu, closeMenu } = useMenu();
-  const { isLoggedIn, user, login, logout, permissions } = useAuth();
-
-  const handleLogin = (role: UserRole) => {
-    login(role);
-    closeMenu();
-  };
+  const { isLoggedIn, user, logout, permissions } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -236,50 +230,17 @@ export default function HamburgerMenu() {
               ) : (
                 <>
                   <li>
-                    <div className="rounded-lg bg-gray-50 p-4 mb-3 text-sm text-gray-700 leading-relaxed">
-                      デモ用ログインです。ロールを選んで機能を試せます。
-                    </div>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleLogin('super_admin')}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-red-200 bg-red-50 px-4 py-3 text-gray-700 transition hover:bg-red-100"
+                    <Link
+                      href="/login"
+                      onClick={closeMenu}
+                      className="flex w-full items-center gap-3 rounded-lg border-2 border-amber-200 bg-amber-50 px-4 py-3 text-gray-700 transition hover:bg-amber-100"
                     >
-                      <MenuIcon name="settings" className="h-5 w-5 text-red-600" />
+                      <MenuIcon name="user" className="h-5 w-5 text-amber-700" />
                       <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">管理者としてログイン</p>
-                        <p className="text-xs text-gray-600">店舗・ユーザー管理</p>
+                        <p className="text-sm font-semibold">ログイン</p>
+                        <p className="text-xs text-gray-600">ログイン画面へ進む</p>
                       </div>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleLogin('vendor')}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 text-gray-700 transition hover:bg-blue-100"
-                    >
-                      <MenuIcon name="shop" className="h-5 w-5 text-blue-600" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">出店者としてログイン</p>
-                        <p className="text-xs text-gray-600">デモIDで表示</p>
-                      </div>
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleLogin('general_user')}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-gray-200 bg-gray-50 px-4 py-3 text-gray-700 transition hover:bg-gray-100"
-                    >
-                      <MenuIcon name="user" className="h-5 w-5 text-gray-600" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">一般ユーザーでログイン</p>
-                        <p className="text-xs text-gray-600">bag・バッジを体験</p>
-                      </div>
-                    </button>
-                  </li>
-                  <li>
-                    <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 leading-relaxed">
-                      本番環境では Firebase Auth 等に置き換えてください。
-                    </div>
+                    </Link>
                   </li>
                 </>
               )}
