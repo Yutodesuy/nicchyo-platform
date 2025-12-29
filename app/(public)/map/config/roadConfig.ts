@@ -1,119 +1,130 @@
 /**
- * 道路設定ファイル
- *
- * 【重要】このファイルが「道の真実の源泉（Single Source of Truth）」です
- *
- * - 道のイラスト差し替えはここで行う
- * - 座標はすべてここを基準にする
- * - 店舗配置もこの座標を参照する
+ * Road config (single source of truth).
  */
 
-export interface RoadConfig {
-  type: 'placeholder' | 'illustration' | 'custom';
-  imagePath?: string;        // カスタムイラストのパス
-  bounds: [[number, number], [number, number]]; // 表示範囲（緯度経度）
-  opacity?: number;          // 透明度
-  zIndex?: number;           // レイヤー順序
-  centerLine: number;        // 道の中心線（経度）
-  widthOffset: number;       // 道幅の半分（経度差分）
+export interface RoadSegment {
+  name: string;
+  bounds: [[number, number], [number, number]];
+  centerLine: number;
 }
 
-/**
- * 日曜市の道路設定
- *
- * 【座標の意味】
- * - bounds: 道路が表示される範囲（緯度経度）
- * - 北西端（高知城前）から南東端（追手筋東端）まで約1.3km
- * - centerLine: 道路の中心線（店舗配置の基準）
- * - widthOffset: 道路の北側/南側のオフセット（動的計算）
- *
- * 【イラスト差し替え方法】
- * 1. SVGまたは画像ファイルを public/images/maps/ に配置
- * 2. type を 'custom' に変更
- * 3. imagePath にファイルパスを指定
- *
- * 例:
- * ```
- * type: 'custom',
- * imagePath: '/images/maps/sunday-market-road.svg',
- * ```
- *
- * 【動的間隔計算】
- * widthOffset は getRoadWidthOffset() 関数で動的に計算されます
- * - displayConfig.ts の SPACING_CONFIG.roadWidthOffsetRatio を使用
- * - 道路の長さに対する比率として計算（将来の変更に対応）
- */
+export interface RoadConfig {
+  type: 'placeholder' | 'illustration' | 'custom' | 'curved';
+  imagePath?: string;
+  bounds: [[number, number], [number, number]];
+  opacity?: number;
+  zIndex?: number;
+  centerLine: number;
+  widthOffset: number;
+  segments?: RoadSegment[];
+}
+
 export const ROAD_CONFIG: RoadConfig = {
-  // 現在はプレースホルダー（仮の道）を使用
-  // 実際の道のイラストができたら type: 'custom' に変更
   type: 'placeholder',
-
-  // 道の表示範囲（実際の日曜市開催範囲）
   bounds: [
-    [33.56500, 133.53200], // 北西端（高知城前）
-    [33.55330, 133.53000], // 南東端（追手筋東端）
+    [33.56500, 133.53200],
+    [33.55330, 133.53000],
   ],
-
-  // 道の中心線（店舗配置の基準線）
   centerLine: 133.53100,
-
-  // 道幅の半分（北側/南側のオフセット）
-  // 【注意】この値は後方互換性のため残していますが、
-  // getRoadWidthOffset() 関数で動的に計算した値を使用することを推奨
-  widthOffset: 0.0006,
-
-  // 表示設定
+  widthOffset: 0.0001,
   opacity: 0.9,
-  zIndex: 50, // 背景より上、店舗より下
+  zIndex: 50,
+  segments: [
+    {
+      name: 'Sixth',
+      bounds: [
+        [33.56500, 133.53150],
+        [33.56333, 133.53050],
+      ],
+      centerLine: 133.53100,
+    },
+    {
+      name: 'Fifth',
+      bounds: [
+        [33.56333, 133.53170],
+        [33.56166, 133.53070],
+      ],
+      centerLine: 133.53120,
+    },
+    {
+      name: 'Fourth',
+      bounds: [
+        [33.56166, 133.53180],
+        [33.55999, 133.53080],
+      ],
+      centerLine: 133.53130,
+    },
+    {
+      name: 'Third',
+      bounds: [
+        [33.55999, 133.53170],
+        [33.55832, 133.53070],
+      ],
+      centerLine: 133.53120,
+    },
+    {
+      name: 'Second',
+      bounds: [
+        [33.55832, 133.53150],
+        [33.55665, 133.53050],
+      ],
+      centerLine: 133.53100,
+    },
+    {
+      name: 'First',
+      bounds: [
+        [33.55665, 133.53130],
+        [33.55500, 133.53030],
+      ],
+      centerLine: 133.53080,
+    },
+  ],
 };
 
-/**
- * 道の範囲を取得（他のモジュールから参照用）
- */
 export function getRoadBounds(): [[number, number], [number, number]] {
   return ROAD_CONFIG.bounds;
 }
 
-/**
- * 道の中心線を取得（店舗配置用）
- */
 export function getRoadCenterLine(): number {
-  return ROAD_CONFIG.centerLine;
+  return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
 }
 
-/**
- * 道幅オフセットを取得（店舗配置用）
- *
- * 【動的計算】
- * - displayConfig から比率を取得して動的に計算
- * - 道路の長さが変わっても自動的に適切な間隔になる
- *
- * @param useDynamic 動的計算を使用するか（デフォルト: false、後方互換性のため）
- * @returns 道幅オフセット（経度）
- */
 export function getRoadWidthOffset(useDynamic: boolean = false): number {
   if (!useDynamic) {
-    // 後方互換性: 既存の固定値を返す
     return ROAD_CONFIG.widthOffset;
   }
 
-  // 動的計算: 道路の長さに対する比率で計算
-  // displayConfig をここで import すると循環依存になる可能性があるため、
-  // 現時点では固定値を返す（将来の拡張用）
-  // TODO: displayConfig の SPACING_CONFIG.roadWidthOffsetRatio を使用
   const roadLengthDegrees = Math.abs(
     ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]
   );
-  const ratio = 0.038; // SPACING_CONFIG.roadWidthOffsetRatio と同期
+  const ratio = 0.038;
   return roadLengthDegrees * ratio;
 }
 
-/**
- * 道の長さを計算（km）
- */
 export function getRoadLength(): number {
   const [start, end] = ROAD_CONFIG.bounds;
   const latDiff = Math.abs(start[0] - end[0]);
-  // 1度 ≈ 111km
   return latDiff * 111;
+}
+
+export function getSundayMarketBounds(): [[number, number], [number, number]] {
+  return getPaddedRoadBounds(0.02);
+}
+
+export function getRecommendedZoomBounds(): { min: number; max: number } {
+  return { min: 15, max: 21 };
+}
+
+export function getPaddedRoadBounds(
+  paddingRatio: number = 0.05
+): [[number, number], [number, number]] {
+  const bounds = ROAD_CONFIG.bounds;
+  const latRange = Math.abs(bounds[0][0] - bounds[1][0]);
+  const lngRange = Math.abs(bounds[0][1] - bounds[1][1]);
+  const marginLat = latRange * paddingRatio;
+  const marginLng = lngRange * paddingRatio;
+  return [
+    [bounds[0][0] + marginLat, bounds[0][1] + marginLng],
+    [bounds[1][0] - marginLat, bounds[1][1] - marginLng],
+  ];
 }
