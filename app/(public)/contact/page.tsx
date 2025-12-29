@@ -1,5 +1,6 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
+import MapLink from "../../components/MapLink";
 
 export const metadata = {
   title: "Contact | nicchyo",
@@ -20,12 +21,12 @@ export default function ContactPage() {
               ご意見や取材依頼などはこちらからお知らせください。
             </p>
           </div>
-          <Link
+          <MapLink
             href="/map"
             className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
           >
             マップへ戻る
-          </Link>
+          </MapLink>
         </div>
       </header>
 

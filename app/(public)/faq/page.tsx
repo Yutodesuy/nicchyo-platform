@@ -1,5 +1,6 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
+import MapLink from "../../components/MapLink";
 
 export const metadata = {
   title: "FAQ | nicchyo",
@@ -32,15 +33,15 @@ export default function FAQPage() {
             </p>
             <h1 className="text-2xl font-bold">よくある質問</h1>
             <p className="text-sm text-gray-700">
-              日曜市マップの使い方や仕様についてまとめました。
+              日曜市マップの使い方をまとめました。
             </p>
           </div>
-          <Link
+          <MapLink
             href="/map"
             className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
           >
             マップへ戻る
-          </Link>
+          </MapLink>
         </div>
       </header>
 
