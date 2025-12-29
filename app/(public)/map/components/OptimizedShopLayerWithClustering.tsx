@@ -120,7 +120,7 @@ export default function OptimizedShopLayerWithClustering({
       // 店舗イラスト + 吹き出しを含むHTML文字列を生成
       const iconMarkup = renderToStaticMarkup(
         <div
-          className="shop-marker-container"
+          className={`shop-marker-container shop-side-${shop.side}`}
           style={{
             position: 'relative',
             cursor: 'pointer',
