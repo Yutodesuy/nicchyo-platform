@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
+import { useAuth } from "../../../../lib/auth/AuthContext";
 import {
   FAVORITE_SHOPS_KEY,
   FAVORITE_SHOPS_UPDATED_EVENT,
@@ -49,6 +50,7 @@ export default function ShopDetailBanner({
   onAddToBag,
 }: ShopDetailBannerProps) {
   const router = useRouter();
+  const { permissions } = useAuth();
   const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
   const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
@@ -164,6 +166,12 @@ export default function ShopDetailBanner({
     setFavoriteShopIds(next);
   }, [shop.id]);
 
+  const canEditShop = permissions.canEditShop(shop.id);
+
+  const handleEditShop = useCallback(() => {
+    router.push("/my-shop");
+  }, [router]);
+
   const handleConfirmAdd = useCallback(() => {
     if (!pendingProduct) return;
     onAddToBag?.(pendingProduct, shop.id);
@@ -197,6 +205,15 @@ export default function ShopDetailBanner({
               >
                 <span className="text-lg font-bold">{isFavorite ? "❤" : "♡"}</span>
               </button>
+              {canEditShop && (
+                <button
+                  type="button"
+                  onClick={handleEditShop}
+                  className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                >
+                  編集する
+                </button>
+              )}
             </div>
             <p className="text-sm text-slate-600">
               {shop.category} | {shop.ownerName}
