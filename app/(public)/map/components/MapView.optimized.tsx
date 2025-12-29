@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { MapContainer, useMap, Tooltip, CircleMarker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { shops as baseShops, Shop } from "../data/shops";
+import { shops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
@@ -27,23 +27,9 @@ import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
-import {
-  getRoadBounds,
-  getSundayMarketBounds,
-  getRecommendedZoomBounds,
-} from '../config/roadConfig';
+import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig } from '../utils/zoomCalculator';
-import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
-import {
-  applyShopEdits,
-  SHOP_EDITS_STORAGE_KEY,
-  SHOP_EDITS_UPDATED_EVENT,
-} from "../../../../lib/shopEdits";
-import {
-  getViewModeForZoom,
-  ViewMode,
-  canShowShopDetailBanner,
-} from '../config/displayConfig';
+import { FAVORITE_SHOPS_KEY, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -52,21 +38,17 @@ const KOCHI_SUNDAY_MARKET: [number, number] = [
   (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
 ];
 
-// Sunday Market area boundaries (restrict pan operations to this area)
-const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
-
-// Recommended zoom bounds (optimal range for Sunday Market)
-const ZOOM_BOUNDS = getRecommendedZoomBounds();
-
 // Zoom config by shop count
-const ZOOM_CONFIG = getZoomConfig(baseShops.length);
-// 【スマホUX最適化】デフォルトズームを18.0に設定
-const INITIAL_ZOOM = 18.0;
-const MIN_ZOOM = ZOOM_BOUNDS.min;
-const MAX_ZOOM = ZOOM_BOUNDS.max;
+const ZOOM_CONFIG = getZoomConfig(shops.length);
+const INITIAL_ZOOM = ZOOM_CONFIG.initial;
+const MIN_ZOOM = ZOOM_CONFIG.min;
+const MAX_ZOOM = ZOOM_CONFIG.max;
 
 // Allow a slight pan margin outside road bounds
-const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
+const MAX_BOUNDS: [[number, number], [number, number]] = [
+  [ROAD_BOUNDS[0][0] + 0.002, ROAD_BOUNDS[0][1] + 0.001],
+  [ROAD_BOUNDS[1][0] - 0.002, ROAD_BOUNDS[1][1] - 0.001],
+];
 
 type BagItem = {
   id: string;
@@ -144,8 +126,6 @@ type MapViewProps = {
   onCloseRecipeOverlay?: () => void;
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
-  searchShopIds?: number[];
-  searchLabel?: string;
 };
 
 export default function MapView({
@@ -155,13 +135,8 @@ export default function MapView({
   onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
-  searchShopIds,
-  searchLabel,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
-  const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
-    applyShopEdits(baseShops)
-  );
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
@@ -180,8 +155,6 @@ export default function MapView({
   // - OptimizedShopLayer が Leaflet API で管理するため不要
   // - filterShopsByZoom は使用しない
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  const shops = displayShops;
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -212,36 +185,7 @@ export default function MapView({
         }
       }
     }
-  }, [initialShopId, shops]);
-
-  useEffect(() => {
-    const updateShops = () => {
-      setDisplayShops(applyShopEdits(baseShops));
-    };
-    updateShops();
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === SHOP_EDITS_STORAGE_KEY) {
-        updateShops();
-      }
-    };
-    const handleEditsUpdate = () => {
-      updateShops();
-    };
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedShop) return;
-    const latest = shops.find((shop) => shop.id === selectedShop.id);
-    if (latest && latest !== selectedShop) {
-      setSelectedShop(latest);
-    }
-  }, [shops, selectedShop]);
+  }, [initialShopId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -265,17 +209,8 @@ export default function MapView({
         setFavoriteShopIds(loadFavoriteShopIds());
       }
     };
-    const handleFavoriteUpdate = (event: Event) => {
-      if (event.type === FAVORITE_SHOPS_UPDATED_EVENT) {
-        setFavoriteShopIds(loadFavoriteShopIds());
-      }
-    };
     window.addEventListener("storage", handleStorage);
-    window.addEventListener(FAVORITE_SHOPS_UPDATED_EVENT, handleFavoriteUpdate);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, handleFavoriteUpdate);
-    };
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const recipeIngredients = useMemo(() => {
@@ -301,70 +236,30 @@ export default function MapView({
         )
       )
     );
-  }, [selectedRecipe, recipeIngredients, shops]);
+  }, [selectedRecipe, recipeIngredients]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【ポイント7】店舗クリック時のコールバック（段階的ズームアップ対応）
+  // 【ポイント7】店舗クリック時のコールバック
   // - useCallback でメモ化（不要な再生成を防ぐ）
   // - Leaflet から直接呼ばれる（React の state を経由しない）
-  // - ViewMode に応じて段階的にズームアップ
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleShopClick = useCallback((clickedShop: Shop) => {
-    if (!mapRef.current) return;
+  const handleShopClick = useCallback((shop: Shop) => {
+    setSelectedShop(shop);
 
-    const currentZoom = mapRef.current.getZoom();
-    const viewMode = getViewModeForZoom(currentZoom);
-
-    if (viewMode.mode === ViewMode.DETAIL) {
-      // 詳細モード: 詳細バナーを表示
-      setSelectedShop(clickedShop);
-    } else {
-      // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
-      // OVERVIEW → INTERMEDIATE（18.0）
-      // INTERMEDIATE → DETAIL（18.5）
-
-      // 周辺店舗を検索（緯度±0.001度、経度±0.0005度 ≈ 半径100m程度）
-      const nearbyShops = shops.filter(s =>
-        Math.abs(s.lat - clickedShop.lat) < 0.001 &&
-        Math.abs(s.lng - clickedShop.lng) < 0.0005
-      );
-
-      // 周辺店舗の重心を計算
-      let centerLat: number;
-      let centerLng: number;
-
-      if (nearbyShops.length === 0) {
-        // フォールバック: クリックした店舗を中心にする
-        centerLat = clickedShop.lat;
-        centerLng = clickedShop.lng;
-      } else {
-        // 周辺店舗の重心を計算
-        centerLat = nearbyShops.reduce((sum, s) => sum + s.lat, 0) / nearbyShops.length;
-        centerLng = nearbyShops.reduce((sum, s) => sum + s.lng, 0) / nearbyShops.length;
-      }
-
-      // 【段階的ズームアップ】現在のモードに応じて次の段階へ
-      let targetZoom: number;
-      if (viewMode.mode === ViewMode.OVERVIEW) {
-        // OVERVIEW → INTERMEDIATE（エリア探索）へ
-        targetZoom = 18.0;
-      } else {
-        // INTERMEDIATE → DETAIL（詳細閲覧）へ
-        targetZoom = 18.5;
-      }
-
-      mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
+    // 選択した店舗にズーム
+    if (mapRef.current) {
+      mapRef.current.flyTo([shop.lat, shop.lng], 18, {
         duration: 0.75,
       });
     }
-  }, [shops]);
+  }, []);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
       handleShopClick(target);
     }
-  }, [handleShopClick, shops]);
+  }, [handleShopClick]);
 
   const handlePlanUpdate = useCallback((order: number[]) => {
     setPlanOrder(order);
@@ -402,7 +297,7 @@ export default function MapView({
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return shops.findIndex((shop) => shop.id === selectedShop.id);
-  }, [selectedShop, shops]);
+  }, [selectedShop]);
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
 
@@ -412,7 +307,7 @@ export default function MapView({
     const nextShop = shops[nextIndex];
     if (!nextShop) return;
     handleShopClick(nextShop);
-  }, [canNavigate, selectedShopIndex, handleShopClick, shops]);
+  }, [canNavigate, selectedShopIndex, handleShopClick]);
 
   return (
     <div className="relative h-full w-full">
@@ -456,7 +351,6 @@ export default function MapView({
           shops={shops}
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
-          favoriteShopIds={favoriteShopIds}
         />
 
         {/* レシピオーバーレイ */}

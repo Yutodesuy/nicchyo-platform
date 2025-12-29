@@ -4,16 +4,22 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type Answers = {
-  purpose?: string;
-  needs?: string;
+  tourist?: string;
   visitCount?: string;
-  favoriteFood?: string;
+  partySize?: string;
+  relationship?: string;
+  visitReason?: string;
+  interests?: string[];
+  charms?: string[];
+  chat?: string;
+  cook?: string;
 };
 
 type AgentQuestion = {
   id: keyof Answers;
   prompt: string;
-  placeholder: string;
+  options: string[];
+  multiple?: boolean;
   helper?: string;
 };
 
@@ -44,30 +50,67 @@ type MapAgentAssistantProps = {
 };
 
 const STORAGE_KEY = 'nicchyo-map-agent-plan';
+const CATEGORY_OPTIONS = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
 
-const QUESTIONS: AgentQuestion[] = [
-  {
-    id: 'purpose',
-    prompt: '今日の目的は？（例: 観光ついでに買い物）',
-    placeholder: '観光しながら地元の味を探したい',
-  },
-  {
-    id: 'needs',
-    prompt: '何を買いたい？',
-    placeholder: '野菜の詰め合わせ / ご当地おやつ など',
-  },
-  {
-    id: 'visitCount',
-    prompt: '何件くらい寄りたい？',
-    placeholder: '3件 など数字で入力',
-    helper: '時間がなければ2件、たっぷり回るなら4件以上がおすすめ',
-  },
-  {
-    id: 'favoriteFood',
-    prompt: '好きな料理・ジャンルは？',
-    placeholder: '郷土料理 / 海鮮 / 揚げ物 など',
-  },
-];
+function getQuestions(answers: Answers): AgentQuestion[] {
+  const questions: AgentQuestion[] = [
+    {
+      id: 'tourist',
+      prompt: '1. 観光客ですか？',
+      options: ['はい', 'いいえ'],
+    },
+    {
+      id: 'visitCount',
+      prompt: '2. 日曜市は何回目ですか？',
+      options: ['0', '1', '2', '3', '4回以上'],
+    },
+    {
+      id: 'partySize',
+      prompt: '3. 今日は何人できましたか？',
+      options: ['1', '2', '3', '4', '5人以上'],
+    },
+  ];
+
+  if (answers.partySize && answers.partySize !== '1') {
+    questions.push({
+      id: 'relationship',
+      prompt: '4. どういう関係ですか？',
+      options: ['家族', '恋人', '友達', 'その他'],
+    });
+  }
+
+  questions.push(
+    {
+      id: 'visitReason',
+      prompt: '5. 日曜市に訪れたきっかけは？',
+      options: ['事前に調べていた', 'たまたま', '習慣', 'その他'],
+    },
+    {
+      id: 'interests',
+      prompt: '6. 日曜市で購入したい、見てみたいものは？（複数選択可）',
+      options: CATEGORY_OPTIONS,
+      multiple: true,
+    },
+    {
+      id: 'charms',
+      prompt: '7. 日曜市の魅力は？（複数選択可）',
+      options: ['ぶらぶら買い物できること', '地元のものが買えること', '出店者とのふれあい', 'わからない', 'その他'],
+      multiple: true,
+    },
+    {
+      id: 'chat',
+      prompt: '8. 出店者と雑談してみたい？',
+      options: ['はい', 'いいえ'],
+    },
+    {
+      id: 'cook',
+      prompt: '9. 高知の郷土料理を作ってみたい？',
+      options: ['はい', 'いいえ'],
+    }
+  );
+
+  return questions;
+}
 
 export default function MapAgentAssistant({
   onOpenShop,
@@ -80,14 +123,27 @@ export default function MapAgentAssistant({
   const [internalOpen, setInternalOpen] = useState(false);
   const [answers, setAnswers] = useState<Answers>({});
   const [step, setStep] = useState(0);
-  const [currentInput, setCurrentInput] = useState('');
+  const [currentSelection, setCurrentSelection] = useState<string | string[] | null>(null);
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [showNotes, setShowNotes] = useState(false);
 
   const open = typeof isOpen === 'boolean' ? isOpen : internalOpen;
-  const currentQuestion = useMemo(() => QUESTIONS[step], [step]);
+  const questions = useMemo(() => getQuestions(answers), [answers]);
+  const currentQuestion = questions[step];
+
+  useEffect(() => {
+    if (!currentSelection && currentQuestion) {
+      const existing = answers[currentQuestion.id];
+      if (Array.isArray(existing)) {
+        setCurrentSelection(existing);
+      } else if (typeof existing === 'string') {
+        setCurrentSelection(existing);
+      }
+    }
+  }, [answers, currentQuestion, currentSelection]);
 
   const toggle = useCallback(() => {
     const next = !open;
@@ -105,13 +161,13 @@ export default function MapAgentAssistant({
       const parsed = JSON.parse(raw) as { plan?: PlanResult; order?: number[] };
       if (parsed.plan) {
         setPlan(parsed.plan);
-        setStep(QUESTIONS.length);
+        setStep(questions.length);
         onPlanUpdate?.(parsed.order ?? parsed.plan.shops.map((s) => s.id));
       }
     } catch {
       // ignore
     }
-  }, [onPlanUpdate]);
+  }, [onPlanUpdate, questions.length]);
 
   const persistPlan = (data: PlanResult) => {
     if (typeof window === 'undefined') return;
@@ -121,18 +177,41 @@ export default function MapAgentAssistant({
     );
   };
 
-  const handleSubmit = useCallback(async () => {
-    if (!currentQuestion || plan) return;
-    const value = currentInput.trim();
-    if (!value) return;
+  const toAnswerText = (value: string | string[]) => {
+    if (Array.isArray(value)) return value.join('、');
+    return value;
+  };
 
+  const handleSelectOption = useCallback(
+    (option: string) => {
+      if (!currentQuestion) return;
+      if (currentQuestion.multiple) {
+        const current = Array.isArray(currentSelection) ? currentSelection : [];
+        const exists = current.includes(option);
+        const next = exists ? current.filter((v) => v !== option) : [...current, option];
+        setCurrentSelection(next);
+      } else {
+        setCurrentSelection(option);
+      }
+    },
+    [currentQuestion, currentSelection]
+  );
+
+  const handleSubmit = useCallback(async () => {
+    if (!currentQuestion || plan || currentSelection === null) return;
+    if (Array.isArray(currentSelection) && currentSelection.length === 0) return;
+
+    const value = currentSelection;
     const nextAnswers = { ...answers, [currentQuestion.id]: value };
     setAnswers(nextAnswers);
-    setNotes((prev) => [...prev, { id: currentQuestion.id, q: currentQuestion.prompt, a: value }]);
-    setCurrentInput('');
+    setNotes((prev) => [
+      ...prev,
+      { id: currentQuestion.id, q: currentQuestion.prompt, a: toAnswerText(value) },
+    ]);
+    setCurrentSelection(null);
     setPlan(null);
 
-    const isLast = step >= QUESTIONS.length - 1;
+    const isLast = step >= questions.length - 1;
     if (isLast) {
       setStep((prev) => prev + 1);
       setLoading(true);
@@ -148,7 +227,7 @@ export default function MapAgentAssistant({
         setPlan(data);
         persistPlan(data);
         onPlanUpdate?.(data.shops.map((s) => s.id));
-      } catch (e) {
+      } catch {
         setError('提案の生成に失敗しました。少し待ってから再度お試しください。');
         onPlanUpdate?.([]);
       } finally {
@@ -158,22 +237,22 @@ export default function MapAgentAssistant({
       setStep((prev) => prev + 1);
       onPlanUpdate?.([]);
     }
-  }, [answers, currentInput, currentQuestion, onPlanUpdate, plan, step, userLocation]);
+  }, [answers, currentQuestion, currentSelection, onPlanUpdate, plan, questions.length, step, userLocation]);
 
   const handleEdit = useCallback(
     (id: keyof Answers) => {
-      const targetIndex = QUESTIONS.findIndex((q) => q.id === id);
+      const targetIndex = questions.findIndex((q) => q.id === id);
       if (targetIndex === -1) return;
 
       const newAnswers: Answers = { ...answers };
-      QUESTIONS.slice(targetIndex).forEach((q) => delete newAnswers[q.id]);
+      questions.slice(targetIndex).forEach((q) => delete newAnswers[q.id]);
 
       setAnswers(newAnswers);
       setNotes((prev) =>
-        prev.filter((note) => QUESTIONS.findIndex((q) => q.id === note.id) < targetIndex)
+        prev.filter((note) => questions.findIndex((q) => q.id === note.id) < targetIndex)
       );
       setStep(targetIndex);
-      setCurrentInput(answers[id] ?? '');
+      setCurrentSelection(null);
       setPlan(null);
       setError(null);
       setLoading(false);
@@ -182,13 +261,14 @@ export default function MapAgentAssistant({
         localStorage.removeItem(STORAGE_KEY);
       }
     },
-    [answers, onPlanUpdate]
+    [answers, onPlanUpdate, questions]
   );
 
   const handleReset = useCallback(() => {
     setAnswers({});
     setNotes([]);
-    setCurrentInput('');
+    setShowNotes(false);
+    setCurrentSelection(null);
     setPlan(null);
     setStep(0);
     setError(null);
@@ -198,16 +278,6 @@ export default function MapAgentAssistant({
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [onPlanUpdate]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleSubmit();
-      }
-    },
-    [handleSubmit]
-  );
 
   return (
     <>
@@ -230,7 +300,7 @@ export default function MapAgentAssistant({
       )}
 
       {open && (
-        <div className="absolute left-4 bottom-20 z-[1400] w-[min(420px,90vw)]">
+        <div className="absolute left-4 bottom-48 z-[2200] w-[min(420px,90vw)]">
           <div className="relative max-h-[70vh] overflow-y-auto pr-1">
             <div className="absolute -top-3 right-6 rotate-6 h-6 w-6 bg-amber-300 rounded-sm shadow-md" />
             <div className="absolute -top-5 right-16 -rotate-3 h-5 w-5 bg-amber-200 rounded-sm shadow-md" />
@@ -251,64 +321,91 @@ export default function MapAgentAssistant({
                   <div className="rounded-md bg-white/80 border border-amber-200 shadow-inner p-3">
                     <div className="text-xs font-semibold text-amber-700 mb-1">質問</div>
                     {currentQuestion ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
                         <p className="font-semibold leading-snug">{currentQuestion.prompt}</p>
                         {currentQuestion.helper && (
                           <p className="text-[11px] text-amber-700/80">{currentQuestion.helper}</p>
                         )}
-                        <input
-                          value={currentInput}
-                          onChange={(e) => setCurrentInput(e.target.value)}
-                          onKeyDown={handleKeyDown}
-                          className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                          placeholder={currentQuestion.placeholder}
-                        />
+                        <div className="flex flex-wrap gap-2">
+                          {currentQuestion.options.map((option) => {
+                            const selected = Array.isArray(currentSelection)
+                              ? currentSelection.includes(option)
+                              : currentSelection === option;
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                onClick={() => handleSelectOption(option)}
+                                className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                                  selected
+                                    ? 'border-amber-600 bg-amber-500 text-white shadow-sm'
+                                    : 'border-amber-200 bg-white text-amber-900 hover:bg-amber-50'
+                                }`}
+                              >
+                                {option}
+                              </button>
+                            );
+                          })}
+                        </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={handleSubmit}
-                            className="rounded-md bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-amber-500 transition"
+                            disabled={
+                              currentSelection === null ||
+                              (Array.isArray(currentSelection) && currentSelection.length === 0)
+                            }
+                            className="rounded-md bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-amber-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            この回答で進む
+                            次へ
                           </button>
-                          <span className="text-[11px] text-amber-700/70">Enter でも送信できます</span>
                         </div>
                       </div>
                     ) : (
                       <div className="text-sm font-semibold text-amber-800">
-                        質問完了！おすすめをまとめています…
+                        質問完了。おすすめをまとめています…
                       </div>
                     )}
                   </div>
                 )}
 
                 {notes.length > 0 && !plan && (
-                  <div className="rounded-md bg-white/70 border border-dashed border-amber-300 p-3 space-y-2">
-                    <div className="text-xs font-semibold text-amber-700">これまでのメモ</div>
-                    {notes.map((note) => (
-                      <div
-                        key={note.id}
-                        className="rounded bg-amber-50 px-2 py-2 shadow-inner flex flex-col gap-1"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px] text-amber-700">{note.q}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(note.id)}
-                            className="text-[11px] text-amber-700 underline"
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes((prev) => !prev)}
+                      className="text-xs font-semibold text-sky-600 underline"
+                    >
+                      これまでのメモ
+                    </button>
+                    {showNotes && (
+                      <div className="rounded-md bg-white/70 border border-dashed border-amber-300 p-3 space-y-2">
+                        {notes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="rounded bg-amber-50 px-2 py-2 shadow-inner flex flex-col gap-1"
                           >
-                            編集
-                          </button>
-                        </div>
-                        <p className="text-sm font-semibold">{note.a}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[11px] text-amber-700">{note.q}</p>
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(note.id)}
+                                className="text-[11px] text-amber-700 underline"
+                              >
+                                編集
+                              </button>
+                            </div>
+                            <p className="text-sm font-semibold">{note.a}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
 
                 {loading && (
                   <div className="rounded-md border border-amber-300 bg-white/80 px-3 py-2 text-sm font-semibold text-amber-800">
-                    考え中…市場のおすすめを組み立てています。
+                    市場のおすすめを組み立てています…
                   </div>
                 )}
 
@@ -331,7 +428,7 @@ export default function MapAgentAssistant({
                     </div>
                     <p className="text-sm text-amber-900 leading-relaxed">{plan.summary}</p>
                     <div className="space-y-2">
-                      <p className="text-[11px] font-semibold text-amber-700">立ち寄り先</p>
+                      <p className="text-[11px] font-semibold text-amber-700">立ち寄り店舗</p>
                       <div className="space-y-2">
                         {plan.shops.map((s) => (
                           <button
