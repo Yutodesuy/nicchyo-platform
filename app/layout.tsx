@@ -1,36 +1,28 @@
-// app/layout.tsx
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { MenuProvider } from "@/lib/ui/MenuContext";
 import { BagProvider } from "@/lib/storage/BagContext";
 import AppHeader from "./components/AppHeader";
 import HamburgerMenu from "./components/HamburgerMenu";
+import MapLoadingProvider from "./components/MapLoadingProvider";
 import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
 
 export const metadata: Metadata = {
   title: "nicchyo | 高知の日曜市を、未来へつなぐ",
-  description: "高知の日曜市を舞台に、「観光客 × 地元民 × 市場文化」がつながるデジタルプラットフォーム。",
+  description:
+    "高知の日曜市を舞台に、観光客・地元・市場がつながるデジタルプラットフォーム。",
 };
 
-/**
- * モバイル viewport 設定
- * - viewport-fit=cover: iOS Safe Area 対応
- * - interactive-widget=resizes-content: キーボード表示時の挙動制御
- */
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  viewportFit: 'cover', // iOS Safe Area 対応
+  viewportFit: "cover",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
       <body className="bg-nicchyo-base text-nicchyo-ink">
@@ -38,14 +30,11 @@ export default function RootLayout({
         <AuthProvider>
           <BagProvider>
             <MenuProvider>
-              {/* ヘッダ: オーバーレイ（メニュー開閉で表示/非表示） */}
-              <AppHeader />
-
-              {/* ハンバーガーメニュー: 常に表示（独立配置） */}
-              <HamburgerMenu />
-
-              {/* メインコンテンツ: padding なし（全画面表示） */}
-              {children}
+              <MapLoadingProvider>
+                <AppHeader />
+                <HamburgerMenu />
+                {children}
+              </MapLoadingProvider>
             </MenuProvider>
           </BagProvider>
         </AuthProvider>
