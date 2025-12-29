@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { MapContainer, useMap, Tooltip, CircleMarker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { shops, Shop } from "../data/shops";
+import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
 import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
@@ -34,6 +34,11 @@ import {
 } from '../config/roadConfig';
 import { getZoomConfig } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
+import {
+  applyShopEdits,
+  SHOP_EDITS_STORAGE_KEY,
+  SHOP_EDITS_UPDATED_EVENT,
+} from "../../../../lib/shopEdits";
 import {
   getViewModeForZoom,
   ViewMode,
@@ -54,7 +59,7 @@ const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
 // Zoom config by shop count
-const ZOOM_CONFIG = getZoomConfig(shops.length);
+const ZOOM_CONFIG = getZoomConfig(baseShops.length);
 // 【スマホUX最適化】デフォルトズームを18.0に設定
 const INITIAL_ZOOM = 18.0;
 const MIN_ZOOM = ZOOM_BOUNDS.min;
@@ -154,6 +159,9 @@ export default function MapView({
   searchLabel,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
+    applyShopEdits(baseShops)
+  );
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
@@ -172,6 +180,8 @@ export default function MapView({
   // - OptimizedShopLayer が Leaflet API で管理するため不要
   // - filterShopsByZoom は使用しない
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  const shops = displayShops;
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -202,7 +212,36 @@ export default function MapView({
         }
       }
     }
-  }, [initialShopId]);
+  }, [initialShopId, shops]);
+
+  useEffect(() => {
+    const updateShops = () => {
+      setDisplayShops(applyShopEdits(baseShops));
+    };
+    updateShops();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SHOP_EDITS_STORAGE_KEY) {
+        updateShops();
+      }
+    };
+    const handleEditsUpdate = () => {
+      updateShops();
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedShop) return;
+    const latest = shops.find((shop) => shop.id === selectedShop.id);
+    if (latest && latest !== selectedShop) {
+      setSelectedShop(latest);
+    }
+  }, [shops, selectedShop]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -262,7 +301,7 @@ export default function MapView({
         )
       )
     );
-  }, [selectedRecipe, recipeIngredients]);
+  }, [selectedRecipe, recipeIngredients, shops]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント7】店舗クリック時のコールバック（段階的ズームアップ対応）
@@ -318,14 +357,14 @@ export default function MapView({
         duration: 0.75,
       });
     }
-  }, []);
+  }, [shops]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
     if (target) {
       handleShopClick(target);
     }
-  }, [handleShopClick]);
+  }, [handleShopClick, shops]);
 
   const handlePlanUpdate = useCallback((order: number[]) => {
     setPlanOrder(order);
@@ -363,7 +402,7 @@ export default function MapView({
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return shops.findIndex((shop) => shop.id === selectedShop.id);
-  }, [selectedShop]);
+  }, [selectedShop, shops]);
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
 
@@ -373,7 +412,7 @@ export default function MapView({
     const nextShop = shops[nextIndex];
     if (!nextShop) return;
     handleShopClick(nextShop);
-  }, [canNavigate, selectedShopIndex, handleShopClick]);
+  }, [canNavigate, selectedShopIndex, handleShopClick, shops]);
 
   return (
     <div className="relative h-full w-full">
