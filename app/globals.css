@@ -163,6 +163,11 @@ body {
   pointer-events: none;
 }
 
+.shop-side-north .shop-favorite-badge {
+  left: -12px;
+  right: auto;
+}
+
 .custom-shop-marker.is-favorite .shop-favorite-badge {
   display: inline-flex;
 }

@@ -185,22 +185,24 @@ export default function ShopDetailBanner({
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">
-              {shop.name}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl font-semibold text-slate-900">
+                {shop.name}
+              </h2>
+              <button
+                className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
+                type="button"
+                onClick={handleToggleFavorite}
+                aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
+              >
+                <span className="text-lg font-bold">{isFavorite ? "❤" : "♡"}</span>
+              </button>
+            </div>
             <p className="text-sm text-slate-600">
               {shop.category} | {shop.ownerName}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className={`mr-4 flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
-              type="button"
-              onClick={handleToggleFavorite}
-              aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
-            >
-              <span className="text-lg font-bold">{isFavorite ? "❤" : "♡"}</span>
-            </button>
             <button
               onClick={onClose}
               className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-900 text-2xl font-bold shadow transition-transform hover:scale-110"
