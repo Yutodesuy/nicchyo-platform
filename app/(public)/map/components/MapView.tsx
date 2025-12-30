@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
@@ -67,6 +67,17 @@ const MAX_ZOOM = ZOOM_BOUNDS.max;
 
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
+
+const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
+const KOCHI_CASTLE_MUSEUM_WIDTH = 0.0036;
+const KOCHI_CASTLE_MUSEUM_HEIGHT =
+  KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
+const KOCHI_CASTLE_MUSEUM_TOP_LAT = 33.5647;
+const KOCHI_CASTLE_MUSEUM_EAST_LNG = 133.5304;
+const KOCHI_CASTLE_MUSEUM_BOUNDS: [[number, number], [number, number]] = [
+  [KOCHI_CASTLE_MUSEUM_TOP_LAT, KOCHI_CASTLE_MUSEUM_EAST_LNG - KOCHI_CASTLE_MUSEUM_WIDTH],
+  [KOCHI_CASTLE_MUSEUM_TOP_LAT - KOCHI_CASTLE_MUSEUM_HEIGHT, KOCHI_CASTLE_MUSEUM_EAST_LNG],
+];
 
 type BagItem = {
   id: string;
@@ -449,6 +460,13 @@ export default function MapView({
 
         {/* 道路 */}
         <RoadOverlay />
+
+        <ImageOverlay
+          url="/images/maps/elements/buildings/KochiCastleMusium.png"
+          bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+          opacity={1}
+          zIndex={60}
+        />
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【ポイント8】最適化された店舗レイヤー
