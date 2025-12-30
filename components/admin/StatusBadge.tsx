@@ -1,0 +1,63 @@
+import React from "react";
+
+type Status = "active" | "pending" | "suspended" | "rejected" | "approved" | "reported";
+
+interface StatusBadgeProps {
+  status: Status;
+  customLabel?: string;
+}
+
+const statusConfig: Record<
+  Status,
+  { label: string; className: string; icon: string }
+> = {
+  active: {
+    label: "稼働中",
+    className: "bg-green-100 text-green-800",
+    icon: "✓",
+  },
+  approved: {
+    label: "承認済み",
+    className: "bg-green-100 text-green-800",
+    icon: "✓",
+  },
+  pending: {
+    label: "承認待ち",
+    className: "bg-orange-100 text-orange-800",
+    icon: "⏳",
+  },
+  suspended: {
+    label: "停止中",
+    className: "bg-red-100 text-red-800",
+    icon: "⏸",
+  },
+  rejected: {
+    label: "却下",
+    className: "bg-red-100 text-red-800",
+    icon: "✕",
+  },
+  reported: {
+    label: "報告あり",
+    className: "bg-purple-100 text-purple-800",
+    icon: "🚨",
+  },
+};
+
+export const StatusBadge = React.memo(function StatusBadge({
+  status,
+  customLabel,
+}: StatusBadgeProps) {
+  const config = statusConfig[status];
+  const label = customLabel || config.label;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${config.className}`}
+      role="status"
+      aria-label={label}
+    >
+      <span aria-hidden="true">{config.icon}</span>
+      {label}
+    </span>
+  );
+});

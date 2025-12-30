@@ -6,14 +6,13 @@
 /**
  * CSVエクスポート
  */
-export function exportToCSV<T extends Record<string, any>>(
+export function exportToCSV<T extends Record<string, string | number | boolean | null>>(
   data: T[],
   filename: string,
   headers?: Record<keyof T, string>
-) {
+): { success: boolean; error?: string } {
   if (data.length === 0) {
-    alert("エクスポートするデータがありません");
-    return;
+    return { success: false, error: "エクスポートするデータがありません" };
   }
 
   // ヘッダー行を作成
@@ -41,21 +40,31 @@ export function exportToCSV<T extends Record<string, any>>(
   // BOM付きUTF-8で保存（Excelで文字化けしないように）
   const bom = "\uFEFF";
   const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
-  downloadBlob(blob, filename);
+
+  try {
+    downloadBlob(blob, filename);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "エクスポートに失敗しました" };
+  }
 }
 
 /**
  * JSONエクスポート
  */
-export function exportToJSON<T>(data: T[], filename: string) {
+export function exportToJSON<T>(data: T[], filename: string): { success: boolean; error?: string } {
   if (data.length === 0) {
-    alert("エクスポートするデータがありません");
-    return;
+    return { success: false, error: "エクスポートするデータがありません" };
   }
 
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
-  downloadBlob(blob, filename);
+  try {
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
+    downloadBlob(blob, filename);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "エクスポートに失敗しました" };
+  }
 }
 
 /**
