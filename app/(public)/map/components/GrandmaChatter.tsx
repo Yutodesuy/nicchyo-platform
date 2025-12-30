@@ -260,7 +260,7 @@ export default function GrandmaChatter({
         <button
           type="button"
           onClick={priorityMessage ? onPriorityClick : handleNext}
-          className={bubbleClassName}
+          className={`${bubbleClassName} ${isHolding ? "invisible" : ""}`}
           aria-label="ばあちゃんのコメントを開く"
         >
           {!fullWidth && (
