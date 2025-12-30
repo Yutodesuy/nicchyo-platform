@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
@@ -544,22 +544,26 @@ export default function MapView({
         {/* 道路 */}
         <RoadOverlay />
 
-        {highlightEventTargets &&
-          eventTargets?.map((target) => (
-            <CircleMarker
-              key={target.id}
-              center={[target.lat, target.lng]}
-              radius={16}
-              pathOptions={{
-                fillColor: "#38bdf8",
-                fillOpacity: 0.35,
-                color: "#0ea5e9",
-                weight: 2,
-                opacity: 0.9,
-              }}
-              className="map-event-marker"
-            />
-          ))}
+        {highlightEventTargets && (
+          <Pane name="event-glow" style={{ zIndex: 2000 }}>
+            {eventTargets?.map((target) => (
+              <CircleMarker
+                key={target.id}
+                center={[target.lat, target.lng]}
+                radius={28}
+                pane="event-glow"
+                pathOptions={{
+                  fillColor: "#ffffff",
+                  fillOpacity: 0.55,
+                  color: "#ffffff",
+                  weight: 3,
+                  opacity: 1,
+                }}
+                className="map-event-marker map-event-marker-white"
+              />
+            ))}
+          </Pane>
+        )}
 
         <ImageOverlay
           url="/images/maps/elements/buildings/KochiCastleMusium.png"
