@@ -5,10 +5,11 @@
 'use client';
 
 import { Fragment } from 'react';
-import { ImageOverlay, Rectangle } from 'react-leaflet';
+import { ImageOverlay } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
 import { LatLngBoundsExpression } from 'leaflet';
 
+const BRICK_STRIP_IMAGE = '/images/maps/elements/decoration/brick-strip.svg';
 const BRICK_COUNT = 12;
 const BRICK_DECOR_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 
@@ -206,52 +207,48 @@ function renderSeparatorBricks(
   const westLng = separatorBounds[1][1];
   const totalLat = Math.abs(northLat - southLat);
   const brickHeight = totalLat / BRICK_COUNT;
-  const lngSpan = Math.abs(eastLng - westLng);
+  const palmSize = brickHeight * 0.75;
+  const palmInset = brickHeight * 0.1;
 
-  return Array.from({ length: BRICK_COUNT }, (_, index) => {
-    const topLat = northLat - brickHeight * index;
-    const bottomLat = topLat - brickHeight;
-    const palmSize = Math.min(lngSpan * 0.3, brickHeight * 0.75) * 10;
-    const palmInset = brickHeight * 0.1;
-    const palmBottom = bottomLat + palmInset;
-    const palmTop = palmBottom + palmSize;
-    const leftPalmBounds: [[number, number], [number, number]] = [
-      [palmTop, westLng + palmSize],
-      [palmBottom, westLng],
-    ];
-    const rightPalmBounds: [[number, number], [number, number]] = [
-      [palmTop, eastLng],
-      [palmBottom, eastLng - palmSize],
-    ];
-    return (
-      <Fragment key={`brick-${index}`}>
-        <Rectangle
-          bounds={[
-            [topLat, eastLng],
-            [bottomLat, westLng],
-          ]}
-          pathOptions={{
-            color: '#b45a3c',
-            weight: 0,
-            fillColor: '#b45a3c',
-            fillOpacity: 0.9,
-          }}
-        />
-        <ImageOverlay
-          url={BRICK_DECOR_IMAGE}
-          bounds={leftPalmBounds as LatLngBoundsExpression}
-          opacity={0.95}
-          zIndex={65}
-        />
-        <ImageOverlay
-          url={BRICK_DECOR_IMAGE}
-          bounds={rightPalmBounds as LatLngBoundsExpression}
-          opacity={0.95}
-          zIndex={65}
-        />
-      </Fragment>
-    );
-  });
+  return (
+    <Fragment>
+      <ImageOverlay
+        url={BRICK_STRIP_IMAGE}
+        bounds={separatorBounds as LatLngBoundsExpression}
+        opacity={0.95}
+        zIndex={65}
+      />
+      {Array.from({ length: BRICK_COUNT }, (_, index) => {
+        const topLat = northLat - brickHeight * index;
+        const palmTop = topLat - palmInset;
+        const palmBottom = palmTop - palmSize;
+        const leftPalmBounds: [[number, number], [number, number]] = [
+          [palmTop, westLng + palmSize],
+          [palmBottom, westLng],
+        ];
+        const rightPalmBounds: [[number, number], [number, number]] = [
+          [palmTop, eastLng],
+          [palmBottom, eastLng - palmSize],
+        ];
+        return (
+          <Fragment key={`palm-${index}`}>
+            <ImageOverlay
+              url={BRICK_DECOR_IMAGE}
+              bounds={leftPalmBounds as LatLngBoundsExpression}
+              opacity={0.95}
+              zIndex={70}
+            />
+            <ImageOverlay
+              url={BRICK_DECOR_IMAGE}
+              bounds={rightPalmBounds as LatLngBoundsExpression}
+              opacity={0.95}
+              zIndex={70}
+            />
+          </Fragment>
+        );
+      })}
+    </Fragment>
+  );
 }
 
 function offsetBounds(
