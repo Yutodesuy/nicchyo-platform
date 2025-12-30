@@ -48,6 +48,11 @@ const DUMMY_CREDENTIALS: DummyCredential[] = [
     user: DUMMY_ACCOUNTS.super_admin,
   },
   {
+    identifier: "高知市管理者",
+    password: "admin",
+    user: DUMMY_ACCOUNTS.super_admin,
+  },
+  {
     identifier: "食材のお店1",
     password: "001",
     user: DUMMY_ACCOUNTS.vendor,
@@ -59,6 +64,11 @@ const DUMMY_CREDENTIALS: DummyCredential[] = [
   },
   {
     identifier: "user@example.com",
+    password: "guest",
+    user: DUMMY_ACCOUNTS.general_user,
+  },
+  {
+    identifier: "観光客ユーザー",
     password: "guest",
     user: DUMMY_ACCOUNTS.general_user,
   },

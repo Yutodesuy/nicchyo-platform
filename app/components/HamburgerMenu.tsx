@@ -177,11 +177,7 @@ export default function HamburgerMenu() {
                         <MenuIcon name="shop" className="h-5 w-5 text-amber-600" />
                         <div className="flex-1">
                           <p className="text-sm font-medium">マイ店舗</p>
-                          <p className="text-xs text-gray-500">Coming Soon</p>
                         </div>
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                          Coming Soon
-                        </span>
                       </Link>
                     </li>
                   )}
