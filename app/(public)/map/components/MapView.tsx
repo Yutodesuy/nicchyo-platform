@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment } from "react";
 import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle } from "react-leaflet";
 import L from "leaflet";
+import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
