@@ -22,6 +22,8 @@ type GrandmaChatterProps = {
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
   fullWidth?: boolean;
+  onHoldChange?: (holding: boolean) => void;
+  onDrop?: (position: { x: number; y: number }) => void;
 };
 
 export default function GrandmaChatter({
@@ -32,6 +34,8 @@ export default function GrandmaChatter({
   onPriorityClick,
   onPriorityDismiss,
   fullWidth = false,
+  onHoldChange,
+  onDrop,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -42,6 +46,7 @@ export default function GrandmaChatter({
   const [isActionOpen, setIsActionOpen] = useState(false);
   const [askText, setAskText] = useState('');
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
+  const [isHolding, setIsHolding] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -105,6 +110,8 @@ export default function GrandmaChatter({
   };
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
+    setIsHolding(true);
+    onHoldChange?.(true);
     const rect = event.currentTarget.getBoundingClientRect();
     const viewWidth = document.documentElement.clientWidth;
     const viewHeight = document.documentElement.clientHeight;
@@ -147,6 +154,8 @@ export default function GrandmaChatter({
         window.clearTimeout(holdTimerRef.current);
         holdTimerRef.current = null;
       }
+      setIsHolding(false);
+      onHoldChange?.(false);
     }
     const nextX = Math.max(
       dragStateRef.current.min,
@@ -170,12 +179,15 @@ export default function GrandmaChatter({
   };
   const handleAvatarPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
+    const wasActive = dragStateRef.current.active;
     dragStateRef.current.pointerId = null;
     dragStateRef.current.active = false;
     if (holdTimerRef.current !== null) {
       window.clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
+    setIsHolding(false);
+    onHoldChange?.(false);
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -185,8 +197,11 @@ export default function GrandmaChatter({
       pendingOffsetRef.current = null;
     }
     event.currentTarget.releasePointerCapture(event.pointerId);
-    if (dragStateRef.current.active) {
+    if (wasActive) {
       setAvatarOffset({ x: 0, y: 0 });
+    }
+    if (wasActive) {
+      onDrop?.({ x: event.clientX, y: event.clientY });
     }
   };
 
@@ -230,6 +245,7 @@ export default function GrandmaChatter({
           style={{ touchAction: 'none' }}
           aria-label="おばあちゃんメニューを開く"
         >
+          {isHolding && <span className="grandma-hold-ripple" aria-hidden="true" />}
           <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
           <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
             <img

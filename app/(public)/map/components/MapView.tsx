@@ -234,6 +234,9 @@ type MapViewProps = {
   searchShopIds?: number[];
   searchLabel?: string;
   onMapReady?: () => void;
+  eventTargets?: Array<{ id: string; lat: number; lng: number }>;
+  highlightEventTargets?: boolean;
+  onMapInstance?: (map: L.Map) => void;
 };
 
 export default function MapView({
@@ -246,6 +249,9 @@ export default function MapView({
   searchShopIds,
   searchLabel,
   onMapReady,
+  eventTargets,
+  highlightEventTargets = false,
+  onMapInstance,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
@@ -529,6 +535,7 @@ export default function MapView({
         }}
         ref={(map) => {
           if (map) mapRef.current = map;
+          if (map) onMapInstance?.(map);
         }}
       >
         {/* 背景 */}
@@ -536,6 +543,23 @@ export default function MapView({
 
         {/* 道路 */}
         <RoadOverlay />
+
+        {highlightEventTargets &&
+          eventTargets?.map((target) => (
+            <CircleMarker
+              key={target.id}
+              center={[target.lat, target.lng]}
+              radius={16}
+              pathOptions={{
+                fillColor: "#38bdf8",
+                fillOpacity: 0.35,
+                color: "#0ea5e9",
+                weight: 2,
+                opacity: 0.9,
+              }}
+              className="map-event-marker"
+            />
+          ))}
 
         <ImageOverlay
           url="/images/maps/elements/buildings/KochiCastleMusium.png"
