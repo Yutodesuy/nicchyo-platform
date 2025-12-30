@@ -159,7 +159,7 @@ export default function OptimizedShopLayerWithClustering({
 
       const compactIcon = L.divIcon({
         html: `
-          <div class="shop-marker-compact-wrapper">
+          <div class="shop-marker-compact-wrapper shop-side-${shop.side}">
             <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
             <div class="shop-marker-compact"></div>
           </div>
