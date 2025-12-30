@@ -7,6 +7,7 @@ import AppHeader from "./components/AppHeader";
 import HamburgerMenu from "./components/HamburgerMenu";
 import MapLoadingProvider from "./components/MapLoadingProvider";
 import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
+import { Toaster } from "@/components/admin";
 
 export const metadata: Metadata = {
   title: "nicchyo | 高知の日曜市を、未来へつなぐ",
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <AppHeader />
                 <HamburgerMenu />
                 {children}
+                <Toaster />
               </MapLoadingProvider>
             </MenuProvider>
           </BagProvider>
