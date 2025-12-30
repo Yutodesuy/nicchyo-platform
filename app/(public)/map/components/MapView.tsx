@@ -146,6 +146,7 @@ type MapViewProps = {
   onAgentToggle?: (open: boolean) => void;
   searchShopIds?: number[];
   searchLabel?: string;
+  onMapReady?: () => void;
 };
 
 export default function MapView({
@@ -157,6 +158,7 @@ export default function MapView({
   onAgentToggle,
   searchShopIds,
   searchLabel,
+  onMapReady,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
@@ -435,6 +437,9 @@ export default function MapView({
         attributionControl={false}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
+        whenReady={() => {
+          onMapReady?.();
+        }}
         ref={(map) => {
           if (map) mapRef.current = map;
         }}
