@@ -223,14 +223,14 @@ export default function MyShopPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pb-24">
       <div className="mx-auto w-full max-w-4xl px-4 pt-6">
-        <div className="mb-4 rounded-3xl border border-orange-200 bg-white/90 p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-            マイ店舗
+        <div className="mb-4 rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+          <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
+            My shop
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+          <h1 className="mt-1 text-4xl font-bold text-slate-900">
             出店情報の入力
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-1 text-xl text-slate-600">
             入力内容は運営の確認後に反映されます。必須項目には * が付きます。
           </p>
         </div>
