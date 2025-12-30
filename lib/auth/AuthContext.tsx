@@ -69,6 +69,7 @@ interface AuthContextType {
   user: User | null;
   login: (role: UserRole) => void;
   loginWithCredentials: (identifier: string, password: string) => boolean;
+  updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => void;
   logout: () => void;
   isLoading: boolean;
   permissions: PermissionCheck;
@@ -148,6 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const updateProfile = (updates: Pick<User, "name" | "email" | "avatarUrl">) => {
+    if (!user) return;
+    const nextUser = { ...user, ...updates };
+    persistUser(nextUser);
+  };
+
   const logout = () => {
     setUser(null);
     setIsLoggedIn(false);
@@ -163,7 +170,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ isLoggedIn, user, login, loginWithCredentials, logout, isLoading, permissions }}
+      value={{
+        isLoggedIn,
+        user,
+        login,
+        loginWithCredentials,
+        updateProfile,
+        logout,
+        isLoading,
+        permissions,
+      }}
     >
       {children}
     </AuthContext.Provider>

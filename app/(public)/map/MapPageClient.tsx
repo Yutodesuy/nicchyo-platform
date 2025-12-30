@@ -12,6 +12,7 @@ import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import { shops as baseShops } from "./data/shops";
 import { applyShopEdits } from "../../../lib/shopEdits";
+import { useMapLoading } from "../../components/MapLoadingProvider";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -21,6 +22,7 @@ export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, permissions } = useAuth();
+  const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
@@ -231,6 +233,7 @@ export default function MapPageClient() {
               onAgentToggle={setAgentOpen}
               searchShopIds={searchMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label}
+              onMapReady={markMapReady}
             />
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
