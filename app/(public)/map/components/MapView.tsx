@@ -79,6 +79,11 @@ const KOCHI_CASTLE_MUSEUM_BOUNDS: [[number, number], [number, number]] = [
   [KOCHI_CASTLE_MUSEUM_TOP_LAT, KOCHI_CASTLE_MUSEUM_EAST_LNG - KOCHI_CASTLE_MUSEUM_WIDTH],
   [KOCHI_CASTLE_MUSEUM_TOP_LAT - KOCHI_CASTLE_MUSEUM_HEIGHT, KOCHI_CASTLE_MUSEUM_EAST_LNG],
 ];
+const OTEPIA_OFFSET_LAT = 0.0036;
+const OTEPIA_BOUNDS: [[number, number], [number, number]] = [
+  [KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] - OTEPIA_OFFSET_LAT, KOCHI_CASTLE_MUSEUM_BOUNDS[0][1]],
+  [KOCHI_CASTLE_MUSEUM_BOUNDS[1][0] - OTEPIA_OFFSET_LAT, KOCHI_CASTLE_MUSEUM_BOUNDS[1][1]],
+];
 const BUILDING_COLUMN_EAST_LNG = 133.5296;
 const BUILDING_COLUMN_WIDTH = 0.0010;
 const BUILDING_COLUMN_HEIGHT = 0.0014;
@@ -600,19 +605,33 @@ export default function MapView({
         {highlightEventTargets ? (
           <Pane name="event-focus" style={{ zIndex: 3000 }}>
             <ImageOverlay
-              url="/images/maps/elements/buildings/KochiCastleMusium.png"
+              url="/images/maps/elements/buildings/KochiCastleMusium2.png"
               bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+              opacity={1}
+              className="map-event-museum-highlight"
+            />
+            <ImageOverlay
+              url="/images/maps/elements/buildings/Otepia2.png"
+              bounds={OTEPIA_BOUNDS}
               opacity={1}
               className="map-event-museum-highlight"
             />
           </Pane>
         ) : (
-          <ImageOverlay
-            url="/images/maps/elements/buildings/KochiCastleMusium.png"
-            bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
-            opacity={1}
-            zIndex={60}
-          />
+          <>
+            <ImageOverlay
+              url="/images/maps/elements/buildings/KochiCastleMusium2.png"
+              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+              opacity={1}
+              zIndex={60}
+            />
+            <ImageOverlay
+              url="/images/maps/elements/buildings/Otepia2.png"
+              bounds={OTEPIA_BOUNDS}
+              opacity={1}
+              zIndex={60}
+            />
+          </>
         )}
         {BUILDING_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
           <ImageOverlay
