@@ -99,22 +99,16 @@ export default function BagPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      <header className="border-b border-amber-100/70 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-              bag
-            </p>
-            <h1 className="text-2xl font-bold">買い物リスト</h1>
-            <p className="text-sm text-gray-700">
-              食べ物以外もまとめて確認できます。
-            </p>
-          </div>
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
+        <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+          <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Bag</p>
+          <h1 className="mt-1 text-4xl font-bold text-gray-900">買い物リスト</h1>
+          <p className="mt-1 text-xl text-gray-700">食べ物以外もまとめて確認できます。</p>
         </div>
-      </header>
+      </div>
 
-      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-8">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4">
         <section className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">登録済み</h2>
