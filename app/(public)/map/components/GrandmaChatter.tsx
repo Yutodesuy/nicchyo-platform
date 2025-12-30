@@ -204,6 +204,9 @@ export default function GrandmaChatter({
       onDrop?.({ x: event.clientX, y: event.clientY });
     }
   };
+  const handleAvatarContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const shellClassName = fullWidth
     ? 'fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none'
@@ -241,8 +244,9 @@ export default function GrandmaChatter({
           onPointerMove={handleAvatarPointerMove}
           onPointerUp={handleAvatarPointerUp}
           onPointerCancel={handleAvatarPointerUp}
+          onContextMenu={handleAvatarContextMenu}
           className={`${avatarClassName} relative z-0 pointer-events-auto`}
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
           aria-label="おばあちゃんメニューを開く"
         >
           {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
