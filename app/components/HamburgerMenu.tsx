@@ -83,6 +83,11 @@ export default function HamburgerMenu() {
                         管理者
                       </span>
                     )}
+                    {permissions.isModerator && (
+                      <span className="rounded-full bg-purple-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        モデレーター
+                      </span>
+                    )}
                     {permissions.isVendor && (
                       <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                         出店者
@@ -147,7 +152,7 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/admin/moderation"
+                          href="/moderator"
                           onClick={closeMenu}
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
                         >
@@ -158,6 +163,54 @@ export default function HamburgerMenu() {
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <div className="my-3 border-t border-gray-200" />
+                      </li>
+                    </>
+                  )}
+
+                  {permissions.isModerator && !permissions.isSuperAdmin && (
+                    <>
+                      <li>
+                        <div className="rounded-lg bg-purple-50 px-3 py-2 mb-2">
+                          <p className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                            <MenuIcon name="shield" className="h-4 w-4 text-purple-700" />
+                            モデレーターメニュー
+                          </p>
+                        </div>
+                      </li>
+                      <li>
+                        <Link
+                          href="/moderator"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-purple-50"
+                        >
+                          <MenuIcon name="shield" className="h-5 w-5 text-purple-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">モデレーションダッシュボード</p>
+                            <p className="text-xs text-gray-500">投稿管理</p>
+                          </div>
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                            モデレーター
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/moderator/kotodute"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-purple-50"
+                        >
+                          <MenuIcon name="chat" className="h-5 w-5 text-purple-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">ことづて管理</p>
+                            <p className="text-xs text-gray-500">投稿の承認・削除</p>
+                          </div>
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                            モデレーター
                           </span>
                         </Link>
                       </li>
