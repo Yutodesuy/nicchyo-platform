@@ -90,25 +90,21 @@ export default function AboutPage() {
   return (
     <>
       <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-        <header className="border-b border-amber-100/70 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-                about nicchyo
-              </p>
-              <h1 className="text-2xl font-bold md:text-3xl">高知高専発・日曜市の実験プロジェクト</h1>
-              <p className="mt-2 text-sm text-gray-700">
-                日曜市をもっと歩きやすく、もっと知りやすくするための小さなデジタル実験です。
-              </p>
-            </div>
-            <MapLink
-              href="/map"
-              className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-            >
-              マップを見る
-            </MapLink>
-          </div>
-        </header>
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
+  <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+    <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">About</p>
+    <h1 className="mt-1 text-4xl font-bold text-gray-900">高知高専発・日曜市の実験プロジェクト</h1>
+    <p className="mt-1 text-xl text-gray-700">日曜市をもっと歩きやすく、もっと知りやすくするための小さなデジタル実験です。</p>
+  </div>
+  <div className="flex justify-center">
+    <MapLink
+      href="/map"
+      className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+    >
+      マップを見る
+    </MapLink>
+  </div>
+</div>
 
         <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10">
           <section className="rounded-2xl border border-orange-100 bg-white/95 p-6 shadow-sm">
@@ -373,3 +369,4 @@ function AboutIcon({ name, className }: AboutIconProps) {
       return null;
   }
 }
+
