@@ -113,6 +113,22 @@ const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
 const ROAD_SEPARATOR_WIDTH_LNG = ROAD_WIDTH_LNG * 0.16;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
+const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 2;
+const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
+const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0084;
+const KOCHI_CASTLE_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0019;
+const KOCHI_CASTLE_BOUNDS: [[number, number], [number, number]] = [
+  [KOCHI_CASTLE_TOP_LAT, KOCHI_CASTLE_EAST_LNG],
+  [KOCHI_CASTLE_TOP_LAT - KOCHI_CASTLE_HEIGHT, KOCHI_CASTLE_EAST_LNG - KOCHI_CASTLE_WIDTH],
+];
+const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 1.6;
+const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
+const TINTIN_DENSHA_TOP_LAT = ROAD_BOUNDS[1][0] - 0.0009;
+const TINTIN_DENSHA_EAST_LNG = ROAD_BOUNDS[0][1] + 0.0008;
+const TINTIN_DENSHA_BOUNDS: [[number, number], [number, number]] = [
+  [TINTIN_DENSHA_TOP_LAT, TINTIN_DENSHA_EAST_LNG],
+  [TINTIN_DENSHA_TOP_LAT - TINTIN_DENSHA_HEIGHT, TINTIN_DENSHA_EAST_LNG - TINTIN_DENSHA_WIDTH],
+];
 const BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.map((bounds) => [
   [bounds[0][0], bounds[0][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
   [bounds[1][0], bounds[1][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
@@ -616,6 +632,18 @@ export default function MapView({
               opacity={1}
               className="map-event-museum-highlight"
             />
+            <ImageOverlay
+              url="/images/maps/elements/buildings/KochiCastle.png"
+              bounds={KOCHI_CASTLE_BOUNDS}
+              opacity={1}
+              className="map-event-museum-highlight"
+            />
+            <ImageOverlay
+              url="/images/maps/elements/buildings/TinTinDensha2.png"
+              bounds={TINTIN_DENSHA_BOUNDS}
+              opacity={1}
+              className="map-event-museum-highlight"
+            />
           </Pane>
         ) : (
           <>
@@ -633,6 +661,18 @@ export default function MapView({
             />
           </>
         )}
+        <ImageOverlay
+          url="/images/maps/elements/buildings/KochiCastle.png"
+          bounds={KOCHI_CASTLE_BOUNDS}
+          opacity={1}
+          zIndex={70}
+        />
+        <ImageOverlay
+          url="/images/maps/elements/buildings/TinTinDensha2.png"
+          bounds={TINTIN_DENSHA_BOUNDS}
+          opacity={1}
+          zIndex={70}
+        />
         {BUILDING_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
           <ImageOverlay
             key={`building-column-${index}`}
