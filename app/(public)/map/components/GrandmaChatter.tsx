@@ -138,7 +138,7 @@ export default function GrandmaChatter({
     }
     holdTimerRef.current = window.setTimeout(() => {
       dragStateRef.current.active = true;
-    }, 100);
+    }, 250);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const handleAvatarPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
