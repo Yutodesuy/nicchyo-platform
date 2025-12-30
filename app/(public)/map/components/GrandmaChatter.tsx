@@ -245,7 +245,7 @@ export default function GrandmaChatter({
           style={{ touchAction: 'none' }}
           aria-label="おばあちゃんメニューを開く"
         >
-          {isHolding && <span className="grandma-hold-ripple" aria-hidden="true" />}
+          {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
           <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
           <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
             <img

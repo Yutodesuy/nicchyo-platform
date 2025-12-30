@@ -160,9 +160,6 @@ export default function MapPageClient() {
       {/* メイン */}
       <main className="flex-1 relative pb-16 z-10">
         <div className="h-full relative">
-            {isHoldActive && !activeEvent && (
-              <div className="map-hold-dim absolute inset-0 z-[1200] pointer-events-none" />
-            )}
             <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-lg z-[1500] pointer-events-none"></div>
             <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-lg z-[1500] pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-[1500] pointer-events-none"></div>
