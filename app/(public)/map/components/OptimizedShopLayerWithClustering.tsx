@@ -41,6 +41,7 @@ export default function OptimizedShopLayerWithClustering({
   const favoriteSetRef = useRef<Set<number>>(new Set());
   const prevFavoriteSetRef = useRef<Set<number>>(new Set());
   const lastCompactStateRef = useRef<boolean | null>(null);
+  const selectedShopIdRef = useRef<number | undefined>(undefined);
 
   const setMarkerFavorite = (marker: L.Marker, isFavorite: boolean) => {
     const icon = marker.getElement();
@@ -51,6 +52,10 @@ export default function OptimizedShopLayerWithClustering({
       icon.classList.remove('is-favorite');
     }
   };
+
+  useEffect(() => {
+    selectedShopIdRef.current = selectedShopId;
+  }, [selectedShopId]);
 
   useEffect(() => {
     const markers = L.markerClusterGroup({
@@ -158,6 +163,17 @@ export default function OptimizedShopLayerWithClustering({
           : fullIconsRef.current.get(shopId);
         if (icon) {
           marker.setIcon(icon);
+          setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
+          const markerElement = marker.getElement();
+          if (markerElement) {
+            if (shopId === selectedShopIdRef.current) {
+              markerElement.classList.add('shop-marker-selected');
+              marker.setZIndexOffset(1000);
+            } else {
+              markerElement.classList.remove('shop-marker-selected');
+              marker.setZIndexOffset(0);
+            }
+          }
         }
       });
     };
