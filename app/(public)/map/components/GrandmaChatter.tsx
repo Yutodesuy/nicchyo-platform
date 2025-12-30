@@ -41,23 +41,34 @@ export default function GrandmaChatter({
   );
   const [isActionOpen, setIsActionOpen] = useState(false);
   const [askText, setAskText] = useState('');
-  const [avatarOffset, setAvatarOffset] = useState(0);
+  const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const rafRef = useRef<number | null>(null);
-  const pendingOffsetRef = useRef<number | null>(null);
+  const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
+  const holdTimerRef = useRef<number | null>(null);
   const dragStateRef = useRef<{
     startX: number;
+    startY: number;
     startOffset: number;
+    startOffsetY: number;
     min: number;
     max: number;
+    minY: number;
+    maxY: number;
     moved: boolean;
     pointerId: number | null;
+    active: boolean;
   }>({
     startX: 0,
+    startY: 0,
     startOffset: 0,
+    startOffsetY: 0,
     min: 0,
     max: 0,
+    minY: 0,
+    maxY: 0,
     moved: false,
     pointerId: null,
+    active: false,
   });
 
   useEffect(() => {
@@ -96,30 +107,58 @@ export default function GrandmaChatter({
     event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
     const viewWidth = document.documentElement.clientWidth;
-    const min = avatarOffset - rect.left;
-    const max = avatarOffset + (viewWidth - rect.right);
+    const viewHeight = document.documentElement.clientHeight;
+    const min = avatarOffset.x - rect.left;
+    const max = avatarOffset.x + (viewWidth - rect.right);
+    const minY = avatarOffset.y - rect.top;
+    const maxY = avatarOffset.y + (viewHeight - rect.bottom);
     dragStateRef.current = {
       startX: event.clientX,
-      startOffset: avatarOffset,
+      startY: event.clientY,
+      startOffset: avatarOffset.x,
+      startOffsetY: avatarOffset.y,
       min,
       max,
+      minY,
+      maxY,
       moved: false,
       pointerId: event.pointerId,
+      active: false,
     };
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    holdTimerRef.current = window.setTimeout(() => {
+      dragStateRef.current.active = true;
+    }, 1000);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const handleAvatarPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
     event.preventDefault();
-    const delta = event.clientX - dragStateRef.current.startX;
-    const next = Math.max(
-      dragStateRef.current.min,
-      Math.min(dragStateRef.current.max, dragStateRef.current.startOffset + delta)
-    );
-    if (Math.abs(delta) > 4) {
+    const deltaX = event.clientX - dragStateRef.current.startX;
+    const deltaY = event.clientY - dragStateRef.current.startY;
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
       dragStateRef.current.moved = true;
     }
-    pendingOffsetRef.current = next;
+    if (!dragStateRef.current.active && Math.abs(deltaX) > 4) {
+      if (holdTimerRef.current !== null) {
+        window.clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+    }
+    const nextX = Math.max(
+      dragStateRef.current.min,
+      Math.min(dragStateRef.current.max, dragStateRef.current.startOffset + deltaX)
+    );
+    const nextY = dragStateRef.current.active
+      ? Math.max(
+          dragStateRef.current.minY,
+          Math.min(dragStateRef.current.maxY, dragStateRef.current.startOffsetY + deltaY)
+        )
+      : 0;
+    pendingOffsetRef.current = { x: nextX, y: nextY };
     if (rafRef.current === null) {
       rafRef.current = window.requestAnimationFrame(() => {
         if (pendingOffsetRef.current !== null) {
@@ -132,6 +171,11 @@ export default function GrandmaChatter({
   const handleAvatarPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
     dragStateRef.current.pointerId = null;
+    dragStateRef.current.active = false;
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -141,6 +185,9 @@ export default function GrandmaChatter({
       pendingOffsetRef.current = null;
     }
     event.currentTarget.releasePointerCapture(event.pointerId);
+    if (dragStateRef.current.active) {
+      setAvatarOffset({ x: 0, y: 0 });
+    }
   };
 
   const shellClassName = fullWidth
@@ -165,7 +212,7 @@ export default function GrandmaChatter({
       <div className={containerClassName}>
     <div
       className="relative shrink-0 z-[2000]"
-      style={{ transform: `translateX(${avatarOffset}px)` }}
+      style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}
     >
           <div className={labelClassName}>
         <span className="relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
