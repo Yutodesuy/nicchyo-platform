@@ -15,8 +15,8 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState, useCallback, Fragment } from "react";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
@@ -544,33 +544,76 @@ export default function MapView({
         {/* 道路 */}
         <RoadOverlay />
 
+        <EventDimOverlay active={highlightEventTargets} />
+
         {highlightEventTargets && (
           <Pane name="event-glow" style={{ zIndex: 2000 }}>
             {eventTargets?.map((target) => (
-              <CircleMarker
-                key={target.id}
-                center={[target.lat, target.lng]}
-                radius={28}
-                pane="event-glow"
-                pathOptions={{
-                  fillColor: "#ffffff",
-                  fillOpacity: 0.55,
-                  color: "#ffffff",
-                  weight: 3,
-                  opacity: 1,
-                }}
-                className="map-event-marker map-event-marker-white"
-              />
+              <Fragment key={target.id}>
+                <CircleMarker
+                  key={`${target.id}-r1`}
+                  center={[target.lat, target.lng]}
+                  radius={20}
+                  pane="event-glow"
+                  pathOptions={{
+                    fillColor: "transparent",
+                    fillOpacity: 0,
+                    color: "#ffffff",
+                    weight: 2,
+                    opacity: 0.9,
+                  }}
+                  className="map-event-ripple is-1"
+                />
+                <CircleMarker
+                  key={`${target.id}-r2`}
+                  center={[target.lat, target.lng]}
+                  radius={30}
+                  pane="event-glow"
+                  pathOptions={{
+                    fillColor: "transparent",
+                    fillOpacity: 0,
+                    color: "#ffffff",
+                    weight: 2,
+                    opacity: 0.7,
+                  }}
+                  className="map-event-ripple is-2"
+                />
+                <CircleMarker
+                  key={`${target.id}-r3`}
+                  center={[target.lat, target.lng]}
+                  radius={40}
+                  pane="event-glow"
+                  pathOptions={{
+                    fillColor: "transparent",
+                    fillOpacity: 0,
+                    color: "#ffffff",
+                    weight: 2,
+                    opacity: 0.5,
+                  }}
+                  className="map-event-ripple is-3"
+                />
+              </Fragment>
             ))}
           </Pane>
         )}
 
-        <ImageOverlay
-          url="/images/maps/elements/buildings/KochiCastleMusium.png"
-          bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
-          opacity={1}
-          zIndex={60}
-        />
+        {highlightEventTargets ? (
+          <Pane name="event-focus" style={{ zIndex: 3000 }}>
+            <ImageOverlay
+              url="/images/maps/elements/buildings/KochiCastleMusium.png"
+              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+              opacity={1}
+              className="map-event-museum-highlight"
+            />
+          </Pane>
+        ) : (
+          <ImageOverlay
+            url="/images/maps/elements/buildings/KochiCastleMusium.png"
+            bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+            opacity={1}
+            zIndex={60}
+          />
+        )}
         {BUILDING_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
           <ImageOverlay
             key={`building-column-${index}`}
@@ -717,5 +760,39 @@ export default function MapView({
         hideLauncher
       />
     </div>
+  );
+}
+
+function EventDimOverlay({ active }: { active: boolean }) {
+  const map = useMap();
+  const [bounds, setBounds] = useState<LatLngBoundsExpression | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const update = () => {
+      setBounds(map.getBounds());
+    };
+    update();
+    map.on("move zoom resize", update);
+    return () => {
+      map.off("move zoom resize", update);
+    };
+  }, [map, active]);
+
+  if (!active || !bounds) return null;
+
+  return (
+    <Pane name="event-dim" style={{ zIndex: 800 }}>
+      <Rectangle
+        bounds={bounds}
+        pathOptions={{
+          color: "transparent",
+          weight: 0,
+          fillColor: "#050505",
+          fillOpacity: 0.55,
+        }}
+        interactive={false}
+      />
+    </Pane>
   );
 }
