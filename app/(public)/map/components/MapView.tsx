@@ -104,6 +104,14 @@ const BUILDING_COLUMN_BOUNDS = BUILDING_COLUMN_TOP_LATS.map((topLat) => [
   [topLat - BUILDING_COLUMN_HEIGHT, BUILDING_COLUMN_EAST_LNG],
 ]) as [[number, number], [number, number]][];
 const BUILDING_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.slice(2);
+const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
+const ROAD_SEPARATOR_WIDTH_LNG = ROAD_WIDTH_LNG * 0.16;
+const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
+const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
+const BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.map((bounds) => [
+  [bounds[0][0], bounds[0][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
+  [bounds[1][0], bounds[1][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
+]) as [[number, number], [number, number]][];
 const BUILDING_COLOR_THEMES = [
   { front: '#9fb4c8', frontBottom: '#7d93a8', side: '#6c8196', sideDark: '#5b6f83', roof: '#b7c9d8', roofDark: '#93a8bc' },
   { front: '#c7b59b', frontBottom: '#a7927a', side: '#8f7b63', sideDark: '#7a6854', roof: '#d7c6a8', roofDark: '#bba889' },
@@ -538,6 +546,16 @@ export default function MapView({
         {BUILDING_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
           <ImageOverlay
             key={`building-column-${index}`}
+            url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
+            bounds={bounds}
+            opacity={1}
+            zIndex={55}
+            className="map-building-tilted"
+          />
+        ))}
+        {BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
+          <ImageOverlay
+            key={`building-right-column-${index}`}
             url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
             bounds={bounds}
             opacity={1}
