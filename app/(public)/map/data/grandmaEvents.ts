@@ -1,5 +1,6 @@
-export type GrandmaEventMessage = {
+﻿export type GrandmaEventMessage = {
   id: string;
+  subtitle: string;
   text: string;
   image?: string;
 };
@@ -25,15 +26,32 @@ export const grandmaEvents: GrandmaEvent[] = [
       radiusMeters: 90,
     },
     messages: [
-      { id: 'm1', text: 'ここは高知城歴史博物館よ。土佐の歴史がぎゅっと詰まってるの。' },
-      { id: 'm2', text: 'お城のふもとにあるから、散歩のついでに寄る人も多いわね。' },
-      { id: 'm3', text: '企画展もよくやってるから、季節ごとに楽しめるのよ。' },
+      {
+        id: 'm1',
+        subtitle: '高知城歴史博物館とは？',
+        text: '土佐の歴史と文化をぎゅっと集めた学びの場所よ。城下町の物語がわかりやすく紹介されてるの。',
+      },
+      {
+        id: 'm2',
+        subtitle: '何ができる？',
+        text: '常設展示で歴史をたどったり、企画展で季節ごとのテーマを楽しめるわ。ゆっくり見ても飽きないの。',
+      },
+      {
+        id: 'm3',
+        subtitle: '高知城歴史博物館の魅力',
+        text: 'お城の近くにあるから、散歩の途中で寄れるのが魅力ね。外観もきれいで写真映えもするわ。',
+      },
       {
         id: 'm4',
-        text: '外観もきれいだから、写真を撮っておくといいわよ。',
+        subtitle: 'おすすめの人',
+        text: '歴史好きはもちろん、のんびり散歩しながら学びたい人にぴったりよ。',
         image: '/images/maps/elements/buildings/KochiCastleMusium2.png',
       },
-      { id: 'm5', text: '今度は別の場所でも案内してあげるね。' },
+      {
+        id: 'm5',
+        subtitle: 'おばあちゃんからのワンポイント',
+        text: '午前中に行くと人が少なくてゆっくり見られるわ。歩きやすい靴で行くのが安心よ。',
+      },
     ],
   },
   {
@@ -45,15 +63,32 @@ export const grandmaEvents: GrandmaEvent[] = [
       radiusMeters: 90,
     },
     messages: [
-      { id: 'o1', text: 'ここはオーテピア。静かな時間を過ごすのにぴったりよ。' },
-      { id: 'o2', text: '勉強する人も、調べものをする人も、みんな集まる場所ね。' },
-      { id: 'o3', text: '外はにぎやかでも、中は落ち着いていて好きなの。' },
+      {
+        id: 'o1',
+        subtitle: 'オーテピアとは？',
+        text: '図書館と文化施設が一体になった、静かに学べる場所よ。落ち着いた空気が心地いいの。',
+      },
+      {
+        id: 'o2',
+        subtitle: '何ができる？',
+        text: '本を読んだり調べものをしたり、展示やイベントに参加できるわ。ゆっくり過ごせるのがうれしいね。',
+      },
+      {
+        id: 'o3',
+        subtitle: 'オーテピアの魅力',
+        text: '外がにぎやかでも館内は静かで集中できるところ。居心地のよさが魅力よ。',
+      },
       {
         id: 'o4',
-        text: '展示やイベントもあるから、ふらっと寄ってみてね。',
+        subtitle: 'おすすめの人',
+        text: '勉強や調べものをしたい人、静かな時間が好きな人におすすめよ。',
         image: '/images/maps/elements/buildings/Otepia2.png',
       },
-      { id: 'o5', text: 'また気になる場所があれば案内するわ。' },
+      {
+        id: 'o5',
+        subtitle: 'おばあちゃんからのワンポイント',
+        text: '疲れたら館内の落ち着いた場所でひと休み。静かな場所ほど長居したくなるのよ。',
+      },
     ],
   },
   {
@@ -65,15 +100,32 @@ export const grandmaEvents: GrandmaEvent[] = [
       radiusMeters: 110,
     },
     messages: [
-      { id: 'c1', text: '高知城はこのあたりよ。天守からの景色がいいの。' },
-      { id: 'c2', text: '歩いて登ると、いい運動にもなるわね。' },
-      { id: 'c3', text: '昔の人の暮らしを想像すると、ちょっとワクワクするわ。' },
+      {
+        id: 'c1',
+        subtitle: '高知城とは？',
+        text: '土佐を代表するお城で、天守からの景色がとてもきれいなの。歴史を感じられる場所よ。',
+      },
+      {
+        id: 'c2',
+        subtitle: '何ができる？',
+        text: '城内を歩いて見学できるし、眺めを楽しみながらゆっくり回れるわ。',
+      },
+      {
+        id: 'c3',
+        subtitle: '高知城の魅力',
+        text: '昔の人の暮らしを想像しながら歩くとワクワクするの。石垣や門も見どころよ。',
+      },
       {
         id: 'c4',
-        text: '晴れた日は写真もきれいに撮れるわよ。',
+        subtitle: 'おすすめの人',
+        text: '歴史好きはもちろん、運動しながら景色も楽しみたい人におすすめよ。',
         image: '/images/maps/elements/buildings/KochiCastle.png',
       },
-      { id: 'c5', text: '次は別のスポットで会いましょう。' },
+      {
+        id: 'c5',
+        subtitle: 'おばあちゃんからのワンポイント',
+        text: '晴れた日は写真がとてもきれいに撮れるわ。早めの時間帯が人も少なくておすすめよ。',
+      },
     ],
   },
   {
@@ -85,15 +137,32 @@ export const grandmaEvents: GrandmaEvent[] = [
       radiusMeters: 100,
     },
     messages: [
-      { id: 't1', text: 'チンチン電車も高知らしい景色のひとつね。' },
-      { id: 't2', text: 'ゆっくり走るから、街の雰囲気を味わえるのよ。' },
-      { id: 't3', text: '揺れを感じながら眺める景色もいいものよ。' },
+      {
+        id: 't1',
+        subtitle: 'チンチン電車とは？',
+        text: '高知の街を走る路面電車よ。のんびりした雰囲気が高知らしいの。',
+      },
+      {
+        id: 't2',
+        subtitle: '何ができる？',
+        text: '街の景色を眺めながら移動できて、旅気分も味わえるわ。',
+      },
+      {
+        id: 't3',
+        subtitle: 'チンチン電車の魅力',
+        text: 'ゆっくり走るから、揺れも含めて楽しいの。街の空気がよくわかるわよ。',
+      },
       {
         id: 't4',
-        text: '時間があるなら、ぜひ乗ってみてね。',
+        subtitle: 'おすすめの人',
+        text: '歩き疲れた人や、街の雰囲気を楽しみたい人におすすめよ。',
         image: '/images/maps/elements/buildings/TinTinDensha2.png',
       },
-      { id: 't5', text: 'また案内するから、楽しみにしてて。' },
+      {
+        id: 't5',
+        subtitle: 'おばあちゃんからのワンポイント',
+        text: '時間があるならぜひ一度乗ってみて。窓側に座ると景色がよく見えるわ。',
+      },
     ],
   },
 ];

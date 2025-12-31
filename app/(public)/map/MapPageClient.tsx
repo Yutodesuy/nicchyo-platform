@@ -149,6 +149,13 @@ export default function MapPageClient() {
     }
   };
 
+  const handleEventBack = () => {
+    if (!activeEvent) return;
+    if (eventMessageIndex > 0) {
+      setEventMessageIndex((prev) => prev - 1);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
@@ -322,7 +329,7 @@ export default function MapPageClient() {
                 <div className="absolute inset-0 bg-black/70" />
                 <div className="relative z-10 flex w-[min(960px,92vw)] flex-col gap-6 rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl sm:flex-row sm:items-center">
                   <div className="flex items-center justify-center">
-                    <div className="h-40 w-40 overflow-hidden rounded-3xl border-4 border-amber-400 bg-amber-100 shadow-xl sm:h-56 sm:w-56">
+                    <div className="h-48 w-48 overflow-hidden rounded-3xl bg-amber-100 shadow-xl sm:h-[17rem] sm:w-[17rem]">
                       <img
                         src="/images/obaasan.webp"
                         alt="おばあちゃん"
@@ -331,10 +338,15 @@ export default function MapPageClient() {
                     </div>
                   </div>
                   <div className="flex-1 space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">
-                      {activeEvent.title}
+                    <h3 className="text-xl font-bold text-gray-900">{activeEvent.title}</h3>
+                    <div className="space-y-2">
+                      <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                        {activeMessage.subtitle}
+                      </div>
+                      <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
+                        {activeMessage.text}
+                      </div>
                     </div>
-                    <p className="text-base leading-relaxed text-gray-900">{activeMessage.text}</p>
                     {activeMessage.image && (
                       <div className="overflow-hidden rounded-2xl border border-amber-200">
                         <img
@@ -348,13 +360,24 @@ export default function MapPageClient() {
                       <span>
                         {eventMessageIndex + 1}/{activeEvent.messages.length}
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleEventAdvance}
-                        className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                      >
-                        {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {eventMessageIndex > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleEventBack}
+                            className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                          >
+                            戻る
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleEventAdvance}
+                          className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                        >
+                          {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
