@@ -215,3 +215,163 @@ body {
 body.shop-banner-open .hamburger-button {
   display: none;
 }
+
+.shop-marker-compact {
+  width: 24px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.shop-marker-compact-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.map-building-tilted {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.grandma-hold-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  filter:
+    drop-shadow(0 0 16px rgba(255, 255, 255, 1))
+    drop-shadow(0 0 32px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0 56px rgba(255, 255, 255, 0.7));
+  animation: map-event-pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.map-hold-dim {
+  background: rgba(10, 10, 10, 0.55);
+}
+
+.map-event-ripple {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.65));
+  transform-origin: center;
+  animation: map-event-ripple 1.4s ease-out infinite;
+}
+
+.map-event-ripple.is-2 {
+  animation-delay: 0.3s;
+}
+
+.map-event-ripple.is-3 {
+  animation-delay: 0.6s;
+}
+
+.map-event-museum-highlight {
+  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+}
+
+@keyframes map-event-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes map-event-ripple {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+.shop-illustration-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.shop-illustration-3d .stall-shadow {
+  position: absolute;
+  left: 8%;
+  bottom: 2%;
+  width: 84%;
+  height: 16%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0));
+  filter: blur(2px);
+}
+
+.shop-illustration-3d .stall-roof {
+  position: absolute;
+  top: 4%;
+  left: 5%;
+  width: 90%;
+  height: 30%;
+  background: linear-gradient(135deg, var(--stall-color-light), var(--stall-color));
+  border-radius: 8px 8px 4px 4px;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    inset -6px 0 0 rgba(255, 255, 255, 0.25);
+  transform: skewX(-12deg);
+}
+
+.shop-illustration-3d .stall-awning {
+  position: absolute;
+  top: 28%;
+  left: 8%;
+  width: 84%;
+  height: 16%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--stall-color) 0 10%,
+    var(--stall-color-light) 10% 20%
+  );
+  border-radius: 4px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transform: skewX(-10deg);
+}
+
+.shop-illustration-3d .stall-body {
+  position: absolute;
+  left: 10%;
+  top: 40%;
+  width: 80%;
+  height: 42%;
+  background: linear-gradient(145deg, #f7f6f2, #e3ded7);
+  border: 2px solid rgba(90, 80, 70, 0.4);
+  border-radius: 6px;
+  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+.shop-illustration-3d .stall-counter {
+  position: absolute;
+  left: 12%;
+  top: 54%;
+  width: 76%;
+  height: 18%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 4px;
+  box-shadow: inset -3px -2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.shop-illustration-3d .stall-legs {
+  position: absolute;
+  left: 18%;
+  bottom: 6%;
+  width: 64%;
+  height: 12%;
+  background:
+    linear-gradient(90deg, #8b5e34 0 12%, transparent 12% 44%, #8b5e34 44% 56%, transparent 56% 88%, #8b5e34 88% 100%);
+}

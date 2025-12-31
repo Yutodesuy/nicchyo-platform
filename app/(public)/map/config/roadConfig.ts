@@ -108,7 +108,7 @@ export function getRoadLength(): number {
 }
 
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
-  return getPaddedRoadBounds(0.02);
+  return getPaddedRoadBounds(0.12);
 }
 
 export function getRecommendedZoomBounds(): { min: number; max: number } {
