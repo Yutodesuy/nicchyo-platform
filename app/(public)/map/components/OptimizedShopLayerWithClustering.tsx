@@ -1,15 +1,5 @@
 /**
- * クラスタリング対応版の最適化された店舗レイヤー
- *
- * 【軽量化のポイント】
- * 1. react-leaflet-cluster ではなく、leaflet.markercluster を直接使用
- * 2. ズームアウト時に店舗をまとめる（DOM 要素数を大幅削減）
- * 3. スマホでのスクロールが劇的に軽くなる
- *
- * 【パフォーマンス改善】
- * - DOM 要素数: 300個 → 10-20個（ズームアウト時）
- * - 初期表示速度: 3倍以上向上
- * - スクロール・ドラッグ: 滑らか
+ * Optimized shop layer with clustering.
  */
 
 'use client';
@@ -33,6 +23,11 @@ interface OptimizedShopLayerWithClusteringProps {
   favoriteShopIds?: number[];
 }
 
+const COMPACT_ICON_SIZE: [number, number] = [24, 36];
+const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
+const COMPACT_ICON_MAX_ZOOM = 17.5;
+const MID_ICON_MAX_ZOOM = 18.0;
+
 export default function OptimizedShopLayerWithClustering({
   shops,
   onShopClick,
@@ -42,8 +37,13 @@ export default function OptimizedShopLayerWithClustering({
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const markersRef = useRef<Map<number, L.Marker>>(new Map());
+  const fullIconsRef = useRef<Map<number, L.DivIcon>>(new Map());
+  const midIconsRef = useRef<Map<number, L.DivIcon>>(new Map());
+  const compactIconsRef = useRef<Map<number, L.DivIcon>>(new Map());
   const favoriteSetRef = useRef<Set<number>>(new Set());
   const prevFavoriteSetRef = useRef<Set<number>>(new Set());
+  const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
+  const selectedShopIdRef = useRef<number | undefined>(undefined);
 
   const setMarkerFavorite = (marker: L.Marker, isFavorite: boolean) => {
     const icon = marker.getElement();
@@ -56,37 +56,25 @@ export default function OptimizedShopLayerWithClustering({
   };
 
   useEffect(() => {
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 【ポイント5】MarkerClusterGroup でクラスタリング
-    // - ズーム16以下: 店舗をまとめて「🏪 25」のようなクラスタで表示
-    // - ズーム17以上: 個別店舗を展開
-    // - DOM 要素数が劇的に減る（300個 → 20個程度）
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const markers = L.markerClusterGroup({
-      // ズーム17で完全展開（店舗詳細を見せ始めるレベル）
-      disableClusteringAtZoom: 17,
+    selectedShopIdRef.current = selectedShopId;
+  }, [selectedShopId]);
 
-      // スマホ最適化: クラスタクリック時のズーム挙動
+  useEffect(() => {
+    const markers = L.markerClusterGroup({
+      disableClusteringAtZoom: 17,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
-
-      // 分割ロード: 大量のマーカーを段階的に追加
       chunkedLoading: true,
       chunkInterval: 200,
       chunkDelay: 50,
-
-      // クラスタアイコンのカスタマイズ
       iconCreateFunction: (cluster) => {
         const count = cluster.getChildCount();
-        let size = 'small';
         let sizeClass = 'cluster-small';
 
         if (count > 50) {
-          size = 'large';
           sizeClass = 'cluster-large';
         } else if (count > 10) {
-          size = 'medium';
           sizeClass = 'cluster-medium';
         }
 
@@ -98,26 +86,15 @@ export default function OptimizedShopLayerWithClustering({
           iconSize: L.point(40, 40),
         });
       },
-
-      // 最大ズームでクラスタを展開
       maxClusterRadius: 80,
     });
 
     clusterGroupRef.current = markers;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 【ポイント6】店舗イラスト付きマーカー
-    // - divIcon でHTMLベースのアイコンを作成
-    // - ShopIllustration + ShopBubble を表示
-    // - クラスタリングは維持（ズームアウト時は軽量）
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
     shops.forEach((shop) => {
-      // イラストサイズを取得
       const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
 
-      // 店舗イラスト + 吹き出しを含むHTML文字列を生成
       const iconMarkup = renderToStaticMarkup(
         <div
           className={`shop-marker-container shop-side-${shop.side}`}
@@ -130,15 +107,12 @@ export default function OptimizedShopLayerWithClustering({
           <div className="shop-favorite-badge" aria-hidden="true">
             &#10084;
           </div>
-          {/* 商品吹き出し */}
           <ShopBubble
             icon={shop.icon}
             products={shop.products}
             side={shop.side}
             offset={sizeConfig.bubbleOffset}
           />
-
-          {/* 店舗イラスト */}
           <ShopIllustration
             type={shop.illustration?.type}
             size={sizeKey}
@@ -148,23 +122,57 @@ export default function OptimizedShopLayerWithClustering({
         </div>
       );
 
-      // divIcon を作成
-      const customIcon = L.divIcon({
+      const fullIcon = L.divIcon({
         html: iconMarkup,
         className: 'custom-shop-marker',
         iconSize: [sizeConfig.width, sizeConfig.height],
         iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
       });
 
-      // マーカーを作成
-      const marker = L.marker([shop.lat, shop.lng], {
-        icon: customIcon,
+      const midIconMarkup = renderToStaticMarkup(
+        <div
+          className={`shop-marker-container shop-side-${shop.side}`}
+          style={{
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease',
+          }}
+        >
+          <div className="shop-favorite-badge" aria-hidden="true">
+            &#10084;
+          </div>
+          <ShopIllustration
+            type={shop.illustration?.type}
+            size={sizeKey}
+            color={shop.illustration?.color}
+            customSvg={shop.illustration?.customSvg}
+          />
+        </div>
+      );
+
+      const midIcon = L.divIcon({
+        html: midIconMarkup,
+        className: 'custom-shop-marker',
+        iconSize: [sizeConfig.width, sizeConfig.height],
+        iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
       });
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 【ポイント7】イベントは Leaflet のネイティブ API で処理
-      // - クラスタ化されたマーカーでもクリックイベントが動作
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const compactIcon = L.divIcon({
+        html: `
+          <div class="shop-marker-compact-wrapper shop-side-${shop.side}">
+            <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
+            <div class="shop-marker-compact"></div>
+          </div>
+        `,
+        className: 'custom-shop-marker compact-shop-marker',
+        iconSize: COMPACT_ICON_SIZE,
+        iconAnchor: COMPACT_ICON_ANCHOR,
+      });
+
+      const marker = L.marker([shop.lat, shop.lng], {
+        icon: fullIcon,
+      });
+
       marker.on('click', () => {
         onShopClick(shop);
       });
@@ -172,26 +180,64 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
       });
 
-      // クラスタグループに追加
       markers.addLayer(marker);
       markersRef.current.set(shop.id, marker);
+      fullIconsRef.current.set(shop.id, fullIcon);
+      midIconsRef.current.set(shop.id, midIcon);
+      compactIconsRef.current.set(shop.id, compactIcon);
     });
 
-    // マップに追加
+    const updateMarkerDensity = () => {
+      const zoom = map.getZoom();
+      const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
+      const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
+      const nextMode: 'compact' | 'mid' | 'full' = useCompact
+        ? 'compact'
+        : useMid
+          ? 'mid'
+          : 'full';
+      if (lastIconModeRef.current === nextMode) return;
+      lastIconModeRef.current = nextMode;
+
+      markersRef.current.forEach((marker, shopId) => {
+        const icon = useCompact
+          ? compactIconsRef.current.get(shopId)
+          : useMid
+            ? midIconsRef.current.get(shopId)
+            : fullIconsRef.current.get(shopId);
+        if (icon) {
+          marker.setIcon(icon);
+          setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
+          const markerElement = marker.getElement();
+          if (markerElement) {
+            if (shopId === selectedShopIdRef.current) {
+              markerElement.classList.add('shop-marker-selected');
+              marker.setZIndexOffset(1000);
+            } else {
+              markerElement.classList.remove('shop-marker-selected');
+              marker.setZIndexOffset(0);
+            }
+          }
+        }
+      });
+    };
+
+    map.on('zoomend', updateMarkerDensity);
+    updateMarkerDensity();
+
     map.addLayer(markers);
 
-    // クリーンアップ
     return () => {
+      map.off('zoomend', updateMarkerDensity);
       map.removeLayer(markers);
       clusterGroupRef.current = null;
       markersRef.current.clear();
+      fullIconsRef.current.clear();
+      midIconsRef.current.clear();
+      compactIconsRef.current.clear();
     };
   }, [shops, map, onShopClick]);
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // 【ポイント8】選択中店舗のスタイル更新
-  // - 選択状態をCSSクラスで表現
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   useEffect(() => {
     favoriteSetRef.current = new Set(favoriteShopIds ?? []);
     const nextFavorites = favoriteSetRef.current;
@@ -221,7 +267,6 @@ export default function OptimizedShopLayerWithClustering({
       if (icon) {
         if (shopId === selectedShopId) {
           icon.classList.add('shop-marker-selected');
-          // 選択された店舗を前面に表示
           marker.setZIndexOffset(1000);
         } else {
           icon.classList.remove('shop-marker-selected');
@@ -230,33 +275,13 @@ export default function OptimizedShopLayerWithClustering({
       }
     });
 
-    // 選択された店舗が含まれるクラスタを展開
     if (selectedShopId && clusterGroupRef.current) {
       const selectedMarker = markersRef.current.get(selectedShopId);
       if (selectedMarker) {
-        // クラスタを展開して個別マーカーを表示
-        clusterGroupRef.current.zoomToShowLayer(selectedMarker, () => {
-          // ズームアニメーション完了後の処理（オプション）
-        });
+        clusterGroupRef.current.zoomToShowLayer(selectedMarker, () => {});
       }
     }
   }, [selectedShopId]);
 
   return null;
-}
-
-/**
- * カテゴリーごとに店舗マーカーの色を変える
- */
-function getCategoryColor(category: string): string {
-  const colorMap: Record<string, string> = {
-    '食材': '#22c55e',
-    '食べ物': '#f59e0b',
-    '道具・工具': '#3b82f6',
-    '生活雑貨': '#8b5cf6',
-    '植物・苗': '#10b981',
-    'アクセサリー': '#ec4899',
-    '手作り・工芸': '#f97316',
-  };
-  return colorMap[category] || '#6b7280';
 }
