@@ -3,12 +3,11 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/exportUtils";
 import { showToast } from "@/lib/admin/toast";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
-import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary } from "@/components/admin";
+import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
 
 type KotoduteStatus = "approved" | "pending" | "rejected" | "reported";
 
@@ -35,17 +34,6 @@ function ModeratorKotoduteContent() {
   const [selectedKotoduteIds, setSelectedKotoduteIds] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
-
-  // モデレーター権限チェック
-  useEffect(() => {
-    if (!permissions.canModerateContent) {
-      router.push("/");
-    }
-  }, [permissions.canModerateContent, router]);
-
-  if (!permissions.canModerateContent) {
-    return null;
-  }
 
   // ダミーデータ（メモ化）
   const dummyKotodute: Kotodute[] = useMemo(
@@ -141,15 +129,6 @@ function ModeratorKotoduteContent() {
     }),
     [dummyKotodute]
   );
-
-  // Virtual scrolling setup for cards
-  const parentRef = React.useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: filteredKotodute.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 220,
-    overscan: 3,
-  });
 
   const getStatusLabel = useCallback((status: KotoduteStatus) => {
     switch (status) {
@@ -285,17 +264,34 @@ function ModeratorKotoduteContent() {
     }
   }, [filteredKotodute]);
 
+  // Virtual scrolling setup for cards
+  const parentRef = React.useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filteredKotodute.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 220,
+    overscan: 3,
+  });
+
+  // モデレーター権限チェック
+  useEffect(() => {
+    if (!permissions.canModerateContent) {
+      router.push("/");
+    }
+  }, [permissions.canModerateContent, router]);
+
+  if (!permissions.canModerateContent) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <AdminLayout>
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <Link href="/moderator" className="text-sm text-purple-600 hover:text-purple-800">
-                ← ダッシュボードに戻る
-              </Link>
-              <h1 className="mt-2 text-3xl font-bold text-gray-900">ことづて管理</h1>
+              <h1 className="text-3xl font-bold text-gray-900">ことづて管理</h1>
             </div>
             <div className="flex gap-2">
               <LoadingButton
@@ -679,7 +675,7 @@ function ModeratorKotoduteContent() {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 }
 
