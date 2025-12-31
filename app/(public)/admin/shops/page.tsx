@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,7 +9,11 @@ import { useDebounce } from "use-debounce";
 import { shops as allShops } from "@/app/(public)/map/data/shops";
 import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/exportUtils";
 import { showToast } from "@/lib/admin/toast";
-import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary } from "@/components/admin";
+import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
+import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShortcuts";
+import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
+import { Tooltip } from "@/components/admin/desktop/Tooltip";
+import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
 
 type ShopStatus = "active" | "pending" | "suspended";
 
@@ -32,8 +36,12 @@ function AdminShopsContent() {
   const [selectedShopIds, setSelectedShopIds] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [dataDensity, setDataDensity] = useState<DataDensity>("standard");
 
-  const parentRef = React.useRef<HTMLTableSectionElement>(null);
+  const parentRef = useRef<HTMLTableSectionElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 管理者権限チェック
   useEffect(() => {
@@ -73,6 +81,9 @@ function AdminShopsContent() {
     });
   }, [shopsWithStatus, filter, debouncedSearchQuery]);
 
+  // ソート機能
+  const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredShops, "name");
+
   // 統計（メモ化）
   const stats = useMemo(
     () => ({
@@ -86,9 +97,9 @@ function AdminShopsContent() {
 
   // 仮想化
   const rowVirtualizer = useVirtualizer({
-    count: filteredShops.length,
+    count: sortedData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 73,
+    estimateSize: () => DENSITY_CONFIG[dataDensity].rowHeight,
     overscan: 5,
   });
 
@@ -101,11 +112,26 @@ function AdminShopsContent() {
     }
   }, [selectedShopIds.length, filteredShops]);
 
-  const handleSelectShop = useCallback((shopId: number) => {
-    setSelectedShopIds((prev) =>
-      prev.includes(shopId) ? prev.filter((id) => id !== shopId) : [...prev, shopId]
-    );
-  }, []);
+  const handleSelectShop = useCallback((shopId: number, index: number, shiftKey: boolean) => {
+    if (shiftKey && lastSelectedIndex !== null) {
+      // Shift+クリックで範囲選択
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      const rangeIds = sortedData.slice(start, end + 1).map((shop) => shop.id);
+
+      setSelectedShopIds((prev) => {
+        const newSet = new Set(prev);
+        rangeIds.forEach((id) => newSet.add(id));
+        return Array.from(newSet);
+      });
+    } else {
+      // 通常のクリックでトグル
+      setSelectedShopIds((prev) =>
+        prev.includes(shopId) ? prev.filter((id) => id !== shopId) : [...prev, shopId]
+      );
+      setLastSelectedIndex(index);
+    }
+  }, [lastSelectedIndex, sortedData]);
 
   // 一括操作
   const handleBulkApprove = useCallback(async () => {
@@ -208,17 +234,55 @@ function AdminShopsContent() {
     }
   }, [filteredShops]);
 
+  // キーボードショートカット
+  useKeyboardShortcuts([
+    {
+      key: "a",
+      ctrl: true,
+      description: "全選択",
+      action: handleSelectAll,
+    },
+    {
+      key: "f",
+      ctrl: true,
+      description: "検索フォーカス",
+      action: () => searchInputRef.current?.focus(),
+    },
+    {
+      key: "/",
+      description: "検索フォーカス",
+      action: () => searchInputRef.current?.focus(),
+    },
+    {
+      key: "e",
+      ctrl: true,
+      description: "CSV出力",
+      action: handleExportCSV,
+    },
+    {
+      key: "Delete",
+      description: "選択した店舗を削除",
+      action: () => {
+        if (selectedShopIds.length > 0) {
+          handleBulkDelete();
+        }
+      },
+    },
+    {
+      key: "?",
+      description: "ショートカット一覧を表示",
+      action: () => setShowShortcutHelp(true),
+    },
+  ]);
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <AdminLayout>
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <Link href="/admin" className="text-sm text-blue-600 hover:text-blue-800">
-                ← ダッシュボードに戻る
-              </Link>
-              <h1 className="mt-2 text-3xl font-bold text-gray-900">店舗管理</h1>
+              <h1 className="text-3xl font-bold text-gray-900">店舗管理</h1>
             </div>
             <div className="flex gap-2">
               <LoadingButton
@@ -310,19 +374,23 @@ function AdminShopsContent() {
                 停止中 ({stats.suspended})
               </button>
             </div>
-            <div>
-              <label htmlFor="shop-search" className="sr-only">
-                店舗を検索
-              </label>
-              <input
-                id="shop-search"
-                type="text"
-                placeholder="店舗名・カテゴリーで検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                aria-label="店舗名またはカテゴリーで検索"
-              />
+            <div className="flex items-center gap-4">
+              <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
+              <div>
+                <label htmlFor="shop-search" className="sr-only">
+                  店舗を検索
+                </label>
+                <input
+                  ref={searchInputRef}
+                  id="shop-search"
+                  type="text"
+                  placeholder="店舗名・カテゴリーで検索... (Ctrl+F または /)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none w-80"
+                  aria-label="店舗名またはカテゴリーで検索"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -384,32 +452,54 @@ function AdminShopsContent() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedShopIds.length === filteredShops.length &&
-                          filteredShops.length > 0
-                        }
-                        onChange={handleSelectAll}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        aria-label="すべての店舗を選択"
-                      />
+                      <Tooltip content="すべての店舗を選択/解除 (Ctrl+A)" position="top">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedShopIds.length === filteredShops.length &&
+                            filteredShops.length > 0
+                          }
+                          onChange={handleSelectAll}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          aria-label="すべての店舗を選択"
+                        />
+                      </Tooltip>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      店舗
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      カテゴリー
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      店主
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ステータス
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      登録日
-                    </th>
+                    <SortableTableHeader
+                      label="店舗"
+                      sortKey="name"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHeader
+                      label="カテゴリー"
+                      sortKey="category"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHeader
+                      label="店主"
+                      sortKey="owner"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHeader
+                      label="ステータス"
+                      sortKey="status"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
+                    <SortableTableHeader
+                      label="登録日"
+                      sortKey="registeredDate"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                    />
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       アクション
                     </th>
@@ -428,7 +518,7 @@ function AdminShopsContent() {
                     }}
                   >
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const shop = filteredShops[virtualRow.index];
+                      const shop = sortedData[virtualRow.index];
                       return (
                         <tr
                           key={shop.id}
@@ -446,7 +536,7 @@ function AdminShopsContent() {
                             <input
                               type="checkbox"
                               checked={selectedShopIds.includes(shop.id)}
-                              onChange={() => handleSelectShop(shop.id)}
+                              onChange={(e) => handleSelectShop(shop.id, virtualRow.index, (e.nativeEvent as MouseEvent).shiftKey)}
                               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                               aria-label={`店舗「${shop.name}」を選択`}
                             />
@@ -475,15 +565,21 @@ function AdminShopsContent() {
                             {shop.registeredDate}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                            <button className="text-blue-600 hover:text-blue-900 mr-3">
-                              編集
-                            </button>
-                            {shop.status === "pending" && (
-                              <button className="text-green-600 hover:text-green-900 mr-3">
-                                承認
+                            <Tooltip content="店舗情報を編集" position="top">
+                              <button className="text-blue-600 hover:text-blue-900 mr-3">
+                                編集
                               </button>
+                            </Tooltip>
+                            {shop.status === "pending" && (
+                              <Tooltip content="店舗を承認" position="top">
+                                <button className="text-green-600 hover:text-green-900 mr-3">
+                                  承認
+                                </button>
+                              </Tooltip>
                             )}
-                            <button className="text-red-600 hover:text-red-900">削除</button>
+                            <Tooltip content="店舗を削除" position="top">
+                              <button className="text-red-600 hover:text-red-900">削除</button>
+                            </Tooltip>
                           </td>
                         </tr>
                       );
@@ -495,7 +591,50 @@ function AdminShopsContent() {
           </div>
         )}
       </div>
-    </div>
+
+      {/* キーボードショートカットヘルプボタン */}
+      <Tooltip content="キーボードショートカット (?)">
+        <button
+          onClick={() => setShowShortcutHelp(true)}
+          className="fixed bottom-8 right-8 w-12 h-12 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition"
+          aria-label="キーボードショートカット一覧を表示"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </Tooltip>
+
+      {/* キーボードショートカットヘルプモーダル */}
+      {showShortcutHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShortcutHelp(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">キーボードショートカット</h3>
+              <button
+                onClick={() => setShowShortcutHelp(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="閉じる"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ShortcutHelp
+              shortcuts={[
+                { key: "a", ctrl: true, description: "全選択" },
+                { key: "f", ctrl: true, description: "検索フォーカス" },
+                { key: "/", description: "検索フォーカス" },
+                { key: "e", ctrl: true, description: "CSV出力" },
+                { key: "Delete", description: "選択した店舗を削除" },
+                { key: "?", description: "このヘルプを表示" },
+              ].map(s => ({ ...s, action: () => {} }))}
+            />
+          </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }
 

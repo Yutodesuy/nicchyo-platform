@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,7 +9,11 @@ import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/ex
 import { showToast } from "@/lib/admin/toast";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
-import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary } from "@/components/admin";
+import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
+import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShortcuts";
+import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
+import { Tooltip } from "@/components/admin/desktop/Tooltip";
+import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
 
 interface AdminUser {
   id: string;
@@ -34,6 +38,11 @@ function AdminUsersContent() {
   const [newRole, setNewRole] = useState<UserRole>("general_user");
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [dataDensity, setDataDensity] = useState<DataDensity>("standard");
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 管理者権限チェック
   useEffect(() => {
@@ -125,6 +134,9 @@ function AdminUsersContent() {
     });
   }, [dummyUsers, filter, debouncedSearchQuery]);
 
+  // ソート機能
+  const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredUsers, "name");
+
   // 統計（メモ化）
   const stats = useMemo(
     () => ({
@@ -138,11 +150,11 @@ function AdminUsersContent() {
   );
 
   // Virtual scrolling setup
-  const parentRef = React.useRef<HTMLTableSectionElement>(null);
+  const parentRef = useRef<HTMLTableSectionElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: filteredUsers.length,
+    count: sortedData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 80,
+    estimateSize: () => DENSITY_CONFIG[dataDensity].rowHeight,
     overscan: 5,
   });
 
@@ -182,14 +194,29 @@ function AdminUsersContent() {
   }, [selectedUserIds.length, filteredUsers]);
 
   const handleSelectUser = useCallback(
-    (userId: string) => {
-      if (selectedUserIds.includes(userId)) {
-        setSelectedUserIds(selectedUserIds.filter((id) => id !== userId));
+    (userId: string, index: number, shiftKey: boolean) => {
+      if (shiftKey && lastSelectedIndex !== null) {
+        // Shift+クリックで範囲選択
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        const rangeIds = sortedData.slice(start, end + 1).map((user) => user.id);
+
+        setSelectedUserIds((prev) => {
+          const newSet = new Set(prev);
+          rangeIds.forEach((id) => newSet.add(id));
+          return Array.from(newSet);
+        });
       } else {
-        setSelectedUserIds([...selectedUserIds, userId]);
+        // 通常のクリックでトグル
+        if (selectedUserIds.includes(userId)) {
+          setSelectedUserIds(selectedUserIds.filter((id) => id !== userId));
+        } else {
+          setSelectedUserIds([...selectedUserIds, userId]);
+        }
+        setLastSelectedIndex(index);
       }
     },
-    [selectedUserIds]
+    [selectedUserIds, lastSelectedIndex, sortedData]
   );
 
   // 一括操作
@@ -317,17 +344,55 @@ function AdminUsersContent() {
     }
   }, [roleChangeUser, newRole, getRoleLabel]);
 
+  // キーボードショートカット
+  useKeyboardShortcuts([
+    {
+      key: "a",
+      ctrl: true,
+      description: "全選択",
+      action: handleSelectAll,
+    },
+    {
+      key: "f",
+      ctrl: true,
+      description: "検索フォーカス",
+      action: () => searchInputRef.current?.focus(),
+    },
+    {
+      key: "/",
+      description: "検索フォーカス",
+      action: () => searchInputRef.current?.focus(),
+    },
+    {
+      key: "e",
+      ctrl: true,
+      description: "CSV出力",
+      action: handleExportCSV,
+    },
+    {
+      key: "Delete",
+      description: "選択したユーザーを削除",
+      action: () => {
+        if (selectedUserIds.length > 0) {
+          handleBulkDelete();
+        }
+      },
+    },
+    {
+      key: "?",
+      description: "ショートカット一覧を表示",
+      action: () => setShowShortcutHelp(true),
+    },
+  ]);
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <AdminLayout>
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <Link href="/admin" className="text-sm text-blue-600 hover:text-blue-800">
-                ← ダッシュボードに戻る
-              </Link>
-              <h1 className="mt-2 text-3xl font-bold text-gray-900">ユーザー管理</h1>
+              <h1 className="text-3xl font-bold text-gray-900">ユーザー管理</h1>
             </div>
             <div className="flex gap-2">
               <LoadingButton
@@ -445,15 +510,19 @@ function AdminUsersContent() {
                 停止中 ({stats.suspended})
               </button>
             </div>
-            <input
-              id="user-search"
-              type="text"
-              placeholder="名前・メールアドレスで検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              aria-label="名前またはメールアドレスで検索"
-            />
+            <div className="flex items-center gap-4">
+              <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
+              <input
+                ref={searchInputRef}
+                id="user-search"
+                type="text"
+                placeholder="名前・メールアドレスで検索... (Ctrl+F または /)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none w-80"
+                aria-label="名前またはメールアドレスで検索"
+              />
+            </div>
           </div>
         </div>
 
@@ -520,44 +589,72 @@ function AdminUsersContent() {
         ) : (
           <div className="rounded-lg bg-white shadow">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0
-                        }
-                        onChange={handleSelectAll}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        aria-label="すべてのユーザーを選択/解除"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ユーザー
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ロール
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      登録日
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      最終ログイン
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ステータス
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="w-full" role="table">
+                <div className="bg-gray-50" role="rowgroup">
+                  <div className="flex" role="row">
+                    <div className="px-6 py-3 text-left" style={{ flex: "0 0 80px" }} role="columnheader">
+                      <Tooltip content="すべてのユーザーを選択/解除 (Ctrl+A)" position="top">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0
+                          }
+                          onChange={handleSelectAll}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          aria-label="すべてのユーザーを選択/解除"
+                        />
+                      </Tooltip>
+                    </div>
+                    <SortableTableHeader
+                      label="ユーザー"
+                      sortKey="name"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      flex="1 1 280px"
+                    />
+                    <SortableTableHeader
+                      label="ロール"
+                      sortKey="role"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      flex="0 0 150px"
+                    />
+                    <SortableTableHeader
+                      label="登録日"
+                      sortKey="registeredDate"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      flex="0 0 130px"
+                    />
+                    <SortableTableHeader
+                      label="最終ログイン"
+                      sortKey="lastLogin"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      flex="0 0 150px"
+                    />
+                    <SortableTableHeader
+                      label="ステータス"
+                      sortKey="status"
+                      currentSortKey={sortKey}
+                      currentSortDirection={sortDirection}
+                      onSort={handleSort}
+                      flex="0 0 120px"
+                    />
+                    <div className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ flex: "0 0 200px" }} role="columnheader">
                       アクション
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
+                    </div>
+                  </div>
+                </div>
+                <div
                   ref={parentRef}
                   className="divide-y divide-gray-200 bg-white"
                   style={{ height: "600px", overflow: "auto" }}
+                  role="rowgroup"
                 >
                   <div
                     style={{
@@ -567,9 +664,9 @@ function AdminUsersContent() {
                     }}
                   >
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const user = filteredUsers[virtualRow.index];
+                      const user = sortedData[virtualRow.index];
                       return (
-                        <tr
+                        <div
                           key={user.id}
                           className="hover:bg-gray-50"
                           style={{
@@ -581,17 +678,18 @@ function AdminUsersContent() {
                             transform: `translateY(${virtualRow.start}px)`,
                             display: "flex",
                           }}
+                          role="row"
                         >
-                          <td className="whitespace-nowrap px-6 py-4" style={{ flex: "0 0 80px" }}>
+                          <div className="whitespace-nowrap px-6 py-4" style={{ flex: "0 0 80px" }} role="cell">
                             <input
                               type="checkbox"
                               checked={selectedUserIds.includes(user.id)}
-                              onChange={() => handleSelectUser(user.id)}
+                              onChange={(e) => handleSelectUser(user.id, virtualRow.index, (e.nativeEvent as MouseEvent).shiftKey)}
                               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                               aria-label={`ユーザー「${user.name}」を選択`}
                             />
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4" style={{ flex: "1 1 280px" }}>
+                          </div>
+                          <div className="whitespace-nowrap px-6 py-4" style={{ flex: "1 1 280px" }} role="cell">
                             <div className="flex items-center">
                               <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center">
                                 {user.avatarUrl ? (
@@ -611,10 +709,11 @@ function AdminUsersContent() {
                                 <div className="text-sm text-gray-500">{user.email}</div>
                               </div>
                             </div>
-                          </td>
-                          <td
+                          </div>
+                          <div
                             className="whitespace-nowrap px-6 py-4"
                             style={{ flex: "0 0 150px" }}
+                            role="cell"
                           >
                             <span
                               className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getRoleBadge(
@@ -628,67 +727,79 @@ function AdminUsersContent() {
                                 店舗ID: {user.vendorId}
                               </div>
                             )}
-                          </td>
-                          <td
+                          </div>
+                          <div
                             className="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                             style={{ flex: "0 0 130px" }}
+                            role="cell"
                           >
                             {user.registeredDate}
-                          </td>
-                          <td
+                          </div>
+                          <div
                             className="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                             style={{ flex: "0 0 150px" }}
+                            role="cell"
                           >
                             {user.lastLogin}
-                          </td>
-                          <td
+                          </div>
+                          <div
                             className="whitespace-nowrap px-6 py-4"
                             style={{ flex: "0 0 120px" }}
+                            role="cell"
                           >
                             <StatusBadge
                               status={user.status === "active" ? "active" : "suspended"}
                               customLabel={user.status === "active" ? "アクティブ" : "停止中"}
                             />
-                          </td>
-                          <td
+                          </div>
+                          <div
                             className="whitespace-nowrap px-6 py-4 text-right text-sm"
                             style={{ flex: "0 0 200px" }}
+                            role="cell"
                           >
-                            <button
-                              onClick={() => handleOpenRoleChange(user)}
-                              className="text-purple-600 hover:text-purple-900 mr-3"
-                              aria-label={`${user.name}の権限を変更`}
-                            >
-                              権限変更
-                            </button>
-                            <button
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                              aria-label={`${user.name}を編集`}
-                            >
-                              編集
-                            </button>
+                            <Tooltip content="ロール・権限を変更" position="top">
+                              <button
+                                onClick={() => handleOpenRoleChange(user)}
+                                className="text-purple-600 hover:text-purple-900 mr-3"
+                                aria-label={`${user.name}の権限を変更`}
+                              >
+                                権限変更
+                              </button>
+                            </Tooltip>
+                            <Tooltip content="ユーザー情報を編集" position="top">
+                              <button
+                                className="text-blue-600 hover:text-blue-900 mr-3"
+                                aria-label={`${user.name}を編集`}
+                              >
+                                編集
+                              </button>
+                            </Tooltip>
                             {user.status === "active" ? (
-                              <button
-                                className="text-orange-600 hover:text-orange-900"
-                                aria-label={`${user.name}を停止`}
-                              >
-                                停止
-                              </button>
+                              <Tooltip content="ユーザーを停止" position="top">
+                                <button
+                                  className="text-orange-600 hover:text-orange-900"
+                                  aria-label={`${user.name}を停止`}
+                                >
+                                  停止
+                                </button>
+                              </Tooltip>
                             ) : (
-                              <button
-                                className="text-green-600 hover:text-green-900"
-                                aria-label={`${user.name}を復帰`}
-                              >
-                                復帰
-                              </button>
+                              <Tooltip content="ユーザーを復帰" position="top">
+                                <button
+                                  className="text-green-600 hover:text-green-900"
+                                  aria-label={`${user.name}を復帰`}
+                                >
+                                  復帰
+                                </button>
+                              </Tooltip>
                             )}
-                          </td>
-                        </tr>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -765,7 +876,50 @@ function AdminUsersContent() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* キーボードショートカットヘルプボタン */}
+      <Tooltip content="キーボードショートカット (?)">
+        <button
+          onClick={() => setShowShortcutHelp(true)}
+          className="fixed bottom-8 right-8 w-12 h-12 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition"
+          aria-label="キーボードショートカット一覧を表示"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </Tooltip>
+
+      {/* キーボードショートカットヘルプモーダル */}
+      {showShortcutHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShortcutHelp(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">キーボードショートカット</h3>
+              <button
+                onClick={() => setShowShortcutHelp(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="閉じる"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ShortcutHelp
+              shortcuts={[
+                { key: "a", ctrl: true, description: "全選択" },
+                { key: "f", ctrl: true, description: "検索フォーカス" },
+                { key: "/", description: "検索フォーカス" },
+                { key: "e", ctrl: true, description: "CSV出力" },
+                { key: "Delete", description: "選択したユーザーを削除" },
+                { key: "?", description: "このヘルプを表示" },
+              ].map(s => ({ ...s, action: () => {} }))}
+            />
+          </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }
 

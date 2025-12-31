@@ -3,8 +3,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { StatCard, MenuCard, ErrorBoundary } from "@/components/admin";
+import { StatCard, MenuCard, ErrorBoundary, AdminLayout } from "@/components/admin";
 
 // アクティビティアイテムコンポーネント（メモ化）
 const ActivityItem = React.memo(function ActivityItem({
@@ -82,20 +81,17 @@ function AdminDashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <AdminLayout>
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
-          <Link href="/map" className="text-sm text-blue-600 hover:text-blue-800">
-            ← マップに戻る
-          </Link>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">管理者ダッシュボード</h1>
+          <h1 className="text-3xl font-bold text-gray-900">管理者ダッシュボード</h1>
           <p className="mt-2 text-sm text-gray-600">ようこそ、{user?.name}さん</p>
         </div>
       </div>
 
       {/* メインコンテンツ */}
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 pb-20">
         {/* 統計カード */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           {stats.map((stat) => (
@@ -141,7 +137,7 @@ function AdminDashboardContent() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
 
