@@ -60,8 +60,8 @@ export const grandmaEvents: GrandmaEvent[] = [
     id: 'kochi-castle',
     title: '高知城',
     location: {
-      lat: 33.5707,
-      lng: 133.53262,
+      lat: 33.5673,
+      lng: 133.53382,
       radiusMeters: 110,
     },
     messages: [
@@ -80,8 +80,8 @@ export const grandmaEvents: GrandmaEvent[] = [
     id: 'tintin-densha',
     title: 'チンチン電車',
     location: {
-      lat: 33.55096,
-      lng: 133.52992,
+      lat: 33.55264,
+      lng: 133.53168,
       radiusMeters: 100,
     },
     messages: [
