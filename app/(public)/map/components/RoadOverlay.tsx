@@ -4,14 +4,11 @@
 
 'use client';
 
-import { Fragment } from 'react';
 import { ImageOverlay } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
 import { LatLngBoundsExpression } from 'leaflet';
 
-const BRICK_STRIP_IMAGE = '/images/maps/elements/decoration/brick-strip.svg';
-const BRICK_COUNT = 12;
-const BRICK_DECOR_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
+const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 
 export default function RoadOverlay() {
   const config = ROAD_CONFIG;
@@ -57,6 +54,9 @@ export default function RoadOverlay() {
         {renderSeparatorBricks(
           getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
         )}
+        {renderSeparatorPalms(
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        )}
       </>
     );
   }
@@ -79,6 +79,9 @@ export default function RoadOverlay() {
         {renderSeparatorBricks(
           getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
         )}
+        {renderSeparatorPalms(
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        )}
       </>
     );
   }
@@ -86,6 +89,9 @@ export default function RoadOverlay() {
   return (
     <>
       {renderSeparatorBricks(
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+      )}
+      {renderSeparatorPalms(
         getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
       )}
     </>
@@ -134,6 +140,9 @@ function PlaceholderRoad({
         zIndex={config.zIndex}
       />
       {renderSeparatorBricks(
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+      )}
+      {renderSeparatorPalms(
         getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
       )}
     </>
@@ -194,6 +203,9 @@ function CurvedRoad({
       {renderSeparatorBricks(
         getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
       )}
+      {renderSeparatorPalms(
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+      )}
     </>
   );
 }
@@ -201,54 +213,60 @@ function CurvedRoad({
 function renderSeparatorBricks(
   separatorBounds: [[number, number], [number, number]]
 ) {
-  const northLat = separatorBounds[0][0];
-  const southLat = separatorBounds[1][0];
-  const eastLng = separatorBounds[0][1];
-  const westLng = separatorBounds[1][1];
-  const totalLat = Math.abs(northLat - southLat);
-  const brickHeight = totalLat / BRICK_COUNT;
-  const palmSize = brickHeight * 0.75;
-  const palmInset = brickHeight * 0.1;
+  const svgContent = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1000" preserveAspectRatio="none">
+      <rect x="0" y="0" width="100" height="1000" fill="#b45a3c"/>
+    </svg>
+  `;
+
+  const svgDataUrl = `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
 
   return (
-    <Fragment>
-      <ImageOverlay
-        url={BRICK_STRIP_IMAGE}
-        bounds={separatorBounds as LatLngBoundsExpression}
-        opacity={0.95}
-        zIndex={65}
-      />
-      {Array.from({ length: BRICK_COUNT }, (_, index) => {
-        const topLat = northLat - brickHeight * index;
-        const palmTop = topLat - palmInset;
-        const palmBottom = palmTop - palmSize;
-        const leftPalmBounds: [[number, number], [number, number]] = [
-          [palmTop, westLng + palmSize],
-          [palmBottom, westLng],
-        ];
-        const rightPalmBounds: [[number, number], [number, number]] = [
-          [palmTop, eastLng],
-          [palmBottom, eastLng - palmSize],
-        ];
-        return (
-          <Fragment key={`palm-${index}`}>
-            <ImageOverlay
-              url={BRICK_DECOR_IMAGE}
-              bounds={leftPalmBounds as LatLngBoundsExpression}
-              opacity={0.95}
-              zIndex={70}
-            />
-            <ImageOverlay
-              url={BRICK_DECOR_IMAGE}
-              bounds={rightPalmBounds as LatLngBoundsExpression}
-              opacity={0.95}
-              zIndex={70}
-            />
-          </Fragment>
-        );
-      })}
-    </Fragment>
+    <ImageOverlay
+      url={svgDataUrl}
+      bounds={separatorBounds as LatLngBoundsExpression}
+      opacity={0.95}
+      zIndex={65}
+    />
   );
+}
+
+function renderSeparatorPalms(
+  separatorBounds: [[number, number], [number, number]]
+) {
+  const palmAspect = 1;
+  const northLat = Math.max(separatorBounds[0][0], separatorBounds[1][0]);
+  const southLat = Math.min(separatorBounds[0][0], separatorBounds[1][0]);
+  const westLng = Math.min(separatorBounds[0][1], separatorBounds[1][1]);
+  const eastLng = Math.max(separatorBounds[0][1], separatorBounds[1][1]);
+  const totalLat = northLat - southLat;
+  const totalLng = eastLng - westLng;
+
+  const palmCount = 4;
+  const segmentLat = totalLat / palmCount;
+  let palmHeightLat = totalLat * 0.24;
+  let palmWidthLng = palmHeightLat * palmAspect;
+  const palmWestLng = westLng + (totalLng - palmWidthLng) / 2;
+  const palmOffsetLat = segmentLat * 0.1;
+
+  return Array.from({ length: palmCount }).map((_, index) => {
+    const palmTop = northLat - segmentLat * index - palmOffsetLat - palmHeightLat;
+    const palmBottom = palmTop + palmHeightLat;
+    const bounds: [[number, number], [number, number]] = [
+      [palmTop, palmWestLng],
+      [palmBottom, palmWestLng + palmWidthLng],
+    ];
+
+    return (
+      <ImageOverlay
+        key={`separator-palm-${index}`}
+        url={PALM_IMAGE}
+        bounds={bounds as LatLngBoundsExpression}
+        opacity={1}
+        zIndex={66}
+      />
+    );
+  });
 }
 
 function offsetBounds(

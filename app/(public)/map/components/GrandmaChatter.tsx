@@ -207,6 +207,9 @@ export default function GrandmaChatter({
   const handleAvatarContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
+  const handleAvatarDragStart = (event: React.DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const shellClassName = fullWidth
     ? 'fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none'
@@ -245,7 +248,8 @@ export default function GrandmaChatter({
           onPointerUp={handleAvatarPointerUp}
           onPointerCancel={handleAvatarPointerUp}
           onContextMenu={handleAvatarContextMenu}
-          className={`${avatarClassName} relative z-0 pointer-events-auto`}
+          onDragStart={handleAvatarDragStart}
+          className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
           style={{ touchAction: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
           aria-label="おばあちゃんメニューを開く"
         >
@@ -255,7 +259,8 @@ export default function GrandmaChatter({
             <img
               src={PLACEHOLDER_IMAGE}
               alt="おせっかいばあちゃん"
-              className="h-full w-full scale-110 object-cover object-center"
+              className="h-full w-full scale-110 object-cover object-center select-none"
+              draggable={false}
             />
           </div>
         </button>
