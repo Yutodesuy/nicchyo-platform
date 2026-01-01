@@ -15,7 +15,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback, Fragment } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
 import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
@@ -265,7 +265,7 @@ type MapViewProps = {
   onMapInstance?: (map: L.Map) => void;
 };
 
-export default function MapView({
+const MapView = memo(function MapView({
   initialShopId,
   selectedRecipe,
   showRecipeOverlay,
@@ -887,7 +887,9 @@ export default function MapView({
       />
     </div>
   );
-}
+});
+
+export default MapView;
 
 function EventDimOverlay({ active }: { active: boolean }) {
   const map = useMap();

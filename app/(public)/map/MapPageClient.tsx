@@ -50,6 +50,18 @@ export default function MapPageClient() {
     [activeEventId]
   );
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
+  const eventTargets = useMemo(
+    () =>
+      grandmaEvents.map((event) => ({
+        id: event.id,
+        lat: event.location.lat,
+        lng: event.location.lng,
+      })),
+    []
+  );
+  const handleMapInstance = useCallback((map: LeafletMap) => {
+    mapRef.current = map;
+  }, []);
 
   const vendorShop = useMemo(() => {
     if (!vendorShopId) return null;
@@ -284,15 +296,9 @@ export default function MapPageClient() {
               searchShopIds={searchMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label}
               onMapReady={markMapReady}
-              eventTargets={grandmaEvents.map((event) => ({
-                id: event.id,
-                lat: event.location.lat,
-                lng: event.location.lng,
-              }))}
+              eventTargets={eventTargets}
               highlightEventTargets={isHoldActive}
-              onMapInstance={(map) => {
-                mapRef.current = map;
-              }}
+              onMapInstance={handleMapInstance}
             />
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
