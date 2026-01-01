@@ -5,7 +5,6 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import Link from 'next/link';
 import { grandmaCommentPool, pickNextComment } from '../services/grandmaCommentService';
 
-const AUTO_ROTATE_MS = 60000;
 const PLACEHOLDER_IMAGE = '/images/obaasan.webp';
 
 type PriorityMessage = {
@@ -78,10 +77,7 @@ export default function GrandmaChatter({
 
   useEffect(() => {
     if (!pool.length) return;
-    const id = window.setInterval(() => {
-      setCurrentId((prev) => pickNextComment(pool, prev)?.id);
-    }, AUTO_ROTATE_MS);
-    return () => window.clearInterval(id);
+    setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
 
   if (!current) return null;
