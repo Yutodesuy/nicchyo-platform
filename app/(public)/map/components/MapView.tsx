@@ -116,6 +116,8 @@ const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROA
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
 const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
 const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
+const LEFT_SIDE_LABEL_LAT = RIGHT_SIDE_LABEL_LAT;
+const LEFT_SIDE_LABEL_LNG = Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
@@ -299,6 +301,31 @@ export default function MapView({
             transform: translateY(-200px);
           ">
             タテになが～い
+          </div>
+        `,
+        iconSize: [1, 1],
+        iconAnchor: [0, 0],
+      }),
+    []
+  );
+  const leftSideLabelIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "map-side-label",
+        html: `
+          <div style="
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #3b2b21;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateX(-100px) translateY(50px);
+          ">
+            日曜市
           </div>
         `,
         iconSize: [1, 1],
@@ -596,6 +623,11 @@ export default function MapView({
           <Marker
             position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
             icon={rightSideLabelIcon}
+            interactive={false}
+          />
+          <Marker
+            position={[LEFT_SIDE_LABEL_LAT, LEFT_SIDE_LABEL_LNG]}
+            icon={leftSideLabelIcon}
             interactive={false}
           />
         </Pane>
