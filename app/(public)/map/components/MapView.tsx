@@ -291,7 +291,7 @@ export default function MapView({
           <div style="
             writing-mode: vertical-rl;
             text-orientation: upright;
-            font-size: 48px;
+            font-size: 43px;
             font-weight: 800;
             letter-spacing: 6px;
             color: #3b2b21;
@@ -300,7 +300,7 @@ export default function MapView({
             white-space: nowrap;
             transform: translateY(-200px);
           ">
-            タテになが～い
+            <span style="color: #f2c94c;">タテ</span><span>に</span><span style="color: #3aa856; display: block; margin-top: 100px;">なが～～い</span>
           </div>
         `,
         iconSize: [1, 1],
@@ -319,11 +319,11 @@ export default function MapView({
             font-size: 48px;
             font-weight: 800;
             letter-spacing: 6px;
-            color: #3b2b21;
+            color: #d2b48c;
             text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
             line-height: 1;
             white-space: nowrap;
-            transform: translateX(-100px) translateY(50px);
+            transform: translateX(-80px) translateY(50px);
           ">
             日曜市
           </div>
