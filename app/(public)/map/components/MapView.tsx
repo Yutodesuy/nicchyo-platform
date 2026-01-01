@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -114,6 +114,8 @@ const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
 const ROAD_SEPARATOR_WIDTH_LNG = ROAD_WIDTH_LNG * 0.16;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
+const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
+const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
@@ -278,6 +280,31 @@ export default function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(baseShops)
+  );
+  const rightSideLabelIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "map-side-label",
+        html: `
+          <div style="
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #3b2b21;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateY(-200px);
+          ">
+            タテになが～い
+          </div>
+        `,
+        iconSize: [1, 1],
+        iconAnchor: [0, 0],
+      }),
+    []
   );
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -565,6 +592,13 @@ export default function MapView({
 
         {/* 道路 */}
         <RoadOverlay />
+        <Pane name="map-label" style={{ zIndex: 900 }}>
+          <Marker
+            position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
+            icon={rightSideLabelIcon}
+            interactive={false}
+          />
+        </Pane>
 
         <EventDimOverlay active={highlightEventTargets} />
 
