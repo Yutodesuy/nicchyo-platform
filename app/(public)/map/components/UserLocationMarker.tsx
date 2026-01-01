@@ -1,21 +1,20 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-// 日曜市のエリア定義（実測1.3km）
 const MARKET_BOUNDS = {
-  north: 33.56500,  // 西側（高知城前）
-  south: 33.55330,  // 東側（追手筋東端）
+  north: 33.56500,
+  south: 33.55330,
   west: 133.53000,
   east: 133.53200,
 };
 
-// 日曜市の中心座標（道の中心）
-// 北端33.56500 + 南端33.55330 = 中心33.55915
-// 西端133.53000 + 東端133.53200 = 中心133.53100
 const MARKET_CENTER: [number, number] = [33.55915, 133.53100];
+
+const UPDATE_INTERVAL_MS = 1000;
+const ANIMATION_MS = 300;
 
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
@@ -23,11 +22,13 @@ interface UserLocationMarkerProps {
 
 export default function UserLocationMarker({ onLocationUpdate }: UserLocationMarkerProps) {
   const map = useMap();
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
-  const [isInMarket, setIsInMarket] = useState(false);
-  const [marker, setMarker] = useState<L.Marker | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const lastUpdateRef = useRef(0);
+  const animFrameRef = useRef<number | null>(null);
+  const animFromRef = useRef<[number, number] | null>(null);
+  const animToRef = useRef<[number, number] | null>(null);
+  const animStartRef = useRef(0);
 
-  // 位置情報が日曜市のエリア内かチェック
   const checkIfInMarket = (lat: number, lng: number): boolean => {
     return (
       lat >= MARKET_BOUNDS.south &&
@@ -40,7 +41,6 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
   useEffect(() => {
     if (!map) return;
 
-    // カスタムアイコン（人のマーク）
     const userIcon = L.divIcon({
       html: `
         <div style="
@@ -70,24 +70,52 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
       iconAnchor: [20, 20],
     });
 
-    // 位置情報の監視を開始
+    const animateMarkerTo = (target: [number, number]) => {
+      if (!markerRef.current) return;
+      const current = markerRef.current.getLatLng();
+      animFromRef.current = [current.lat, current.lng];
+      animToRef.current = target;
+      animStartRef.current = performance.now();
+
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+
+      const step = (ts: number) => {
+        const from = animFromRef.current;
+        const to = animToRef.current;
+        if (!from || !to || !markerRef.current) return;
+        const progress = Math.min(1, (ts - animStartRef.current) / ANIMATION_MS);
+        const lat = from[0] + (to[0] - from[0]) * progress;
+        const lng = from[1] + (to[1] - from[1]) * progress;
+        markerRef.current.setLatLng([lat, lng]);
+        if (progress < 1) {
+          animFrameRef.current = requestAnimationFrame(step);
+        } else {
+          animFrameRef.current = null;
+        }
+      };
+
+      animFrameRef.current = requestAnimationFrame(step);
+    };
+
     if ('geolocation' in navigator) {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          const inMarket = checkIfInMarket(latitude, longitude);
+          const now = Date.now();
+          if (now - lastUpdateRef.current < UPDATE_INTERVAL_MS) {
+            return;
+          }
+          lastUpdateRef.current = now;
 
-          // 日曜市内にいる場合は実際の位置、外にいる場合は中央
+          const inMarket = checkIfInMarket(latitude, longitude);
           const displayPosition: [number, number] = inMarket
             ? [latitude, longitude]
             : MARKET_CENTER;
 
-          setUserPosition(displayPosition);
-          setIsInMarket(inMarket);
-
-          // マーカーの更新または作成
-          if (marker) {
-            marker.setLatLng(displayPosition);
+          if (markerRef.current) {
+            animateMarkerTo(displayPosition);
           } else {
             const newMarker = L.marker(displayPosition, {
               icon: userIcon,
@@ -97,29 +125,20 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
             newMarker.bindPopup(`
               <div style="text-align: center; font-family: sans-serif;">
                 <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-                <strong style="font-size: 14px;">現在地</strong>
-                <p style="font-size: 12px; margin: 4px 0; color: #666;">
-                  ${inMarket ? '日曜市内にいます' : '日曜市の中心を表示中'}
-                </p>
+                <strong style="font-size: 14px;">Current location</strong>
               </div>
             `);
 
-            setMarker(newMarker);
+            markerRef.current = newMarker;
           }
 
-          // コールバック
-          if (onLocationUpdate) {
-            onLocationUpdate(inMarket, displayPosition);
-          }
+          onLocationUpdate?.(inMarket, displayPosition);
         },
         (error) => {
-          console.warn('位置情報の取得に失敗:', error);
-          // エラー時は中央に表示
+          console.warn('Failed to get geolocation', error);
           const defaultPosition = MARKET_CENTER;
-          setUserPosition(defaultPosition);
-          setIsInMarket(false);
 
-          if (!marker) {
+          if (!markerRef.current) {
             const newMarker = L.marker(defaultPosition, {
               icon: userIcon,
               zIndexOffset: 1000,
@@ -128,14 +147,11 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
             newMarker.bindPopup(`
               <div style="text-align: center; font-family: sans-serif;">
                 <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-                <strong style="font-size: 14px;">日曜市の中心</strong>
-                <p style="font-size: 12px; margin: 4px 0; color: #666;">
-                  位置情報が取得できません
-                </p>
+                <strong style="font-size: 14px;">Current location</strong>
               </div>
             `);
 
-            setMarker(newMarker);
+            markerRef.current = newMarker;
           }
         },
         {
@@ -145,37 +161,41 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
         }
       );
 
-      // クリーンアップ
       return () => {
         navigator.geolocation.clearWatch(watchId);
-        if (marker) {
-          map.removeLayer(marker);
+        if (animFrameRef.current !== null) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+        if (markerRef.current) {
+          map.removeLayer(markerRef.current);
+          markerRef.current = null;
         }
       };
-    } else {
-      console.warn('このブラウザは位置情報をサポートしていません');
-      // 位置情報非対応の場合は中央に表示
-      const defaultPosition = MARKET_CENTER;
-      setUserPosition(defaultPosition);
-
-      const newMarker = L.marker(defaultPosition, {
-        icon: userIcon,
-        zIndexOffset: 1000,
-      }).addTo(map);
-
-      newMarker.bindPopup(`
-        <div style="text-align: center; font-family: sans-serif;">
-          <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-          <strong style="font-size: 14px;">日曜市の中心</strong>
-          <p style="font-size: 12px; margin: 4px 0; color: #666;">
-            位置情報が利用できません
-          </p>
-        </div>
-      `);
-
-      setMarker(newMarker);
     }
-  }, [map]);
+
+    console.warn('Geolocation is not supported by this browser');
+    const defaultPosition = MARKET_CENTER;
+    const newMarker = L.marker(defaultPosition, {
+      icon: userIcon,
+      zIndexOffset: 1000,
+    }).addTo(map);
+
+    newMarker.bindPopup(`
+      <div style="text-align: center; font-family: sans-serif;">
+        <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
+        <strong style="font-size: 14px;">Current location</strong>
+      </div>
+    `);
+
+    markerRef.current = newMarker;
+    return () => {
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+    };
+  }, [map, onLocationUpdate]);
 
   return null;
 }
