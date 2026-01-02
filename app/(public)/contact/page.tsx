@@ -1,5 +1,6 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
+import MapLink from "../../components/MapLink";
 
 export const metadata = {
   title: "Contact | nicchyo",
@@ -8,26 +9,22 @@ export const metadata = {
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      <header className="border-b border-amber-100/70 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-              contact
-            </p>
-            <h1 className="text-2xl font-bold">お問い合わせ</h1>
-            <p className="text-sm text-gray-700">
-              ご意見や取材依頼などはこちらからお知らせください。
-            </p>
-          </div>
-          <Link
-            href="/map"
-            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-          >
-            マップへ戻る
-          </Link>
-        </div>
-      </header>
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
+  <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+    <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Contact</p>
+    <h1 className="mt-1 text-4xl font-bold text-gray-900">お問い合わせ</h1>
+    <p className="mt-1 text-xl text-gray-700">ご意見や取材依頼などはこちらからお知らせください。</p>
+  </div>
+  <div className="flex justify-center">
+    <MapLink
+      href="/map"
+      className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+    >
+      マップへ戻る
+    </MapLink>
+  </div>
+</div>
 
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8">
         <section className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
@@ -64,3 +61,4 @@ export default function ContactPage() {
     </main>
   );
 }
+

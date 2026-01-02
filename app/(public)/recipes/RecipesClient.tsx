@@ -12,8 +12,6 @@ import {
   type Recipe,
 } from "../../../lib/recipes";
 import { shops } from "../map/data/shops";
-import GrandmaChatter from "../map/components/GrandmaChatter";
-import { grandmaRecipeComments } from "../map/data/grandmaCommentsRecipes";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -561,7 +559,6 @@ export default function RecipesClient() {
       </main>
 
       <NavigationBar />
-      <GrandmaChatter comments={grandmaRecipeComments} titleLabel="料理ばあちゃん" fullWidth />
     </div>
   );
 }
