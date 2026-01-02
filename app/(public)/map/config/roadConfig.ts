@@ -108,6 +108,13 @@ export function getRoadLength(): number {
 }
 
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
+  // NOTE: This expands beyond the Sunday market shop-only span for map panning.
+  // Keep the shop-only bounds below for reference/data usage.
+  // Shop-only bounds (road span):
+  // [
+  //   [33.56500, 133.53200],
+  //   [33.55330, 133.53000],
+  // ]
   return getExpandedRoadBounds({
     north: 0.0055,
     south: 0.003,
