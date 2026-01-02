@@ -333,56 +333,60 @@ export default function MapPageClient() {
             {activeEvent && activeMessage && (
               <div className="fixed inset-0 z-[3000] flex items-center justify-center">
                 <div className="absolute inset-0 bg-black/70" />
-                <div className="relative z-10 flex w-[min(960px,92vw)] flex-col gap-6 rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl sm:flex-row sm:items-center">
-                  <div className="flex items-center justify-center">
-                    <div className="h-48 w-48 overflow-hidden rounded-3xl bg-amber-100 shadow-xl sm:h-[17rem] sm:w-[17rem]">
-                      <img
-                        src="/images/obaasan.webp"
-                        alt="おばあちゃん"
-                        className="h-full w-full object-cover object-center"
-                      />
-                    </div>
+                <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
+                  <div className="absolute inset-0">
+                    <img
+                      src="/images/obaasan.webp"
+                      alt="おばあちゃん"
+                      className="h-full w-full object-cover object-center"
+                    />
                   </div>
-                  <div className="flex-1 space-y-3">
-                    <h3 className="text-xl font-bold text-gray-900">{activeEvent.title}</h3>
-                    <div className="space-y-2">
-                      <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                        {activeMessage.subtitle}
+                  <div className="absolute left-6 top-4 z-10">
+                    <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
+                      {activeEvent.title}
+                    </h3>
+                  </div>
+                  <div className="relative flex min-h-[45vh] flex-col pt-16">
+                    <div className="mt-auto space-y-3 -translate-y-[10px]">
+                      {activeMessage.image && (
+                        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+                          <img
+                            src={activeMessage.image}
+                            alt=""
+                            className="h-44 w-full object-cover object-center sm:h-56"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                          {activeMessage.subtitle}
+                        </div>
+                        <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
+                          {activeMessage.text}
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
-                        {activeMessage.text}
-                      </div>
-                    </div>
-                    {activeMessage.image && (
-                      <div className="overflow-hidden rounded-2xl border border-amber-200">
-                        <img
-                          src={activeMessage.image}
-                          alt=""
-                          className="h-44 w-full object-cover object-center sm:h-56"
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>
-                        {eventMessageIndex + 1}/{activeEvent.messages.length}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {eventMessageIndex > 0 && (
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                          {eventMessageIndex + 1}/{activeEvent.messages.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {eventMessageIndex > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleEventBack}
+                              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                            >
+                              戻る
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={handleEventBack}
-                            className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                            onClick={handleEventAdvance}
+                            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
                           >
-                            戻る
+                            {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleEventAdvance}
-                          className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                        >
-                          {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                        </button>
+                        </div>
                       </div>
                     </div>
                   </div>
