@@ -308,9 +308,9 @@ export default function GrandmaChatter({
                   <span aria-hidden>→</span>
                 </Link>
               )}
-              <p className="text-[11px] text-gray-500">
-                {priorityMessage ? '最新バッジの情報' : 'タップすると次のコメントを見るよ'}
-              </p>
+              {priorityMessage && (
+                <p className="text-[11px] text-gray-500">最新バッジの情報</p>
+              )}
               {priorityMessage && onPriorityDismiss && (
                 <button
                   type="button"
