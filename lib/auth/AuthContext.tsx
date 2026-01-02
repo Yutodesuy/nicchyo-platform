@@ -20,6 +20,12 @@ export const DUMMY_ACCOUNTS: Record<UserRole, User> = {
     email: "admin@kochi-city.jp",
     role: "super_admin",
   },
+  moderator: {
+    id: "dummy-moderator",
+    name: "モデレーター田中",
+    email: "moderator@kochi-city.jp",
+    role: "moderator",
+  },
   vendor: {
     id: "dummy-vendor-001",
     name: "食材のお店1",
@@ -51,6 +57,16 @@ const DUMMY_CREDENTIALS: DummyCredential[] = [
     identifier: "高知市管理者",
     password: "admin",
     user: DUMMY_ACCOUNTS.super_admin,
+  },
+  {
+    identifier: "moderator@kochi-city.jp",
+    password: "moderator",
+    user: DUMMY_ACCOUNTS.moderator,
+  },
+  {
+    identifier: "モデレーター田中",
+    password: "moderator",
+    user: DUMMY_ACCOUNTS.moderator,
   },
   {
     identifier: "食材のお店1",
@@ -117,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const permissions: PermissionCheck = {
     isSuperAdmin: user?.role === "super_admin",
+    isModerator: user?.role === "moderator",
     isVendor: user?.role === "vendor",
     isGeneralUser: user?.role === "general_user",
 
@@ -127,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     canManageAllShops: user?.role === "super_admin",
+    canModerateContent: user?.role === "super_admin" || user?.role === "moderator",
   };
 
   const persistUser = (selectedUser: User) => {
