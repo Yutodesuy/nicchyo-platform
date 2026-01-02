@@ -619,6 +619,7 @@ const MapView = memo(function MapView({
 
         {/* 道路 */}
         <RoadOverlay />
+        <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
         <Pane name="map-label" style={{ zIndex: 900 }}>
           <Marker
             position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
@@ -890,6 +891,41 @@ const MapView = memo(function MapView({
 });
 
 export default MapView;
+
+function DynamicMaxBounds({
+  baseBounds,
+  paddingPx,
+}: {
+  baseBounds: [[number, number], [number, number]];
+  paddingPx: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const baseLatLngBounds = L.latLngBounds(baseBounds);
+
+    const updateBounds = () => {
+      const zoom = map.getZoom();
+      const sw = map.project(baseLatLngBounds.getSouthWest(), zoom);
+      const ne = map.project(baseLatLngBounds.getNorthEast(), zoom);
+      const paddedSw = L.point(sw.x - paddingPx, sw.y + paddingPx);
+      const paddedNe = L.point(ne.x + paddingPx, ne.y - paddingPx);
+      const paddedBounds = L.latLngBounds(
+        map.unproject(paddedSw, zoom),
+        map.unproject(paddedNe, zoom)
+      );
+      map.setMaxBounds(paddedBounds);
+    };
+
+    updateBounds();
+    map.on("zoom resize move", updateBounds);
+    return () => {
+      map.off("zoom resize move", updateBounds);
+    };
+  }, [map, baseBounds, paddingPx]);
+
+  return null;
+}
 
 function EventDimOverlay({ active }: { active: boolean }) {
   const map = useMap();
