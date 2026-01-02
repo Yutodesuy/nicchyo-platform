@@ -1,6 +1,16 @@
 import React from "react";
 
-type Status = "active" | "pending" | "suspended" | "rejected" | "approved" | "reported";
+type Status =
+  | "active"
+  | "pending"
+  | "suspended"
+  | "rejected"
+  | "approved"
+  | "reported"
+  | "published"
+  | "flagged"
+  | "hidden"
+  | "deleted";
 
 interface StatusBadgeProps {
   status: Status;
@@ -40,6 +50,26 @@ const statusConfig: Record<
     label: "報告あり",
     className: "bg-purple-100 text-purple-800",
     icon: "🚨",
+  },
+  published: {
+    label: "公開中",
+    className: "bg-blue-100 text-blue-800",
+    icon: "✓",
+  },
+  flagged: {
+    label: "要確認",
+    className: "bg-red-100 text-red-800",
+    icon: "⚠️",
+  },
+  hidden: {
+    label: "非公開",
+    className: "bg-orange-100 text-orange-800",
+    icon: "🔒",
+  },
+  deleted: {
+    label: "削除済み",
+    className: "bg-gray-100 text-gray-800",
+    icon: "🗑️",
   },
 };
 
