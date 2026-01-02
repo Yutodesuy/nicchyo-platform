@@ -108,7 +108,12 @@ export function getRoadLength(): number {
 }
 
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
-  return getPaddedRoadBounds(0.12);
+  return getExpandedRoadBounds({
+    north: 0.0055,
+    south: 0.003,
+    west: 0.003,
+    east: 0.0065,
+  });
 }
 
 export function getRecommendedZoomBounds(): { min: number; max: number } {
@@ -126,5 +131,27 @@ export function getPaddedRoadBounds(
   return [
     [bounds[0][0] + marginLat, bounds[0][1] + marginLng],
     [bounds[1][0] - marginLat, bounds[1][1] - marginLng],
+  ];
+}
+
+export function getExpandedRoadBounds({
+  north,
+  south,
+  west,
+  east,
+}: {
+  north: number;
+  south: number;
+  west: number;
+  east: number;
+}): [[number, number], [number, number]] {
+  const bounds = ROAD_CONFIG.bounds;
+  const northLat = Math.max(bounds[0][0], bounds[1][0]) + north;
+  const southLat = Math.min(bounds[0][0], bounds[1][0]) - south;
+  const westLng = Math.min(bounds[0][1], bounds[1][1]) - west;
+  const eastLng = Math.max(bounds[0][1], bounds[1][1]) + east;
+  return [
+    [northLat, eastLng],
+    [southLat, westLng],
   ];
 }
