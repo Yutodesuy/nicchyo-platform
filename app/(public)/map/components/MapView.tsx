@@ -15,8 +15,8 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback, Fragment } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -114,6 +114,10 @@ const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
 const ROAD_SEPARATOR_WIDTH_LNG = ROAD_WIDTH_LNG * 0.16;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
+const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
+const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
+const LEFT_SIDE_LABEL_LAT = RIGHT_SIDE_LABEL_LAT;
+const LEFT_SIDE_LABEL_LNG = Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
@@ -261,7 +265,7 @@ type MapViewProps = {
   onMapInstance?: (map: L.Map) => void;
 };
 
-export default function MapView({
+const MapView = memo(function MapView({
   initialShopId,
   selectedRecipe,
   showRecipeOverlay,
@@ -278,6 +282,56 @@ export default function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(baseShops)
+  );
+  const rightSideLabelIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "map-side-label",
+        html: `
+          <div style="
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 43px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #3b2b21;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateY(-200px);
+          ">
+            <span style="color: #f2c94c;">タテ</span><span>に</span><span style="color: #3aa856; display: block; margin-top: 100px;">なが～～い</span>
+          </div>
+        `,
+        iconSize: [1, 1],
+        iconAnchor: [0, 0],
+      }),
+    []
+  );
+  const leftSideLabelIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "map-side-label",
+        html: `
+          <div style="
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #d2b48c;
+            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
+            line-height: 1;
+            white-space: nowrap;
+            transform: translateX(-80px) translateY(50px);
+          ">
+            日曜市
+          </div>
+        `,
+        iconSize: [1, 1],
+        iconAnchor: [0, 0],
+      }),
+    []
   );
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -565,6 +619,19 @@ export default function MapView({
 
         {/* 道路 */}
         <RoadOverlay />
+        <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
+        <Pane name="map-label" style={{ zIndex: 900 }}>
+          <Marker
+            position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
+            icon={rightSideLabelIcon}
+            interactive={false}
+          />
+          <Marker
+            position={[LEFT_SIDE_LABEL_LAT, LEFT_SIDE_LABEL_LNG]}
+            icon={leftSideLabelIcon}
+            interactive={false}
+          />
+        </Pane>
 
         <EventDimOverlay active={highlightEventTargets} />
 
@@ -821,6 +888,43 @@ export default function MapView({
       />
     </div>
   );
+});
+
+export default MapView;
+
+function DynamicMaxBounds({
+  baseBounds,
+  paddingPx,
+}: {
+  baseBounds: [[number, number], [number, number]];
+  paddingPx: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const baseLatLngBounds = L.latLngBounds(baseBounds);
+
+    const updateBounds = () => {
+      const zoom = map.getZoom();
+      const sw = map.project(baseLatLngBounds.getSouthWest(), zoom);
+      const ne = map.project(baseLatLngBounds.getNorthEast(), zoom);
+      const paddedSw = L.point(sw.x - paddingPx, sw.y + paddingPx);
+      const paddedNe = L.point(ne.x + paddingPx, ne.y - paddingPx);
+      const paddedBounds = L.latLngBounds(
+        map.unproject(paddedSw, zoom),
+        map.unproject(paddedNe, zoom)
+      );
+      map.setMaxBounds(paddedBounds);
+    };
+
+    updateBounds();
+    map.on("zoom resize move", updateBounds);
+    return () => {
+      map.off("zoom resize move", updateBounds);
+    };
+  }, [map, baseBounds, paddingPx]);
+
+  return null;
 }
 
 function EventDimOverlay({ active }: { active: boolean }) {
