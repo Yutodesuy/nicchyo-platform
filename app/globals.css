@@ -2,21 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== viewport高さシステム（モバイル対応） ===== */
+/* ===== viewport高さシスチE���E�モバイル対応！E===== */
 
 /**
- * モバイルブラウザのアドレスバー対応
- * - 100dvh: モダンブラウザ（Dynamic Viewport Height）
- * - --vh: フォールバック用CSS変数（window.innerHeight基準）
+ * モバイルブラウザのアドレスバ�E対忁E
+ * - 100dvh: モダンブラウザ�E�Eynamic Viewport Height�E�E
+ * - --vh: フォールバック用CSS変数�E�Eindow.innerHeight基準！E
  *
- * 使い方: h-[100dvh] または h-[calc(var(--vh,1vh)*100)]
+ * 使ぁE��: h-[100dvh] また�E h-[calc(var(--vh,1vh)*100)]
  */
 :root {
   --vh: 1vh; /* JavaScriptで動的に更新 */
 }
 
-/* safe-area対応（iOS切り欠き・Android ジェスチャーバー） */
-/* フォールバック: 先にデフォルト値を定義 */
+/* safe-area対応！EOS刁E��欠き�EAndroid ジェスチャーバ�E�E�E*/
+/* フォールバック: 先にチE��ォルト値を定義 */
 :root {
   --safe-top: 0px;
   --safe-bottom: 0px;
@@ -24,7 +24,7 @@
   --safe-right: 0px;
 }
 
-/* ブラウザがサポートしている場合は上書き */
+/* ブラウザがサポ�EトしてぁE��場合�E上書ぁE*/
 @supports (padding: env(safe-area-inset-top)) {
   :root {
     --safe-top: env(safe-area-inset-top);
@@ -34,27 +34,27 @@
   }
 }
 
-/* ===== nicchyo 全体の基本設定 ===== */
+/* ===== nicchyo 全体�E基本設宁E===== */
 
 html, body {
   padding: 0;
   margin: 0;
   background: #FFFAF0;
   color: #3A3A3A;
-  /* モバイル用: タッチ操作最適化 */
+  /* モバイル用: タチE��操作最適匁E*/
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* オーバースクロール防止（iOS Safari） */
+  /* オーバ�Eスクロール防止�E�EOS Safari�E�E*/
   overscroll-behavior: none;
 }
 
-/* body に viewport 高さを設定 */
+/* body に viewport 高さを設宁E*/
 body {
   height: 100dvh; /* モダンブラウザ */
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
 }
 
-/* スクロールバー */
+/* スクロールバ�E */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -83,9 +83,49 @@ body {
   animation: slide-in-right 0.6s ease-out forwards;
 }
 
+@keyframes map-walker-frame {
+  0%,
+  33% {
+    opacity: 1;
+  }
+  34%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes map-walker-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.map-walker {
+  animation: map-walker-bob 1.2s ease-in-out infinite;
+}
+
+.map-walker-frame {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: map-walker-frame 1.2s steps(1) infinite;
+}
+
+.map-walker-frame.is-2 {
+  animation-delay: 0.4s;
+}
+
+.map-walker-frame.is-3 {
+  animation-delay: 0.8s;
+}
+
 /* ===== マップ軽量化: クラスタアイコン ===== */
 
-/* クラスタアイコンのコンテナ */
+/* クラスタアイコンのコンチE�� */
 .custom-cluster-icon {
   background: transparent;
   border: none;
@@ -109,37 +149,284 @@ body {
 
 /* クラスタサイズ別スタイル */
 .cluster-small {
-  background-color: #22c55e; /* 緑: 小規模（10店舗以下） */
+  background-color: #22c55e; /* 緁E 小規模�E�E0店�E以下！E*/
   width: 30px;
   height: 30px;
   font-size: 12px;
 }
 
 .cluster-medium {
-  background-color: #f59e0b; /* オレンジ: 中規模（11-50店舗） */
+  background-color: #f59e0b; /* オレンジ: 中規模�E�E1-50店�E�E�E*/
   width: 40px;
   height: 40px;
   font-size: 14px;
 }
 
 .cluster-large {
-  background-color: #ef4444; /* 赤: 大規模（51店舗以上） */
+  background-color: #ef4444; /* 赤: 大規模�E�E1店�E以上！E*/
   width: 50px;
   height: 50px;
   font-size: 16px;
 }
 
-/* ===== 店舗マーカー ===== */
+/* ===== 店�Eマ�Eカー ===== */
 
-/* 店舗マーカーのコンテナ */
+/* 店�Eマ�EカーのコンチE�� */
 .custom-shop-marker {
   background: transparent !important;
   border: none !important;
 }
 
-/* 選択された店舗マーカー */
+/* 選択された店�Eマ�Eカー */
 .shop-marker-selected {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   z-index: 1000 !important;
+}
+
+.shop-favorite-badge {
+  position: absolute;
+  top: -14px;
+  right: -12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #f97316;
+  background: #ffffff;
+  color: #f97316;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.shop-side-north .shop-favorite-badge {
+  left: -12px;
+  right: auto;
+}
+
+.custom-shop-marker.is-favorite .shop-favorite-badge {
+  display: inline-flex;
+}
+
+body.shop-banner-open .hamburger-button {
+  display: none;
+}
+
+.shop-marker-compact {
+  width: 24px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.shop-marker-compact-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.map-building-tilted {
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+.grandma-hold-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  filter:
+    drop-shadow(0 0 16px rgba(255, 255, 255, 1))
+    drop-shadow(0 0 32px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 0 56px rgba(255, 255, 255, 0.7));
+  animation: map-event-pulse 1.4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.map-hold-dim {
+  background: rgba(10, 10, 10, 0.55);
+}
+
+.grandma-avatar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.map-event-ripple {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.65));
+  transform-origin: center;
+  animation: map-event-ripple 1.4s ease-out infinite;
+}
+
+.map-event-ripple.is-2 {
+  animation-delay: 0.3s;
+}
+
+.map-event-ripple.is-3 {
+  animation-delay: 0.6s;
+}
+
+.map-event-museum-highlight {
+  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+}
+
+@keyframes map-event-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes map-event-ripple {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+.shop-illustration-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.shop-illustration-3d .stall-shadow {
+  position: absolute;
+  left: 8%;
+  bottom: 2%;
+  width: 84%;
+  height: 16%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0));
+  filter: blur(2px);
+}
+
+.shop-illustration-3d .stall-roof {
+  position: absolute;
+  top: 4%;
+  left: 5%;
+  width: 90%;
+  height: 30%;
+  background: linear-gradient(135deg, var(--stall-color-light), var(--stall-color));
+  border-radius: 8px 8px 4px 4px;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.25),
+    inset -6px 0 0 rgba(255, 255, 255, 0.25);
+  transform: skewX(-12deg);
+}
+
+.shop-illustration-3d .stall-awning {
+  position: absolute;
+  top: 28%;
+  left: 8%;
+  width: 84%;
+  height: 16%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--stall-color) 0 10%,
+    var(--stall-color-light) 10% 20%
+  );
+  border-radius: 4px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transform: skewX(-10deg);
+}
+
+.shop-illustration-3d .stall-body {
+  position: absolute;
+  left: 10%;
+  top: 40%;
+  width: 80%;
+  height: 42%;
+  background: linear-gradient(145deg, #f7f6f2, #e3ded7);
+  border: 2px solid rgba(90, 80, 70, 0.4);
+  border-radius: 6px;
+  box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.35);
+}
+
+.shop-illustration-3d .stall-counter {
+  position: absolute;
+  left: 12%;
+  top: 54%;
+  width: 76%;
+  height: 18%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-radius: 4px;
+  box-shadow: inset -3px -2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.shop-illustration-3d .stall-legs {
+  position: absolute;
+  left: 18%;
+  bottom: 6%;
+  width: 64%;
+  height: 12%;
+  background:
+    linear-gradient(90deg, #8b5e34 0 12%, transparent 12% 44%, #8b5e34 44% 56%, transparent 56% 88%, #8b5e34 88% 100%);
+}
+
+.grandma-scroll-retracting {
+  position: relative;
+  overflow: hidden;
+  animation: grandma-scroll-retract 250ms ease-in forwards;
+}
+
+.grandma-scroll-retracting::before,
+.grandma-scroll-retracting::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 2;
+  transform: scaleX(0);
+}
+
+.grandma-scroll-retracting::before {
+  left: 0;
+  transform-origin: right center;
+  animation: grandma-scroll-roll 250ms ease-in forwards;
+}
+
+.grandma-scroll-retracting::after {
+  right: 0;
+  transform-origin: left center;
+  animation: grandma-scroll-roll 250ms ease-in forwards;
+}
+
+@keyframes grandma-scroll-retract {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-80px) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes grandma-scroll-roll {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
 }

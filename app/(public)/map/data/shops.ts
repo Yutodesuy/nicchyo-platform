@@ -177,8 +177,8 @@ const latRange = startLat - endLat;
 const latStep = latRange / 150;
 
 const centerLng = 133.53100;    // 道の中心の経度
-const lngOffsetNorth = -0.0006; // 北側（左）のオフセット（道幅約50m）
-const lngOffsetSouth = 0.0006;  // 南側（右）のオフセット
+const lngOffsetNorth = -0.00015; // 北側（左）のオフセット（道幅約12.5m）
+const lngOffsetSouth = 0.00015;  // 南側（右）のオフセット
 
 let shopId = 1;
 

@@ -2,13 +2,19 @@
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
+import { useAuth } from "../../../lib/auth/AuthContext";
+import { shops as baseShops } from "./data/shops";
+import { applyShopEdits } from "../../../lib/shopEdits";
+import { useMapLoading } from "../../components/MapLoadingProvider";
+import { grandmaEvents } from "./data/grandmaEvents";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -17,6 +23,8 @@ const MapView = dynamic(() => import("./components/MapView"), {
 export default function MapPageClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, permissions } = useAuth();
+  const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
@@ -26,10 +34,40 @@ export default function MapPageClient() {
   const [agentOpen, setAgentOpen] = useState(false);
   const { priority, clearPriority } = useTimeBadge();
   const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [showVendorPrompt, setShowVendorPrompt] = useState(false);
+  const [vendorShopName, setVendorShopName] = useState<string | null>(null);
+  const [isHoldActive, setIsHoldActive] = useState(false);
+  const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [eventMessageIndex, setEventMessageIndex] = useState(0);
+  const mapRef = useRef<LeafletMap | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
+  const vendorShopId = user?.vendorId ?? null;
+  const activeEvent = useMemo(
+    () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
+    [activeEventId]
+  );
+  const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
+  const eventTargets = useMemo(
+    () =>
+      grandmaEvents.map((event) => ({
+        id: event.id,
+        lat: event.location.lat,
+        lng: event.location.lng,
+      })),
+    []
+  );
+  const handleMapInstance = useCallback((map: LeafletMap) => {
+    mapRef.current = map;
+  }, []);
+
+  const vendorShop = useMemo(() => {
+    if (!vendorShopId) return null;
+    const merged = applyShopEdits(baseShops);
+    return merged.find((shop) => shop.id === vendorShopId) ?? null;
+  }, [vendorShopId]);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -63,6 +101,17 @@ export default function MapPageClient() {
     }
   }, [searchParams, searchParamsKey]);
 
+  useEffect(() => {
+    if (!permissions.isVendor || !vendorShopId) return;
+    if (!vendorShop) return;
+    const key = `nicchyo-vendor-prompt-${vendorShopId}`;
+    const already = typeof window !== "undefined" && localStorage.getItem(key);
+    if (already) return;
+    setVendorShopName(vendorShop.name);
+    setShowVendorPrompt(true);
+    localStorage.setItem(key, "dismissed");
+  }, [permissions.isVendor, vendorShopId, vendorShop]);
+
   const handleAcceptRecipe = () => {
     setShowRecipeOverlay(true);
     setShowBanner(false);
@@ -72,6 +121,51 @@ export default function MapPageClient() {
   const handleDismissBanner = () => {
     setShowBanner(false);
     localStorage.setItem("nicchyo-daily-recipe-dismissed", "true");
+  };
+
+  const handleOpenVendorBanner = () => {
+    if (!vendorShopId) return;
+    router.push(`/map?shop=${vendorShopId}`);
+    setShowVendorPrompt(false);
+  };
+
+  const handleGrandmaDrop = useCallback(
+    (position: { x: number; y: number }) => {
+      if (!mapRef.current) return;
+      const container = mapRef.current.getContainer();
+      const rect = container.getBoundingClientRect();
+      const point: [number, number] = [
+        position.x - rect.left,
+        position.y - rect.top,
+      ];
+      const latlng = mapRef.current.containerPointToLatLng(point);
+      const hit = grandmaEvents.find((event) => {
+        const target = { lat: event.location.lat, lng: event.location.lng };
+        const dist = mapRef.current?.distance(latlng, target) ?? Infinity;
+        return dist <= event.location.radiusMeters;
+      });
+      if (!hit) return;
+      setActiveEventId(hit.id);
+      setEventMessageIndex(0);
+    },
+    []
+  );
+
+  const handleEventAdvance = () => {
+    if (!activeEvent) return;
+    if (eventMessageIndex < activeEvent.messages.length - 1) {
+      setEventMessageIndex((prev) => prev + 1);
+    } else {
+      setActiveEventId(null);
+      setEventMessageIndex(0);
+    }
+  };
+
+  const handleEventBack = () => {
+    if (!activeEvent) return;
+    if (eventMessageIndex > 0) {
+      setEventMessageIndex((prev) => prev - 1);
+    }
   };
 
   return (
@@ -142,6 +236,56 @@ export default function MapPageClient() {
               </div>
             )}
 
+            {showVendorPrompt && vendorShopName && (
+              <div className="absolute left-4 right-4 top-1/2 z-[1300] -translate-y-1/2">
+                <div className="rounded-2xl border border-amber-200 bg-white/95 p-4 shadow-xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                        出店者向け
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                        {vendorShopName} のショップバナーを開きますか？
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowVendorPrompt(false)}
+                      className="h-8 w-8 rounded-full border border-amber-200 bg-white text-xs font-bold text-amber-700 shadow-sm hover:bg-amber-50"
+                      aria-label="閉じる"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {(vendorShop?.images?.main || "/images/shops/tosahamono.webp") && (
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
+                      <img
+                        src={vendorShop?.images?.main ?? "/images/shops/tosahamono.webp"}
+                        alt={`${vendorShopName}の写真`}
+                        className="h-40 w-full object-cover object-center"
+                      />
+                    </div>
+                  )}
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={handleOpenVendorBanner}
+                      className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+                    >
+                      ショップバナーを開く
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowVendorPrompt(false)}
+                      className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                    >
+                      後で
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <MapView
               initialShopId={initialShopId}
               selectedRecipe={recommendedRecipe ?? undefined}
@@ -151,11 +295,17 @@ export default function MapPageClient() {
               onAgentToggle={setAgentOpen}
               searchShopIds={searchMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label}
+              onMapReady={markMapReady}
+              eventTargets={eventTargets}
+              highlightEventTargets={isHoldActive}
+              onMapInstance={handleMapInstance}
             />
             <GrandmaChatter
               onOpenAgent={() => setAgentOpen(true)}
               titleLabel="マップばあちゃん"
               fullWidth
+              onHoldChange={setIsHoldActive}
+              onDrop={handleGrandmaDrop}
               priorityMessage={
                 priority
                   ? {
@@ -180,6 +330,69 @@ export default function MapPageClient() {
               tierIcon={priority?.badge.tierIcon ?? ""}
               count={priority?.badge.count ?? 0}
             />
+            {activeEvent && activeMessage && (
+              <div className="fixed inset-0 z-[3000] flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/70" />
+                <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
+                  <div className="absolute inset-0">
+                    <img
+                      src="/images/obaasan.webp"
+                      alt="おばあちゃん"
+                      className="h-full w-full object-cover object-center"
+                    />
+                  </div>
+                  <div className="absolute left-6 top-4 z-10">
+                    <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
+                      {activeEvent.title}
+                    </h3>
+                  </div>
+                  <div className="relative flex min-h-[45vh] flex-col pt-16">
+                    <div className="mt-auto space-y-3 -translate-y-[10px]">
+                      {activeMessage.image && (
+                        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+                          <img
+                            src={activeMessage.image}
+                            alt=""
+                            className="h-44 w-full object-cover object-center sm:h-56"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                          {activeMessage.subtitle}
+                        </div>
+                        <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
+                          {activeMessage.text}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                          {eventMessageIndex + 1}/{activeEvent.messages.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {eventMessageIndex > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleEventBack}
+                              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                            >
+                              戻る
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleEventAdvance}
+                            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                          >
+                            {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
       </main>
 

@@ -102,6 +102,23 @@ export const ROLE_THEMES: Record<UserRole, RoleTheme> = {
     },
     description: '一般ユーザーテーマ（アンバー系・デフォルト）',
   },
+
+  /**
+   * モデレーターテーマ
+   * - パープル系のグラデーション
+   * - コンテンツ管理者としての役割を表現
+   * - 管理者とは区別される柔らかい印象
+   */
+  moderator: {
+    headerBg: 'bg-gradient-to-r from-purple-700 via-purple-600 to-purple-700',
+    headerText: 'text-white',
+    accent: {
+      bg: 'bg-purple-600',
+      text: 'text-white',
+      hoverBg: 'hover:bg-purple-700',
+    },
+    description: 'モデレーターテーマ（パープル系・コンテンツ管理）',
+  },
 };
 
 /**
