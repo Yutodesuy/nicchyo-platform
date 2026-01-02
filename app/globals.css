@@ -2,21 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== viewport高さシステム（モバイル対応） ===== */
+/* ===== viewport高さシスチE���E�モバイル対応！E===== */
 
 /**
- * モバイルブラウザのアドレスバー対応
- * - 100dvh: モダンブラウザ（Dynamic Viewport Height）
- * - --vh: フォールバック用CSS変数（window.innerHeight基準）
+ * モバイルブラウザのアドレスバ�E対忁E
+ * - 100dvh: モダンブラウザ�E�Eynamic Viewport Height�E�E
+ * - --vh: フォールバック用CSS変数�E�Eindow.innerHeight基準！E
  *
- * 使い方: h-[100dvh] または h-[calc(var(--vh,1vh)*100)]
+ * 使ぁE��: h-[100dvh] また�E h-[calc(var(--vh,1vh)*100)]
  */
 :root {
   --vh: 1vh; /* JavaScriptで動的に更新 */
 }
 
-/* safe-area対応（iOS切り欠き・Android ジェスチャーバー） */
-/* フォールバック: 先にデフォルト値を定義 */
+/* safe-area対応！EOS刁E��欠き�EAndroid ジェスチャーバ�E�E�E*/
+/* フォールバック: 先にチE��ォルト値を定義 */
 :root {
   --safe-top: 0px;
   --safe-bottom: 0px;
@@ -24,7 +24,7 @@
   --safe-right: 0px;
 }
 
-/* ブラウザがサポートしている場合は上書き */
+/* ブラウザがサポ�EトしてぁE��場合�E上書ぁE*/
 @supports (padding: env(safe-area-inset-top)) {
   :root {
     --safe-top: env(safe-area-inset-top);
@@ -34,27 +34,27 @@
   }
 }
 
-/* ===== nicchyo 全体の基本設定 ===== */
+/* ===== nicchyo 全体�E基本設宁E===== */
 
 html, body {
   padding: 0;
   margin: 0;
   background: #FFFAF0;
   color: #3A3A3A;
-  /* モバイル用: タッチ操作最適化 */
+  /* モバイル用: タチE��操作最適匁E*/
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* オーバースクロール防止（iOS Safari） */
+  /* オーバ�Eスクロール防止�E�EOS Safari�E�E*/
   overscroll-behavior: none;
 }
 
-/* body に viewport 高さを設定 */
+/* body に viewport 高さを設宁E*/
 body {
   height: 100dvh; /* モダンブラウザ */
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
 }
 
-/* スクロールバー */
+/* スクロールバ�E */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -125,7 +125,7 @@ body {
 
 /* ===== マップ軽量化: クラスタアイコン ===== */
 
-/* クラスタアイコンのコンテナ */
+/* クラスタアイコンのコンチE�� */
 .custom-cluster-icon {
   background: transparent;
   border: none;
@@ -149,35 +149,35 @@ body {
 
 /* クラスタサイズ別スタイル */
 .cluster-small {
-  background-color: #22c55e; /* 緑: 小規模（10店舗以下） */
+  background-color: #22c55e; /* 緁E 小規模�E�E0店�E以下！E*/
   width: 30px;
   height: 30px;
   font-size: 12px;
 }
 
 .cluster-medium {
-  background-color: #f59e0b; /* オレンジ: 中規模（11-50店舗） */
+  background-color: #f59e0b; /* オレンジ: 中規模�E�E1-50店�E�E�E*/
   width: 40px;
   height: 40px;
   font-size: 14px;
 }
 
 .cluster-large {
-  background-color: #ef4444; /* 赤: 大規模（51店舗以上） */
+  background-color: #ef4444; /* 赤: 大規模�E�E1店�E以上！E*/
   width: 50px;
   height: 50px;
   font-size: 16px;
 }
 
-/* ===== 店舗マーカー ===== */
+/* ===== 店�Eマ�Eカー ===== */
 
-/* 店舗マーカーのコンテナ */
+/* 店�Eマ�EカーのコンチE�� */
 .custom-shop-marker {
   background: transparent !important;
   border: none !important;
 }
 
-/* 選択された店舗マーカー */
+/* 選択された店�Eマ�Eカー */
 .shop-marker-selected {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
@@ -251,6 +251,11 @@ body.shop-banner-open .hamburger-button {
 
 .map-hold-dim {
   background: rgba(10, 10, 10, 0.55);
+}
+
+.grandma-avatar {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .map-event-ripple {
@@ -374,4 +379,54 @@ body.shop-banner-open .hamburger-button {
   height: 12%;
   background:
     linear-gradient(90deg, #8b5e34 0 12%, transparent 12% 44%, #8b5e34 44% 56%, transparent 56% 88%, #8b5e34 88% 100%);
+}
+
+.grandma-scroll-retracting {
+  position: relative;
+  overflow: hidden;
+  animation: grandma-scroll-retract 250ms ease-in forwards;
+}
+
+.grandma-scroll-retracting::before,
+.grandma-scroll-retracting::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 2;
+  transform: scaleX(0);
+}
+
+.grandma-scroll-retracting::before {
+  left: 0;
+  transform-origin: right center;
+  animation: grandma-scroll-roll 250ms ease-in forwards;
+}
+
+.grandma-scroll-retracting::after {
+  right: 0;
+  transform-origin: left center;
+  animation: grandma-scroll-roll 250ms ease-in forwards;
+}
+
+@keyframes grandma-scroll-retract {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-80px) scale(0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes grandma-scroll-roll {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
 }
