@@ -83,6 +83,11 @@ export default function HamburgerMenu() {
                         管理者
                       </span>
                     )}
+                    {permissions.isModerator && (
+                      <span className="rounded-full bg-purple-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                        モデレーター
+                      </span>
+                    )}
                     {permissions.isVendor && (
                       <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                         出店者
@@ -147,7 +152,7 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/admin/moderation"
+                          href="/moderator"
                           onClick={closeMenu}
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
                         >
@@ -158,6 +163,54 @@ export default function HamburgerMenu() {
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <div className="my-3 border-t border-gray-200" />
+                      </li>
+                    </>
+                  )}
+
+                  {permissions.isModerator && !permissions.isSuperAdmin && (
+                    <>
+                      <li>
+                        <div className="rounded-lg bg-purple-50 px-3 py-2 mb-2">
+                          <p className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                            <MenuIcon name="shield" className="h-4 w-4 text-purple-700" />
+                            モデレーターメニュー
+                          </p>
+                        </div>
+                      </li>
+                      <li>
+                        <Link
+                          href="/moderator"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-purple-50"
+                        >
+                          <MenuIcon name="shield" className="h-5 w-5 text-purple-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">モデレーションダッシュボード</p>
+                            <p className="text-xs text-gray-500">投稿管理</p>
+                          </div>
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                            モデレーター
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/moderator/kotodute"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-purple-50"
+                        >
+                          <MenuIcon name="chat" className="h-5 w-5 text-purple-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">ことづて管理</p>
+                            <p className="text-xs text-gray-500">投稿の承認・削除</p>
+                          </div>
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+                            モデレーター
                           </span>
                         </Link>
                       </li>
@@ -303,7 +356,8 @@ type MenuIconName =
   | 'logout'
   | 'info'
   | 'help'
-  | 'mail';
+  | 'mail'
+  | 'chat';
 
 type MenuIconProps = {
   name: MenuIconName;
@@ -467,6 +521,16 @@ function MenuIcon({ name, className }: MenuIconProps) {
             d="M3 6.75h18v10.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.25V6.75Z"
           />
           <path strokeLinecap="round" strokeLinejoin="round" d="m3 6.75 9 6 9-6" />
+        </svg>
+      );
+    case 'chat':
+      return (
+        <svg {...props}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"
+          />
         </svg>
       );
     default:
