@@ -9,7 +9,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
 import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
 
-type KotoduteStatus = "approved" | "pending" | "rejected" | "reported";
+type KotoduteStatus = "published" | "flagged" | "hidden" | "deleted";
 
 interface Kotodute {
   id: number;
@@ -18,10 +18,11 @@ interface Kotodute {
   content: string;
   createdAt: string;
   status: KotoduteStatus;
-  reports?: number;
+  reports?: number; // ユーザーからの通報数
   shopId?: number;
   shopName?: string;
   tags?: string[];
+  isReported?: boolean; // ユーザーから通報されているか
 }
 
 function ModeratorKotoduteContent() {
@@ -47,7 +48,7 @@ function ModeratorKotoduteContent() {
         content:
           "高知の日曜市、最高でした！新鮮な野菜がたくさんあって、店主さんも優しかったです。また来たいと思います。",
         createdAt: "2024-12-30 10:30",
-        status: "pending",
+        status: "published",
         shopId: 1,
         shopName: "野菜の鈴木",
         tags: ["野菜", "新鮮", "おすすめ"],
@@ -58,7 +59,7 @@ function ModeratorKotoduteContent() {
         authorId: "user-002",
         content: "果物がとても美味しかったです！",
         createdAt: "2024-12-30 09:15",
-        status: "approved",
+        status: "published",
         shopId: 2,
         shopName: "果物の山田",
         tags: ["果物"],
@@ -67,10 +68,11 @@ function ModeratorKotoduteContent() {
         id: 3,
         author: "佐藤次郎",
         authorId: "user-003",
-        content: "不適切な内容が含まれる投稿...",
+        content: "不適切な内容が含まれる投稿です。攻撃的な言葉や誹謗中傷が含まれています。",
         createdAt: "2024-12-29 18:45",
-        status: "reported",
+        status: "flagged",
         reports: 5,
+        isReported: true,
         shopId: 3,
         shopName: "魚の佐藤",
       },
@@ -78,9 +80,9 @@ function ModeratorKotoduteContent() {
         id: 4,
         author: "鈴木一郎",
         authorId: "user-004",
-        content: "スパム投稿の可能性がある内容...",
+        content: "スパム投稿の可能性がある内容。外部サイトへの誘導リンクが含まれています。",
         createdAt: "2024-12-29 14:20",
-        status: "rejected",
+        status: "hidden",
       },
       {
         id: 5,
@@ -89,7 +91,7 @@ function ModeratorKotoduteContent() {
         content:
           "お花がとてもきれいでした。店主さんの説明も丁寧で、育て方のコツを教えてもらえました。",
         createdAt: "2024-12-29 11:30",
-        status: "approved",
+        status: "published",
         shopId: 5,
         shopName: "花の高橋",
         tags: ["花", "植物", "丁寧"],
@@ -100,8 +102,31 @@ function ModeratorKotoduteContent() {
         authorId: "user-006",
         content: "初めて日曜市に来ました。想像以上に賑わっていて楽しかったです！",
         createdAt: "2024-12-29 08:00",
-        status: "pending",
+        status: "published",
         tags: ["初めて", "楽しい"],
+      },
+      {
+        id: 7,
+        author: "中村さくら",
+        authorId: "user-007",
+        content: "こちらの店舗、態度が悪すぎる。二度と行きたくない。",
+        createdAt: "2024-12-28 16:20",
+        status: "flagged",
+        reports: 2,
+        isReported: true,
+        shopId: 3,
+        shopName: "魚の佐藤",
+      },
+      {
+        id: 8,
+        author: "小林太一",
+        authorId: "user-008",
+        content: "朝早くから新鮮な魚が並んでいて、活気があって良かったです。",
+        createdAt: "2024-12-28 12:10",
+        status: "published",
+        shopId: 3,
+        shopName: "魚の佐藤",
+        tags: ["魚", "新鮮"],
       },
     ],
     []
@@ -138,10 +163,11 @@ function ModeratorKotoduteContent() {
   const stats = useMemo(
     () => ({
       total: dummyKotodute.length,
-      approved: dummyKotodute.filter((k) => k.status === "approved").length,
-      pending: dummyKotodute.filter((k) => k.status === "pending").length,
-      rejected: dummyKotodute.filter((k) => k.status === "rejected").length,
-      reported: dummyKotodute.filter((k) => k.status === "reported").length,
+      published: dummyKotodute.filter((k) => k.status === "published").length,
+      flagged: dummyKotodute.filter((k) => k.status === "flagged").length,
+      hidden: dummyKotodute.filter((k) => k.status === "hidden").length,
+      deleted: dummyKotodute.filter((k) => k.status === "deleted").length,
+      needsReview: dummyKotodute.filter((k) => k.isReported || k.reports && k.reports > 0).length,
     }),
     [dummyKotodute]
   );
@@ -170,14 +196,14 @@ function ModeratorKotoduteContent() {
 
   const getStatusLabel = useCallback((status: KotoduteStatus) => {
     switch (status) {
-      case "approved":
-        return "承認済み";
-      case "pending":
-        return "承認待ち";
-      case "rejected":
-        return "却下";
-      case "reported":
-        return "報告あり";
+      case "published":
+        return "公開中";
+      case "flagged":
+        return "要確認";
+      case "hidden":
+        return "非公開";
+      case "deleted":
+        return "削除済み";
     }
   }, []);
 
@@ -202,33 +228,33 @@ function ModeratorKotoduteContent() {
   );
 
   // 一括操作
-  const handleBulkApprove = useCallback(async () => {
+  const handleBulkHide = useCallback(async () => {
     if (selectedKotoduteIds.length === 0) return;
-    if (!confirm(`${selectedKotoduteIds.length}件のことづてを一括承認しますか？`)) return;
+    if (!confirm(`${selectedKotoduteIds.length}件のことづてを非公開にしますか？`)) return;
 
     setBulkLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast.success(`${selectedKotoduteIds.length}件のことづてを承認しました`);
+      showToast.success(`${selectedKotoduteIds.length}件のことづてを非公開にしました`);
       setSelectedKotoduteIds([]);
     } catch (error) {
-      showToast.error("一括承認に失敗しました");
+      showToast.error("非公開処理に失敗しました");
     } finally {
       setBulkLoading(false);
     }
   }, [selectedKotoduteIds]);
 
-  const handleBulkReject = useCallback(async () => {
+  const handleBulkPublish = useCallback(async () => {
     if (selectedKotoduteIds.length === 0) return;
-    if (!confirm(`${selectedKotoduteIds.length}件のことづてを一括却下しますか？`)) return;
+    if (!confirm(`${selectedKotoduteIds.length}件のことづてを公開しますか？`)) return;
 
     setBulkLoading(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast.success(`${selectedKotoduteIds.length}件のことづてを却下しました`);
+      showToast.success(`${selectedKotoduteIds.length}件のことづてを公開しました`);
       setSelectedKotoduteIds([]);
     } catch (error) {
-      showToast.error("一括却下に失敗しました");
+      showToast.error("公開処理に失敗しました");
     } finally {
       setBulkLoading(false);
     }
@@ -363,21 +389,21 @@ function ModeratorKotoduteContent() {
             <p className="text-sm text-gray-600">総投稿数</p>
             <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
           </div>
-          <div className="rounded-lg bg-green-50 p-4 shadow">
-            <p className="text-sm text-green-600">承認済み</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">{stats.approved}</p>
-          </div>
-          <div className="rounded-lg bg-orange-50 p-4 shadow">
-            <p className="text-sm text-orange-600">承認待ち</p>
-            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.pending}</p>
+          <div className="rounded-lg bg-blue-50 p-4 shadow">
+            <p className="text-sm text-blue-600">公開中</p>
+            <p className="mt-1 text-2xl font-bold text-blue-600">{stats.published}</p>
           </div>
           <div className="rounded-lg bg-red-50 p-4 shadow">
-            <p className="text-sm text-red-600">却下</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">{stats.rejected}</p>
+            <p className="text-sm text-red-600">要確認</p>
+            <p className="mt-1 text-2xl font-bold text-red-600">{stats.flagged}</p>
+          </div>
+          <div className="rounded-lg bg-orange-50 p-4 shadow">
+            <p className="text-sm text-orange-600">非公開</p>
+            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.hidden}</p>
           </div>
           <div className="rounded-lg bg-purple-50 p-4 shadow">
-            <p className="text-sm text-purple-600">報告あり</p>
-            <p className="mt-1 text-2xl font-bold text-purple-600">{stats.reported}</p>
+            <p className="text-sm text-purple-600">確認が必要</p>
+            <p className="mt-1 text-2xl font-bold text-purple-600">{stats.needsReview}</p>
           </div>
         </div>
 
@@ -401,48 +427,48 @@ function ModeratorKotoduteContent() {
                 すべて ({stats.total})
               </button>
               <button
-                onClick={() => setFilter("pending")}
+                onClick={() => setFilter("flagged")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "pending"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                aria-label="承認待ちのことづてを表示"
-              >
-                承認待ち ({stats.pending})
-              </button>
-              <button
-                onClick={() => setFilter("reported")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "reported"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                aria-label="報告ありのことづてを表示"
-              >
-                報告あり ({stats.reported})
-              </button>
-              <button
-                onClick={() => setFilter("approved")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "approved"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                aria-label="承認済みのことづてを表示"
-              >
-                承認済み ({stats.approved})
-              </button>
-              <button
-                onClick={() => setFilter("rejected")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "rejected"
+                  filter === "flagged"
                     ? "bg-red-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
-                aria-label="却下されたことづてを表示"
+                aria-label="要確認のことづてを表示"
               >
-                却下 ({stats.rejected})
+                要確認 ({stats.flagged})
+              </button>
+              <button
+                onClick={() => setFilter("published")}
+                className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                  filter === "published"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+                aria-label="公開中のことづてを表示"
+              >
+                公開中 ({stats.published})
+              </button>
+              <button
+                onClick={() => setFilter("hidden")}
+                className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                  filter === "hidden"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+                aria-label="非公開のことづてを表示"
+              >
+                非公開 ({stats.hidden})
+              </button>
+              <button
+                onClick={() => setFilter("deleted")}
+                className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                  filter === "deleted"
+                    ? "bg-gray-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+                aria-label="削除済みのことづてを表示"
+              >
+                削除済み ({stats.deleted})
               </button>
             </div>
             <input
@@ -539,22 +565,22 @@ function ModeratorKotoduteContent() {
               </div>
               <div className="flex gap-2">
                 <LoadingButton
-                  onClick={handleBulkApprove}
+                  onClick={handleBulkPublish}
                   isLoading={bulkLoading}
                   loadingText="処理中..."
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                  aria-label="選択したことづてを一括承認"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  aria-label="選択したことづてを一括公開"
                 >
-                  一括承認
+                  一括公開
                 </LoadingButton>
                 <LoadingButton
-                  onClick={handleBulkReject}
+                  onClick={handleBulkHide}
                   isLoading={bulkLoading}
                   loadingText="処理中..."
                   className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
-                  aria-label="選択したことづてを一括却下"
+                  aria-label="選択したことづてを一括非公開"
                 >
-                  一括却下
+                  一括非公開
                 </LoadingButton>
                 <LoadingButton
                   onClick={handleBulkDelete}
@@ -675,29 +701,19 @@ function ModeratorKotoduteContent() {
 
                     {/* アクションボタン */}
                     <div className="mt-4 flex gap-2 border-t pt-4">
-                      {kotodute.status === "pending" && (
+                      {kotodute.status === "flagged" && (
                         <>
                           <button
-                            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                            aria-label={`投稿「${kotodute.content.substring(0, 20)}...」を承認`}
-                          >
-                            ✓ 承認
-                          </button>
-                          <button
-                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                            aria-label={`投稿「${kotodute.content.substring(0, 20)}...」を却下`}
-                          >
-                            ✕ 却下
-                          </button>
-                        </>
-                      )}
-                      {kotodute.status === "reported" && (
-                        <>
-                          <button
-                            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                            aria-label="問題なしとして承認"
+                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            aria-label="問題なしとして公開を維持"
                           >
                             ✓ 問題なし
+                          </button>
+                          <button
+                            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                            aria-label="投稿を非公開にする"
+                          >
+                            🔒 非公開
                           </button>
                           <button
                             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
@@ -707,16 +723,48 @@ function ModeratorKotoduteContent() {
                           </button>
                         </>
                       )}
-                      {kotodute.status === "approved" && (
+                      {kotodute.status === "published" && (
+                        <>
+                          <button
+                            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                            aria-label="投稿を非公開にする"
+                          >
+                            🔒 非公開
+                          </button>
+                          <button
+                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                            aria-label="投稿を削除"
+                          >
+                            🗑️ 削除
+                          </button>
+                        </>
+                      )}
+                      {kotodute.status === "hidden" && (
+                        <>
+                          <button
+                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            aria-label="投稿を公開する"
+                          >
+                            ✓ 公開
+                          </button>
+                          <button
+                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                            aria-label="投稿を削除"
+                          >
+                            🗑️ 削除
+                          </button>
+                        </>
+                      )}
+                      {kotodute.status === "deleted" && (
                         <button
-                          className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
-                          aria-label="投稿を非公開にする"
+                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                          aria-label="投稿を復元"
                         >
-                          🔒 非公開にする
+                          ↺ 復元
                         </button>
                       )}
                       <button
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                        className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
                         aria-label="投稿を編集"
                       >
                         ✏️ 編集
