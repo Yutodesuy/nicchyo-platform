@@ -31,6 +31,7 @@ function AdminShopsContent() {
   const { permissions } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | ShopStatus>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
   const [selectedShopIds, setSelectedShopIds] = useState<number[]>([]);
@@ -69,17 +70,24 @@ function AdminShopsContent() {
     []
   );
 
+  // ユニークなカテゴリーを抽出
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set(shopsWithStatus.map((shop) => shop.category));
+    return Array.from(categories).sort();
+  }, [shopsWithStatus]);
+
   // フィルタリング（メモ化）
   const filteredShops = useMemo(() => {
     return shopsWithStatus.filter((shop) => {
-      const matchesFilter = filter === "all" || shop.status === filter;
+      const matchesStatusFilter = filter === "all" || shop.status === filter;
+      const matchesCategoryFilter = categoryFilter === "all" || shop.category === categoryFilter;
       const matchesSearch =
         debouncedSearchQuery === "" ||
         shop.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         shop.category.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      return matchesFilter && matchesSearch;
+      return matchesStatusFilter && matchesCategoryFilter && matchesSearch;
     });
-  }, [shopsWithStatus, filter, debouncedSearchQuery]);
+  }, [shopsWithStatus, filter, categoryFilter, debouncedSearchQuery]);
 
   // ソート機能
   const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredShops, "name");
@@ -94,6 +102,15 @@ function AdminShopsContent() {
     }),
     [shopsWithStatus]
   );
+
+  // カテゴリー別の統計
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    shopsWithStatus.forEach((shop) => {
+      stats[shop.category] = (stats[shop.category] || 0) + 1;
+    });
+    return stats;
+  }, [shopsWithStatus]);
 
   // 仮想化
   const rowVirtualizer = useVirtualizer({
@@ -330,9 +347,13 @@ function AdminShopsContent() {
         </div>
 
         {/* フィルターと検索 */}
-        <div className="mb-6 rounded-lg bg-white p-4 shadow">
+        <div className="mb-6 rounded-lg bg-white p-4 shadow space-y-4">
+          {/* ステータスフィルター */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center mr-2">
+                ステータス:
+              </div>
               <button
                 onClick={() => setFilter("all")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
@@ -392,6 +413,36 @@ function AdminShopsContent() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* カテゴリーフィルター */}
+          <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-200">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mr-2">
+              カテゴリー:
+            </div>
+            <button
+              onClick={() => setCategoryFilter("all")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                categoryFilter === "all"
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              すべて ({shopsWithStatus.length})
+            </button>
+            {uniqueCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setCategoryFilter(category)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  categoryFilter === category
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {category} ({categoryStats[category] || 0})
+              </button>
+            ))}
           </div>
         </div>
 

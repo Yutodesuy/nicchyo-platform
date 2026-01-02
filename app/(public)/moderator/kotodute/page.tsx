@@ -28,6 +28,8 @@ function ModeratorKotoduteContent() {
   const { permissions } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | KotoduteStatus>("all");
+  const [shopFilter, setShopFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
   const [selectedKotodute, setSelectedKotodute] = useState<Kotodute | null>(null);
@@ -105,18 +107,32 @@ function ModeratorKotoduteContent() {
     []
   );
 
+  // ユニークな店舗を抽出
+  const uniqueShops = useMemo(() => {
+    const shops = new Set(dummyKotodute.filter((k) => k.shopName).map((k) => k.shopName!));
+    return Array.from(shops).sort();
+  }, [dummyKotodute]);
+
+  // ユニークなタグを抽出
+  const uniqueTags = useMemo(() => {
+    const tags = new Set(dummyKotodute.flatMap((k) => k.tags || []));
+    return Array.from(tags).sort();
+  }, [dummyKotodute]);
+
   // フィルタリング（メモ化）
   const filteredKotodute = useMemo(() => {
     return dummyKotodute.filter((k) => {
-      const matchesFilter = filter === "all" || k.status === filter;
+      const matchesStatusFilter = filter === "all" || k.status === filter;
+      const matchesShopFilter = shopFilter === "all" || k.shopName === shopFilter;
+      const matchesTagFilter = tagFilter === "all" || (k.tags && k.tags.includes(tagFilter));
       const matchesSearch =
         debouncedSearchQuery === "" ||
         k.content.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         k.author.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         k.shopName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      return matchesFilter && matchesSearch;
+      return matchesStatusFilter && matchesShopFilter && matchesTagFilter && matchesSearch;
     });
-  }, [dummyKotodute, filter, debouncedSearchQuery]);
+  }, [dummyKotodute, filter, shopFilter, tagFilter, debouncedSearchQuery]);
 
   // 統計（メモ化）
   const stats = useMemo(
@@ -129,6 +145,28 @@ function ModeratorKotoduteContent() {
     }),
     [dummyKotodute]
   );
+
+  // 店舗別の統計
+  const shopStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    dummyKotodute.forEach((k) => {
+      if (k.shopName) {
+        stats[k.shopName] = (stats[k.shopName] || 0) + 1;
+      }
+    });
+    return stats;
+  }, [dummyKotodute]);
+
+  // タグ別の統計
+  const tagStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    dummyKotodute.forEach((k) => {
+      k.tags?.forEach((tag) => {
+        stats[tag] = (stats[tag] || 0) + 1;
+      });
+    });
+    return stats;
+  }, [dummyKotodute]);
 
   const getStatusLabel = useCallback((status: KotoduteStatus) => {
     switch (status) {
@@ -344,9 +382,13 @@ function ModeratorKotoduteContent() {
         </div>
 
         {/* フィルターと検索 */}
-        <div className="mb-6 rounded-lg bg-white p-4 shadow">
+        <div className="mb-6 rounded-lg bg-white p-4 shadow space-y-4">
+          {/* ステータスフィルター */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex gap-2 flex-wrap">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center mr-2">
+                ステータス:
+              </div>
               <button
                 onClick={() => setFilter("all")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
@@ -413,6 +455,70 @@ function ModeratorKotoduteContent() {
               aria-label="内容、投稿者、または店舗名で検索"
             />
           </div>
+
+          {/* 店舗フィルター */}
+          {uniqueShops.length > 0 && (
+            <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-200">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mr-2">
+                店舗:
+              </div>
+              <button
+                onClick={() => setShopFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  shopFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                すべて ({dummyKotodute.length})
+              </button>
+              {uniqueShops.map((shop) => (
+                <button
+                  key={shop}
+                  onClick={() => setShopFilter(shop)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    shopFilter === shop
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {shop} ({shopStats[shop] || 0})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* タグフィルター */}
+          {uniqueTags.length > 0 && (
+            <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-200">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mr-2">
+                タグ:
+              </div>
+              <button
+                onClick={() => setTagFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  tagFilter === "all"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                すべて
+              </button>
+              {uniqueTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setTagFilter(tag)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    tagFilter === tag
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  #{tag} ({tagStats[tag] || 0})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 一括操作ツールバー */}
