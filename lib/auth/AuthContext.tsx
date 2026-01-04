@@ -8,7 +8,11 @@ import { createClient } from "@/utils/supabase/client";
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
-  loginWithCredentials: (identifier: string, password: string) => Promise<boolean>;
+  loginWithCredentials: (
+    identifier: string,
+    password: string,
+    captchaToken?: string
+  ) => Promise<boolean>;
   updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -116,9 +120,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canModerateContent: user?.role === "super_admin" || user?.role === "moderator",
   };
 
-  const loginWithCredentials = async (identifier: string, password: string) => {
+  const loginWithCredentials = async (
+    identifier: string,
+    password: string,
+    captchaToken?: string
+  ) => {
     const email = identifier.trim();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
     if (error || !data.user) return false;
     setUser(mapSupabaseUser(data.user));
     setIsLoggedIn(true);
