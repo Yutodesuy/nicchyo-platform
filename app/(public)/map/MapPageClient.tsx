@@ -11,7 +11,7 @@ import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
-import { shops as baseShops } from "./data/shops";
+import type { Shop } from "./data/shops";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
@@ -20,7 +20,11 @@ const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
 });
 
-export default function MapPageClient() {
+type MapPageClientProps = {
+  shops: Shop[];
+};
+
+export default function MapPageClient({ shops }: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, permissions } = useAuth();
@@ -65,9 +69,9 @@ export default function MapPageClient() {
 
   const vendorShop = useMemo(() => {
     if (!vendorShopId) return null;
-    const merged = applyShopEdits(baseShops);
+    const merged = applyShopEdits(shops);
     return merged.find((shop) => shop.id === vendorShopId) ?? null;
-  }, [vendorShopId]);
+  }, [shops, vendorShopId]);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -287,6 +291,7 @@ export default function MapPageClient() {
             )}
 
             <MapView
+              shops={shops}
               initialShopId={initialShopId}
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
