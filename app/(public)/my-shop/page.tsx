@@ -15,6 +15,10 @@ type FormState = {
   stallStyle: string;
   schedule: string;
   productsText: string;
+  seasonalProductsSpringSummerText: string;
+  seasonalProductsSummerAutumnText: string;
+  seasonalProductsAutumnWinterText: string;
+  seasonalProductsWinterSpringText: string;
   description: string;
   specialtyDish: string;
   aboutVendor: string;
@@ -66,6 +70,10 @@ const EMPTY_FORM: FormState = {
   stallStyle: "",
   schedule: "",
   productsText: "",
+  seasonalProductsSpringSummerText: "",
+  seasonalProductsSummerAutumnText: "",
+  seasonalProductsAutumnWinterText: "",
+  seasonalProductsWinterSpringText: "",
   description: "",
   specialtyDish: "",
   aboutVendor: "",
@@ -116,6 +124,14 @@ export default function MyShopPage() {
       stallStyle: vendorShop.stallStyle ?? "",
       schedule: vendorShop.schedule ?? "",
       productsText: vendorShop.products?.join(", ") ?? "",
+      seasonalProductsSpringSummerText:
+        vendorShop.seasonalProductsSpringSummer?.join(", ") ?? "",
+      seasonalProductsSummerAutumnText:
+        vendorShop.seasonalProductsSummerAutumn?.join(", ") ?? "",
+      seasonalProductsAutumnWinterText:
+        vendorShop.seasonalProductsAutumnWinter?.join(", ") ?? "",
+      seasonalProductsWinterSpringText:
+        vendorShop.seasonalProductsWinterSpring?.join(", ") ?? "",
       description: vendorShop.description ?? "",
       specialtyDish: vendorShop.specialtyDish ?? "",
       aboutVendor: vendorShop.aboutVendor ?? "",
@@ -184,6 +200,10 @@ export default function MyShopPage() {
       category: form.category.trim(),
       icon: form.icon.trim(),
       products: splitCsv(form.productsText),
+      seasonalProductsSpringSummer: splitCsv(form.seasonalProductsSpringSummerText),
+      seasonalProductsSummerAutumn: splitCsv(form.seasonalProductsSummerAutumnText),
+      seasonalProductsAutumnWinter: splitCsv(form.seasonalProductsAutumnWinterText),
+      seasonalProductsWinterSpring: splitCsv(form.seasonalProductsWinterSpringText),
       description: form.description.trim(),
       specialtyDish: form.specialtyDish.trim() || undefined,
       aboutVendor: form.aboutVendor.trim() || undefined,
@@ -364,21 +384,60 @@ export default function MyShopPage() {
                 <textarea
                   value={form.productsText}
                   onChange={handleChange("productsText")}
-                  placeholder="例: トマト, きゅうり, 大根"
+                  placeholder={`通年で販売している商品を入力してください。\n例: トマト, きゅうり, 大根`}
                   rows={2}
                   className={fieldClass("productsText")}
                   aria-invalid={!!errors.productsText}
                   required
                 />
-                <span className="mt-1 block text-[11px] text-slate-500">
-                  カンマ区切りで入力してください。
-                </span>
                 {errors.productsText && (
                   <span className="mt-1 block text-[11px] text-rose-600">
                     {errors.productsText}
                   </span>
                 )}
               </label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm text-slate-700">
+                  取扱商品（春-夏）
+                  <textarea
+                    value={form.seasonalProductsSpringSummerText}
+                    onChange={handleChange("seasonalProductsSpringSummerText")}
+                    placeholder={`春-夏にかけて販売する商品を入力してください。\n例: そら豆, 新じゃが`}
+                    rows={2}
+                    className={fieldClass("seasonalProductsSpringSummerText")}
+                  />
+                </label>
+                <label className="block text-sm text-slate-700">
+                  取扱商品（夏-秋）
+                  <textarea
+                    value={form.seasonalProductsSummerAutumnText}
+                    onChange={handleChange("seasonalProductsSummerAutumnText")}
+                    placeholder={`夏-秋にかけて販売する商品を入力してください。\n例: すだち, ぶどう`}
+                    rows={2}
+                    className={fieldClass("seasonalProductsSummerAutumnText")}
+                  />
+                </label>
+                <label className="block text-sm text-slate-700">
+                  取扱商品（秋-冬）
+                  <textarea
+                    value={form.seasonalProductsAutumnWinterText}
+                    onChange={handleChange("seasonalProductsAutumnWinterText")}
+                    placeholder={`秋-冬にかけて販売する商品を入力してください。\n例: さつまいも, かぼちゃ`}
+                    rows={2}
+                    className={fieldClass("seasonalProductsAutumnWinterText")}
+                  />
+                </label>
+                <label className="block text-sm text-slate-700">
+                  取扱商品（冬-春）
+                  <textarea
+                    value={form.seasonalProductsWinterSpringText}
+                    onChange={handleChange("seasonalProductsWinterSpringText")}
+                    placeholder={`冬-春にかけて販売する商品を入力してください。\n例: 菜の花, たけのこ`}
+                    rows={2}
+                    className={fieldClass("seasonalProductsWinterSpringText")}
+                  />
+                </label>
+              </div>
               <label className="block text-sm text-slate-700">
                 お店の説明{requiredMark}
                 <textarea
