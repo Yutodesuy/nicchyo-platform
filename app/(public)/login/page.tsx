@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../../../lib/auth/AuthContext";
+import TurnstileWidget from "../../components/TurnstileWidget";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,12 +12,22 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    const ok = await loginWithCredentials(identifier, password);
+    if (hasCaptcha && !captchaToken) {
+      setError("認証を完了してください。");
+      return;
+    }
+    const ok = await loginWithCredentials(
+      identifier,
+      password,
+      hasCaptcha ? captchaToken : undefined
+    );
     if (!ok) {
       setError("メールアドレスまたはパスワードが違います。");
       return;
@@ -85,6 +96,17 @@ export default function LoginPage() {
             ログインする
           </button>
         </form>
+
+        {hasCaptcha && (
+          <div className="mt-4 flex items-center justify-center">
+            <TurnstileWidget
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken("")}
+              onError={() => setCaptchaToken("")}
+              className="flex items-center justify-center"
+            />
+          </div>
+        )}
 
         <div className="mt-4 flex items-center justify-center">
           <Link
