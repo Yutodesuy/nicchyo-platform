@@ -34,7 +34,7 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 backdrop-blur-md shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 text-sm leading-none backdrop-blur-md shadow-lg"
       style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
     >
       <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
@@ -51,7 +51,7 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
               }`}
             >
               <NavIcon name={item.icon} className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{item.name}</span>
+              <span className="text-[10px] font-medium leading-none">{item.name}</span>
             </Link>
           );
         })}
