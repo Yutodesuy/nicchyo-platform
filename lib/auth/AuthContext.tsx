@@ -1,135 +1,104 @@
-﻿/**
- * 認証コンテキスト（ダミー実装）
- *
- * - ローカルストレージを使った仮のログイン状態管理
- * - 実際の認証は未実装
- */
+﻿"use client";
 
-"use client";
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import type { User, UserRole, PermissionCheck } from "./types";
-
-/**
- * ダミーアカウント定義
- */
-export const DUMMY_ACCOUNTS: Record<UserRole, User> = {
-  super_admin: {
-    id: "dummy-super-admin",
-    name: "高知市管理者",
-    email: "admin@kochi-city.jp",
-    role: "super_admin",
-  },
-  moderator: {
-    id: "dummy-moderator",
-    name: "モデレーター田中",
-    email: "moderator@kochi-city.jp",
-    role: "moderator",
-  },
-  vendor: {
-    id: "dummy-vendor-001",
-    name: "食材のお店1",
-    email: "nicchyo-owner-001@example.com",
-    role: "vendor",
-    vendorId: 1,
-  },
-  general_user: {
-    id: "dummy-user-001",
-    name: "観光客ユーザー",
-    email: "user@example.com",
-    role: "general_user",
-  },
-};
-
-type DummyCredential = {
-  identifier: string;
-  password: string;
-  user: User;
-};
-
-const DUMMY_CREDENTIALS: DummyCredential[] = [
-  {
-    identifier: "admin@kochi-city.jp",
-    password: "admin",
-    user: DUMMY_ACCOUNTS.super_admin,
-  },
-  {
-    identifier: "高知市管理者",
-    password: "admin",
-    user: DUMMY_ACCOUNTS.super_admin,
-  },
-  {
-    identifier: "moderator@kochi-city.jp",
-    password: "moderator",
-    user: DUMMY_ACCOUNTS.moderator,
-  },
-  {
-    identifier: "モデレーター田中",
-    password: "moderator",
-    user: DUMMY_ACCOUNTS.moderator,
-  },
-  {
-    identifier: "食材のお店1",
-    password: "001",
-    user: DUMMY_ACCOUNTS.vendor,
-  },
-  {
-    identifier: "nicchyo-owner-001@example.com",
-    password: "001",
-    user: DUMMY_ACCOUNTS.vendor,
-  },
-  {
-    identifier: "user@example.com",
-    password: "guest",
-    user: DUMMY_ACCOUNTS.general_user,
-  },
-  {
-    identifier: "観光客ユーザー",
-    password: "guest",
-    user: DUMMY_ACCOUNTS.general_user,
-  },
-];
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { createClient } from "@/utils/supabase/client";
 
 interface AuthContextType {
   isLoggedIn: boolean;
   user: User | null;
-  login: (role: UserRole) => void;
-  loginWithCredentials: (identifier: string, password: string) => boolean;
-  updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => void;
-  logout: () => void;
+  loginWithCredentials: (identifier: string, password: string) => Promise<boolean>;
+  updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => Promise<void>;
+  logout: () => Promise<void>;
   isLoading: boolean;
   permissions: PermissionCheck;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = "nicchyo-auth-dummy";
+function normalizeRole(value?: string | null): UserRole {
+  if (value === "super_admin") return "super_admin";
+  if (value === "moderator") return "moderator";
+  if (value === "vendor") return "vendor";
+  return "general_user";
+}
 
-function normalizeIdentifier(value: string) {
-  return value.trim().toLowerCase();
+function getVendorId(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function mapSupabaseUser(user: SupabaseUser): User {
+  const appMeta = user.app_metadata as { role?: string } | undefined;
+  const userMeta = user.user_metadata as {
+    role?: string;
+    vendorId?: unknown;
+    name?: string;
+    full_name?: string;
+    avatarUrl?: string;
+    avatar_url?: string;
+  } | undefined;
+
+  const role = normalizeRole(appMeta?.role ?? userMeta?.role);
+  const vendorId = getVendorId(userMeta?.vendorId);
+  const name = userMeta?.name ?? userMeta?.full_name ?? (user.email ? user.email.split("@")[0] : "user");
+  const avatarUrl = userMeta?.avatarUrl ?? userMeta?.avatar_url;
+
+  return {
+    id: user.id,
+    name,
+    email: user.email ?? "",
+    avatarUrl,
+    role,
+    vendorId,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createClient(), []);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    let active = true;
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const data = JSON.parse(stored);
-        setUser(data.user);
+    const hydrate = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (data.session?.user) {
+        setUser(mapSupabaseUser(data.session.user));
         setIsLoggedIn(true);
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
       }
-    } catch (error) {
-      console.error("Failed to load auth state:", error);
-    } finally {
       setIsLoading(false);
-    }
-  }, []);
+    };
+
+    hydrate();
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      if (session?.user) {
+        setUser(mapSupabaseUser(session.user));
+        setIsLoggedIn(true);
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const permissions: PermissionCheck = {
     isSuperAdmin: user?.role === "super_admin",
@@ -147,53 +116,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     canModerateContent: user?.role === "super_admin" || user?.role === "moderator",
   };
 
-  const persistUser = (selectedUser: User) => {
-    setUser(selectedUser);
+  const loginWithCredentials = async (identifier: string, password: string) => {
+    const email = identifier.trim();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) return false;
+    setUser(mapSupabaseUser(data.user));
     setIsLoggedIn(true);
-
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user: selectedUser }));
-      } catch (error) {
-        console.error("Failed to save auth state:", error);
-      }
-    }
-  };
-
-  const login = (role: UserRole) => {
-    const selectedUser = DUMMY_ACCOUNTS[role];
-    persistUser(selectedUser);
-  };
-
-  const loginWithCredentials = (identifier: string, password: string) => {
-    const normalized = normalizeIdentifier(identifier);
-    const match = DUMMY_CREDENTIALS.find(
-      (credential) =>
-        normalizeIdentifier(credential.identifier) === normalized &&
-        credential.password === password
-    );
-    if (!match) return false;
-    persistUser(match.user);
     return true;
   };
 
-  const updateProfile = (updates: Pick<User, "name" | "email" | "avatarUrl">) => {
+  const updateProfile = async (updates: Pick<User, "name" | "email" | "avatarUrl">) => {
     if (!user) return;
-    const nextUser = { ...user, ...updates };
-    persistUser(nextUser);
+    const payload: { data?: Record<string, string>; email?: string } = {
+      data: {
+        name: updates.name,
+        avatarUrl: updates.avatarUrl ?? "",
+      },
+    };
+    if (updates.email && updates.email !== user.email) {
+      payload.email = updates.email;
+    }
+    const { data, error } = await supabase.auth.updateUser(payload);
+    if (error || !data.user) return;
+    setUser(mapSupabaseUser(data.user));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsLoggedIn(false);
-
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch (error) {
-        console.error("Failed to clear auth state:", error);
-      }
-    }
   };
 
   return (
@@ -201,7 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         isLoggedIn,
         user,
-        login,
         loginWithCredentials,
         updateProfile,
         logout,

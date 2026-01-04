@@ -35,9 +35,9 @@ export default function MyProfilePage() {
       (avatarUrl ?? "") !== (user.avatarUrl ?? ""));
   const canSave = !!user && name.trim() && email.trim();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave || !user) return;
-    updateProfile({
+    await updateProfile({
       name: name.trim(),
       email: email.trim(),
       avatarUrl: avatarUrl ?? undefined,
