@@ -251,6 +251,7 @@ function MobileZoomControls() {
 }
 
 type MapViewProps = {
+  shops?: Shop[];
   initialShopId?: number;
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
@@ -266,6 +267,7 @@ type MapViewProps = {
 };
 
 const MapView = memo(function MapView({
+  shops: initialShops,
   initialShopId,
   selectedRecipe,
   showRecipeOverlay,
@@ -280,8 +282,12 @@ const MapView = memo(function MapView({
   onMapInstance,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const sourceShops = useMemo(
+    () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
+    [initialShops]
+  );
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
-    applyShopEdits(baseShops)
+    applyShopEdits(sourceShops)
   );
   const rightSideLabelIcon = useMemo(
     () =>
@@ -387,7 +393,7 @@ const MapView = memo(function MapView({
 
   useEffect(() => {
     const updateShops = () => {
-      setDisplayShops(applyShopEdits(baseShops));
+      setDisplayShops(applyShopEdits(sourceShops));
     };
     updateShops();
     const handleStorage = (event: StorageEvent) => {
@@ -404,7 +410,7 @@ const MapView = memo(function MapView({
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
     };
-  }, []);
+  }, [sourceShops]);
 
   useEffect(() => {
     if (!selectedShop) return;

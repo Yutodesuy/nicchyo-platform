@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import NavigationBar from '../../components/NavigationBar';
-import { shops, type Shop } from '../map/data/shops';
+import type { Shop } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
@@ -18,7 +18,11 @@ import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
  * 店舗検索メインコンポーネント
  * 日曜市の300店舗を高速検索
  */
-export default function SearchClient() {
+type SearchClientProps = {
+  shops: Shop[];
+};
+
+export default function SearchClient({ shops }: SearchClientProps) {
   const router = useRouter();
   const [textQuery, setTextQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export default function SearchClient() {
   };
 
   // 検索インデックスを事前構築（初回のみ）
-  const searchIndex = useMemo(() => buildSearchIndex(shops), []);
+  const searchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
 
   // 検索フックで店舗をフィルタリング
   const filteredShops = useShopSearch({
