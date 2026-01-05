@@ -59,7 +59,6 @@ export async function POST(request: Request) {
     const shopIntent = /店|お店|店舗|おすすめ|買|探|食材|食べ物|野菜|果物|惣菜|お土産|雑貨|道具|工具|苗|植物|アクセサリー|工芸|レシピ|食べ歩き|朝ごはん/.test(
       normalized
     );
-    const nearIntent = /近く|近い|周辺/.test(normalized);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -202,6 +201,30 @@ export async function POST(request: Request) {
         Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
       return 2 * 6371 * Math.asin(Math.sqrt(h));
     };
+    const hasLocation =
+      location &&
+      Number.isFinite(location.lat) &&
+      Number.isFinite(location.lng);
+    const sortLegacyByDistance = (
+      ids: number[],
+      rows: Array<{ legacy_id: number | null; lat: number | null; lng: number | null }>
+    ) => {
+      if (!hasLocation) return ids;
+      const loc = { lat: location!.lat, lng: location!.lng };
+      return [...ids]
+        .map((id) => {
+          const row = rows.find((shop) => shop.legacy_id === id);
+          if (!row || row.lat == null || row.lng == null) return { id, dist: null };
+          return { id, dist: haversine(loc, { lat: row.lat, lng: row.lng }) };
+        })
+        .sort((a, b) => {
+          if (a.dist === null && b.dist === null) return 0;
+          if (a.dist === null) return 1;
+          if (b.dist === null) return -1;
+          return a.dist - b.dist;
+        })
+        .map((item) => item.id);
+    };
 
     const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -247,29 +270,23 @@ export async function POST(request: Request) {
           .filter((value) => Number.isFinite(value))
       : [];
     let recommendedIds = shopIds;
+    if (recommendedIds.length > 0 && hasLocation && shopIntent) {
+      const { data: locationRows } = await supabase
+        .from("shops")
+        .select(["legacy_id", "lat", "lng"].join(","))
+        .in("legacy_id", recommendedIds);
+      const rows = (locationRows ?? []) as Array<{
+        legacy_id: number | null;
+        lat: number | null;
+        lng: number | null;
+      }>;
+      recommendedIds = sortLegacyByDistance(recommendedIds, rows);
+    }
     if (recommendedIds.length === 0 && shopIntent && matchIds.length > 0) {
-      recommendedIds = matchIds
-        .map((id) => {
-          const shop = shops.find((row) => row.id === id);
-          const legacyId = shop?.legacy_id ?? null;
-          if (!legacyId) return null;
-          if (nearIntent && location && shop?.lat && shop?.lng) {
-            const distance = haversine(
-              { lat: location.lat, lng: location.lng },
-              { lat: shop.lat, lng: shop.lng }
-            );
-            return { legacyId, distance };
-          }
-          return { legacyId, distance: null };
-        })
-        .filter(Boolean)
-        .sort((a, b) => {
-          if (a.distance === null && b.distance === null) return 0;
-          if (a.distance === null) return 1;
-          if (b.distance === null) return -1;
-          return a.distance - b.distance;
-        })
-        .map((row) => row.legacyId);
+      const legacyIds = matchIds
+        .map((id) => shops.find((row) => row.id === id)?.legacy_id ?? null)
+        .filter((value): value is number => typeof value === "number");
+      recommendedIds = sortLegacyByDistance(legacyIds, shops);
     }
     const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);
 

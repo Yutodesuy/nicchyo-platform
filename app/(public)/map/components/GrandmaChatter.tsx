@@ -352,7 +352,7 @@ export default function GrandmaChatter({
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
   const chatLiftClassName = isChatOpen ? "translate-y-[-230px]" : "translate-y-0";
-  const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
+  const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのおすすめのお店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
   const chatPanelLift = isChatOpen ? "translate-y-[-210px]" : "translate-y-0";
