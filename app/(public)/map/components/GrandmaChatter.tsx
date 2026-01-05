@@ -133,9 +133,6 @@ export default function GrandmaChatter({
       return;
     }
     setIsChatOpen((prev) => !prev);
-    if (!isChatOpen) {
-      inputRef.current?.focus();
-    }
   };
 
   const handleAskSubmit = (text?: string) => {
