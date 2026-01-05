@@ -137,6 +137,7 @@ export default function GrandmaChatter({
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
+      inputRef.current?.blur();
     }
   };
 
@@ -276,10 +277,11 @@ export default function GrandmaChatter({
       ? "grandma-scroll-retracting"
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
-  const chatLiftClassName = isChatOpen ? "translate-y-[-120px]" : "translate-y-0";
+  const chatLiftClassName = isChatOpen ? "translate-y-[-230px]" : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
+  const chatPanelLift = isChatOpen ? "translate-y-[-80px]" : "translate-y-0";
 
   return (
     <div className={shellClassName}>
@@ -368,8 +370,10 @@ export default function GrandmaChatter({
       </div>
 
       <div
-        className={`mt-2 w-full px-3 transition-all duration-200 ${
-          isChatOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        className={`w-full px-3 transition-all duration-200 ${chatPanelLift} ${
+          isChatOpen
+            ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
+            : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
         }`}
         aria-hidden={!isChatOpen}
       >
