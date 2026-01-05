@@ -3,10 +3,14 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
+import type { Shop } from "../data/shops";
+import ShopResultCard from "../../search/components/ShopResultCard";
 
 const PLACEHOLDER_IMAGE = "/images/obaasan.webp";
 const HOLD_MS = 250;
+const ROTATE_MS = 6500;
 
 type PriorityMessage = {
   text: string;
@@ -20,6 +24,9 @@ type GrandmaChatterProps = {
   priorityMessage?: PriorityMessage | null;
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
+  onAsk?: (text: string) => Promise<{ reply: string; imageUrl?: string }>;
+  aiSuggestedShops?: Shop[];
+  onSelectShop?: (shopId: number) => void;
   fullWidth?: boolean;
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
@@ -31,6 +38,9 @@ export default function GrandmaChatter({
   priorityMessage,
   onPriorityClick,
   onPriorityDismiss,
+  onAsk,
+  aiSuggestedShops,
+  onSelectShop,
   fullWidth = false,
   onHoldChange,
   onDrop,
@@ -43,6 +53,13 @@ export default function GrandmaChatter({
   );
   const [askText, setAskText] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [aiBubbleText, setAiBubbleText] = useState(
+    grandmaAiInstructorLines[0] ?? "質問を入力してね。"
+  );
+  const [aiStatus, setAiStatus] = useState<"idle" | "thinking" | "answered" | "error">(
+    "idle"
+  );
+  const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
@@ -51,7 +68,7 @@ export default function GrandmaChatter({
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const pendingFocusRef = useRef(false);
+  const askRequestRef = useRef(0);
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -114,11 +131,48 @@ export default function GrandmaChatter({
     };
   }, [isChatOpen]);
 
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const randomIndex = Math.floor(Math.random() * grandmaAiInstructorLines.length);
+    const nextLine =
+      grandmaAiInstructorLines[randomIndex] ??
+      grandmaAiInstructorLines[0] ??
+      "質問を入力してね。";
+    setAiBubbleText(nextLine);
+    setAiStatus("idle");
+    setAiImageUrl(null);
+  }, [isChatOpen]);
+
   if (!current) return null;
 
   const handleNext = () => {
     setCurrentId((prev) => pickNextComment(pool, prev)?.id);
   };
+
+  const handleInstructorNext = () => {
+    const randomIndex = Math.floor(Math.random() * grandmaAiInstructorLines.length);
+    const nextLine =
+      grandmaAiInstructorLines[randomIndex] ??
+      grandmaAiInstructorLines[0] ??
+      "質問を入力してね。";
+    setAiBubbleText(nextLine);
+  };
+
+  useEffect(() => {
+    const shouldRotateInstructor = isChatOpen && aiStatus === "idle";
+    const shouldRotateNormal = !isChatOpen;
+    if (!shouldRotateInstructor && !shouldRotateNormal) return;
+    const timer = window.setInterval(() => {
+      if (isChatOpen) {
+        if (aiStatus === "idle") {
+          handleInstructorNext();
+        }
+      } else {
+        handleNext();
+      }
+    }, ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [aiStatus, isChatOpen, pool]);
 
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
@@ -126,7 +180,6 @@ export default function GrandmaChatter({
       return;
     }
     if (!isChatOpen) {
-      pendingFocusRef.current = true;
       if (inputRef.current) {
         try {
           inputRef.current.focus({ preventScroll: true });
@@ -141,10 +194,31 @@ export default function GrandmaChatter({
     }
   };
 
-  const handleAskSubmit = (text?: string) => {
+  const handleAskSubmit = async (text?: string) => {
+    if (aiStatus === "thinking") return;
     const value = (text ?? askText).trim();
     if (!value) return;
     setAskText("");
+    setAiStatus("thinking");
+    setAiBubbleText("ちょっと待ってね、考えよるよ。");
+    setAiImageUrl(null);
+    const requestId = ++askRequestRef.current;
+    try {
+      const response = onAsk
+        ? await onAsk(value)
+        : { reply: "いま準備中やき、もう少し待っててね。" };
+      if (requestId !== askRequestRef.current) return;
+      setAiStatus("answered");
+      setAiBubbleText(
+        response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。"
+      );
+      setAiImageUrl(response.imageUrl ?? null);
+    } catch {
+      if (requestId !== askRequestRef.current) return;
+      setAiStatus("error");
+      setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
+      setAiImageUrl(null);
+    }
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -281,7 +355,15 @@ export default function GrandmaChatter({
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
-  const chatPanelLift = isChatOpen ? "translate-y-[-80px]" : "translate-y-0";
+  const chatPanelLift = isChatOpen ? "translate-y-[-210px]" : "translate-y-0";
+  const bubbleText = isChatOpen
+    ? aiBubbleText
+    : priorityMessage
+    ? priorityMessage.text
+    : current.text;
+  const bubbleIcon = isChatOpen
+    ? "💬"
+    : priorityMessage?.badgeIcon ?? current.icon ?? genreIcon(current.genre);
 
   return (
     <div className={shellClassName}>
@@ -323,7 +405,15 @@ export default function GrandmaChatter({
 
         <button
           type="button"
-          onClick={priorityMessage ? onPriorityClick : handleNext}
+          onClick={
+            isChatOpen
+              ? aiStatus === "idle"
+                ? handleInstructorNext
+                : undefined
+              : priorityMessage
+              ? onPriorityClick
+              : handleNext
+          }
           className={`${bubbleClassName} ${bubbleStateClass}`}
           aria-label="ばあちゃんのコメントを開く"
         >
@@ -336,13 +426,13 @@ export default function GrandmaChatter({
 
           <div className="flex items-start gap-3">
             <span className="text-xl" aria-hidden>
-              {priorityMessage?.badgeIcon ?? current.icon ?? genreIcon(current.genre)}
+              {bubbleIcon}
             </span>
             <div className="space-y-1">
               <p className="text-base leading-relaxed text-gray-900">
-                {priorityMessage ? priorityMessage.text : current.text}
+                {bubbleText}
               </p>
-              {current.link && !priorityMessage && (
+              {current.link && !priorityMessage && !isChatOpen && (
                 <Link
                   href={current.link.href}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
@@ -351,8 +441,10 @@ export default function GrandmaChatter({
                   <span aria-hidden>→</span>
                 </Link>
               )}
-              {priorityMessage && <p className="text-[11px] text-gray-500">最新バッジの情報</p>}
-              {priorityMessage && onPriorityDismiss && (
+              {priorityMessage && !isChatOpen && (
+                <p className="text-[11px] text-gray-500">最新バッジの情報</p>
+              )}
+              {priorityMessage && onPriorityDismiss && !isChatOpen && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -363,6 +455,15 @@ export default function GrandmaChatter({
                 >
                   解除する
                 </button>
+              )}
+              {isChatOpen && (
+                <p className="text-[11px] text-gray-500">
+                  {aiStatus === "thinking"
+                    ? "回答を作成中…"
+                    : aiStatus === "answered"
+                    ? "入力を続けてね"
+                    : "入力待ち"}
+                </p>
               )}
             </div>
           </div>
@@ -377,7 +478,42 @@ export default function GrandmaChatter({
         }`}
         aria-hidden={!isChatOpen}
       >
-        <div className="mx-auto w-full max-w-xl space-y-2">
+        <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
+          {aiImageUrl && (
+            <div className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
+              <img
+                src={aiImageUrl}
+                alt="案内画像"
+                className="h-36 w-full object-cover"
+              />
+            </div>
+          )}
+          {aiSuggestedShops && aiSuggestedShops.length > 0 && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm -translate-y-[10px]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+                    AIおすすめ
+                  </p>
+                  <h2 className="text-lg font-bold text-gray-900">提案されたお店</h2>
+                </div>
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
+                  {aiSuggestedShops.length}店
+                </span>
+              </div>
+              <div className="mt-3 grid gap-3 max-h-72 overflow-y-auto pr-1">
+                {aiSuggestedShops.map((shop) => (
+                  <ShopResultCard
+                    key={shop.id}
+                    shop={shop}
+                    isFavorite={false}
+                    onSelectShop={() => onSelectShop?.(shop.id)}
+                    compact
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           <div
             className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
               isChatOpen ? "max-h-24" : "max-h-0 overflow-hidden"
@@ -388,7 +524,12 @@ export default function GrandmaChatter({
                 key={label}
                 type="button"
                 onClick={() => handleAskSubmit(label)}
-                className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                disabled={aiStatus === "thinking"}
+                className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
+                  aiStatus === "thinking"
+                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                    : "bg-white text-amber-800 hover:bg-amber-50"
+                }`}
               >
                 {label}
               </button>
@@ -399,7 +540,6 @@ export default function GrandmaChatter({
             className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
               isChatOpen ? "scale-100" : "scale-95"
             }`}
-            style={inputShiftStyle}
           >
             <div className="flex items-center gap-2">
               <input
@@ -407,15 +547,25 @@ export default function GrandmaChatter({
                 type="text"
                 value={askText}
                 onChange={(e) => setAskText(e.target.value)}
-                className="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                disabled={aiStatus === "thinking"}
+                className={`flex-1 rounded-xl border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${
+                  aiStatus === "thinking"
+                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                    : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
+                }`}
                 placeholder="おばあちゃんに質問してね"
               />
               <button
                 type="button"
                 onClick={() => handleAskSubmit()}
-                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
+                disabled={aiStatus === "thinking"}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${
+                  aiStatus === "thinking"
+                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                    : "bg-amber-600 text-white hover:bg-amber-500"
+                }`}
               >
-                送信
+                {aiStatus === "thinking" ? "送信中…" : "送信"}
               </button>
             </div>
           </div>

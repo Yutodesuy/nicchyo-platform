@@ -72,3 +72,11 @@ export const grandmaComments: GrandmaComment[] = [
   { id: 'mono-49', genre: 'monologue', text: 'ここの景色、季節で色が変わるよ。' },
   { id: 'mono-50', genre: 'monologue', text: '最後まで楽しんでいってね。' },
 ];
+
+export const grandmaAiInstructorLines = [
+  '気になることがあれば、ここで聞いてみてね。',
+  'おすすめや道順など、質問を入れてくれると答えるよ。',
+  '知りたいことを入力してみて。しっかり案内するきね。',
+  'お店や場所のこと、なんでも聞いてちょうだい。',
+  '質問の例は上のボタンからでも送れるよ。',
+];
