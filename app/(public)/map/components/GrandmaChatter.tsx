@@ -51,6 +51,7 @@ export default function GrandmaChatter({
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const pendingFocusRef = useRef(false);
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -116,7 +117,10 @@ export default function GrandmaChatter({
   useEffect(() => {
     if (!isChatOpen) return;
     const frame = window.requestAnimationFrame(() => {
-      inputRef.current?.focus();
+      if (pendingFocusRef.current) {
+        inputRef.current?.focus();
+        pendingFocusRef.current = false;
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [isChatOpen]);
@@ -132,7 +136,12 @@ export default function GrandmaChatter({
       dragStateRef.current.moved = false;
       return;
     }
-    setIsChatOpen((prev) => !prev);
+    if (!isChatOpen) {
+      pendingFocusRef.current = true;
+      setIsChatOpen(true);
+    } else {
+      setIsChatOpen(false);
+    }
   };
 
   const handleAskSubmit = (text?: string) => {
