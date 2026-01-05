@@ -46,6 +46,7 @@ export default function GrandmaChatter({
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
+  const [keyboardShift, setKeyboardShift] = useState(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -92,6 +93,27 @@ export default function GrandmaChatter({
   }, [isChatOpen]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isChatOpen) {
+      setKeyboardShift(0);
+      return;
+    }
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const heightLoss = Math.max(0, window.innerHeight - viewport.height);
+      setKeyboardShift(heightLoss / 2);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, [isChatOpen]);
+
+  useEffect(() => {
     if (!isChatOpen) return;
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -110,8 +132,10 @@ export default function GrandmaChatter({
       dragStateRef.current.moved = false;
       return;
     }
-    setIsChatOpen(true);
-    inputRef.current?.focus();
+    setIsChatOpen((prev) => !prev);
+    if (!isChatOpen) {
+      inputRef.current?.focus();
+    }
   };
 
   const handleAskSubmit = (text?: string) => {
@@ -250,8 +274,13 @@ export default function GrandmaChatter({
       ? "grandma-scroll-retracting"
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
-  const chatLiftClassName = isChatOpen ? "translate-y-[-120px]" : "translate-y-0";
+  const chatLiftClassName = isChatOpen
+    ? keyboardShift > 0
+      ? "translate-y-[-180px]"
+      : "translate-y-[-120px]"
+    : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
+  const chatPanelStyle = keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
 
   return (
     <div className={shellClassName}>
@@ -340,7 +369,7 @@ export default function GrandmaChatter({
       </div>
 
       {isChatOpen && (
-        <div className="pointer-events-auto mt-2 w-full px-3">
+        <div className="pointer-events-auto mt-2 w-full px-3" style={chatPanelStyle}>
           <div className="mx-auto w-full max-w-xl space-y-2">
             <div className="flex flex-wrap items-center justify-center gap-2">
               {templateChips.map((label) => (
