@@ -1,11 +1,11 @@
 ﻿/* eslint-disable @next/next/no-img-element */
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import Link from 'next/link';
-import { grandmaCommentPool, pickNextComment } from '../services/grandmaCommentService';
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import Link from "next/link";
+import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 
-const PLACEHOLDER_IMAGE = '/images/obaasan.webp';
+const PLACEHOLDER_IMAGE = "/images/obaasan.webp";
 const HOLD_MS = 250;
 
 type PriorityMessage = {
@@ -15,7 +15,6 @@ type PriorityMessage = {
 };
 
 type GrandmaChatterProps = {
-  onOpenAgent?: () => void;
   comments?: typeof grandmaCommentPool;
   titleLabel?: string;
   priorityMessage?: PriorityMessage | null;
@@ -27,9 +26,8 @@ type GrandmaChatterProps = {
 };
 
 export default function GrandmaChatter({
-  onOpenAgent,
   comments,
-  titleLabel = 'おせっかいばあちゃん',
+  titleLabel = "おせっかいばあちゃん",
   priorityMessage,
   onPriorityClick,
   onPriorityDismiss,
@@ -43,11 +41,11 @@ export default function GrandmaChatter({
     () => pool.find((c) => c.id === currentId) ?? pool[0],
     [pool, currentId]
   );
-  const [isActionOpen, setIsActionOpen] = useState(false);
-  const [askText, setAskText] = useState('');
+  const [askText, setAskText] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
-  const [holdPhase, setHoldPhase] = useState<'idle' | 'priming' | 'active'>('idle');
+  const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -63,24 +61,34 @@ export default function GrandmaChatter({
     moved: boolean;
     pointerId: number | null;
     active: boolean;
-  }>({
-    startX: 0,
-    startY: 0,
-    startOffset: 0,
-    startOffsetY: 0,
-    min: 0,
-    max: 0,
-    minY: 0,
-    maxY: 0,
-    moved: false,
-    pointerId: null,
-    active: false,
-  });
+  }>(
+    {
+      startX: 0,
+      startY: 0,
+      startOffset: 0,
+      startOffsetY: 0,
+      min: 0,
+      max: 0,
+      minY: 0,
+      maxY: 0,
+      moved: false,
+      pointerId: null,
+      active: false,
+    }
+  );
 
   useEffect(() => {
     if (!pool.length) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.toggle("grandma-chat-open", isChatOpen);
+    return () => {
+      document.body.classList.remove("grandma-chat-open");
+    };
+  }, [isChatOpen]);
 
   if (!current) return null;
 
@@ -88,28 +96,24 @@ export default function GrandmaChatter({
     setCurrentId((prev) => pickNextComment(pool, prev)?.id);
   };
 
-  const handleAgent = useCallback(() => {
-    onOpenAgent?.();
-    setIsActionOpen(false);
-  }, [onOpenAgent]);
-
-  const handleImageClick = () => setIsActionOpen((prev) => !prev);
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
       dragStateRef.current.moved = false;
       return;
     }
-    handleImageClick();
+    setIsChatOpen((prev) => !prev);
   };
-  const handleAskSubmit = () => {
-    if (!askText.trim()) return;
-    setAskText('');
+
+  const handleAskSubmit = (text?: string) => {
+    const value = (text ?? askText).trim();
+    if (!value) return;
+    setAskText("");
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setIsHolding(true);
-    setHoldPhase('priming');
+    setHoldPhase("priming");
     onHoldChange?.(true);
     const rect = event.currentTarget.getBoundingClientRect();
     const viewWidth = document.documentElement.clientWidth;
@@ -137,7 +141,7 @@ export default function GrandmaChatter({
     }
     holdTimerRef.current = window.setTimeout(() => {
       dragStateRef.current.active = true;
-      setHoldPhase('active');
+      setHoldPhase("active");
     }, HOLD_MS);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -156,7 +160,7 @@ export default function GrandmaChatter({
         holdTimerRef.current = null;
       }
       setIsHolding(false);
-      setHoldPhase('idle');
+      setHoldPhase("idle");
       onHoldChange?.(false);
     }
     const nextX = Math.max(
@@ -190,7 +194,7 @@ export default function GrandmaChatter({
       holdTimerRef.current = null;
     }
     setIsHolding(false);
-    setHoldPhase('idle');
+    setHoldPhase("idle");
     onHoldChange?.(false);
     if (rafRef.current !== null) {
       window.cancelAnimationFrame(rafRef.current);
@@ -218,31 +222,30 @@ export default function GrandmaChatter({
   };
 
   const shellClassName = fullWidth
-    ? 'fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none'
-    : 'fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none';
+    ? "fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none"
+    : "fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none";
   const containerClassName = fullWidth
-    ? 'relative flex w-full flex-col items-center gap-2 pointer-events-none'
-    : 'relative flex items-end gap-2 sm:gap-3 pointer-events-none';
+    ? "relative flex w-full flex-col items-center gap-2 pointer-events-none"
+    : "relative flex items-end gap-2 sm:gap-3 pointer-events-none";
   const avatarClassName = fullWidth
-    ? 'relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]'
-    : 'relative h-[33px] w-[33px] shrink-0 sm:h-[39px] sm:w-[39px]';
+    ? "relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]"
+    : "relative h-[33px] w-[33px] shrink-0 sm:h-[39px] sm:w-[39px]";
   const bubbleClassName = fullWidth
-    ? 'group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto'
-    : 'group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto';
+    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
+    : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
   const bubbleStateClass =
-    holdPhase === 'active'
-      ? 'invisible'
-      : holdPhase === 'priming'
-      ? 'grandma-scroll-retracting'
-      : '';
-  const labelClassName = 'absolute top-full left-1/2 -translate-x-1/2';
-  const actionMenuClassName = fullWidth
-    ? 'absolute -top-2 left-1/2 z-[1450] mb-3 w-[min(420px,92vw)] -translate-x-1/2 translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl pointer-events-auto'
-    : 'absolute -top-2 left-0 z-[1450] mb-3 w-[min(340px,80vw)] translate-y-[-100%] rounded-2xl border-2 border-amber-400 bg-white/95 p-3 shadow-2xl pointer-events-auto';
+    holdPhase === "active"
+      ? "invisible"
+      : holdPhase === "priming"
+      ? "grandma-scroll-retracting"
+      : "";
+  const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
+  const chatLiftClassName = isChatOpen ? "translate-y-[-120px]" : "translate-y-0";
+  const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
 
   return (
     <div className={shellClassName}>
-      <div className={containerClassName}>
+      <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
         <div
           className="relative shrink-0 z-[2000]"
           style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}
@@ -262,8 +265,8 @@ export default function GrandmaChatter({
             onContextMenu={handleAvatarContextMenu}
             onDragStart={handleAvatarDragStart}
             className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
-            style={{ touchAction: 'none', WebkitTouchCallout: 'none', userSelect: 'none' }}
-            aria-label="おばあちゃんメニューを開く"
+            style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}
+            aria-label="おばあちゃんチャットを開く"
           >
             {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
             <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
@@ -308,9 +311,7 @@ export default function GrandmaChatter({
                   <span aria-hidden>→</span>
                 </Link>
               )}
-              {priorityMessage && (
-                <p className="text-[11px] text-gray-500">最新バッジの情報</p>
-              )}
+              {priorityMessage && <p className="text-[11px] text-gray-500">最新バッジの情報</p>}
               {priorityMessage && onPriorityDismiss && (
                 <button
                   type="button"
@@ -326,94 +327,59 @@ export default function GrandmaChatter({
             </div>
           </div>
         </button>
+      </div>
 
-        {isActionOpen && (
-          <div className={actionMenuClassName}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-bold text-amber-900">おばあちゃんメニュー</p>
-              <button
-                type="button"
-                className="text-xs text-amber-700 underline"
-                onClick={() => setIsActionOpen(false)}
-              >
-                とじる
-              </button>
+      {isChatOpen && (
+        <div className="pointer-events-auto mt-2 w-full px-3">
+          <div className="mx-auto w-full max-w-xl space-y-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {templateChips.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handleAskSubmit(label)}
+                  className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3 shadow-inner">
-              <p className="text-xs font-semibold text-amber-800">AIに相談したいとき</p>
-              <textarea
-                value={askText}
-                onChange={(e) => setAskText(e.target.value)}
-                className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                placeholder="聞きたいことを書いてね"
-                rows={2}
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] text-amber-700/80">送信するとAIに相談します</p>
+            <div className="rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={askText}
+                  onChange={(e) => setAskText(e.target.value)}
+                  className="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="おばあちゃんに質問してね"
+                />
                 <button
                   type="button"
-                  onClick={handleAskSubmit}
-                  className="rounded-lg bg-amber-600 px-3 py-2 text-[12px] font-semibold text-white shadow-sm hover:bg-amber-500"
+                  onClick={() => handleAskSubmit()}
+                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
                 >
                   送信
                 </button>
               </div>
             </div>
-
-            <div className="mt-3">
-              <ActionButton
-                label="予定を作る"
-                description="おすすめをまとめて提案するよ"
-                icon="🧭"
-                onClick={handleAgent}
-              />
-            </div>
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ActionButton({
-  label,
-  description,
-  icon,
-  onClick,
-}: {
-  label: string;
-  description: string;
-  icon: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-left shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300"
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-lg">{icon}</span>
-        <div className="flex-1">
-          <p className="text-sm font-bold text-amber-900">{label}</p>
-          <p className="text-[11px] text-amber-800">{description}</p>
         </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 }
 
 function genreIcon(genre: string) {
   switch (genre) {
-    case 'event':
-      return '🎉';
-    case 'notice':
-      return '📣';
-    case 'tutorial':
-      return '🧭';
-    case 'monologue':
+    case "event":
+      return "??";
+    case "notice":
+      return "??";
+    case "tutorial":
+      return "??";
+    case "monologue":
     default:
-      return '💬';
+      return "??";
   }
 }

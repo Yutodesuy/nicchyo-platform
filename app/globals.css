@@ -54,6 +54,12 @@ body {
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
 }
 
+body.grandma-chat-open .leaflet-container {
+  filter: blur(4px);
+  transition: filter 200ms ease;
+  will-change: filter;
+}
+
 /* スクロールバ�E */
 ::-webkit-scrollbar {
   width: 8px;
