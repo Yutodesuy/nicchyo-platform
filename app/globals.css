@@ -190,6 +190,18 @@ body.grandma-chat-open .leaflet-container {
   z-index: 1000 !important;
 }
 
+.shop-marker-ai {
+  transform: scale(1.08);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
+    drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
+}
+
+.shop-marker-selected.shop-marker-ai {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
 .shop-favorite-badge {
   position: absolute;
   top: -14px;

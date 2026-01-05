@@ -21,6 +21,7 @@ interface OptimizedShopLayerWithClusteringProps {
   onShopClick: (shop: Shop) => void;
   selectedShopId?: number;
   favoriteShopIds?: number[];
+  highlightShopIds?: number[];
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
@@ -33,6 +34,7 @@ export default function OptimizedShopLayerWithClustering({
   onShopClick,
   selectedShopId,
   favoriteShopIds,
+  highlightShopIds,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -42,6 +44,8 @@ export default function OptimizedShopLayerWithClustering({
   const compactIconsRef = useRef<Map<number, L.DivIcon>>(new Map());
   const favoriteSetRef = useRef<Set<number>>(new Set());
   const prevFavoriteSetRef = useRef<Set<number>>(new Set());
+  const highlightSetRef = useRef<Set<number>>(new Set());
+  const prevHighlightSetRef = useRef<Set<number>>(new Set());
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
@@ -52,6 +56,22 @@ export default function OptimizedShopLayerWithClustering({
       icon.classList.add('is-favorite');
     } else {
       icon.classList.remove('is-favorite');
+    }
+  };
+
+  const setMarkerHighlight = (marker: L.Marker, shopId: number, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-ai');
+      if (selectedShopIdRef.current !== shopId) {
+        marker.setZIndexOffset(900);
+      }
+    } else {
+      icon.classList.remove('shop-marker-ai');
+      if (selectedShopIdRef.current !== shopId) {
+        marker.setZIndexOffset(0);
+      }
     }
   };
 
@@ -217,6 +237,14 @@ export default function OptimizedShopLayerWithClustering({
               markerElement.classList.remove('shop-marker-selected');
               marker.setZIndexOffset(0);
             }
+            if (highlightSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-ai');
+              if (shopId !== selectedShopIdRef.current) {
+                marker.setZIndexOffset(900);
+              }
+            } else {
+              markerElement.classList.remove('shop-marker-ai');
+            }
           }
         }
       });
@@ -262,6 +290,29 @@ export default function OptimizedShopLayerWithClustering({
   }, [favoriteShopIds]);
 
   useEffect(() => {
+    highlightSetRef.current = new Set(highlightShopIds ?? []);
+    const nextHighlights = highlightSetRef.current;
+    const prevHighlights = prevHighlightSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerHighlight(marker, id, nextHighlights.has(id));
+      }
+    });
+
+    prevHighlightSetRef.current = nextHighlights;
+  }, [highlightShopIds]);
+
+  useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {
       const icon = marker.getElement();
       if (icon) {
@@ -270,7 +321,11 @@ export default function OptimizedShopLayerWithClustering({
           marker.setZIndexOffset(1000);
         } else {
           icon.classList.remove('shop-marker-selected');
-          marker.setZIndexOffset(0);
+          if (highlightSetRef.current.has(shopId)) {
+            marker.setZIndexOffset(900);
+          } else {
+            marker.setZIndexOffset(0);
+          }
         }
       }
     });

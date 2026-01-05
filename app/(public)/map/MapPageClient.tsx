@@ -43,8 +43,16 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
   const [isHoldActive, setIsHoldActive] = useState(false);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [eventMessageIndex, setEventMessageIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
+    ids: number[];
+    label: string;
+  } | null>(null);
+  const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
@@ -172,6 +180,51 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     }
   };
 
+  const handleGrandmaAsk = useCallback(async (text: string) => {
+    try {
+      const response = await fetch("/api/grandma/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          location: userLocation,
+        }),
+      });
+      if (!response.ok) {
+        return {
+          reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        };
+      }
+      const payload = (await response.json()) as {
+        reply?: string;
+        imageUrl?: string;
+        shopIds?: number[];
+      };
+      const rawReply =
+        payload.reply ?? "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
+      if (payload.shopIds && payload.shopIds.length > 0) {
+        setAiMarkerPayload({ ids: payload.shopIds, label: "AIおすすめ" });
+        const cleaned = rawReply.replace(/SHOP_IDS:\s*([0-9,\s]+)/i, "").trim();
+        return {
+          reply: cleaned || "おすすめのお店を表示したよ。",
+          imageUrl: payload.imageUrl,
+        };
+      }
+      setAiMarkerPayload(null);
+      return { reply: rawReply, imageUrl: payload.imageUrl };
+    } catch {
+      return {
+        reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+      };
+    }
+  }, [userLocation]);
+
+  const aiSuggestedShops = useMemo(() => {
+    if (!aiMarkerPayload?.ids?.length) return [];
+    const shopSet = new Set(aiMarkerPayload.ids);
+    return shops.filter((shop) => shopSet.has(shop.id));
+  }, [aiMarkerPayload, shops]);
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
@@ -298,16 +351,20 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids}
-              searchLabel={searchMarkerPayload?.label}
+              searchShopIds={searchMarkerPayload?.ids ?? aiMarkerPayload?.ids}
+              searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
               highlightEventTargets={isHoldActive}
               onMapInstance={handleMapInstance}
+              onUserLocationUpdate={(coords) => setUserLocation(coords)}
             />
             <GrandmaChatter
               titleLabel="マップばあちゃん"
               fullWidth
+              onAsk={handleGrandmaAsk}
+              aiSuggestedShops={aiSuggestedShops}
+              onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
               onHoldChange={setIsHoldActive}
               onDrop={handleGrandmaDrop}
               priorityMessage={

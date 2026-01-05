@@ -13,7 +13,8 @@ const MARKET_BOUNDS = {
 
 const MARKET_CENTER: [number, number] = [33.55915, 133.53100];
 
-const UPDATE_INTERVAL_MS = 1000;
+const UPDATE_INTERVAL_IN_MARKET_MS = 1000;
+const UPDATE_INTERVAL_OUTSIDE_MS = 15000;
 const ANIMATION_MS = 300;
 
 interface UserLocationMarkerProps {
@@ -24,10 +25,15 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const lastUpdateRef = useRef(0);
+  const onLocationUpdateRef = useRef(onLocationUpdate);
   const animFrameRef = useRef<number | null>(null);
   const animFromRef = useRef<[number, number] | null>(null);
   const animToRef = useRef<[number, number] | null>(null);
   const animStartRef = useRef(0);
+
+  useEffect(() => {
+    onLocationUpdateRef.current = onLocationUpdate;
+  }, [onLocationUpdate]);
 
   const checkIfInMarket = (lat: number, lng: number): boolean => {
     return (
@@ -54,14 +60,14 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
           border-radius: 50%;
           box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
           font-size: 24px;
-          animation: pulse 2s infinite;
+          animation: pulse 10s ease-in-out infinite;
         ">
           🚶
         </div>
         <style>
           @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
-            50% { transform: scale(1.1); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6); }
+            0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25); }
+            50% { transform: scale(1.03); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); }
           }
         </style>
       `,
@@ -103,13 +109,13 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
+          const inMarket = checkIfInMarket(latitude, longitude);
           const now = Date.now();
-          if (now - lastUpdateRef.current < UPDATE_INTERVAL_MS) {
+          const interval = inMarket ? UPDATE_INTERVAL_IN_MARKET_MS : UPDATE_INTERVAL_OUTSIDE_MS;
+          if (markerRef.current && now - lastUpdateRef.current < interval) {
             return;
           }
           lastUpdateRef.current = now;
-
-          const inMarket = checkIfInMarket(latitude, longitude);
           const displayPosition: [number, number] = inMarket
             ? [latitude, longitude]
             : MARKET_CENTER;
@@ -132,7 +138,7 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
             markerRef.current = newMarker;
           }
 
-          onLocationUpdate?.(inMarket, displayPosition);
+          onLocationUpdateRef.current?.(inMarket, displayPosition);
         },
         (error) => {
           console.warn('Failed to get geolocation', error);
@@ -195,7 +201,7 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
         markerRef.current = null;
       }
     };
-  }, [map, onLocationUpdate]);
+  }, [map]);
 
   return null;
 }

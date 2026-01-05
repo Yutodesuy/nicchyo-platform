@@ -264,6 +264,7 @@ type MapViewProps = {
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
   onMapInstance?: (map: L.Map) => void;
+  onUserLocationUpdate?: (coords: { lat: number; lng: number }) => void;
 };
 
 const MapView = memo(function MapView({
@@ -280,6 +281,7 @@ const MapView = memo(function MapView({
   eventTargets,
   highlightEventTargets = false,
   onMapInstance,
+  onUserLocationUpdate,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const sourceShops = useMemo(
@@ -780,6 +782,7 @@ const MapView = memo(function MapView({
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
           favoriteShopIds={favoriteShopIds}
+          highlightShopIds={searchShopIds}
         />
 
         {/* レシピオーバーレイ */}
@@ -827,6 +830,7 @@ const MapView = memo(function MapView({
         <UserLocationMarker
           onLocationUpdate={(_, position) => {
             setUserLocation(position);
+            onUserLocationUpdate?.({ lat: position[0], lng: position[1] });
           }}
         />
 
