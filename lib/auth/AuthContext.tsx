@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import type { User, UserRole, PermissionCheck } from "./types";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/client";
@@ -64,7 +64,7 @@ function mapSupabaseUser(user: SupabaseUser): User {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    const hydrate = async () => {
+    const init = async () => {
+      if (!supabaseRef.current) {
+        try {
+          supabaseRef.current = createClient();
+        } catch {
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const supabase = supabaseRef.current;
+      if (!supabase) return;
+
       const { data } = await supabase.auth.getSession();
       if (!active) return;
       if (data.session?.user) {
@@ -83,26 +95,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoggedIn(false);
       }
       setIsLoading(false);
+
+      const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!active) return;
+        if (session?.user) {
+          setUser(mapSupabaseUser(session.user));
+          setIsLoggedIn(true);
+        } else {
+          setUser(null);
+          setIsLoggedIn(false);
+        }
+      });
+
+      return () => {
+        subscription.subscription.unsubscribe();
+      };
     };
 
-    hydrate();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      if (session?.user) {
-        setUser(mapSupabaseUser(session.user));
-        setIsLoggedIn(true);
-      } else {
-        setUser(null);
-        setIsLoggedIn(false);
-      }
-    });
-
+    const cleanupPromise = init();
     return () => {
       active = false;
-      subscription.subscription.unsubscribe();
+      if (cleanupPromise && typeof cleanupPromise.then === "function") {
+        cleanupPromise.then((cleanup) => cleanup?.());
+      }
     };
-  }, [supabase]);
+  }, []);
 
   const permissions: PermissionCheck = {
     isSuperAdmin: user?.role === "super_admin",
@@ -126,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     captchaToken?: string
   ) => {
     const email = identifier.trim();
+    const supabase = supabaseRef.current ?? createClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -148,12 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (updates.email && updates.email !== user.email) {
       payload.email = updates.email;
     }
+    const supabase = supabaseRef.current ?? createClient();
     const { data, error } = await supabase.auth.updateUser(payload);
     if (error || !data.user) return;
     setUser(mapSupabaseUser(data.user));
   };
 
   const logout = async () => {
+    const supabase = supabaseRef.current ?? createClient();
     await supabase.auth.signOut();
     setUser(null);
     setIsLoggedIn(false);
