@@ -306,7 +306,6 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onMapInstance={handleMapInstance}
             />
             <GrandmaChatter
-              onOpenAgent={() => setAgentOpen(true)}
               titleLabel="マップばあちゃん"
               fullWidth
               onHoldChange={setIsHoldActive}
