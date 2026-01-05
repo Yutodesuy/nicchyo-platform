@@ -274,13 +274,10 @@ export default function GrandmaChatter({
       ? "grandma-scroll-retracting"
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
-  const chatLiftClassName = isChatOpen
-    ? keyboardShift > 0
-      ? "translate-y-[-180px]"
-      : "translate-y-[-120px]"
-    : "translate-y-0";
+  const chatLiftClassName = isChatOpen ? "translate-y-[-120px]" : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くの人気店は？"];
-  const chatPanelStyle = keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
+  const inputShiftStyle =
+    keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
 
   return (
     <div className={shellClassName}>
@@ -369,7 +366,7 @@ export default function GrandmaChatter({
       </div>
 
       {isChatOpen && (
-        <div className="pointer-events-auto mt-2 w-full px-3" style={chatPanelStyle}>
+        <div className="pointer-events-auto mt-2 w-full px-3">
           <div className="mx-auto w-full max-w-xl space-y-2">
             <div className="flex flex-wrap items-center justify-center gap-2">
               {templateChips.map((label) => (
@@ -384,7 +381,10 @@ export default function GrandmaChatter({
               ))}
             </div>
 
-            <div className="rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm">
+            <div
+              className="rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm"
+              style={inputShiftStyle}
+            >
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
