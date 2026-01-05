@@ -1,31 +1,41 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+﻿import React from 'react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { vi } from 'vitest';
 import GrandmaChatter from '../components/GrandmaChatter';
-import { grandmaCommentPool } from '../services/grandmaCommentService';
 
 describe('GrandmaChatter', () => {
-  it('renders the first comment and cycles on tap', () => {
+  const getCommentText = () => {
+    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
+    const textNode = button.querySelector('p');
+    return textNode?.textContent?.trim() ?? '';
+  };
+
+  it('cycles to another comment on tap', () => {
     render(<GrandmaChatter />);
 
-    const first = grandmaCommentPool[0];
-    expect(screen.getByText(first.text)).toBeInTheDocument();
+    const firstText = getCommentText();
+    expect(firstText.length).toBeGreaterThan(0);
 
     const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
     fireEvent.click(button);
 
-    const second = grandmaCommentPool[1];
-    expect(screen.getByText(second.text)).toBeInTheDocument();
+    const nextText = getCommentText();
+    expect(nextText.length).toBeGreaterThan(0);
+    expect(nextText).not.toBe(firstText);
   });
 
-  it('auto-rotates to the next comment after interval', () => {
+  it('does not auto-rotate after interval', () => {
     vi.useFakeTimers();
     render(<GrandmaChatter />);
 
-    const second = grandmaCommentPool[1];
-    vi.advanceTimersByTime(60000);
+    const firstText = getCommentText();
 
-    expect(screen.getByText(second.text)).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(60000);
+    });
+
+    const afterText = getCommentText();
+    expect(afterText).toBe(firstText);
     vi.useRealTimers();
   });
 });

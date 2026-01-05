@@ -1,11 +1,95 @@
 import { Metadata } from "next";
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
 import SearchClient from "./SearchClient";
+import { shops as staticShops } from "../map/data/shops";
+import type { Shop } from "../map/data/shops";
 
 export const metadata: Metadata = {
   title: "店舗検索 | nicchyo",
   description: "日曜市の300店舗から、お店の名前・商品・カテゴリー・ブロック番号で検索できます。",
 };
 
-export default function SearchPage() {
-  return <SearchClient />;
+type ShopRow = {
+  legacy_id: number | null;
+  name: string | null;
+  owner_name: string | null;
+  side: 'north' | 'south' | null;
+  position: number | null;
+  lat: number | null;
+  lng: number | null;
+  chome: string | null;
+  category: string | null;
+  products: string[] | null;
+  description: string | null;
+  specialty_dish: string | null;
+  about_vendor: string | null;
+  stall_style: string | null;
+  icon: string | null;
+  schedule: string | null;
+  message: string | null;
+};
+
+async function loadShops(): Promise<Shop[]> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data, error } = await supabase
+      .from("shops")
+      .select(
+        [
+          "legacy_id",
+          "name",
+          "owner_name",
+          "side",
+          "position",
+          "lat",
+          "lng",
+          "chome",
+          "category",
+          "products",
+          "description",
+          "specialty_dish",
+          "about_vendor",
+          "stall_style",
+          "icon",
+          "schedule",
+          "message",
+        ].join(",")
+      )
+      .order("legacy_id", { ascending: true });
+
+    if (error || !data) {
+      return staticShops;
+    }
+
+    return (data as ShopRow[])
+      .filter((row) => row.legacy_id !== null)
+      .map((row) => ({
+        id: row.legacy_id ?? 0,
+        name: row.name ?? "",
+        ownerName: row.owner_name ?? "",
+        side: (row.side ?? "north") as "north" | "south",
+        position: row.position ?? 0,
+        lat: row.lat ?? 0,
+        lng: row.lng ?? 0,
+        chome: row.chome ?? undefined,
+        category: row.category ?? "",
+        products: Array.isArray(row.products) ? row.products : [],
+        description: row.description ?? "",
+        specialtyDish: row.specialty_dish ?? undefined,
+        aboutVendor: row.about_vendor ?? undefined,
+        stallStyle: row.stall_style ?? undefined,
+        icon: row.icon ?? "",
+        schedule: row.schedule ?? "",
+        message: row.message ?? undefined,
+      }));
+  } catch {
+    return staticShops;
+  }
+}
+
+export default async function SearchPage() {
+  const shops = await loadShops();
+  return <SearchClient shops={shops} />;
 }

@@ -82,6 +82,7 @@ Leaflet Marker（当たり判定）
 
 **重要な実装**:
 ```typescript
+{% raw %}
 // Leaflet DivIconで店舗イラストをHTML化
 const iconMarkup = renderToStaticMarkup(
   <div className="shop-marker-container">
@@ -103,6 +104,7 @@ return (
     eventHandlers={{ click: () => onClick(shop) }}
   />
 );
+{% endraw %}
 ```
 
 **なぜこれで解決するのか**:
@@ -139,6 +141,7 @@ export interface Shop {
 
 #### 変更前（旧アーキテクチャ）
 ```typescript
+{% raw %}
 <ImageOverlay url={HANDDRAWN_MAP_IMAGE} bounds={MAP_BOUNDS} />
 
 {shops.map((shop) => (
@@ -148,6 +151,7 @@ export interface Shop {
     eventHandlers={{ click: () => setSelectedShop(shop) }}
   />
 ))}
+{% endraw %}
 ```
 
 #### 変更後（新アーキテクチャ）
@@ -357,6 +361,7 @@ return liveShops.map((shop) => (
 
 ### 4. アニメーション強化
 ```typescript
+{% raw %}
 // ShopMarker.tsxに追加
 <motion.div
   initial={{ scale: 0 }}
@@ -365,6 +370,7 @@ return liveShops.map((shop) => (
 >
   <ShopIllustration />
 </motion.div>
+{% endraw %}
 ```
 
 ## まとめ

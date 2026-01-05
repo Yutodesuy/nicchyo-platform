@@ -1,8 +1,9 @@
 ﻿'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import NavigationBar from '../../components/NavigationBar';
-import { shops, type Shop } from '../map/data/shops';
+import type { Shop } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
@@ -11,12 +12,18 @@ import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
 import ShopDetailBanner from '../map/components/ShopDetailBanner';
+import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
 
 /**
  * 店舗検索メインコンポーネント
  * 日曜市の300店舗を高速検索
  */
-export default function SearchClient() {
+type SearchClientProps = {
+  shops: Shop[];
+};
+
+export default function SearchClient({ shops }: SearchClientProps) {
+  const router = useRouter();
   const [textQuery, setTextQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [blockNumber, setBlockNumber] = useState('');
@@ -34,7 +41,7 @@ export default function SearchClient() {
   };
 
   // 検索インデックスを事前構築（初回のみ）
-  const searchIndex = useMemo(() => buildSearchIndex(shops), []);
+  const searchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
 
   // 検索フックで店舗をフィルタリング
   const filteredShops = useShopSearch({
@@ -57,11 +64,29 @@ export default function SearchClient() {
 
   const canNavigate = filteredShops.length > 1 && selectedIndex >= 0;
 
+  const searchLabel = useMemo(() => {
+    const trimmedText = textQuery.trim();
+    if (trimmedText) return trimmedText;
+    if (category) return category;
+    const trimmedBlock = blockNumber.trim();
+    if (trimmedBlock) return `ブロック${trimmedBlock}`;
+    return '検索結果';
+  }, [textQuery, category, blockNumber]);
+
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
     const nextIndex = (selectedIndex + offset + filteredShops.length) % filteredShops.length;
     setSelectedShop(filteredShops[nextIndex]);
   }, [canNavigate, filteredShops, selectedIndex]);
+
+  const handleOpenMap = useCallback(() => {
+    if (filteredShops.length === 0) return;
+    saveSearchMapPayload({
+      ids: filteredShops.map((shop) => shop.id),
+      label: searchLabel,
+    });
+    router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
+  }, [filteredShops, router, searchLabel]);
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     touchStartY.current = event.touches[0]?.clientY ?? null;
@@ -123,6 +148,8 @@ export default function SearchClient() {
             favoriteShopIds={favoriteShopIds}
             onToggleFavorite={handleToggleFavorite}
             onSelectShop={setSelectedShop}
+            onOpenMap={handleOpenMap}
+            mapLabel={searchLabel}
           />
         </section>
       </main>
@@ -137,7 +164,7 @@ export default function SearchClient() {
             onClose={() => setSelectedShop(null)}
           />
           {canNavigate && (
-            <div className="fixed bottom-28 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
+            <div className="fixed bottom-20 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
               <button
                 type="button"
                 onClick={() => handleSelectByOffset(-1)}

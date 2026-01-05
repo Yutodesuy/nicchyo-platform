@@ -1,8 +1,8 @@
-'use client';
+﻿"use client";
 
-import Link from 'next/link';
-import { Shop } from '../../map/data/shops';
-import { memo } from 'react';
+import Link from "next/link";
+import { memo } from "react";
+import { Shop } from "../../map/data/shops";
 
 interface ShopResultCardProps {
   shop: Shop;
@@ -16,9 +16,15 @@ interface ShopResultCardProps {
  * 店舗情報と「地図で見る」リンクを表示
  */
 function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: ShopResultCardProps) {
+  const previewImage =
+    shop.images?.main ||
+    shop.images?.thumbnail ||
+    shop.images?.additional?.[0] ||
+    "/images/shops/tosahamono.webp";
+
   return (
     <div
-      className="rounded-xl border-2 border-orange-300 bg-amber-50/40 px-4 py-3 shadow-sm cursor-pointer transition active:scale-[1.02] active:bg-orange-50 hover:bg-orange-50"
+      className="cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 px-4 py-3 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50"
       role="button"
       tabIndex={0}
       onClick={() => onSelectShop?.(shop)}
@@ -29,7 +35,6 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
         }
       }}
     >
-      {/* ヘッダー: アイコン、店舗名、ブロック番号 */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">
@@ -47,8 +52,12 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
             onMouseDown={(event) => event.stopPropagation()}
             onClickCapture={(event) => event.stopPropagation()}
             aria-pressed={isFavorite}
-            aria-label={isFavorite ? 'Remove favorite' : 'Add favorite'}
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold shadow-sm transition ${isFavorite ? 'border-pink-300 bg-pink-500 text-white' : 'border-pink-200 bg-white text-pink-500 hover:bg-pink-50'}`}
+            aria-label={isFavorite ? "Remove favorite" : "Add favorite"}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm font-semibold shadow-sm transition ${
+              isFavorite
+                ? "border-pink-300 bg-pink-500 text-white"
+                : "border-pink-200 bg-white text-pink-500 hover:bg-pink-50"
+            }`}
           >
             {"\u2665"}
           </button>
@@ -58,16 +67,17 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
         </div>
       </div>
 
-      {/* カテゴリー */}
+      <div className="mt-3 overflow-hidden rounded-lg border border-amber-100 bg-white">
+        <img src={previewImage} alt={`${shop.name}の画像`} className="h-28 w-full object-cover" />
+      </div>
+
       <p className="mt-2 text-xs text-amber-700">{shop.category}</p>
 
-      {/* 取り扱い商品 */}
       <p className="mt-1 text-sm text-gray-700">
-        取り扱い: {shop.products.slice(0, 4).join('・')}
-        {shop.products.length > 4 && '...'}
+        取り扱い: {shop.products.slice(0, 4).join("・")}
+        {shop.products.length > 4 && "..."}
       </p>
 
-      {/* 地図で見るリンク */}
       <Link
         href={`/map?shop=${shop.id}`}
         onClick={(event) => event.stopPropagation()}
@@ -79,5 +89,4 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
   );
 }
 
-// パフォーマンス最適化: メモ化
 export default memo(ShopResultCard);

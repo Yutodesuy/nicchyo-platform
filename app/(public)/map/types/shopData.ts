@@ -50,8 +50,29 @@ export interface ShopEditableData {
   /** 取扱商品リスト */
   products: string[];
 
+  /** 季節をまたぐ取扱商品（春-夏） */
+  seasonalProductsSpringSummer?: string[];
+
+  /** 季節をまたぐ取扱商品（夏-秋） */
+  seasonalProductsSummerAutumn?: string[];
+
+  /** 季節をまたぐ取扱商品（秋-冬） */
+  seasonalProductsAutumnWinter?: string[];
+
+  /** 季節をまたぐ取扱商品（冬-春） */
+  seasonalProductsWinterSpring?: string[];
+
   /** 店舗の説明文 */
   description: string;
+
+  /** 得意料理（郷土料理名 or なし） */
+  specialtyDish?: string;
+
+  /** 出店者について（自由記述） */
+  aboutVendor?: string;
+
+  /** 出店スタイル（自由記述） */
+  stallStyle?: string;
 
   /** 出店予定・営業時間 */
   schedule: string;
@@ -112,6 +133,9 @@ export interface ShopSystemData {
 
   /** 道路の北側/南側（変更不可） */
   side: 'north' | 'south';
+
+  /** 丁目セクション（日曜市の区画、変更不可） */
+  chome?: '一丁目' | '二丁目' | '三丁目' | '四丁目' | '五丁目' | '六丁目' | '七丁目';
 
   /** 表示優先度（運営管理、将来の実装用） */
   priority?: number;
@@ -218,7 +242,14 @@ export const EDITABLE_FIELDS: (keyof ShopEditableData)[] = [
   'category',
   'icon',
   'products',
+  'seasonalProductsSpringSummer',
+  'seasonalProductsSummerAutumn',
+  'seasonalProductsAutumnWinter',
+  'seasonalProductsWinterSpring',
   'description',
+  'specialtyDish',
+  'aboutVendor',
+  'stallStyle',
   'schedule',
   'message',
   'images',
@@ -236,6 +267,7 @@ export const SYSTEM_FIELDS: (keyof ShopSystemData)[] = [
   'lat',
   'lng',
   'side',
+  'chome',
   'priority',
   'approvalStatus',
   'createdAt',
