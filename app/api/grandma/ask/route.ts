@@ -107,7 +107,8 @@ export async function POST(request: Request) {
       })
       .returns<MatchRow[]>();
 
-    const sortedMatches = [...(matches ?? [])].sort((a, b) => b.similarity - a.similarity);
+    const safeMatches = Array.isArray(matches) ? matches : [];
+    const sortedMatches = [...safeMatches].sort((a, b) => b.similarity - a.similarity);
     const matchIds = sortedMatches.map((row) => row.shop_id).filter(Boolean);
     let shops: ShopRow[] = [];
     if (matchIds.length > 0) {
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
           ].join(",")
         )
         .in("id", matchIds);
-      shops = (data ?? []) as ShopRow[];
+      shops = (data ?? []) as unknown as ShopRow[];
     }
 
     const { data: knowledgeMatches } = await supabase
@@ -143,14 +144,15 @@ export async function POST(request: Request) {
         match_threshold: 0.55,
       })
       .returns<{ id: string; similarity: number }[]>();
-    const knowledgeIds = (knowledgeMatches ?? []).map((row) => row.id).filter(Boolean);
+    const safeKnowledgeMatches = Array.isArray(knowledgeMatches) ? knowledgeMatches : [];
+    const knowledgeIds = safeKnowledgeMatches.map((row) => row.id).filter(Boolean);
     let knowledgeRows: KnowledgeRow[] = [];
     if (knowledgeIds.length > 0) {
       const { data } = await supabase
         .from("knowledge_embeddings")
         .select(["id", "category", "title", "content", "image_url"].join(","))
         .in("id", knowledgeIds);
-      knowledgeRows = (data ?? []) as KnowledgeRow[];
+      knowledgeRows = (data ?? []) as unknown as KnowledgeRow[];
     }
 
     const shopContext =
@@ -275,7 +277,7 @@ export async function POST(request: Request) {
         .from("shops")
         .select(["legacy_id", "lat", "lng"].join(","))
         .in("legacy_id", recommendedIds);
-      const rows = (locationRows ?? []) as Array<{
+      const rows = (locationRows ?? []) as unknown as Array<{
         legacy_id: number | null;
         lat: number | null;
         lng: number | null;
