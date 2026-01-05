@@ -114,17 +114,6 @@ export default function GrandmaChatter({
     };
   }, [isChatOpen]);
 
-  useEffect(() => {
-    if (!isChatOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      if (pendingFocusRef.current) {
-        inputRef.current?.focus();
-        pendingFocusRef.current = false;
-      }
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [isChatOpen]);
-
   if (!current) return null;
 
   const handleNext = () => {
@@ -138,6 +127,13 @@ export default function GrandmaChatter({
     }
     if (!isChatOpen) {
       pendingFocusRef.current = true;
+      if (inputRef.current) {
+        try {
+          inputRef.current.focus({ preventScroll: true });
+        } catch {
+          inputRef.current.focus();
+        }
+      }
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
@@ -371,47 +367,56 @@ export default function GrandmaChatter({
         </button>
       </div>
 
-      {isChatOpen && (
-        <div className="pointer-events-auto mt-2 w-full px-3">
-          <div className="mx-auto w-full max-w-xl space-y-2">
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {templateChips.map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => handleAskSubmit(label)}
-                  className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+      <div
+        className={`mt-2 w-full px-3 transition-all duration-200 ${
+          isChatOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        aria-hidden={!isChatOpen}
+      >
+        <div className="mx-auto w-full max-w-xl space-y-2">
+          <div
+            className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
+              isChatOpen ? "max-h-24" : "max-h-0 overflow-hidden"
+            }`}
+          >
+            {templateChips.map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => handleAskSubmit(label)}
+                className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-            <div
-              className="rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm"
-              style={inputShiftStyle}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={askText}
-                  onChange={(e) => setAskText(e.target.value)}
-                  className="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  placeholder="おばあちゃんに質問してね"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleAskSubmit()}
-                  className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
-                >
-                  送信
-                </button>
-              </div>
+          <div
+            className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
+              isChatOpen ? "scale-100" : "scale-95"
+            }`}
+            style={inputShiftStyle}
+          >
+            <div className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={askText}
+                onChange={(e) => setAskText(e.target.value)}
+                className="flex-1 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="おばあちゃんに質問してね"
+              />
+              <button
+                type="button"
+                onClick={() => handleAskSubmit()}
+                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
+              >
+                送信
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
