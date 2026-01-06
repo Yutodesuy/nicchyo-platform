@@ -185,7 +185,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
       )}
 
       {/* ナビゲーションバー */}
-      <NavigationBar />
+      {!selectedShop && <NavigationBar />}
     </div>
   );
 }
