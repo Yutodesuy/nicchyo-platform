@@ -186,14 +186,18 @@ export async function POST(request: Request) {
           ].join(",")
         )
         .or(filters.join(","));
-      const normalizedMatches = (directRows ?? []).filter((row) => {
+      const safeDirectRows = (Array.isArray(directRows)
+        ? directRows
+        : []) as unknown as ShopRow[];
+      const normalizedMatches = safeDirectRows.filter((row) => {
         const owner = (row.owner_name ?? "").replace(/\s+/g, "");
         return owner.includes(normalizedNameQuery);
       });
-      const useRows = normalizedMatches.length > 0 ? normalizedMatches : directRows;
-      if (useRows && useRows.length > 0) {
+      const useRows =
+        normalizedMatches.length > 0 ? normalizedMatches : safeDirectRows;
+      if (useRows.length > 0) {
         shopIntent = true;
-        shops = useRows as ShopRow[];
+        shops = useRows;
         matchIds = shops.map((row) => row.id);
       }
     }
@@ -221,12 +225,12 @@ export async function POST(request: Request) {
           ].join(",")
         )
         .or(`products.cs.{${normalized}},synonyms.cs.{${normalized}}`);
-      if (directRows && directRows.length > 0) {
+      const safeDirectRows = (Array.isArray(directRows)
+        ? directRows
+        : []) as unknown as ShopRow[];
+      if (safeDirectRows.length > 0) {
         shopIntent = true;
-        const merged = new Map<string, ShopRow>();
-        shops.forEach((row) => merged.set(row.id, row));
-        (directRows as ShopRow[]).forEach((row) => merged.set(row.id, row));
-        shops = Array.from(merged.values());
+        shops = safeDirectRows;
         matchIds = shops.map((row) => row.id);
       }
     }
