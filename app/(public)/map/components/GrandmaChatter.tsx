@@ -336,7 +336,9 @@ export default function GrandmaChatter({
     ? "fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none"
     : "fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none";
   const containerClassName = fullWidth
-    ? "relative flex w-full flex-col items-center gap-2 pointer-events-none"
+    ? isChatOpen
+      ? "relative flex w-full flex-row-reverse items-end justify-center gap-3 pointer-events-none"
+      : "relative flex w-full flex-col items-center gap-2 pointer-events-none"
     : "relative flex items-end gap-2 sm:gap-3 pointer-events-none";
   const avatarClassName = fullWidth
     ? "relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]"
@@ -370,7 +372,9 @@ export default function GrandmaChatter({
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
         <div
           className="relative shrink-0 z-[2000]"
-          style={{ transform: `translate(${avatarOffset.x}px, ${avatarOffset.y}px)` }}
+          style={{
+            transform: `translate(${avatarOffset.x}px, ${avatarOffset.y + (isChatOpen ? -15 : 0)}px)`,
+          }}
         >
           <div className={labelClassName}>
             <span className="relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
