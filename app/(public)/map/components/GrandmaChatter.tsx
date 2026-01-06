@@ -65,6 +65,7 @@ export default function GrandmaChatter({
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const prevHeightLossRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -115,6 +116,7 @@ export default function GrandmaChatter({
     if (typeof window === "undefined") return;
     if (!isChatOpen) {
       setKeyboardShift(0);
+      prevHeightLossRef.current = 0;
       return;
     }
     const viewport = window.visualViewport;
@@ -122,6 +124,10 @@ export default function GrandmaChatter({
     const update = () => {
       const heightLoss = Math.max(0, window.innerHeight - viewport.height);
       setKeyboardShift(heightLoss / 2);
+      if (prevHeightLossRef.current > 0 && heightLoss === 0) {
+        setIsInputFocused(false);
+      }
+      prevHeightLossRef.current = heightLoss;
     };
     update();
     viewport.addEventListener("resize", update);
@@ -555,7 +561,7 @@ export default function GrandmaChatter({
               isChatOpen ? "scale-100" : "scale-95"
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2">
               <input
                 ref={inputRef}
                 type="text"
@@ -564,7 +570,7 @@ export default function GrandmaChatter({
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
                 disabled={aiStatus === "thinking"}
-                className={`flex-1 rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
                   aiStatus === "thinking"
                     ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                     : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
@@ -575,7 +581,7 @@ export default function GrandmaChatter({
                 type="button"
                 onClick={() => handleAskSubmit()}
                 disabled={aiStatus === "thinking"}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${
+                className={`w-full rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${
                   aiStatus === "thinking"
                     ? "cursor-not-allowed bg-gray-200 text-gray-400"
                     : "bg-amber-600 text-white hover:bg-amber-500"
