@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     if (!question) {
       return NextResponse.json({ reply: "質問を入力してね。" }, { status: 400 });
     }
+
     const normalized = question.replace(/\s+/g, "");
     if (
       normalized.includes("おばあちゃんは何者") ||
@@ -53,10 +54,11 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({
         reply:
-          "日曜市の案内役のおばあちゃんやきね。お店や道のことを教えるき、気軽に聞いてね。",
+          "高知の日曜市を案内するおせっかいばあちゃんやきね。困ったら何でも聞いてや。",
       });
     }
-    const shopIntent = /店|お店|店舗|おすすめ|買|探|食材|食べ物|野菜|果物|惣菜|お土産|雑貨|道具|工具|苗|植物|アクセサリー|工芸|レシピ|食べ歩き|朝ごはん/.test(
+
+    let shopIntent = /お店|おすすめ|人気|売って|買い|食べ|飲み|野菜|果物|惣菜|お土産|アクセサリー|雑貨|道具|工具|植物|苗|花|ハンドメイド|工芸|ランチ|朝ごはん|おやつ|スイーツ|食材|食べ物/.test(
       normalized
     );
 
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!supabaseUrl || !serviceRoleKey || !openaiKey) {
       return NextResponse.json(
-        { reply: "いま準備中やき、もう少し待っててね。" },
+        { reply: "準備中やき、もう少し待ってね。" },
         { status: 500 }
       );
     }
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
     });
     if (!embeddingResponse.ok) {
       return NextResponse.json(
-        { reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。" },
+        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
         { status: 500 }
       );
     }
@@ -93,7 +95,7 @@ export async function POST(request: Request) {
     const embedding = embeddingPayload.data?.[0]?.embedding;
     if (!embedding) {
       return NextResponse.json(
-        { reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。" },
+        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
         { status: 500 }
       );
     }
@@ -108,8 +110,10 @@ export async function POST(request: Request) {
       .returns<MatchRow[]>();
 
     const safeMatches = Array.isArray(matches) ? matches : [];
-    const sortedMatches = [...safeMatches].sort((a, b) => b.similarity - a.similarity);
-    const matchIds = sortedMatches.map((row) => row.shop_id).filter(Boolean);
+    const sortedMatches = [...safeMatches].sort(
+      (a, b) => b.similarity - a.similarity
+    );
+    let matchIds = sortedMatches.map((row) => row.shop_id).filter(Boolean);
     let shops: ShopRow[] = [];
     if (matchIds.length > 0) {
       const { data } = await supabase
@@ -137,6 +141,96 @@ export async function POST(request: Request) {
       shops = (data ?? []) as unknown as ShopRow[];
     }
 
+    const shortQuery = normalized.length <= 6 && normalized.length > 0;
+    const nameQuery = question
+      .replace(/さん.*$/, "")
+      .replace(/のお店.*$/, "")
+      .trim();
+    const wantsOwnerSearch = question.includes("さん") || question.includes("のお店");
+    if (nameQuery.length > 0 && wantsOwnerSearch) {
+      const normalizedNameQuery = nameQuery.replace(/\s+/g, "");
+      let nameParts = nameQuery.split(/\s+/).filter(Boolean);
+      if (nameParts.length === 1 && normalizedNameQuery.length >= 3) {
+        nameParts = [
+          normalizedNameQuery.slice(0, 2),
+          normalizedNameQuery.slice(2),
+        ].filter(Boolean);
+      }
+      const filters = [
+        `owner_name.ilike.%${nameQuery}%`,
+        `name.ilike.%${nameQuery}%`,
+        ...nameParts.flatMap((part) => [
+          `owner_name.ilike.%${part}%`,
+          `name.ilike.%${part}%`,
+        ]),
+      ];
+      const { data: directRows } = await supabase
+        .from("shops")
+        .select(
+          [
+            "id",
+            "legacy_id",
+            "name",
+            "owner_name",
+            "chome",
+            "category",
+            "products",
+            "description",
+            "specialty_dish",
+            "about_vendor",
+            "stall_style",
+            "schedule",
+            "message",
+            "lat",
+            "lng",
+          ].join(",")
+        )
+        .or(filters.join(","));
+      const normalizedMatches = (directRows ?? []).filter((row) => {
+        const owner = (row.owner_name ?? "").replace(/\s+/g, "");
+        return owner.includes(normalizedNameQuery);
+      });
+      const useRows = normalizedMatches.length > 0 ? normalizedMatches : directRows;
+      if (useRows && useRows.length > 0) {
+        shopIntent = true;
+        shops = useRows as ShopRow[];
+        matchIds = shops.map((row) => row.id);
+      }
+    }
+
+    if (!shopIntent && shortQuery) {
+      const { data: directRows } = await supabase
+        .from("shops")
+        .select(
+          [
+            "id",
+            "legacy_id",
+            "name",
+            "owner_name",
+            "chome",
+            "category",
+            "products",
+            "description",
+            "specialty_dish",
+            "about_vendor",
+            "stall_style",
+            "schedule",
+            "message",
+            "lat",
+            "lng",
+          ].join(",")
+        )
+        .or(`products.cs.{${normalized}},synonyms.cs.{${normalized}}`);
+      if (directRows && directRows.length > 0) {
+        shopIntent = true;
+        const merged = new Map<string, ShopRow>();
+        shops.forEach((row) => merged.set(row.id, row));
+        (directRows as ShopRow[]).forEach((row) => merged.set(row.id, row));
+        shops = Array.from(merged.values());
+        matchIds = shops.map((row) => row.id);
+      }
+    }
+
     const { data: knowledgeMatches } = await supabase
       .rpc("match_knowledge_embeddings", {
         query_embedding: embedding,
@@ -144,8 +238,12 @@ export async function POST(request: Request) {
         match_threshold: 0.55,
       })
       .returns<{ id: string; similarity: number }[]>();
-    const safeKnowledgeMatches = Array.isArray(knowledgeMatches) ? knowledgeMatches : [];
-    const knowledgeIds = safeKnowledgeMatches.map((row) => row.id).filter(Boolean);
+    const safeKnowledgeMatches = Array.isArray(knowledgeMatches)
+      ? knowledgeMatches
+      : [];
+    const knowledgeIds = safeKnowledgeMatches
+      .map((row) => row.id)
+      .filter(Boolean);
     let knowledgeRows: KnowledgeRow[] = [];
     if (knowledgeIds.length > 0) {
       const { data } = await supabase
@@ -161,10 +259,14 @@ export async function POST(request: Request) {
             .map((shop) => {
               const parts = [
                 `id:${shop.id}`,
-                shop.legacy_id ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}` : null,
+                shop.legacy_id
+                  ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}`
+                  : null,
                 shop.name ? `name:${shop.name}` : null,
                 shop.category ? `category:${shop.category}` : null,
-                shop.products?.length ? `products:${shop.products.join(" / ")}` : null,
+                shop.products?.length
+                  ? `products:${shop.products.join(" / ")}`
+                  : null,
                 shop.specialty_dish ? `specialty:${shop.specialty_dish}` : null,
                 shop.description ? `desc:${shop.description}` : null,
                 shop.message ? `message:${shop.message}` : null,
@@ -190,7 +292,10 @@ export async function POST(request: Request) {
             .join("\n")
         : "該当なし";
 
-    const haversine = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+    const haversine = (
+      a: { lat: number; lng: number },
+      b: { lat: number; lng: number }
+    ) => {
       const toRad = (value: number) => (value * Math.PI) / 180;
       const dLat = toRad(b.lat - a.lat);
       const dLng = toRad(b.lng - a.lng);
@@ -204,9 +309,7 @@ export async function POST(request: Request) {
       return 2 * 6371 * Math.asin(Math.sqrt(h));
     };
     const hasLocation =
-      location &&
-      Number.isFinite(location.lat) &&
-      Number.isFinite(location.lng);
+      location && Number.isFinite(location.lat) && Number.isFinite(location.lng);
     const sortLegacyByDistance = (
       ids: number[],
       rows: Array<{ legacy_id: number | null; lat: number | null; lng: number | null }>
@@ -216,7 +319,9 @@ export async function POST(request: Request) {
       return [...ids]
         .map((id) => {
           const row = rows.find((shop) => shop.legacy_id === id);
-          if (!row || row.lat == null || row.lng == null) return { id, dist: null };
+          if (!row || row.lat == null || row.lng == null) {
+            return { id, dist: null };
+          }
           return { id, dist: haversine(loc, { lat: row.lat, lng: row.lng }) };
         })
         .sort((a, b) => {
@@ -244,14 +349,14 @@ export async function POST(request: Request) {
             role: "user",
             content: `ユーザー質問: ${question}\n現在位置: ${
               location ? `${location.lat}, ${location.lng}` : "不明"
-            }\n候補店舗:\n${shopContext}\n知識ベース:\n${knowledgeContext}`,
+            }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`,
           },
         ],
       }),
     });
     if (!chatResponse.ok) {
       return NextResponse.json(
-        { reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。" },
+        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
         { status: 500 }
       );
     }
@@ -260,7 +365,8 @@ export async function POST(request: Request) {
     };
     const rawReply =
       chatPayload.choices?.[0]?.message?.content?.trim() ??
-      "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
+      "うまく調べられんかったき、もう一回聞いてみて。";
+
     const imageMatch = rawReply.match(/IMAGE_URL:\s*(\S+)/i);
     let reply = imageMatch ? rawReply.replace(imageMatch[0], "").trim() : rawReply;
     const imageUrl = imageMatch?.[1];
@@ -271,6 +377,7 @@ export async function POST(request: Request) {
           .map((value) => Number(value.trim()))
           .filter((value) => Number.isFinite(value))
       : [];
+
     let recommendedIds = shopIds;
     if (recommendedIds.length > 0 && hasLocation && shopIntent) {
       const { data: locationRows } = await supabase
@@ -290,8 +397,8 @@ export async function POST(request: Request) {
         .filter((value): value is number => typeof value === "number");
       recommendedIds = sortLegacyByDistance(legacyIds, shops);
     }
-    const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);
 
+    const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);
     if (shopMatch) {
       reply = reply.replace(shopMatch[0], "").trim();
     }
@@ -302,7 +409,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply, imageUrl, shopIds: uniqueRecommended });
   } catch {
     return NextResponse.json(
-      { reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。" },
+      { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
       { status: 500 }
     );
   }
