@@ -351,7 +351,7 @@ export default function GrandmaChatter({
       ? "grandma-scroll-retracting"
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
-  const chatLiftClassName = isChatOpen ? "translate-y-[-230px]" : "translate-y-0";
+  const chatLiftClassName = isChatOpen ? "translate-y-[-150px]" : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
@@ -489,7 +489,7 @@ export default function GrandmaChatter({
             </div>
           )}
           {aiSuggestedShops && aiSuggestedShops.length > 0 && (
-            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm -translate-y-[10px]">
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm -translate-y-[40px]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
@@ -501,7 +501,7 @@ export default function GrandmaChatter({
                   {aiSuggestedShops.length}店
                 </span>
               </div>
-              <div className="mt-3 grid gap-3 max-h-72 overflow-y-auto pr-1">
+              <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                 {aiSuggestedShops.map((shop) => (
                   <ShopResultCard
                     key={shop.id}

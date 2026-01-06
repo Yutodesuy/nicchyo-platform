@@ -32,7 +32,7 @@ function ShopResultCard({
   return (
     <div
       className={`cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50 ${
-        compact ? "px-3 py-2" : "px-4 py-3"
+        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-4 py-3"
       }`}
       role="button"
       tabIndex={0}
@@ -84,28 +84,34 @@ function ShopResultCard({
         </div>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-amber-100 bg-white">
-        <img
-          src={previewImage}
-          alt={`${shop.name}の画像`}
-          className={`${compact ? "h-16" : "h-28"} w-full object-cover`}
-        />
+      <div className={`${compact ? "mt-1.5" : "mt-3"} flex gap-2`}>
+        <div className="flex-1 overflow-hidden rounded-lg border border-amber-100 bg-white">
+          <img
+            src={previewImage}
+            alt={`${shop.name}の画像`}
+            className={`${compact ? "h-20" : "h-28"} w-full object-contain bg-white`}
+          />
+        </div>
+        <div
+          className={`flex-1 rounded-lg border border-amber-100 bg-white ${
+            compact ? "h-20 p-2" : "p-3"
+          }`}
+        >
+          <p className={`${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
+            {shop.category}
+          </p>
+          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm"} text-gray-700`}>
+            取り扱い: {shop.products.slice(0, 4).join("・")}
+            {shop.products.length > 4 && "..."}
+          </p>
+        </div>
       </div>
-
-      <p className={`mt-2 ${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
-        {shop.category}
-      </p>
-
-      <p className={`mt-1 ${compact ? "text-xs" : "text-sm"} text-gray-700`}>
-        取り扱い: {shop.products.slice(0, 4).join("・")}
-        {shop.products.length > 4 && "..."}
-      </p>
 
       <Link
         href={`/map?shop=${shop.id}`}
         onClick={(event) => event.stopPropagation()}
-        className={`mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
-          compact ? "text-[10px]" : "text-xs"
+        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
+          compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
         }`}
       >
         地図で見る →
