@@ -492,7 +492,7 @@ export default function GrandmaChatter({
               />
             </div>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && (
+          {aiSuggestedShops && aiSuggestedShops.length > 0 && keyboardShift === 0 && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
