@@ -133,6 +133,14 @@ export default function GrandmaChatter({
   }, [isChatOpen]);
 
   useEffect(() => {
+    if (!isChatOpen || !isInputFocused) return;
+    const timer = window.setTimeout(() => {
+      inputRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isChatOpen, isInputFocused, keyboardShift]);
+
+  useEffect(() => {
     if (!isChatOpen) return;
     const randomIndex = Math.floor(Math.random() * grandmaAiInstructorLines.length);
     const nextLine =
