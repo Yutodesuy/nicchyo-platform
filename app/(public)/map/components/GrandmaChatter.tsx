@@ -65,7 +65,6 @@ export default function GrandmaChatter({
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const prevHeightLossRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -116,7 +115,6 @@ export default function GrandmaChatter({
     if (typeof window === "undefined") return;
     if (!isChatOpen) {
       setKeyboardShift(0);
-      prevHeightLossRef.current = 0;
       return;
     }
     const viewport = window.visualViewport;
@@ -124,10 +122,6 @@ export default function GrandmaChatter({
     const update = () => {
       const heightLoss = Math.max(0, window.innerHeight - viewport.height);
       setKeyboardShift(heightLoss / 2);
-      if (prevHeightLossRef.current > 0 && heightLoss === 0) {
-        setIsInputFocused(false);
-      }
-      prevHeightLossRef.current = heightLoss;
     };
     update();
     viewport.addEventListener("resize", update);
@@ -367,6 +361,7 @@ export default function GrandmaChatter({
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
+  const isKeyboardOpen = isInputFocused || keyboardShift > 0;
   const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const bubbleText = isChatOpen
     ? aiBubbleText
@@ -502,7 +497,7 @@ export default function GrandmaChatter({
               />
             </div>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isInputFocused && (
+          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
