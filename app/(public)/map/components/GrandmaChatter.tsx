@@ -64,6 +64,7 @@ export default function GrandmaChatter({
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -222,6 +223,9 @@ export default function GrandmaChatter({
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (isChatOpen) {
+      return;
+    }
     event.preventDefault();
     setIsHolding(true);
     setHoldPhase("priming");
@@ -492,7 +496,7 @@ export default function GrandmaChatter({
               />
             </div>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && keyboardShift === 0 && (
+          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isInputFocused && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -557,6 +561,8 @@ export default function GrandmaChatter({
                 type="text"
                 value={askText}
                 onChange={(e) => setAskText(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
                 disabled={aiStatus === "thinking"}
                 className={`flex-1 rounded-xl border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${
                   aiStatus === "thinking"
