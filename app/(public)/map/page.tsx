@@ -31,6 +31,23 @@ type ShopRow = {
   message: string | null;
 };
 
+const CHOME_VALUES = new Set([
+  "一丁目",
+  "二丁目",
+  "三丁目",
+  "四丁目",
+  "五丁目",
+  "六丁目",
+  "七丁目",
+]);
+
+function normalizeChome(value: string | null): Shop["chome"] {
+  if (value && CHOME_VALUES.has(value)) {
+    return value as Shop["chome"];
+  }
+  return undefined;
+}
+
 async function loadShops(): Promise<Shop[]> {
   try {
     const cookieStore = await cookies();
@@ -64,7 +81,7 @@ async function loadShops(): Promise<Shop[]> {
       return staticShops;
     }
 
-    return (data as ShopRow[])
+    return (data as unknown as ShopRow[])
       .filter((row) => row.legacy_id !== null)
       .map((row) => ({
         id: row.legacy_id ?? 0,
@@ -74,7 +91,7 @@ async function loadShops(): Promise<Shop[]> {
         position: row.position ?? 0,
         lat: row.lat ?? 0,
         lng: row.lng ?? 0,
-        chome: row.chome ?? undefined,
+        chome: normalizeChome(row.chome),
         category: row.category ?? '',
         products: Array.isArray(row.products) ? row.products : [],
         description: row.description ?? '',

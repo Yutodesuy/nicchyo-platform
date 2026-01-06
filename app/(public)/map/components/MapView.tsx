@@ -264,6 +264,7 @@ type MapViewProps = {
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
   onMapInstance?: (map: L.Map) => void;
+  onUserLocationUpdate?: (coords: { lat: number; lng: number }) => void;
 };
 
 const MapView = memo(function MapView({
@@ -280,6 +281,7 @@ const MapView = memo(function MapView({
   eventTargets,
   highlightEventTargets = false,
   onMapInstance,
+  onUserLocationUpdate,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const sourceShops = useMemo(
@@ -598,11 +600,11 @@ const MapView = memo(function MapView({
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        scrollWheelZoom={!isMobile}
-        dragging={true}
-        touchZoom={isMobile ? "center" : true}
-        doubleClickZoom={!isMobile}
-        className="h-full w-full z-0"
+        scrollWheelZoom={!agentOpen && !isMobile}
+        dragging={!agentOpen}
+        touchZoom={agentOpen ? false : isMobile ? "center" : true}
+        doubleClickZoom={!agentOpen && !isMobile}
+        className={`h-full w-full z-0 ${agentOpen ? "pointer-events-none" : ""}`}
         style={{
           height: "100%",
           width: "100%",
@@ -780,6 +782,7 @@ const MapView = memo(function MapView({
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
           favoriteShopIds={favoriteShopIds}
+          highlightShopIds={searchShopIds}
         />
 
         {/* レシピオーバーレイ */}
@@ -827,6 +830,7 @@ const MapView = memo(function MapView({
         <UserLocationMarker
           onLocationUpdate={(_, position) => {
             setUserLocation(position);
+            onUserLocationUpdate?.({ lat: position[0], lng: position[1] });
           }}
         />
 

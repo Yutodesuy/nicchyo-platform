@@ -23,19 +23,26 @@ function loadEnvFile(filePath) {
 function buildContent(row) {
   const parts = [
     row.name,
+    row.owner_name ? `owner: ${row.owner_name}` : "",
     row.category,
+    row.chome ? `block: ${row.chome}` : "",
+    row.side ? `side: ${row.side}` : "",
+    row.position ? `position: ${row.position}` : "",
+    row.lat ? `lat: ${row.lat}` : "",
+    row.lng ? `lng: ${row.lng}` : "",
     row.description,
     row.specialty_dish,
     row.about_vendor,
     row.stall_style,
     row.schedule,
     row.message,
+    row.synonyms ? `synonyms: ${row.synonyms}` : "",
   ].filter(Boolean);
 
   const products = Array.isArray(row.products) ? row.products.join(", ") : "";
   if (products) parts.push(`products: ${products}`);
 
-  return parts.join("\n");
+  return parts.filter(Boolean).join("\n");
 }
 
 async function fetchEmbeddings(apiKey, inputs) {
@@ -87,25 +94,43 @@ async function main() {
   let totalProcessed = 0;
 
   while (true) {
-    const { data, error } = await supabase
+    const baseFields = [
+      "id",
+      "legacy_id",
+      "name",
+      "category",
+      "chome",
+      "side",
+      "position",
+      "lat",
+      "lng",
+      "description",
+      "products",
+      "specialty_dish",
+      "about_vendor",
+      "stall_style",
+      "schedule",
+      "message",
+    ];
+    let data = null;
+    let error = null;
+    const { data: firstData, error: firstError } = await supabase
       .from("shops")
-      .select(
-        [
-          "id",
-          "legacy_id",
-          "name",
-          "category",
-          "description",
-          "products",
-          "specialty_dish",
-          "about_vendor",
-          "stall_style",
-          "schedule",
-          "message",
-        ].join(",")
-      )
+      .select([...baseFields, "synonyms"].join(","))
       .order("legacy_id", { ascending: true })
       .range(from, from + pageSize - 1);
+    if (firstError && firstError.message.includes("synonyms")) {
+      const fallback = await supabase
+        .from("shops")
+        .select(baseFields.join(","))
+        .order("legacy_id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      data = fallback.data;
+      error = fallback.error;
+    } else {
+      data = firstData;
+      error = firstError;
+    }
 
     if (error) {
       throw new Error(`Supabase error: ${error.message}`);

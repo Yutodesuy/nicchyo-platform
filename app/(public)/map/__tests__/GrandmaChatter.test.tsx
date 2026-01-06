@@ -24,18 +24,18 @@ describe('GrandmaChatter', () => {
     expect(nextText).not.toBe(firstText);
   });
 
-  it('does not auto-rotate after interval', () => {
+  it('auto-rotates after interval', () => {
     vi.useFakeTimers();
     render(<GrandmaChatter />);
 
     const firstText = getCommentText();
 
     act(() => {
-      vi.advanceTimersByTime(60000);
+      vi.advanceTimersByTime(7000);
     });
 
     const afterText = getCommentText();
-    expect(afterText).toBe(firstText);
+    expect(afterText).not.toBe(firstText);
     vi.useRealTimers();
   });
 });
