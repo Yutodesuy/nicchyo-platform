@@ -359,9 +359,11 @@ export default function GrandmaChatter({
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
   const chatLiftClassName = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
-  const inputShiftStyle =
-    keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
   const isKeyboardOpen = isInputFocused || keyboardShift > 0;
+  const hasSuggestedBox =
+    !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
+  const inputOffsetPx = isKeyboardOpen ? -160 : hasSuggestedBox ? -220 : -120;
+  const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const bubbleText = isChatOpen
     ? aiBubbleText
