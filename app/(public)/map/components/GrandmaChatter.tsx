@@ -499,15 +499,23 @@ export default function GrandmaChatter({
                   {aiSuggestedShops.length}店
                 </span>
               </div>
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              <div
+                className={`mt-3 flex gap-3 pb-2 ${
+                  aiSuggestedShops.length > 1 ? "overflow-x-auto" : ""
+                }`}
+              >
                 {aiSuggestedShops.map((shop) => (
-                  <ShopResultCard
+                  <div
                     key={shop.id}
-                    shop={shop}
-                    isFavorite={false}
-                    onSelectShop={() => onSelectShop?.(shop.id)}
-                    compact
-                  />
+                    className={aiSuggestedShops.length === 1 ? "w-full" : "shrink-0"}
+                  >
+                    <ShopResultCard
+                      shop={shop}
+                      isFavorite={false}
+                      onSelectShop={() => onSelectShop?.(shop.id)}
+                      compact={aiSuggestedShops.length > 1}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
