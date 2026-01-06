@@ -355,7 +355,7 @@ export default function GrandmaChatter({
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
-  const chatPanelLift = isChatOpen ? "translate-y-[-160px]" : "translate-y-0";
+  const chatPanelLift = isChatOpen ? "translate-y-[-90px]" : "translate-y-0";
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage
