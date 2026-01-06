@@ -351,11 +351,11 @@ export default function GrandmaChatter({
       ? "grandma-scroll-retracting"
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
-  const chatLiftClassName = isChatOpen ? "translate-y-[-150px]" : "translate-y-0";
+  const chatLiftClassName = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
   const inputShiftStyle =
     keyboardShift > 0 ? { transform: `translateY(${-keyboardShift}px)` } : undefined;
-  const chatPanelLift = isChatOpen ? "translate-y-[-90px]" : "translate-y-0";
+  const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage
@@ -489,13 +489,11 @@ export default function GrandmaChatter({
             </div>
           )}
           {aiSuggestedShops && aiSuggestedShops.length > 0 && (
-            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm -translate-y-[40px]">
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
-                    AIおすすめ
-                  </p>
-                  <h2 className="text-lg font-bold text-gray-900">提案されたお店</h2>
+                <div className="flex items-center gap-2">
+                  <span className="ai-label-playful text-lg text-pink-600">AIおすすめ</span>
+                  <span className="text-lg font-bold text-gray-900">提案されたお店</span>
                 </div>
                 <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
                   {aiSuggestedShops.length}店

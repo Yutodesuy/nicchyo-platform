@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -200,6 +202,11 @@ body.grandma-chat-open .leaflet-container {
 .shop-marker-selected.shop-marker-ai {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.ai-label-playful {
+  font-family: "Mochiy Pop One", "Comic Neue", cursive;
+  letter-spacing: 0.04em;
 }
 
 .shop-favorite-badge {
