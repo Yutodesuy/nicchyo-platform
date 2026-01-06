@@ -564,7 +564,7 @@ export default function GrandmaChatter({
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
                 disabled={aiStatus === "thinking"}
-                className={`flex-1 rounded-xl border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 ${
+                className={`flex-1 rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
                   aiStatus === "thinking"
                     ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                     : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
