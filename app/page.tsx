@@ -182,8 +182,22 @@ export default function HomePage() {
                       {carouselItems.map((item, index) => (
                         <div
                           key={`${item.title}-${index}`}
-                          className={`w-full shrink-0 rounded-2xl border border-amber-200/70 bg-white/85 px-6 py-8 min-h-[300px] shadow-sm ${
+                          className={`w-full shrink-0 rounded-2xl border border-amber-200/70 px-6 py-8 min-h-[300px] shadow-sm ${
                             index === carouselIndex ? "opacity-100" : "opacity-70"
+                          } ${
+                            index % 7 === 0
+                              ? "bg-amber-50"
+                              : index % 7 === 1
+                              ? "bg-orange-50"
+                              : index % 7 === 2
+                              ? "bg-rose-50"
+                              : index % 7 === 3
+                              ? "bg-emerald-50"
+                              : index % 7 === 4
+                              ? "bg-sky-50"
+                              : index % 7 === 5
+                              ? "bg-lime-50"
+                              : "bg-yellow-50"
                           }`}
                         >
                           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700/80">
@@ -213,11 +227,7 @@ export default function HomePage() {
                         />
                       ))}
                     </div>
-                    <div className="mt-3 flex items-center justify-center gap-2 text-xs font-semibold text-amber-700/80">
-                      <span aria-hidden>←</span>
-                      <span>自動で切り替わります</span>
-                      <span aria-hidden>→</span>
-                    </div>
+                    <div className="mt-3 flex items-center justify-center gap-2 text-xs font-semibold text-amber-700/80" />
                   </div>
                 </div>
 
@@ -305,8 +315,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative border-t border-orange-100 bg-gradient-to-b from-amber-50 via-orange-50 to-white px-4 py-14 md:py-18">
-        <div className="mx-auto flex max-w-4xl flex-col gap-8">
+      <section className="relative border-t border-orange-100 bg-gradient-to-b from-white/85 via-white/70 to-white/85 px-4 py-14 md:py-18">
+        <div className="pointer-events-none absolute -top-20 left-6 h-52 w-52 rounded-full bg-amber-200/20 blur-3xl z-0" />
+        <div className="pointer-events-none absolute right-4 top-24 h-64 w-64 rounded-full bg-orange-200/20 blur-3xl z-0" />
+        <div className="pointer-events-none absolute bottom-24 left-8 h-56 w-56 rounded-full bg-emerald-100/15 blur-3xl z-0" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85)_0%,_rgba(255,255,255,0.6)_45%,_rgba(255,255,255,0.9)_100%)] z-0" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,0)_55%,_rgba(15,8,0,0.18)_100%)] z-0" />
+        <div className="pointer-events-none absolute inset-0 opacity-30 mix-blend-soft-light bg-[linear-gradient(120deg,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_45%,rgba(255,255,255,0.25)_100%)] z-0" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-soft-light bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.5)_0,rgba(255,255,255,0.5)_1px,rgba(255,255,255,0)_1px,rgba(255,255,255,0)_6px)] z-0" />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-10 mix-blend-soft-light z-0"
+          style={{
+            backgroundImage:
+              "url('data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.4'/></svg>')",
+          }}
+        />
+        <div className="relative z-10 mx-auto flex max-w-4xl flex-col gap-8">
           <header className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
               about nicchyo
