@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -88,7 +88,7 @@ export default function HomePage() {
   }, [posters.length]);
 
   return (
-    <div className="min-h-screen bg-amber-50 text-gray-900">
+    <div className="h-screen overflow-hidden bg-amber-50 text-gray-900">
       <section className="relative h-screen w-screen overflow-hidden">
         <div
           className={`absolute inset-0 scale-[1.06] transition-opacity duration-300 filter blur-[3px] brightness-95 contrast-90 ${
@@ -97,7 +97,7 @@ export default function HomePage() {
         >
           <MapView />
         </div>
-        <div className="absolute inset-0 z-10 flex flex-col bg-gradient-to-b from-white/85 via-white/70 to-white/85 text-gray-900 backdrop-blur-xl">
+        <div className="absolute inset-0 z-10 flex flex-col text-gray-900">
           <div className="pointer-events-none absolute -top-20 left-6 h-52 w-52 rounded-full bg-amber-200/30 blur-3xl" />
           <div className="pointer-events-none absolute right-4 top-24 h-64 w-64 rounded-full bg-orange-200/25 blur-3xl" />
           <div className="pointer-events-none absolute bottom-24 left-8 h-56 w-56 rounded-full bg-emerald-100/20 blur-3xl" />
@@ -112,9 +112,9 @@ export default function HomePage() {
                 "url('data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.4'/></svg>')",
             }}
           />
-          <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-6">
-            <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.18em] text-amber-900">
-              <span className="inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-xl bg-amber-200/80 shadow-sm">
+          <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-[calc(env(safe-area-inset-top)+12px)]">
+            <div className="flex items-center gap-3 text-2xl font-semibold tracking-[0.18em] text-amber-900">
+              <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-amber-200/80 shadow-sm">
                 <img
                   src="/images/obaasan.webp"
                   alt="おせっかいばあちゃん"
@@ -133,8 +133,8 @@ export default function HomePage() {
             </button>
           </header>
 
-          <div className="relative mx-auto flex h-full w-full max-w-md flex-col justify-center px-6 pb-10 md:max-w-lg">
-            <div className="relative mt-6 rounded-3xl border border-white/30 bg-white/55 p-6 shadow-xl backdrop-blur-xl md:p-8">
+          <div className="relative mx-auto flex h-full w-full max-w-xl flex-col justify-center px-6 pb-0 md:max-w-2xl">
+            <div className="relative mt-0 rounded-3xl border border-white/30 bg-white/55 p-6 shadow-xl backdrop-blur-xl md:p-8">
               <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-white/50 via-transparent to-transparent" />
               <div className="relative space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
@@ -144,9 +144,6 @@ export default function HomePage() {
                 <h1 className="text-3xl font-bold leading-tight text-amber-950 font-['Cinzel','Yu_Mincho','Hiragino_Mincho_ProN',serif] tracking-[0.12em]">
                   高知高専×日曜市
                 </h1>
-                <p className="text-sm leading-relaxed text-amber-900/75">
-                  お店・おすすめ・郷土料理のヒント。まずはマップを開こう。
-                </p>
 
                 <div className="flex items-center justify-center">
                   <div className="relative w-full overflow-hidden">
@@ -182,7 +179,7 @@ export default function HomePage() {
                       {carouselItems.map((item, index) => (
                         <div
                           key={`${item.title}-${index}`}
-                          className={`w-full shrink-0 rounded-2xl border border-amber-200/70 px-6 py-8 min-h-[300px] shadow-sm ${
+                          className={`w-full shrink-0 rounded-2xl border border-amber-200/70 px-5 py-6 min-h-[220px] shadow-sm ${
                             index === carouselIndex ? "opacity-100" : "opacity-70"
                           } ${
                             index % 7 === 0
@@ -209,7 +206,7 @@ export default function HomePage() {
                           <p className="mt-3 text-sm font-semibold text-amber-800/90">
                             {item.lead}
                           </p>
-                          <p className="mt-6 text-[11px] font-semibold text-amber-700/70">
+                          <p className="mt-4 text-[11px] font-semibold text-amber-700/70">
                             {item.accent}
                           </p>
                         </div>
@@ -315,67 +312,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative border-t border-orange-100 bg-gradient-to-b from-white/85 via-white/70 to-white/85 px-4 py-14 md:py-18">
-        <div className="pointer-events-none absolute -top-20 left-6 h-52 w-52 rounded-full bg-amber-200/20 blur-3xl z-0" />
-        <div className="pointer-events-none absolute right-4 top-24 h-64 w-64 rounded-full bg-orange-200/20 blur-3xl z-0" />
-        <div className="pointer-events-none absolute bottom-24 left-8 h-56 w-56 rounded-full bg-emerald-100/15 blur-3xl z-0" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85)_0%,_rgba(255,255,255,0.6)_45%,_rgba(255,255,255,0.9)_100%)] z-0" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,0)_55%,_rgba(15,8,0,0.18)_100%)] z-0" />
-        <div className="pointer-events-none absolute inset-0 opacity-30 mix-blend-soft-light bg-[linear-gradient(120deg,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_45%,rgba(255,255,255,0.25)_100%)] z-0" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-soft-light bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.5)_0,rgba(255,255,255,0.5)_1px,rgba(255,255,255,0)_1px,rgba(255,255,255,0)_6px)] z-0" />
-        <div
-          className="pointer-events-none absolute inset-0 opacity-10 mix-blend-soft-light z-0"
-          style={{
-            backgroundImage:
-              "url('data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.4'/></svg>')",
-          }}
-        />
-        <div className="relative z-10 mx-auto flex max-w-4xl flex-col gap-8">
-          <header className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-              about nicchyo
-            </p>
-            <h2 className="mt-2 text-2xl font-bold md:text-3xl">
-              日曜市を、もっと歩きやすく
-            </h2>
-            <p className="mt-3 text-sm text-gray-700 md:text-base">
-              nicchyo は高知の日曜市を“迷わず、出会える”ようにする、歩いて探検するためのデジタルマップです。
-              位置、食材、口コミ、イベントをひとつにまとめて、今日の市場を見渡せます。
-            </p>
-          </header>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-orange-100 bg-white/90 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-amber-900">今いる場所から逆算</h3>
-              <p className="mt-2 text-sm text-gray-700">
-                マップで屋台の位置とおすすめを確認。歩く順番の目安が見えるので、
-                初めてでも迷わず楽しめます。
-              </p>
-            </div>
-            <div className="rounded-2xl border border-orange-100 bg-white/90 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-amber-900">旬の食材を軸に探す</h3>
-              <p className="mt-2 text-sm text-gray-700">
-                欲しい食材から出店を探せるので、買い逃しが減ります。
-                気になるお店はその場でメモできます。
-              </p>
-            </div>
-            <div className="rounded-2xl border border-orange-100 bg-white/90 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-amber-900">声で広がるおすすめ</h3>
-              <p className="mt-2 text-sm text-gray-700">
-                ことづてでリアルな声が集まるので、地元の推しに出会えます。
-                「次はここ行ってみよう」が生まれます。
-              </p>
-            </div>
-            <div className="rounded-2xl border border-orange-100 bg-white/90 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-amber-900">地図からすぐ始める</h3>
-              <p className="mt-2 text-sm text-gray-700">
-                ボタンからすぐにマップへ。今の市場を眺めながら、
-                今日の一歩目を決められます。
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
