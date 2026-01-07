@@ -98,7 +98,7 @@ export default function HamburgerMenu() {
               </Link>
             ) : (
               <div className="text-sm text-gray-700">
-                ログインすると保存やbag・バッジが利用できます。
+                ログインすると保存やバッグ・バッジが利用できます。
               </div>
             )}
           </div>
@@ -245,7 +245,7 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="bag" className="h-5 w-5 text-gray-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">bag</p>
+                            <p className="text-sm font-medium">バッグ</p>
                             <p className="text-xs text-gray-500">気になるものを保存</p>
                           </div>
                         </Link>
@@ -350,7 +350,7 @@ export default function HamburgerMenu() {
 
           {/* フッター */}
           <div className="border-t border-gray-200 px-6 py-4">
-            <p className="text-xs text-gray-500 text-center">&copy; 2025 nicchyo</p>
+            <p className="text-xs text-gray-500 text-center">&copy; 2026 nicchyo</p>
           </div>
         </div>
       </div>
