@@ -133,10 +133,8 @@ export default function HomePage() {
             </button>
           </header>
 
-          <div className="relative mx-auto flex h-full w-full max-w-xl flex-col justify-center px-6 pb-0 md:max-w-2xl">
-            <div className="relative mt-0 rounded-3xl border border-white/30 bg-white/55 p-6 shadow-xl backdrop-blur-xl md:p-8">
-              <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-b from-white/50 via-transparent to-transparent" />
-              <div className="relative space-y-6">
+          <div className="relative mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-6 pb-0">
+            <div className="relative space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
                   日曜市のデジタルマップ
@@ -306,7 +304,6 @@ export default function HomePage() {
                     </div>
                   </button>
                 </div>
-              </div>
             </div>
           </div>
         </div>
