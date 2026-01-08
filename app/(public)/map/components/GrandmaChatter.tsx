@@ -70,6 +70,7 @@ export default function GrandmaChatter({
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const askRequestRef = useRef(0);
+  const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -196,9 +197,12 @@ export default function GrandmaChatter({
           inputRef.current.focus();
         }
       }
+      lastAvatarOffsetRef.current = avatarOffset;
+      setAvatarOffset({ x: 0, y: 0 });
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
+      setAvatarOffset(lastAvatarOffsetRef.current);
       inputRef.current?.blur();
     }
   };
