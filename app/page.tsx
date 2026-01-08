@@ -111,17 +111,11 @@ export default function HomePage() {
 
           </header>
 
-          <div className="relative mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-6 pb-0">
+          <div className="relative mx-auto flex h-full w-full max-w-4xl -translate-y-5 flex-col justify-center px-6 pb-0">
             <div className="relative space-y-6">
                 <div className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
-                  日曜市のデジタルマップ
-                </div>
-                <div className="mt-1">
-                  <h1 className="inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
-                    <span className="h-2 w-2 rounded-full bg-amber-400" />
-                    高知高専×日曜市
-                  </h1>
+                  日曜市×高知高専×デジタルマップ
                 </div>
 
                 <div className="flex items-center justify-center">
