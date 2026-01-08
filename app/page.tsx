@@ -1,13 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapLoading } from "./components/MapLoadingProvider";
-
-const MapView = dynamic(() => import("./(public)/map/components/MapView"), {
-  ssr: false,
-});
 
 export default function HomePage() {
   const router = useRouter();
@@ -88,30 +83,20 @@ export default function HomePage() {
   }, [posters.length]);
 
   return (
-    <div className="h-screen overflow-hidden bg-amber-50 text-gray-900">
+    <div className="h-screen overflow-hidden text-gray-900">
       <section className="relative h-screen w-screen overflow-hidden">
         <div
-          className={`absolute inset-0 scale-[1.06] transition-opacity duration-300 filter blur-[3px] brightness-95 contrast-90 ${
+          className={`absolute inset-0 z-0 scale-[1.06] transition-opacity duration-300 filter blur-[3px] brightness-95 contrast-90 ${
             loaded ? "opacity-100" : "opacity-0"
           }`}
         >
-          <MapView />
+          <img
+            src="/homepagebackground.png"
+            alt=""
+            className="h-full w-full object-cover"
+          />
         </div>
         <div className="absolute inset-0 z-10 flex flex-col text-gray-900">
-          <div className="pointer-events-none absolute -top-20 left-6 h-52 w-52 rounded-full bg-amber-200/30 blur-3xl" />
-          <div className="pointer-events-none absolute right-4 top-24 h-64 w-64 rounded-full bg-orange-200/25 blur-3xl" />
-          <div className="pointer-events-none absolute bottom-24 left-8 h-56 w-56 rounded-full bg-emerald-100/20 blur-3xl" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85)_0%,_rgba(255,255,255,0.6)_45%,_rgba(255,255,255,0.9)_100%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,0)_55%,_rgba(15,8,0,0.18)_100%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-30 mix-blend-soft-light bg-[linear-gradient(120deg,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_45%,rgba(255,255,255,0.25)_100%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-soft-light bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.5)_0,rgba(255,255,255,0.5)_1px,rgba(255,255,255,0)_1px,rgba(255,255,255,0)_6px)]" />
-          <div
-            className="pointer-events-none absolute inset-0 opacity-10 mix-blend-soft-light"
-            style={{
-              backgroundImage:
-                "url('data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.4'/></svg>')",
-            }}
-          />
           <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-[calc(env(safe-area-inset-top)+12px)]">
             <div className="flex items-center gap-3 text-2xl font-semibold tracking-[0.18em] text-amber-900">
               <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-amber-200/80 shadow-sm">
@@ -132,9 +117,12 @@ export default function HomePage() {
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
                   日曜市のデジタルマップ
                 </div>
-                <h1 className="text-3xl font-bold leading-tight text-amber-950 font-['Cinzel','Yu_Mincho','Hiragino_Mincho_ProN',serif] tracking-[0.12em]">
-                  高知高専×日曜市
-                </h1>
+                <div className="mt-1">
+                  <h1 className="inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-amber-400" />
+                    高知高専×日曜市
+                  </h1>
+                </div>
 
                 <div className="flex items-center justify-center">
                   <div className="relative w-full overflow-hidden">
@@ -248,7 +236,7 @@ export default function HomePage() {
                     loaded ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
                   }`}
                 >
-                  <div className="relative shrink-0">
+                  <div className="relative shrink-0 -mt-5">
                     <div className="absolute top-full left-1/2 -translate-x-1/2">
                       <span className="relative -top-[4px] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
                         おせっかいばあちゃん
