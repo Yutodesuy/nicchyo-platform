@@ -316,7 +316,7 @@ const MapView = memo(function MapView({
             font-size="43" font-weight="800" letter-spacing="6" fill="#3b2b21">
             <tspan dy="60" fill="#f2c94c">タ</tspan><tspan fill="#f2c94c">テ</tspan>
             <tspan dy="-20">に</tspan>
-            <tspan dy="-55" dx="-45" fill="#3aa856">な</tspan><tspan fill="#3aa856">が</tspan><tspan fill="#3aa856">～</tspan><tspan fill="#3aa856">～</tspan><tspan fill="#3aa856">い</tspan>
+            <tspan dy="-55" dx="-45" fill="#3aa856">な</tspan><tspan fill="#3aa856">が</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">い</tspan>
           </text>
         </g>
       </svg>
