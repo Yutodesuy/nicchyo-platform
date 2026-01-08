@@ -125,7 +125,11 @@ const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
 const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
 const LEFT_SIDE_LABEL_LAT = RIGHT_SIDE_LABEL_LAT;
 const LEFT_SIDE_LABEL_LNG =
-  Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0012 + LEFT_SIDE_SHIFT_LNG;
+  Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0068 + LEFT_SIDE_SHIFT_LNG;
+const RIGHT_LABEL_HEIGHT_LAT = 0.12;
+const RIGHT_LABEL_WIDTH_LNG = 0.016;
+const LEFT_LABEL_HEIGHT_LAT = 0.076;
+const LEFT_LABEL_WIDTH_LNG = 0.012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
@@ -299,56 +303,45 @@ const MapView = memo(function MapView({
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
   );
-  const rightSideLabelIcon = useMemo(
-    () =>
-      L.divIcon({
-        className: "map-side-label",
-        html: `
-          <div style="
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 43px;
-            font-weight: 800;
-            letter-spacing: 6px;
-            color: #3b2b21;
-            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
-            line-height: 1;
-            white-space: nowrap;
-            transform: translateY(-200px);
-          ">
-            <span style="color: #f2c94c;">タテ</span><span>に</span><span style="color: #3aa856; display: block; margin-top: 100px;">なが～～い</span>
-          </div>
-        `,
-        iconSize: [1, 1],
-        iconAnchor: [0, 0],
-      }),
-    []
-  );
-  const leftSideLabelIcon = useMemo(
-    () =>
-      L.divIcon({
-        className: "map-side-label",
-        html: `
-          <div style="
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 48px;
-            font-weight: 800;
-            letter-spacing: 6px;
-            color: #d2b48c;
-            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
-            line-height: 1;
-            white-space: nowrap;
-            transform: translateX(-80px) translateY(50px);
-          ">
+  const rightSideLabelSvg = useMemo(() => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="260" height="860" viewBox="0 0 260 860">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <text x="200" y="150" writing-mode="vertical-rl" text-orientation="upright"
+            font-size="43" font-weight="800" letter-spacing="6" fill="#3b2b21">
+            <tspan dy="60" fill="#f2c94c">タ</tspan><tspan fill="#f2c94c">テ</tspan>
+            <tspan dy="-20">に</tspan>
+            <tspan dy="-55" dx="-45" fill="#3aa856">な</tspan><tspan fill="#3aa856">が</tspan><tspan fill="#3aa856">～</tspan><tspan fill="#3aa856">～</tspan><tspan fill="#3aa856">い</tspan>
+          </text>
+        </g>
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }, []);
+
+  const leftSideLabelSvg = useMemo(() => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="200" height="520" viewBox="0 0 200 520">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <text x="110" y="230" writing-mode="vertical-rl" text-orientation="upright"
+            font-size="48" font-weight="800" letter-spacing="6" fill="#d2b48c">
             日曜市
-          </div>
-        `,
-        iconSize: [1, 1],
-        iconAnchor: [0, 0],
-      }),
-    []
-  );
+          </text>
+        </g>
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }, []);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
@@ -637,15 +630,23 @@ const MapView = memo(function MapView({
         <RoadOverlay />
         <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
         <Pane name="map-label" style={{ zIndex: 900 }}>
-          <Marker
-            position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
-            icon={rightSideLabelIcon}
-            interactive={false}
+          <ImageOverlay
+            url={rightSideLabelSvg}
+            bounds={[
+              [RIGHT_SIDE_LABEL_LAT + RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG - RIGHT_LABEL_WIDTH_LNG / 2],
+              [RIGHT_SIDE_LABEL_LAT - RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG + RIGHT_LABEL_WIDTH_LNG / 2],
+            ]}
+            opacity={1}
+            zIndex={90}
           />
-          <Marker
-            position={[LEFT_SIDE_LABEL_LAT, LEFT_SIDE_LABEL_LNG]}
-            icon={leftSideLabelIcon}
-            interactive={false}
+          <ImageOverlay
+            url={leftSideLabelSvg}
+            bounds={[
+              [LEFT_SIDE_LABEL_LAT + LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG - LEFT_LABEL_WIDTH_LNG / 2],
+              [LEFT_SIDE_LABEL_LAT - LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG + LEFT_LABEL_WIDTH_LNG / 2],
+            ]}
+            opacity={1}
+            zIndex={90}
           />
         </Pane>
 
