@@ -351,7 +351,8 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids ?? aiMarkerPayload?.ids}
+              searchShopIds={searchMarkerPayload?.ids}
+              aiShopIds={aiMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
