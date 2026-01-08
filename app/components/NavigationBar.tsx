@@ -46,6 +46,7 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
               key={item.name}
               href={item.href}
               onClick={handleClick}
+              prefetch={item.href === "/search"}
               className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
               }`}
