@@ -277,6 +277,7 @@ type MapViewProps = {
   highlightEventTargets?: boolean;
   onMapInstance?: (map: L.Map) => void;
   onUserLocationUpdate?: (coords: { lat: number; lng: number }) => void;
+  aiShopIds?: number[];
 };
 
 const MapView = memo(function MapView({
@@ -294,6 +295,7 @@ const MapView = memo(function MapView({
   highlightEventTargets = false,
   onMapInstance,
   onUserLocationUpdate,
+  aiShopIds,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const sourceShops = useMemo(
@@ -791,7 +793,8 @@ const MapView = memo(function MapView({
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
           favoriteShopIds={favoriteShopIds}
-          highlightShopIds={searchShopIds}
+          searchShopIds={searchShopIds}
+          aiHighlightShopIds={aiShopIds}
         />
 
         {/* レシピオーバーレイ */}
