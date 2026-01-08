@@ -62,10 +62,9 @@ const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
 // Zoom config by shop count
 const ZOOM_CONFIG = getZoomConfig(baseShops.length);
-// 【スマホUX最適化】デフォルトズームを18.0に設定
-const INITIAL_ZOOM = 18.0;
 const MIN_ZOOM = ZOOM_BOUNDS.min;
 const MAX_ZOOM = ZOOM_BOUNDS.max;
+const INITIAL_ZOOM = MAX_ZOOM;
 
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
@@ -111,7 +110,7 @@ const BUILDING_COLUMN_BOUNDS = BUILDING_COLUMN_TOP_LATS.map((topLat) => [
 ]) as [[number, number], [number, number]][];
 const BUILDING_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.slice(2);
 const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
-const ROAD_SEPARATOR_WIDTH_LNG = 0.00008;
+const ROAD_SEPARATOR_WIDTH_LNG = 0.00004;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
 const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;

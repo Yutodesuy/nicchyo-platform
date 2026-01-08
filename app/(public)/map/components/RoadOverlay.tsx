@@ -13,7 +13,7 @@ const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 export default function RoadOverlay() {
   const config = ROAD_CONFIG;
   const roadWidthLng = Math.abs(config.bounds[0][1] - config.bounds[1][1]);
-  const separatorWidthLng = 0.00008;
+  const separatorWidthLng = 0.00004;
   const roadOffsetLng = roadWidthLng + separatorWidthLng;
 
   if (config.type === 'curved' && config.segments) {
