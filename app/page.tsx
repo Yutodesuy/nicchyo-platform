@@ -123,19 +123,12 @@ export default function HomePage() {
               </span>
               nicchyo
             </div>
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/50 shadow-sm backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
-              aria-label="ログインメニュー"
-            >
-              <span className="text-sm text-amber-800">?</span>
-            </button>
+
           </header>
 
           <div className="relative mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-6 pb-0">
             <div className="relative space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
+                <div className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
                   日曜市のデジタルマップ
                 </div>
@@ -247,17 +240,7 @@ export default function HomePage() {
                       </span>
                     </button>
                   </div>
-                  <p className="text-[11px] font-semibold text-amber-800/80">
-                    ログインなしで閲覧できます
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/login")}
-                    className="inline-flex w-full items-center justify-center rounded-2xl border border-amber-200/80 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-900/80 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
-                    aria-label="ログインする"
-                  >
-                    ログインする
-                  </button>
+
                 </div>
 
                 <div
