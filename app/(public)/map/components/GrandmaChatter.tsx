@@ -1,4 +1,4 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -389,8 +389,8 @@ export default function GrandmaChatter({
     ? priorityMessage.text
     : current.text;
   const bubbleIcon = isChatOpen
-    ? "💬"
-    : priorityMessage?.badgeIcon ?? current.icon ?? genreIcon(current.genre);
+    ? "🤖"
+    : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
 
   return (
     <div className={shellClassName}>
@@ -618,16 +618,37 @@ export default function GrandmaChatter({
   );
 }
 
-function genreIcon(genre: string) {
-  switch (genre) {
-    case "event":
-      return "??";
-    case "notice":
-      return "??";
-    case "tutorial":
-      return "??";
-    case "monologue":
-    default:
-      return "??";
+function pickCommentIcon(comment: { genre: string; text: string }) {
+  const text = comment.text;
+  if (comment.genre === "event") return "🎉";
+  if (comment.genre === "notice") {
+    if (text.includes("バッグ") || text.includes("bag")) return "👜";
+    if (text.includes("ブロック")) return "🧭";
+    return "⚠️";
   }
+  if (comment.genre === "tutorial") {
+    if (text.includes("検索") || text.includes("探")) return "🔎";
+    return "👆";
+  }
+
+  if (text.includes("雨")) return "☔";
+  if (text.includes("風")) return "🌬️";
+  if (text.includes("夕方")) return "🌇";
+  if (text.includes("朝")) return "🌅";
+  if (text.includes("写真")) return "📸";
+  if (text.includes("城") || text.includes("城下町")) return "🏯";
+  if (text.includes("季節")) return "🍁";
+  if (text.includes("果物")) return "🍊";
+  if (text.includes("野菜") || text.includes("食材")) return "🥬";
+  if (text.includes("飲み物")) return "🥤";
+  if (text.includes("甘い")) return "🍡";
+  if (text.includes("屋台") || text.includes("お腹") || text.includes("料理") || text.includes("食べ")) return "🍽️";
+  if (text.includes("休") || text.includes("座") || text.includes("ベンチ")) return "🪑";
+  if (text.includes("音楽")) return "🎵";
+  if (text.includes("迷子") || text.includes("人が多い")) return "👥";
+  if (text.includes("お土産") || text.includes("お気に入り")) return "🎁";
+  if (text.includes("道") || text.includes("散歩") || text.includes("歩")) return "🚶";
+  if (text.includes("時間") || text.includes("早め")) return "⏰";
+
+  return "💬";
 }
