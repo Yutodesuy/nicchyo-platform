@@ -22,8 +22,8 @@ export interface RoadConfig {
 export const ROAD_CONFIG: RoadConfig = {
   type: 'placeholder',
   bounds: [
-    [33.56500, 133.53200],
-    [33.55330, 133.53000],
+    [33.56500, 133.53150],
+    [33.55330, 133.53050],
   ],
   centerLine: 133.53100,
   widthOffset: 0.0001,
