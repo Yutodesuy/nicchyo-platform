@@ -849,7 +849,7 @@ const MapView = memo(function MapView({
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
         {/* モバイルズームコントロール */}
-        {isMobile && <MobileZoomControls />}
+        {false && isMobile && <MobileZoomControls />}
       </MapContainer>
 
       {/* レシピモード閉じるボタン */}
