@@ -244,7 +244,7 @@ function renderSeparatorPalms(
 
   const palmCount = 4;
   const segmentLat = totalLat / palmCount;
-  let palmHeightLat = totalLat * 0.24;
+  let palmHeightLat = totalLat * 0.06;
   let palmWidthLng = palmHeightLat * palmAspect;
   const palmWestLng = westLng + (totalLng - palmWidthLng) / 2;
   const palmOffsetLat = segmentLat * 0.1;
