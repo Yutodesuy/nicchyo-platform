@@ -46,6 +46,7 @@ import {
   ViewMode,
   canShowShopDetailBanner,
 } from '../config/displayConfig';
+import { useBag } from "../../../../lib/storage/BagContext";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -193,35 +194,7 @@ const BUILDING_SVG_URLS = BUILDING_COLOR_THEMES.map(
   (theme) => `data:image/svg+xml,${encodeURIComponent(buildBuildingSvg(theme))}`
 );
 
-type BagItem = {
-  id: string;
-  name: string;
-  fromShopId?: number;
-  category?: string;
-  qty?: string;
-  note?: string;
-  photo?: string;
-  createdAt: number;
-};
-
-const STORAGE_KEY = "nicchyo-fridge-items";
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
-
-function loadBag(): BagItem[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
-}
-
-function saveBag(items: BagItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
 
 function isIngredientName(name: string) {
   const lower = name.trim().toLowerCase();
@@ -298,6 +271,7 @@ const MapView = memo(function MapView({
   aiShopIds,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const { addItem } = useBag();
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
@@ -564,22 +538,9 @@ const MapView = memo(function MapView({
   const handleAddToBag = useCallback((name: string, fromShopId?: number) => {
     const value = name.trim();
     if (!value) return;
-    const items = loadBag();
-    const normalized = value.toLowerCase();
-    const exists = items.some(
-      (item) =>
-        item.name.trim().toLowerCase() === normalized &&
-        item.fromShopId === fromShopId
-    );
-    if (exists) return;
-
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const category = isIngredientName(value) ? "食材" : undefined;
-    saveBag([{ id, name: value, fromShopId, category, createdAt: Date.now() }, ...items]);
-  }, []);
+    addItem({ name: value, fromShopId, category });
+  }, [addItem]);
 
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
