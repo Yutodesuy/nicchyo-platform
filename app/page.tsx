@@ -8,16 +8,6 @@ export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
   const [loaded, setLoaded] = useState(false);
-  const homeNpcLines = useState(
-    () => [
-      "今日はどこから歩く？ まずはマップを開いてみて！",
-      "気になる屋台があったら、まずは覗いてみて。",
-      "歩きながら探すと、新しい出会いがあるかもね。",
-      "迷ったら、人気のお店から行ってみるとえいよ。",
-      "寄り道しながらゆっくり歩くのが日曜市の楽しみ。",
-    ]
-  )[0];
-  const [npcLineIndex, setNpcLineIndex] = useState(0);
   const posters = [
     {
       title: "おばあちゃんおせっかい 1",
@@ -89,13 +79,6 @@ export default function HomePage() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setNpcLineIndex((prev) => (prev + 1) % homeNpcLines.length);
-    }, 6500);
-    return () => window.clearInterval(timer);
-  }, [homeNpcLines.length]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
       setCarouselIndex((prev) => prev + 1);
     }, 8000);
     return () => window.clearInterval(timer);
@@ -161,19 +144,12 @@ export default function HomePage() {
         <div className="absolute inset-0 z-10 flex flex-col text-gray-900">
           <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-[calc(env(safe-area-inset-top)+12px)]">
             <div className="flex items-center gap-3 text-2xl font-semibold tracking-[0.18em] text-amber-900">
-              <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-amber-200/80 shadow-sm">
-                <img
-                  src="/images/obaasan.webp"
-                  alt="おせっかいばあちゃん"
-                  className="h-full w-full object-cover"
-                />
-              </span>
               nicchyo
             </div>
 
           </header>
 
-          <div className="relative mx-auto flex h-full w-full max-w-4xl -translate-y-5 flex-col justify-center px-6 pb-0">
+          <div className="relative mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-6 pb-0">
             <div className="relative space-y-6">
                 <div className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
@@ -277,51 +253,6 @@ export default function HomePage() {
                     </button>
                   </div>
 
-                </div>
-
-                <div
-                  className={`mt-6 flex items-end gap-3 transition-all duration-700 ${
-                    loaded ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-                  }`}
-                >
-                  <div className="relative shrink-0 -mt-5">
-                    <div className="absolute top-full left-1/2 -translate-x-1/2">
-                      <span className="relative -top-[4px] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
-                        おせっかいばあちゃん
-                      </span>
-                    </div>
-                    <div className="relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]">
-                      <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
-                      <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
-                        <img
-                          src="/images/obaasan.webp"
-                          alt="おせっかいばあちゃん"
-                          className="h-full w-full scale-110 object-cover object-center"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNpcLineIndex((prev) => (prev + 1) % homeNpcLines.length)
-                    }
-                    className="group relative max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl"
-                    aria-label="おばあちゃんのコメントを進める"
-                  >
-                    <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
-                    <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl" aria-hidden>
-                        ✨
-                      </span>
-                      <div className="space-y-1">
-                        <p className="text-base leading-relaxed text-gray-900">
-                          {homeNpcLines[npcLineIndex]}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
                 </div>
             </div>
           </div>
