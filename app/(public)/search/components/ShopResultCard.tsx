@@ -5,6 +5,7 @@ import { memo } from "react";
 import type { MouseEvent } from "react";
 import { Shop } from "../../map/data/shops";
 import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 interface ShopResultCardProps {
   shop: Shop;
@@ -33,7 +34,7 @@ function ShopResultCard({
     shop.images?.main ||
     shop.images?.thumbnail ||
     shop.images?.additional?.[0] ||
-    "/images/shops/tosahamono.webp";
+    getShopBannerImage(shop.category);
   const mapLabel = mapLabelProp ?? shop.name;
   const mapHref = enableSearchMapHighlight
     ? `/map?search=1&label=${encodeURIComponent(mapLabel)}&shop=${shop.id}`
