@@ -206,6 +206,22 @@ body.grandma-chat-open .leaflet-container {
     drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
 }
 
+.shop-marker-search .stall-roof {
+  background: linear-gradient(135deg, #93c5fd, #2563eb) !important;
+}
+
+.shop-marker-search .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #2563eb 0 10%,
+    #93c5fd 10% 20%
+  ) !important;
+}
+
+.shop-marker-search .shop-marker-compact {
+  background: linear-gradient(180deg, #60a5fa 0%, #1d4ed8 100%) !important;
+}
+
 .shop-marker-ai .stall-roof {
   background: linear-gradient(135deg, #fca5a5, #ef4444) !important;
 }

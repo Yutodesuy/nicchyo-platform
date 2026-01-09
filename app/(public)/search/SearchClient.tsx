@@ -80,6 +80,9 @@ export default function SearchClient({ shops }: SearchClientProps) {
     return '検索結果';
   }, [textQuery, category, blockNumber]);
 
+  const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
+  const shouldShowMapButton = category !== null || hasNameResults;
+
   useEffect(() => {
     setVisibleCount(itemsPerPage);
   }, [itemsPerPage, textQuery, category, blockNumber]);
@@ -170,8 +173,9 @@ export default function SearchClient({ shops }: SearchClientProps) {
             onLoadMore={handleLoadMore}
             onToggleFavorite={handleToggleFavorite}
             onSelectShop={setSelectedShop}
-            onOpenMap={handleOpenMap}
+            onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
             mapLabel={searchLabel}
+            enableSearchMapHighlight
           />
         </section>
       </main>
