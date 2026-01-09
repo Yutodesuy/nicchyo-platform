@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
+import { useBag } from "../../../../lib/storage/BagContext";
 import {
   FAVORITE_SHOPS_KEY,
   FAVORITE_SHOPS_UPDATED_EVENT,
@@ -52,6 +53,7 @@ export default function ShopDetailBanner({
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
+  const { addItem } = useBag();
   const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
   const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
@@ -176,14 +178,18 @@ export default function ShopDetailBanner({
 
   const handleConfirmAdd = useCallback(() => {
     if (!pendingProduct) return;
-    onAddToBag?.(pendingProduct, shop.id);
+    if (onAddToBag) {
+      onAddToBag(pendingProduct, shop.id);
+    } else {
+      addItem({ name: pendingProduct, fromShopId: shop.id });
+    }
     setBagProductKeys((prev) => {
       const next = new Set(prev);
       next.add(buildBagKey(pendingProduct, shop.id));
       return next;
     });
     setPendingProduct(null);
-  }, [onAddToBag, pendingProduct, shop.id]);
+  }, [addItem, onAddToBag, pendingProduct, shop.id]);
 
   const handleCancelAdd = useCallback(() => {
     setPendingProduct(null);
