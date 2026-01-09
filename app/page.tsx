@@ -144,6 +144,13 @@ export default function HomePage() {
         <div className="absolute inset-0 z-10 flex flex-col text-gray-900">
           <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-[calc(env(safe-area-inset-top)+12px)]">
             <div className="flex items-center gap-3 text-2xl font-semibold tracking-[0.18em] text-amber-900">
+              <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-amber-200/80 shadow-sm">
+                <img
+                  src="/images/obaasan.webp"
+                  alt="おせっかいばあちゃん"
+                  className="h-full w-full object-cover"
+                />
+              </span>
               nicchyo
             </div>
 
