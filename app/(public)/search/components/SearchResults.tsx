@@ -18,6 +18,7 @@ interface SearchResultsProps {
   onSelectShop?: (shop: Shop) => void;
   onOpenMap?: () => void;
   mapLabel?: string;
+  enableSearchMapHighlight?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ export default function SearchResults({
   onSelectShop,
   onOpenMap,
   mapLabel,
+  enableSearchMapHighlight = false,
 }: SearchResultsProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -94,6 +96,7 @@ export default function SearchResults({
             isFavorite={favoriteShopIds.includes(shop.id)}
             onToggleFavorite={onToggleFavorite}
             onSelectShop={onSelectShop}
+            enableSearchMapHighlight={enableSearchMapHighlight}
           />
         ))}
       </div>
