@@ -285,6 +285,10 @@ body.shop-banner-open .hamburger-button {
   display: none;
 }
 
+body.home-poster-zoom-open .hamburger-button {
+  display: none;
+}
+
 .shop-marker-compact {
   width: 24px;
   height: 36px;
