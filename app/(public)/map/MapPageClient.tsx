@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
@@ -314,10 +315,10 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
                       ×
                     </button>
                   </div>
-                  {(vendorShop?.images?.main || "/images/shops/tosahamono.webp") && (
+                  {(vendorShop?.images?.main || getShopBannerImage(vendorShop?.category)) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
                       <img
-                        src={vendorShop?.images?.main ?? "/images/shops/tosahamono.webp"}
+                        src={vendorShop?.images?.main ?? getShopBannerImage(vendorShop?.category)}
                         alt={`${vendorShopName}の写真`}
                         className="h-40 w-full object-cover object-center"
                       />

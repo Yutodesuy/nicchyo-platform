@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Shop } from "../data/shops";
 import { useAuth } from "../../../../lib/auth/AuthContext";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 import {
   FAVORITE_SHOPS_KEY,
   FAVORITE_SHOPS_UPDATED_EVENT,
@@ -167,6 +168,7 @@ export default function ShopDetailBanner({
   }, [shop.id]);
 
   const canEditShop = permissions.canEditShop(shop.id);
+  const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category);
 
   const handleEditShop = useCallback(() => {
     router.push("/my-shop");
@@ -234,7 +236,7 @@ export default function ShopDetailBanner({
         {/* 写真 */}
         <div className="mt-2 overflow-hidden rounded-2xl border border-orange-300 bg-white">
           <Image
-            src="/images/shops/tosahamono.webp"
+            src={bannerImage}
             alt={`${shop.name}の写真`}
             width={960}
             height={640}
