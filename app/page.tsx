@@ -23,40 +23,48 @@ export default function HomePage() {
       title: "おばあちゃんおせっかい 1",
       lead: "めっちゃ喋りかけてくる？！",
       accent: "声に導かれる",
+      image: "/images/home/posters/HomePagePoster1.png",
     },
     {
       title: "おばあちゃんおせっかい 2",
       lead: "日曜市について質問できる？！",
       accent: "聞いたら返ってくる",
+      image: "/images/home/posters/HomePagePoster2.png",
     },
     {
       title: "おばあちゃんおせっかい 3",
       lead: "日曜市周辺にも詳しい？！",
       accent: "街まで守備範囲",
+      image: "/images/home/posters/HomePagePoster3.jpeg",
     },
     {
       title: "魅力的なマップ",
       lead: "現在地機能と直感操作で日曜市を楽しめ！",
       accent: "歩く体験が中心",
+      image: "/images/home/posters/HomePagePoster4.png",
     },
     {
       title: "便利な検索機能",
       lead: "ジャンル検索とマップ表示が楽！",
       accent: "探すがすぐ叶う",
+      image: "/images/home/posters/HomePagePoster5.png",
     },
     {
       title: "これが欲しかったレシピ機能",
       lead: "土佐の郷土料理と日曜市の商品がつながる！",
       accent: "買い物と献立が一つに",
+      image: "/images/home/posters/HomePagePoster6.jpeg",
     },
     {
       title: "これで安心ことづて機能",
       lead: "その日限りの新鮮な情報をみんなで共有！",
       accent: "今日の声が集まる",
+      image: "/images/home/posters/HomePagePoster7.png",
     },
   ];
   const [carouselIndex, setCarouselIndex] = useState(1);
   const [carouselTransition, setCarouselTransition] = useState(true);
+  const [zoomPoster, setZoomPoster] = useState<null | { title: string; image: string }>(null);
   const carouselItems =
     posters.length > 0
       ? [posters[posters.length - 1], ...posters, posters[0]]
@@ -150,7 +158,7 @@ export default function HomePage() {
                       }}
                     >
                       {carouselItems.map((item, index) => (
-                        <div
+                        <button
                           key={`${item.title}-${index}`}
                           className={`w-full shrink-0 rounded-2xl border border-amber-200/70 px-5 py-6 min-h-[220px] shadow-sm ${
                             index === carouselIndex ? "opacity-100" : "opacity-70"
@@ -169,20 +177,18 @@ export default function HomePage() {
                               ? "bg-lime-50"
                               : "bg-yellow-50"
                           }`}
+                          type="button"
+                          onClick={() => setZoomPoster({ title: item.title, image: item.image })}
+                          aria-label={`${item.title}を拡大表示`}
                         >
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700/80">
-                            poster
+                          <div className="mt-3 overflow-hidden rounded-xl border border-amber-200/70 bg-white shadow-sm">
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="h-32 w-full object-cover object-center"
+                            />
                           </div>
-                          <p className="mt-4 text-lg font-bold text-amber-900">
-                            {item.title}
-                          </p>
-                          <p className="mt-3 text-sm font-semibold text-amber-800/90">
-                            {item.lead}
-                          </p>
-                          <p className="mt-4 text-[11px] font-semibold text-amber-700/70">
-                            {item.accent}
-                          </p>
-                        </div>
+                        </button>
                       ))}
                     </div>
                     <div className="mt-3 flex items-center justify-center gap-2">
@@ -273,7 +279,27 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
+      {zoomPoster && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 px-4">
+          <div className="relative w-full max-w-4xl">
+            <button
+              type="button"
+              onClick={() => setZoomPoster(null)}
+              className="absolute -top-4 -right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-bold text-gray-900 shadow-lg"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+            <div className="overflow-hidden rounded-2xl border border-white/40 bg-black shadow-2xl">
+              <img
+                src={zoomPoster.image}
+                alt={zoomPoster.title}
+                className="max-h-[80vh] w-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
