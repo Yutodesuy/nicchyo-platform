@@ -160,7 +160,7 @@ export default function HomePage() {
                       {carouselItems.map((item, index) => (
                         <button
                           key={`${item.title}-${index}`}
-                          className={`w-full shrink-0 rounded-2xl border border-amber-200/70 px-5 py-6 min-h-[220px] shadow-sm ${
+                          className={`relative w-full shrink-0 overflow-hidden rounded-2xl border border-amber-200/70 min-h-[220px] shadow-sm ${
                             index === carouselIndex ? "opacity-100" : "opacity-70"
                           } ${
                             index % 7 === 0
@@ -181,13 +181,11 @@ export default function HomePage() {
                           onClick={() => setZoomPoster({ title: item.title, image: item.image })}
                           aria-label={`${item.title}を拡大表示`}
                         >
-                          <div className="mt-3 overflow-hidden rounded-xl border border-amber-200/70 bg-white shadow-sm">
-                            <img
-                              src={item.image}
-                              alt={item.title}
-                              className="h-32 w-full object-cover object-center"
-                            />
-                          </div>
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="h-full w-full object-cover object-center"
+                          />
                         </button>
                       ))}
                     </div>
