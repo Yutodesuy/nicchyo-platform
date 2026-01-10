@@ -30,19 +30,21 @@ type MapPageClientProps = {
 const INTRO_PRODUCT_COUNT = 2;
 const NEARBY_RADIUS_METERS = 120;
 const NEARBY_MAX_SHOPS = 10;
-const INTRO_TAP_HINT = "（タップ！）";
+const INTRO_TAP_HINT = "👆";
 
 function buildShopIntroText(shop: Shop): string {
   const name = shop.name?.trim() || `お店${shop.id}`;
   const category = shop.category?.trim() || "いろいろ";
+  const icon = shop.icon?.trim() || "";
+  const categoryLabel = icon ? `${category} ${icon}` : category;
   const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
   if (products.length === 0) {
-    return `「${name}」は${category}のお店で、いろいろ売りゆうよ。`;
+    return `「${name}」は${categoryLabel}のお店で、いろいろ売りゆうよ。${INTRO_TAP_HINT}`;
   }
   const picked = products.slice(0, INTRO_PRODUCT_COUNT);
   const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
   const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
-  return `「${name}」は${category}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
+  return `「${name}」は${categoryLabel}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
 }
 
 function distanceMeters(
@@ -68,6 +70,15 @@ function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
   for (let i = 0; i < max; i += 1) {
     if (primary[i]) result.push(primary[i]);
     if (secondary[i]) result.push(secondary[i]);
+  }
+  return result;
+}
+
+function shuffleArray<T>(items: T[]): T[] {
+  const result = items.slice();
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
 }
@@ -327,8 +338,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     }
 
     if (isInMarket === false) {
-      return [...shops]
-        .sort((a, b) => a.id - b.id)
+      return shuffleArray(shops)
         .map((shop) => ({
           id: `shop-${shop.id}`,
           genre: "notice" as const,
