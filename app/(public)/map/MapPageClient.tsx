@@ -499,7 +499,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               kotoduteShopIds={kotoduteShopIds}
             />
             <GrandmaChatter
-              titleLabel="マップばあちゃん"
+              titleLabel="にちよさん"
               fullWidth
               comments={commentPool}
               onAsk={handleGrandmaAsk}

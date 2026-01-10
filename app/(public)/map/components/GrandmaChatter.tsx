@@ -423,7 +423,7 @@ export default function GrandmaChatter({
           }}
         >
           <div className={labelClassName}>
-            <span className="relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+            <span className="grandma-title-label relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 font-semibold text-white shadow-sm">
               {titleLabel}
             </span>
           </div>
