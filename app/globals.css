@@ -314,6 +314,10 @@ body.grandma-chat-open .leaflet-container {
   right: -36px;
 }
 
+.grandma-title-label {
+  font-size: 14px;
+}
+
 .shop-marker-kotodute .shop-kotodute-badge {
   display: inline-flex;
 }
