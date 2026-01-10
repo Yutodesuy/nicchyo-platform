@@ -380,9 +380,10 @@ export default function GrandmaChatter({
   const avatarClassName = fullWidth
     ? "relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]"
     : "relative h-[33px] w-[33px] shrink-0 sm:h-[39px] sm:w-[39px]";
-  const bubbleClassName = fullWidth
-    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
-    : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
+  const bubbleBaseClassName = fullWidth
+    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
+    : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
+  const bubbleBorderClass = isShopIntro ? "border-emerald-400" : "border-amber-400";
   const bubbleStateClass =
     holdPhase === "active"
       ? "invisible"
@@ -470,7 +471,7 @@ export default function GrandmaChatter({
                   handleNext();
                 }
           }
-          className={`${bubbleClassName} ${bubbleStateClass}`}
+          className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
           aria-label="ばあちゃんのコメントを開く"
         >
           {!fullWidth && (
