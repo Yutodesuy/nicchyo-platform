@@ -159,6 +159,7 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
 
             markerRef.current = newMarker;
           }
+          onLocationUpdateRef.current?.(false, defaultPosition);
         },
         {
           enableHighAccuracy: true,
@@ -195,6 +196,7 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
     `);
 
     markerRef.current = newMarker;
+    onLocationUpdateRef.current?.(false, defaultPosition);
     return () => {
       if (markerRef.current) {
         map.removeLayer(markerRef.current);
