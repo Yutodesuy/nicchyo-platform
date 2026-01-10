@@ -5,13 +5,16 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
-import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
+import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
+import { grandmaComments } from "./data/grandmaComments";
+import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
@@ -23,6 +26,62 @@ const MapView = dynamic(() => import("./components/MapView"), {
 type MapPageClientProps = {
   shops: Shop[];
 };
+
+const INTRO_PRODUCT_COUNT = 2;
+const NEARBY_RADIUS_METERS = 120;
+const NEARBY_MAX_SHOPS = 10;
+const INTRO_TAP_HINT = "👆";
+
+function buildShopIntroText(shop: Shop): string {
+  const name = shop.name?.trim() || `お店${shop.id}`;
+  const category = shop.category?.trim() || "いろいろ";
+  const icon = shop.icon?.trim() || "";
+  const categoryLabel = icon ? `${category} ${icon}` : category;
+  const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
+  if (products.length === 0) {
+    return `「${name}」は${categoryLabel}のお店で、いろいろ売りゆうよ。${INTRO_TAP_HINT}`;
+  }
+  const picked = products.slice(0, INTRO_PRODUCT_COUNT);
+  const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
+  const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
+  return `「${name}」は${categoryLabel}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
+}
+
+function distanceMeters(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): number {
+  const earthRadius = 6371000;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(to.lat - from.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadius * c;
+}
+
+function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
+  const result: T[] = [];
+  const max = Math.max(primary.length, secondary.length);
+  for (let i = 0; i < max; i += 1) {
+    if (primary[i]) result.push(primary[i]);
+    if (secondary[i]) result.push(secondary[i]);
+  }
+  return result;
+}
+
+function shuffleArray<T>(items: T[]): T[] {
+  const result = items.slice();
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 export default function MapPageClient({ shops }: MapPageClientProps) {
   const searchParams = useSearchParams();
@@ -47,6 +106,8 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     lat: number;
     lng: number;
   } | null>(null);
+  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
@@ -61,6 +122,11 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
     [activeEventId]
   );
+  const shopById = useMemo(() => {
+    const map = new Map<number, Shop>();
+    shops.forEach((shop) => map.set(shop.id, shop));
+    return map;
+  }, [shops]);
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
   const eventTargets = useMemo(
     () =>
@@ -96,6 +162,16 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       setRecommendedRecipe(match);
     }
   }, []);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const recipeId = searchParams.get("recipe");
+    if (!recipeId) return;
+    const match = recipes.find((recipe) => recipe.id === recipeId);
+    if (!match) return;
+    setRecommendedRecipe(match);
+    setShowRecipeOverlay(true);
+  }, [searchParams, searchParamsKey]);
 
   useEffect(() => {
     if (!searchParams) return;
@@ -219,11 +295,78 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     }
   }, [userLocation]);
 
+  const handleCommentShopFocus = useCallback(
+    (shopId: number) => {
+      const map = mapRef.current;
+      const shop = shopById.get(shopId);
+      if (!map || !shop) return;
+      map.panTo([shop.lat, shop.lng], {
+        animate: true,
+        duration: 0.6,
+        easeLinearity: 0.25,
+      });
+    },
+    [shopById]
+  );
+
   const aiSuggestedShops = useMemo(() => {
     if (!aiMarkerPayload?.ids?.length) return [];
     const shopSet = new Set(aiMarkerPayload.ids);
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
+
+  const kotoduteShopIds = useMemo(() => {
+    const notes = loadKotodute();
+    const ids = new Set<number>();
+    notes.forEach((note) => {
+      if (typeof note.shopId === "number") {
+        ids.add(note.shopId);
+      }
+    });
+    return Array.from(ids);
+  }, []);
+
+  const shopIntroComments = useMemo(() => {
+    if (isInMarket === true && userLocation) {
+      const withDistance = shops.map((shop) => ({
+        shop,
+        distance: distanceMeters(userLocation, { lat: shop.lat, lng: shop.lng }),
+      }));
+      const nearby = withDistance
+        .filter((entry) => entry.distance <= NEARBY_RADIUS_METERS)
+        .sort((a, b) => a.distance - b.distance);
+      const chosen = (nearby.length > 0 ? nearby : withDistance.sort((a, b) => a.distance - b.distance))
+        .slice(0, NEARBY_MAX_SHOPS);
+
+      return chosen.map(({ shop }) => ({
+        id: `shop-${shop.id}`,
+        genre: "notice" as const,
+        icon: "🏪",
+        text: buildShopIntroText(shop),
+        shopId: shop.id,
+      }));
+    }
+
+    if (isInMarket === false) {
+      return shuffleArray(shops)
+        .map((shop) => ({
+          id: `shop-${shop.id}`,
+          genre: "notice" as const,
+          icon: "🏪",
+          text: buildShopIntroText(shop),
+          shopId: shop.id,
+        }));
+    }
+
+    return [];
+  }, [isInMarket, shops, userLocation]);
+
+  const commentPool = useMemo(() => {
+    if (shopIntroComments.length > 0) {
+      return interleaveComments(grandmaComments, shopIntroComments);
+    }
+    return grandmaComments;
+  }, [isInMarket, shopIntroComments]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
@@ -314,10 +457,10 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
                       ×
                     </button>
                   </div>
-                  {(vendorShop?.images?.main || "/images/shops/tosahamono.webp") && (
+                  {(vendorShop?.images?.main || getShopBannerImage(vendorShop?.category)) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
                       <img
-                        src={vendorShop?.images?.main ?? "/images/shops/tosahamono.webp"}
+                        src={vendorShop?.images?.main ?? getShopBannerImage(vendorShop?.category)}
                         alt={`${vendorShopName}の写真`}
                         className="h-40 w-full object-cover object-center"
                       />
@@ -351,22 +494,31 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids ?? aiMarkerPayload?.ids}
+              searchShopIds={searchMarkerPayload?.ids}
+              aiShopIds={aiMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
               highlightEventTargets={isHoldActive}
               onMapInstance={handleMapInstance}
-              onUserLocationUpdate={(coords) => setUserLocation(coords)}
+              onUserLocationUpdate={(coords) => {
+                setUserLocation({ lat: coords.lat, lng: coords.lng });
+                setIsInMarket(coords.inMarket);
+              }}
+              commentShopId={commentHighlightShopId ?? undefined}
+              kotoduteShopIds={kotoduteShopIds}
             />
             <GrandmaChatter
-              titleLabel="マップばあちゃん"
+              titleLabel="にちよさん"
               fullWidth
+              comments={commentPool}
               onAsk={handleGrandmaAsk}
               aiSuggestedShops={aiSuggestedShops}
               onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
               onHoldChange={setIsHoldActive}
               onDrop={handleGrandmaDrop}
+              onActiveShopChange={setCommentHighlightShopId}
+              onCommentShopFocus={handleCommentShopFocus}
               priorityMessage={
                 priority
                   ? {
