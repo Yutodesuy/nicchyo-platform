@@ -13,7 +13,6 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
 import ShopIllustration from './ShopIllustration';
-import ShopBubble from './ShopBubble';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 
 interface OptimizedShopLayerWithClusteringProps {
@@ -23,6 +22,7 @@ interface OptimizedShopLayerWithClusteringProps {
   favoriteShopIds?: number[];
   searchShopIds?: number[];
   aiHighlightShopIds?: number[];
+  commentHighlightShopIds?: number[];
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
@@ -37,6 +37,7 @@ export default function OptimizedShopLayerWithClustering({
   favoriteShopIds,
   searchShopIds,
   aiHighlightShopIds,
+  commentHighlightShopIds,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -50,6 +51,8 @@ export default function OptimizedShopLayerWithClustering({
   const prevSearchHighlightSetRef = useRef<Set<number>>(new Set());
   const aiHighlightSetRef = useRef<Set<number>>(new Set());
   const prevAiHighlightSetRef = useRef<Set<number>>(new Set());
+  const commentHighlightSetRef = useRef<Set<number>>(new Set());
+  const prevCommentHighlightSetRef = useRef<Set<number>>(new Set());
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
@@ -89,6 +92,16 @@ export default function OptimizedShopLayerWithClustering({
       icon.classList.add('shop-marker-search');
     } else {
       icon.classList.remove('shop-marker-search');
+    }
+  };
+
+  const setMarkerCommentHighlight = (marker: L.Marker, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-comment');
+    } else {
+      icon.classList.remove('shop-marker-comment');
     }
   };
 
@@ -144,12 +157,6 @@ export default function OptimizedShopLayerWithClustering({
           <div className="shop-favorite-badge" aria-hidden="true">
             &#10084;
           </div>
-          <ShopBubble
-            icon={shop.icon}
-            products={shop.products}
-            side={shop.side}
-            offset={sizeConfig.bubbleOffset}
-          />
           <ShopIllustration
             type={shop.illustration?.type}
             size={sizeKey}
@@ -217,6 +224,7 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
         setMarkerHighlight(marker, shop.id, aiHighlightSetRef.current.has(shop.id));
         setMarkerSearchHighlight(marker, searchHighlightSetRef.current.has(shop.id));
+        setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
       });
 
       markers.addLayer(marker);
@@ -268,6 +276,11 @@ export default function OptimizedShopLayerWithClustering({
               markerElement.classList.add('shop-marker-search');
             } else {
               markerElement.classList.remove('shop-marker-search');
+            }
+            if (commentHighlightSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-comment');
+            } else {
+              markerElement.classList.remove('shop-marker-comment');
             }
           }
         }
@@ -358,6 +371,29 @@ export default function OptimizedShopLayerWithClustering({
 
     prevAiHighlightSetRef.current = nextHighlights;
   }, [aiHighlightShopIds]);
+
+  useEffect(() => {
+    commentHighlightSetRef.current = new Set(commentHighlightShopIds ?? []);
+    const nextHighlights = commentHighlightSetRef.current;
+    const prevHighlights = prevCommentHighlightSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerCommentHighlight(marker, nextHighlights.has(id));
+      }
+    });
+
+    prevCommentHighlightSetRef.current = nextHighlights;
+  }, [commentHighlightShopIds]);
 
   useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {

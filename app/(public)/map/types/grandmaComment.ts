@@ -19,4 +19,8 @@ export interface GrandmaComment {
     href: string;
     label: string;
   };
+  /**
+   * Optional shop id for map highlighting.
+   */
+  shopId?: number;
 }

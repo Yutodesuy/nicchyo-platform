@@ -24,7 +24,6 @@ import { divIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
 import ShopIllustration from './ShopIllustration';
-import ShopBubble from './ShopBubble';
 import {
   DEFAULT_ILLUSTRATION_SIZE,
   ILLUSTRATION_SIZES,
@@ -71,14 +70,6 @@ const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrd
         transition: 'transform 0.2s ease',
       }}
     >
-      {/* 商品吹き出し */}
-      <ShopBubble
-        icon={shop.icon}
-        products={shop.products}
-        side={shop.side}
-        offset={sizeConfig.bubbleOffset}
-      />
-
       {/* プランマーカー（エージェントプランがある場合） */}
       {planOrderIndex !== undefined && (
         <div

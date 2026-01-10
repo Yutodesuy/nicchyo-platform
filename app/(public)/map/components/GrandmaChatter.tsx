@@ -30,6 +30,8 @@ type GrandmaChatterProps = {
   fullWidth?: boolean;
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
+  onActiveShopChange?: (shopId: number | null) => void;
+  onCommentShopFocus?: (shopId: number) => void;
 };
 
 export default function GrandmaChatter({
@@ -44,6 +46,8 @@ export default function GrandmaChatter({
   fullWidth = false,
   onHoldChange,
   onDrop,
+  onActiveShopChange,
+  onCommentShopFocus,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -60,6 +64,7 @@ export default function GrandmaChatter({
     "idle"
   );
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
+  const [introLockUntil, setIntroLockUntil] = useState<number | null>(null);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
@@ -103,6 +108,21 @@ export default function GrandmaChatter({
     if (!pool.length) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
+
+  const isShopIntro = !isChatOpen && !priorityMessage && !!current?.shopId;
+  const activeShopId = isShopIntro ? current?.shopId ?? null : null;
+
+  useEffect(() => {
+    onActiveShopChange?.(activeShopId);
+  }, [activeShopId, onActiveShopChange]);
+
+  useEffect(() => {
+    if (isShopIntro) {
+      setIntroLockUntil(Date.now() + 3500);
+    } else {
+      setIntroLockUntil(null);
+    }
+  }, [isShopIntro, current?.id]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -156,6 +176,7 @@ export default function GrandmaChatter({
   if (!current) return null;
 
   const handleNext = () => {
+    if (introLockUntil && Date.now() < introLockUntil) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id);
   };
 
@@ -182,7 +203,7 @@ export default function GrandmaChatter({
       }
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [aiStatus, isChatOpen, pool]);
+  }, [aiStatus, introLockUntil, isChatOpen, pool]);
 
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
@@ -441,7 +462,13 @@ export default function GrandmaChatter({
                 : undefined
               : priorityMessage
               ? onPriorityClick
-              : handleNext
+              : () => {
+                  if (isShopIntro && current?.shopId) {
+                    onCommentShopFocus?.(current.shopId);
+                    return;
+                  }
+                  handleNext();
+                }
           }
           className={`${bubbleClassName} ${bubbleStateClass}`}
           aria-label="ばあちゃんのコメントを開く"
