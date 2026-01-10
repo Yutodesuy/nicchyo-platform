@@ -206,6 +206,13 @@ body.grandma-chat-open .leaflet-container {
     drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
 }
 
+.shop-marker-comment {
+  transform: scale(1.06);
+  filter:
+    drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))
+    drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
+}
+
 .shop-marker-search .stall-roof {
   background: linear-gradient(135deg, #93c5fd, #2563eb) !important;
 }
@@ -244,6 +251,11 @@ body.grandma-chat-open .leaflet-container {
 }
 
 .shop-marker-selected.shop-marker-search {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.shop-marker-selected.shop-marker-comment {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }

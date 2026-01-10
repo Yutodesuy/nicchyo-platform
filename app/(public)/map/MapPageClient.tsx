@@ -13,6 +13,7 @@ import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
+import { grandmaComments } from "./data/grandmaComments";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
@@ -24,6 +25,51 @@ const MapView = dynamic(() => import("./components/MapView"), {
 type MapPageClientProps = {
   shops: Shop[];
 };
+
+const INTRO_PRODUCT_COUNT = 2;
+const NEARBY_RADIUS_METERS = 120;
+const NEARBY_MAX_SHOPS = 10;
+const INTRO_TAP_HINT = "（タップ！）";
+
+function buildShopIntroText(shop: Shop): string {
+  const name = shop.name?.trim() || `お店${shop.id}`;
+  const category = shop.category?.trim() || "いろいろ";
+  const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
+  if (products.length === 0) {
+    return `「${name}」は${category}のお店で、いろいろ売りゆうよ。`;
+  }
+  const picked = products.slice(0, INTRO_PRODUCT_COUNT);
+  const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
+  const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
+  return `「${name}」は${category}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
+}
+
+function distanceMeters(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): number {
+  const earthRadius = 6371000;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(to.lat - from.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadius * c;
+}
+
+function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
+  const result: T[] = [];
+  const max = Math.max(primary.length, secondary.length);
+  for (let i = 0; i < max; i += 1) {
+    if (primary[i]) result.push(primary[i]);
+    if (secondary[i]) result.push(secondary[i]);
+  }
+  return result;
+}
 
 export default function MapPageClient({ shops }: MapPageClientProps) {
   const searchParams = useSearchParams();
@@ -48,6 +94,8 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     lat: number;
     lng: number;
   } | null>(null);
+  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
@@ -62,6 +110,11 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
     [activeEventId]
   );
+  const shopById = useMemo(() => {
+    const map = new Map<number, Shop>();
+    shops.forEach((shop) => map.set(shop.id, shop));
+    return map;
+  }, [shops]);
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
   const eventTargets = useMemo(
     () =>
@@ -220,11 +273,68 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     }
   }, [userLocation]);
 
+  const handleCommentShopFocus = useCallback(
+    (shopId: number) => {
+      const map = mapRef.current;
+      const shop = shopById.get(shopId);
+      if (!map || !shop) return;
+      map.panTo([shop.lat, shop.lng], {
+        animate: true,
+        duration: 0.6,
+        easeLinearity: 0.25,
+      });
+    },
+    [shopById]
+  );
+
   const aiSuggestedShops = useMemo(() => {
     if (!aiMarkerPayload?.ids?.length) return [];
     const shopSet = new Set(aiMarkerPayload.ids);
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
+
+  const shopIntroComments = useMemo(() => {
+    if (isInMarket === true && userLocation) {
+      const withDistance = shops.map((shop) => ({
+        shop,
+        distance: distanceMeters(userLocation, { lat: shop.lat, lng: shop.lng }),
+      }));
+      const nearby = withDistance
+        .filter((entry) => entry.distance <= NEARBY_RADIUS_METERS)
+        .sort((a, b) => a.distance - b.distance);
+      const chosen = (nearby.length > 0 ? nearby : withDistance.sort((a, b) => a.distance - b.distance))
+        .slice(0, NEARBY_MAX_SHOPS);
+
+      return chosen.map(({ shop }) => ({
+        id: `shop-${shop.id}`,
+        genre: "notice" as const,
+        icon: "🏪",
+        text: buildShopIntroText(shop),
+        shopId: shop.id,
+      }));
+    }
+
+    if (isInMarket === false) {
+      return [...shops]
+        .sort((a, b) => a.id - b.id)
+        .map((shop) => ({
+          id: `shop-${shop.id}`,
+          genre: "notice" as const,
+          icon: "🏪",
+          text: buildShopIntroText(shop),
+          shopId: shop.id,
+        }));
+    }
+
+    return [];
+  }, [isInMarket, shops, userLocation]);
+
+  const commentPool = useMemo(() => {
+    if (shopIntroComments.length > 0) {
+      return interleaveComments(grandmaComments, shopIntroComments);
+    }
+    return grandmaComments;
+  }, [isInMarket, shopIntroComments]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
@@ -359,16 +469,23 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               eventTargets={eventTargets}
               highlightEventTargets={isHoldActive}
               onMapInstance={handleMapInstance}
-              onUserLocationUpdate={(coords) => setUserLocation(coords)}
+              onUserLocationUpdate={(coords) => {
+                setUserLocation({ lat: coords.lat, lng: coords.lng });
+                setIsInMarket(coords.inMarket);
+              }}
+              commentShopId={commentHighlightShopId ?? undefined}
             />
             <GrandmaChatter
               titleLabel="マップばあちゃん"
               fullWidth
+              comments={commentPool}
               onAsk={handleGrandmaAsk}
               aiSuggestedShops={aiSuggestedShops}
               onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
               onHoldChange={setIsHoldActive}
               onDrop={handleGrandmaDrop}
+              onActiveShopChange={setCommentHighlightShopId}
+              onCommentShopFocus={handleCommentShopFocus}
               priorityMessage={
                 priority
                   ? {
