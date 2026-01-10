@@ -300,9 +300,10 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       const map = mapRef.current;
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
-      map.panTo([shop.lat, shop.lng], {
+      const maxZoom = map.getMaxZoom() ?? 19;
+      map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
-        duration: 0.6,
+        duration: 0.8,
         easeLinearity: 0.25,
       });
     },
