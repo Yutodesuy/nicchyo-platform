@@ -14,6 +14,7 @@ import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
 import { grandmaComments } from "./data/grandmaComments";
+import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
@@ -293,6 +294,17 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
 
+  const kotoduteShopIds = useMemo(() => {
+    const notes = loadKotodute();
+    const ids = new Set<number>();
+    notes.forEach((note) => {
+      if (typeof note.shopId === "number") {
+        ids.add(note.shopId);
+      }
+    });
+    return Array.from(ids);
+  }, []);
+
   const shopIntroComments = useMemo(() => {
     if (isInMarket === true && userLocation) {
       const withDistance = shops.map((shop) => ({
@@ -474,6 +486,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
                 setIsInMarket(coords.inMarket);
               }}
               commentShopId={commentHighlightShopId ?? undefined}
+              kotoduteShopIds={kotoduteShopIds}
             />
             <GrandmaChatter
               titleLabel="マップばあちゃん"
