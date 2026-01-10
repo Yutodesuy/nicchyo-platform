@@ -42,6 +42,7 @@ interface ShopMarkerProps {
 
 const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrderIndex, isFavorite, currentZoom }: ShopMarkerProps) {
   const ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+  const hasKotodute = typeof shop.message === "string" && shop.message.trim().length > 0;
 
   // 【連続的スケーリング】ズームレベルに応じたサイズとスケールを決定
   // - ベースサイズ: small (45px) / medium (60px)
@@ -63,13 +64,18 @@ const ShopMarker = memo(function ShopMarker({ shop, onClick, isSelected, planOrd
   // 店舗イラスト + 吹き出しを含むHTML文字列を生成
   const iconMarkup = renderToStaticMarkup(
     <div
-      className="shop-marker-container"
+      className={`shop-marker-container ${hasKotodute ? "shop-marker-kotodute" : ""}`}
       style={{
         position: 'relative',
         cursor: 'pointer',
         transition: 'transform 0.2s ease',
       }}
     >
+      {hasKotodute && (
+        <div className="shop-kotodute-badge" aria-hidden="true">
+          i
+        </div>
+      )}
       {/* プランマーカー（エージェントプランがある場合） */}
       {planOrderIndex !== undefined && (
         <div

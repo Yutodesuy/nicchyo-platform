@@ -252,6 +252,7 @@ type MapViewProps = {
   onUserLocationUpdate?: (coords: { lat: number; lng: number; inMarket: boolean }) => void;
   aiShopIds?: number[];
   commentShopId?: number;
+  kotoduteShopIds?: number[];
 };
 
 const MapView = memo(function MapView({
@@ -271,6 +272,7 @@ const MapView = memo(function MapView({
   onUserLocationUpdate,
   aiShopIds,
   commentShopId,
+  kotoduteShopIds,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const { addItem } = useBag();
@@ -759,6 +761,7 @@ const MapView = memo(function MapView({
           searchShopIds={searchShopIds}
           aiHighlightShopIds={aiShopIds}
           commentHighlightShopIds={commentShopId ? [commentShopId] : []}
+          kotoduteShopIds={kotoduteShopIds}
         />
 
         {/* レシピオーバーレイ */}
