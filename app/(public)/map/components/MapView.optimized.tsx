@@ -216,9 +216,7 @@ export default function MapView({
   const recipeIngredients = useMemo(() => {
     if (!selectedRecipe) return [];
     return selectedRecipe.ingredients.map((ing) => {
-      const iconKey = Object.keys(ingredientIcons).find((key) =>
-        ing.name.toLowerCase().includes(key)
-      );
+      const iconKey = ing.id;
       return {
         name: ing.name,
         icon: iconKey ? ingredientIcons[iconKey] : "🛍️",

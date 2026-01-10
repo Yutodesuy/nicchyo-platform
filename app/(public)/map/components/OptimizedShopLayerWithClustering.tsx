@@ -24,6 +24,7 @@ interface OptimizedShopLayerWithClusteringProps {
   aiHighlightShopIds?: number[];
   commentHighlightShopIds?: number[];
   kotoduteShopIds?: number[];
+  recipeIngredientIconsByShop?: Record<number, string[]>;
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
@@ -40,6 +41,7 @@ export default function OptimizedShopLayerWithClustering({
   aiHighlightShopIds,
   commentHighlightShopIds,
   kotoduteShopIds,
+  recipeIngredientIconsByShop,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -57,6 +59,7 @@ export default function OptimizedShopLayerWithClustering({
   const prevCommentHighlightSetRef = useRef<Set<number>>(new Set());
   const kotoduteSetRef = useRef<Set<number>>(new Set());
   const prevKotoduteSetRef = useRef<Set<number>>(new Set());
+  const recipeIconsRef = useRef<Record<number, string[]>>({});
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
@@ -119,6 +122,23 @@ export default function OptimizedShopLayerWithClustering({
     }
   };
 
+  const setMarkerRecipeIcons = (marker: L.Marker, icons?: string[]) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    const container = icon.querySelector('.shop-recipe-icons');
+    if (!container) return;
+    const hasIcons = !!icons && icons.length > 0;
+    if (hasIcons) {
+      container.innerHTML = icons
+        ?.map((recipeIcon) => `<span class="shop-recipe-icon">${recipeIcon}</span>`)
+        .join('') ?? '';
+      icon.classList.add('shop-marker-recipe');
+    } else {
+      container.innerHTML = '';
+      icon.classList.remove('shop-marker-recipe');
+    }
+  };
+
   useEffect(() => {
     selectedShopIdRef.current = selectedShopId;
   }, [selectedShopId]);
@@ -168,6 +188,7 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
+          <div className="shop-recipe-icons" aria-hidden="true" />
           <div className="shop-kotodute-badge" aria-hidden="true">
             i
           </div>
@@ -199,6 +220,7 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
+          <div className="shop-recipe-icons" aria-hidden="true" />
           <div className="shop-kotodute-badge" aria-hidden="true">
             i
           </div>
@@ -224,6 +246,7 @@ export default function OptimizedShopLayerWithClustering({
       const compactIcon = L.divIcon({
         html: `
           <div class="shop-marker-compact-wrapper shop-side-${shop.side}">
+            <div class="shop-recipe-icons" aria-hidden="true"></div>
             <div class="shop-kotodute-badge" aria-hidden="true">i</div>
             <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
             <div class="shop-marker-compact"></div>
@@ -247,6 +270,7 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerSearchHighlight(marker, searchHighlightSetRef.current.has(shop.id));
         setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
         setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
+        setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
       });
 
       markers.addLayer(marker);
@@ -277,6 +301,7 @@ export default function OptimizedShopLayerWithClustering({
         if (icon) {
           marker.setIcon(icon);
           setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
+          setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
           const markerElement = marker.getElement();
           if (markerElement) {
             if (shopId === selectedShopIdRef.current) {
@@ -444,6 +469,13 @@ export default function OptimizedShopLayerWithClustering({
 
     prevKotoduteSetRef.current = nextHighlights;
   }, [kotoduteShopIds]);
+
+  useEffect(() => {
+    recipeIconsRef.current = recipeIngredientIconsByShop ?? {};
+    markersRef.current.forEach((marker, shopId) => {
+      setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
+    });
+  }, [recipeIngredientIconsByShop]);
 
   useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {
