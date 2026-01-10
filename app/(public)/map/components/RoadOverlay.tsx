@@ -13,7 +13,7 @@ const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 export default function RoadOverlay() {
   const config = ROAD_CONFIG;
   const roadWidthLng = Math.abs(config.bounds[0][1] - config.bounds[1][1]);
-  const separatorWidthLng = roadWidthLng * 0.16;
+  const separatorWidthLng = 0.00004;
   const roadOffsetLng = roadWidthLng + separatorWidthLng;
 
   if (config.type === 'curved' && config.segments) {
@@ -244,7 +244,7 @@ function renderSeparatorPalms(
 
   const palmCount = 4;
   const segmentLat = totalLat / palmCount;
-  let palmHeightLat = totalLat * 0.24;
+  let palmHeightLat = totalLat * 0.06;
   let palmWidthLng = palmHeightLat * palmAspect;
   const palmWestLng = westLng + (totalLng - palmWidthLng) / 2;
   const palmOffsetLat = segmentLat * 0.1;

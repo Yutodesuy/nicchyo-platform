@@ -24,11 +24,13 @@ type SearchClientProps = {
 
 export default function SearchClient({ shops }: SearchClientProps) {
   const router = useRouter();
+  const itemsPerPage = 10;
   const [textQuery, setTextQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [blockNumber, setBlockNumber] = useState('');
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [visibleCount, setVisibleCount] = useState(itemsPerPage);
   const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
@@ -51,6 +53,11 @@ export default function SearchClient({ shops }: SearchClientProps) {
     category,
     blockNumber,
   });
+  const visibleShops = useMemo(
+    () => filteredShops.slice(0, visibleCount),
+    [filteredShops, visibleCount]
+  );
+  const hasMore = visibleCount < filteredShops.length;
 
   // カテゴリー一覧
   const categories = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
@@ -72,6 +79,18 @@ export default function SearchClient({ shops }: SearchClientProps) {
     if (trimmedBlock) return `ブロック${trimmedBlock}`;
     return '検索結果';
   }, [textQuery, category, blockNumber]);
+
+  useEffect(() => {
+    setVisibleCount(itemsPerPage);
+  }, [itemsPerPage, textQuery, category, blockNumber]);
+
+  useEffect(() => {
+    setVisibleCount((prev) => Math.min(prev, filteredShops.length || itemsPerPage));
+  }, [filteredShops.length, itemsPerPage]);
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + itemsPerPage, filteredShops.length));
+  }, [itemsPerPage, filteredShops.length]);
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -141,11 +160,14 @@ export default function SearchClient({ shops }: SearchClientProps) {
 
           {/* 検索結果 */}
           <SearchResults
-            shops={filteredShops}
+            shops={visibleShops}
+            totalCount={filteredShops.length}
             hasQuery={hasQuery}
             categories={categories}
             onCategoryClick={setCategory}
             favoriteShopIds={favoriteShopIds}
+            hasMore={hasMore}
+            onLoadMore={handleLoadMore}
             onToggleFavorite={handleToggleFavorite}
             onSelectShop={setSelectedShop}
             onOpenMap={handleOpenMap}
