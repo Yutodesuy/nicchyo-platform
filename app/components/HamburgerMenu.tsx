@@ -284,9 +284,22 @@ export default function HamburgerMenu() {
                 <>
                   <li>
                     <Link
+                      href="/bag"
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 rounded-lg border-2 border-amber-300 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-md"
+                    >
+                      <MenuIcon name="bag" className="h-5 w-5 text-amber-700" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold">バッグ</p>
+                        <p className="text-xs text-amber-700/80">気になるものを保存</p>
+                      </div>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
                       href="/login"
                       onClick={closeMenu}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-amber-200 bg-amber-50 px-4 py-3 text-gray-700 transition hover:bg-amber-100"
+                      className="flex w-full items-center gap-3 rounded-lg border-2 border-amber-200 bg-white px-4 py-3 text-gray-700 transition hover:bg-amber-100"
                     >
                       <MenuIcon name="user" className="h-5 w-5 text-amber-700" />
                       <div className="flex-1 text-left">
