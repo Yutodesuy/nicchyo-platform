@@ -11,6 +11,11 @@ import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
 import {
+  KOTODUTE_UPDATED_EVENT,
+  loadKotodute,
+  type KotoduteNote,
+} from "../../../../lib/kotoduteStorage";
+import {
   FAVORITE_SHOPS_KEY,
   FAVORITE_SHOPS_UPDATED_EVENT,
   loadFavoriteShopIds,
@@ -30,6 +35,8 @@ type BagItem = {
 };
 
 const STORAGE_KEY = "nicchyo-fridge-items";
+const KOTODUTE_PREVIEW_LIMIT = 3;
+const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
@@ -59,6 +66,7 @@ export default function ShopDetailBanner({
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+  const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -114,6 +122,30 @@ export default function ShopDetailBanner({
     return () => {
       window.removeEventListener("storage", handler);
       window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, updateHandler);
+    };
+  }, [shop.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateKotodute = () => {
+      const notes = loadKotodute().filter(
+        (note) => typeof note.shopId === "number" && note.shopId === shop.id
+      );
+      const sorted = notes.slice().sort((a, b) => b.createdAt - a.createdAt);
+      setKotoduteNotes(sorted);
+    };
+    updateKotodute();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "nicchyo-kotodute-notes") {
+        updateKotodute();
+      }
+    };
+    const handleUpdate = () => updateKotodute();
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(KOTODUTE_UPDATED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(KOTODUTE_UPDATED_EVENT, handleUpdate);
     };
   }, [shop.id]);
 
@@ -335,7 +367,9 @@ export default function ShopDetailBanner({
               <span className="rounded-full bg-lime-500 px-2 py-[1px] text-[11px] font-semibold text-white">
                 ことづて
               </span>
-              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">0</span>
+              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">
+                {kotoduteNotes.length}
+              </span>
             </div>
             <Link
               href={`/kotodute?shopId=${shop.id}`}
@@ -345,9 +379,22 @@ export default function ShopDetailBanner({
             </Link>
           </div>
 
-          <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
-            ことづてページで、お店の感想を共有できます。
-          </div>
+          {kotoduteNotes.length === 0 ? (
+            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
+              ことづてページで、お店の感想を共有できます。
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
+                <div
+                  key={note.id}
+                  className="rounded-lg border border-amber-100 bg-amber-50/70 px-2 py-2 text-[12px] text-slate-800"
+                >
+                  {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {pendingProduct && (
