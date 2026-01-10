@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
-import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
+import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
@@ -162,6 +162,16 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       setRecommendedRecipe(match);
     }
   }, []);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const recipeId = searchParams.get("recipe");
+    if (!recipeId) return;
+    const match = recipes.find((recipe) => recipe.id === recipeId);
+    if (!match) return;
+    setRecommendedRecipe(match);
+    setShowRecipeOverlay(true);
+  }, [searchParams, searchParamsKey]);
 
   useEffect(() => {
     if (!searchParams) return;

@@ -424,12 +424,20 @@ export default function RecipesClient() {
                         );
                       })}
                     </div>
-                    <Link
-                      href={`/recipes/${recipe.id}`}
-                      className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
-                    >
-                      レシピ詳細へ
-                    </Link>
+                    <div className="mt-3 flex gap-3">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
+                        レシピ詳細へ
+                      </Link>
+                      <Link
+                        href={`/map?recipe=${recipe.id}`}
+                        className="w-full rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
+                      >
+                        食材をマップで探す
+                      </Link>
+                    </div>
                   </div>
                 );
               })}

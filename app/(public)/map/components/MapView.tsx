@@ -58,6 +58,22 @@ const KOCHI_SUNDAY_MARKET: [number, number] = [
 // Sunday Market area boundaries (restrict pan operations to this area)
 const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
 
+function findIngredientMatch(name: string) {
+  const lower = name.trim().toLowerCase();
+  return ingredientCatalog.find(
+    (ing) =>
+      ing.name.toLowerCase().includes(lower) ||
+      lower.includes(ing.name.toLowerCase()) ||
+      ing.id.toLowerCase() === lower ||
+      ing.id.toLowerCase().includes(lower) ||
+      ing.aliases?.some(
+        (alias) =>
+          alias.toLowerCase().includes(lower) ||
+          lower.includes(alias.toLowerCase())
+      )
+  );
+}
+
 // Recommended zoom bounds (optimal range for Sunday Market)
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
@@ -275,7 +291,7 @@ const MapView = memo(function MapView({
   kotoduteShopIds,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
-  const { addItem } = useBag();
+  const { addItem, items: bagItems } = useBag();
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
@@ -438,18 +454,44 @@ const MapView = memo(function MapView({
     };
   }, []);
 
+  const bagIngredientIds = useMemo(() => {
+    const ids = new Set<string>();
+    bagItems.forEach((item) => {
+      const match = findIngredientMatch(item.name);
+      if (match) ids.add(match.id);
+    });
+    return ids;
+  }, [bagItems]);
+
   const recipeIngredients = useMemo(() => {
     if (!selectedRecipe) return [];
-    return selectedRecipe.ingredients.map((ing) => {
-      const iconKey = Object.keys(ingredientIcons).find((key) =>
-        ing.name.toLowerCase().includes(key)
-      );
-      return {
+    return selectedRecipe.ingredients
+      .filter((ing) => !bagIngredientIds.has(ing.id))
+      .map((ing) => ({
         name: ing.name,
-        icon: iconKey ? ingredientIcons[iconKey] : "🛍️",
-      };
+        icon: ingredientIcons[ing.id] ?? "???",
+      }));
+  }, [bagIngredientIds, selectedRecipe]);
+
+  const recipeIngredientIconsByShop = useMemo(() => {
+    if (!showRecipeOverlay || !selectedRecipe || recipeIngredients.length === 0) return {};
+    const byShop: Record<number, string[]> = {};
+    shops.forEach((shop) => {
+      const icons = recipeIngredients
+        .filter((ing) =>
+          shop.products.some((product) =>
+            product.toLowerCase().includes(ing.name.toLowerCase()) ||
+            ing.name.toLowerCase().includes(product.toLowerCase())
+          )
+        )
+        .map((ing) => ing.icon);
+      if (icons.length > 0) {
+        const unique = Array.from(new Set(icons)).slice(0, 3);
+        byShop[shop.id] = unique;
+      }
     });
-  }, [selectedRecipe]);
+    return byShop;
+  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shops]);
 
   const shopsWithIngredients = useMemo(() => {
     if (!selectedRecipe || recipeIngredients.length === 0) return [];
@@ -762,6 +804,7 @@ const MapView = memo(function MapView({
           aiHighlightShopIds={aiShopIds}
           commentHighlightShopIds={commentShopId ? [commentShopId] : []}
           kotoduteShopIds={kotoduteShopIds}
+          recipeIngredientIconsByShop={recipeIngredientIconsByShop}
         />
 
         {/* レシピオーバーレイ */}
@@ -826,16 +869,6 @@ const MapView = memo(function MapView({
         {/* モバイルズームコントロール */}
         {false && isMobile && <MobileZoomControls />}
       </MapContainer>
-
-      {/* レシピモード閉じるボタン */}
-      {showRecipeOverlay && onCloseRecipeOverlay && (
-        <button
-          onClick={onCloseRecipeOverlay}
-          className="absolute top-4 right-4 z-[1500] rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-lg hover:bg-gray-50"
-        >
-          レシピモードを閉じる
-        </button>
-      )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離
