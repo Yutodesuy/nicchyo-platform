@@ -109,6 +109,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
@@ -127,6 +128,19 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     shops.forEach((shop) => map.set(shop.id, shop));
     return map;
   }, [shops]);
+
+  const prefetchShopImage = useCallback(
+    (shopId: number) => {
+      if (typeof window === "undefined") return;
+      const shop = shopById.get(shopId);
+      if (!shop) return;
+      const src = shop.images?.main ?? getShopBannerImage(shop.category);
+      if (!src) return;
+      const img = new Image();
+      img.src = src;
+    },
+    [shopById]
+  );
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
   const eventTargets = useMemo(
     () =>
@@ -300,21 +314,51 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       const map = mapRef.current;
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
+      prefetchShopImage(shopId);
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+        introFocusTimerRef.current = null;
+      }
       const maxZoom = map.getMaxZoom() ?? 19;
       map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
         duration: 0.8,
         easeLinearity: 0.25,
       });
+      introFocusTimerRef.current = window.setTimeout(() => {
+        router.push(`/map?shop=${shopId}`);
+        introFocusTimerRef.current = null;
+      }, 900);
     },
-    [shopById]
+    [prefetchShopImage, router, shopById]
   );
+
+  useEffect(() => {
+    if (initialShopId) {
+      prefetchShopImage(initialShopId);
+    }
+    return () => {
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+      }
+    };
+  }, [initialShopId, prefetchShopImage]);
 
   const aiSuggestedShops = useMemo(() => {
     if (!aiMarkerPayload?.ids?.length) return [];
     const shopSet = new Set(aiMarkerPayload.ids);
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
+
+  const introImageUrl = useMemo(() => {
+    if (!commentHighlightShopId) return null;
+    const shop = shopById.get(commentHighlightShopId);
+    if (!shop) return null;
+    return shop.images?.main ?? getShopBannerImage(shop.category);
+  }, [commentHighlightShopId, shopById]);
 
   const kotoduteShopIds = useMemo(() => {
     const notes = loadKotodute();
@@ -520,6 +564,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onDrop={handleGrandmaDrop}
               onActiveShopChange={setCommentHighlightShopId}
               onCommentShopFocus={handleCommentShopFocus}
+              introImageUrl={introImageUrl}
               priorityMessage={
                 priority
                   ? {

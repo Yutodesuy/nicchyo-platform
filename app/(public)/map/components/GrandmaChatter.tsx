@@ -32,6 +32,7 @@ type GrandmaChatterProps = {
   onDrop?: (position: { x: number; y: number }) => void;
   onActiveShopChange?: (shopId: number | null) => void;
   onCommentShopFocus?: (shopId: number) => void;
+  introImageUrl?: string | null;
 };
 
 export default function GrandmaChatter({
@@ -48,6 +49,7 @@ export default function GrandmaChatter({
   onDrop,
   onActiveShopChange,
   onCommentShopFocus,
+  introImageUrl,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -65,6 +67,7 @@ export default function GrandmaChatter({
   );
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
   const [introLockUntil, setIntroLockUntil] = useState<number | null>(null);
+  const [isIntroImageOpen, setIsIntroImageOpen] = useState(false);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
@@ -111,6 +114,8 @@ export default function GrandmaChatter({
 
   const isShopIntro = !isChatOpen && !priorityMessage && !!current?.shopId;
   const activeShopId = isShopIntro ? current?.shopId ?? null : null;
+  const showIntroImage = isShopIntro && !!introImageUrl;
+  const introImageSize = { width: 108, height: 144, gap: 12 };
 
   useEffect(() => {
     onActiveShopChange?.(activeShopId);
@@ -118,9 +123,11 @@ export default function GrandmaChatter({
 
   useEffect(() => {
     if (isShopIntro) {
-      setIntroLockUntil(Date.now() + 3500);
+      const nextLock = Date.now() + 3500;
+      setIntroLockUntil((prev) => (prev ? Math.max(prev, nextLock) : nextLock));
     } else {
       setIntroLockUntil(null);
+      setIsIntroImageOpen(false);
     }
   }, [isShopIntro, current?.id]);
 
@@ -176,6 +183,7 @@ export default function GrandmaChatter({
   if (!current) return null;
 
   const handleNext = () => {
+    if (isIntroImageOpen) return;
     if (introLockUntil && Date.now() < introLockUntil) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id);
   };
@@ -191,7 +199,7 @@ export default function GrandmaChatter({
 
   useEffect(() => {
     const shouldRotateInstructor = isChatOpen && aiStatus === "idle";
-    const shouldRotateNormal = !isChatOpen;
+    const shouldRotateNormal = !isChatOpen && !isIntroImageOpen;
     if (!shouldRotateInstructor && !shouldRotateNormal) return;
     const timer = window.setInterval(() => {
       if (isChatOpen) {
@@ -203,7 +211,7 @@ export default function GrandmaChatter({
       }
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [aiStatus, introLockUntil, isChatOpen, pool]);
+  }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
@@ -267,7 +275,10 @@ export default function GrandmaChatter({
     const viewWidth = document.documentElement.clientWidth;
     const viewHeight = document.documentElement.clientHeight;
     const min = avatarOffset.x - rect.left;
-    const max = avatarOffset.x + (viewWidth - rect.right);
+    const reservedRight = showIntroImage
+      ? introImageSize.width + introImageSize.gap + 16
+      : 0;
+    const max = avatarOffset.x + Math.max(0, viewWidth - rect.right - reservedRight);
     const minY = avatarOffset.y - rect.top;
     const maxY = avatarOffset.y + (viewHeight - rect.bottom);
     dragStateRef.current = {
@@ -526,6 +537,79 @@ export default function GrandmaChatter({
           </div>
         </button>
       </div>
+
+      {showIntroImage && (
+        <div className="fixed bottom-[calc(5rem+100px)] right-4 z-[1401] pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setIsIntroImageOpen(true)}
+            className="rounded-2xl border-2 border-amber-300 bg-white/95 p-1 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            style={{
+              width: `${introImageSize.width}px`,
+              height: `${introImageSize.height}px`,
+            }}
+            aria-label="出店画像を拡大表示"
+          >
+            <div className="h-full w-full overflow-hidden rounded-xl border border-amber-100 bg-white">
+              <img
+                src={introImageUrl ?? ""}
+                alt=""
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {showIntroImage && isIntroImageOpen && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 px-4 pointer-events-auto">
+          <div
+            className="absolute inset-0"
+            onClick={() => {
+              setIsIntroImageOpen(false);
+              setIntroLockUntil(Date.now() + 3000);
+            }}
+          />
+          <div
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border-2 border-amber-200 bg-white shadow-2xl pointer-events-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIsIntroImageOpen(false);
+                setIntroLockUntil(Date.now() + 3000);
+              }}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-amber-100 bg-white/90 text-lg font-bold text-amber-700 shadow-sm hover:bg-amber-50"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+            <img
+              src={introImageUrl ?? ""}
+              alt=""
+              className="h-auto w-full object-cover"
+              draggable={false}
+            />
+            <div className="p-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (current?.shopId) {
+                    onCommentShopFocus?.(current.shopId);
+                  }
+                  setIsIntroImageOpen(false);
+                  setIntroLockUntil(Date.now() + 3000);
+                }}
+                className="w-full rounded-xl bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+              >
+                このお店をくわしく
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         className={`w-full px-3 transition-all duration-200 ${chatPanelLift} ${
