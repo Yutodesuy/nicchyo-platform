@@ -384,7 +384,12 @@ const MapView = memo(function MapView({
       if (shop) {
         setSelectedShop(shop);
         if (mapRef.current) {
-          mapRef.current.setView([shop.lat, shop.lng], 18);
+          const currentZoom = mapRef.current.getZoom();
+          if (currentZoom < 18) {
+            mapRef.current.setView([shop.lat, shop.lng], 18);
+          } else {
+            mapRef.current.panTo([shop.lat, shop.lng]);
+          }
         }
       }
     }
@@ -418,6 +423,18 @@ const MapView = memo(function MapView({
       setSelectedShop(latest);
     }
   }, [shops, selectedShop]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (selectedShop) {
+      document.body.classList.add("shop-banner-open");
+    } else {
+      document.body.classList.remove("shop-banner-open");
+    }
+    return () => {
+      document.body.classList.remove("shop-banner-open");
+    };
+  }, [selectedShop]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -519,6 +536,9 @@ const MapView = memo(function MapView({
 
     if (viewMode.mode === ViewMode.DETAIL) {
       // 詳細モード: 詳細バナーを表示
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
       setSelectedShop(clickedShop);
     } else {
       // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
