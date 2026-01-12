@@ -46,6 +46,7 @@ import {
   ViewMode,
   canShowShopDetailBanner,
 } from '../config/displayConfig';
+import { useBag } from "../../../../lib/storage/BagContext";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -57,35 +58,58 @@ const KOCHI_SUNDAY_MARKET: [number, number] = [
 // Sunday Market area boundaries (restrict pan operations to this area)
 const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
 
+function findIngredientMatch(name: string) {
+  const lower = name.trim().toLowerCase();
+  return ingredientCatalog.find(
+    (ing) =>
+      ing.name.toLowerCase().includes(lower) ||
+      lower.includes(ing.name.toLowerCase()) ||
+      ing.id.toLowerCase() === lower ||
+      ing.id.toLowerCase().includes(lower) ||
+      ing.aliases?.some(
+        (alias) =>
+          alias.toLowerCase().includes(lower) ||
+          lower.includes(alias.toLowerCase())
+      )
+  );
+}
+
 // Recommended zoom bounds (optimal range for Sunday Market)
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
 // Zoom config by shop count
 const ZOOM_CONFIG = getZoomConfig(baseShops.length);
-// 【スマホUX最適化】デフォルトズームを18.0に設定
-const INITIAL_ZOOM = 18.0;
 const MIN_ZOOM = ZOOM_BOUNDS.min;
 const MAX_ZOOM = ZOOM_BOUNDS.max;
+const INITIAL_ZOOM = MAX_ZOOM;
 
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
 const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
+const LEFT_SIDE_SHIFT_LNG = 0.0009;
 const KOCHI_CASTLE_MUSEUM_WIDTH = 0.0036;
 const KOCHI_CASTLE_MUSEUM_HEIGHT =
   KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
 const KOCHI_CASTLE_MUSEUM_TOP_LAT = 33.5647;
-const KOCHI_CASTLE_MUSEUM_EAST_LNG = 133.5304;
+const KOCHI_CASTLE_MUSEUM_EAST_LNG = 133.5304 + LEFT_SIDE_SHIFT_LNG;
 const KOCHI_CASTLE_MUSEUM_BOUNDS: [[number, number], [number, number]] = [
   [KOCHI_CASTLE_MUSEUM_TOP_LAT, KOCHI_CASTLE_MUSEUM_EAST_LNG - KOCHI_CASTLE_MUSEUM_WIDTH],
   [KOCHI_CASTLE_MUSEUM_TOP_LAT - KOCHI_CASTLE_MUSEUM_HEIGHT, KOCHI_CASTLE_MUSEUM_EAST_LNG],
 ];
 const OTEPIA_OFFSET_LAT = 0.0036;
+const OTEPIA_SHIFT_LNG = -0.0005;
 const OTEPIA_BOUNDS: [[number, number], [number, number]] = [
-  [KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] - OTEPIA_OFFSET_LAT, KOCHI_CASTLE_MUSEUM_BOUNDS[0][1]],
-  [KOCHI_CASTLE_MUSEUM_BOUNDS[1][0] - OTEPIA_OFFSET_LAT, KOCHI_CASTLE_MUSEUM_BOUNDS[1][1]],
+  [
+    KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] - OTEPIA_OFFSET_LAT,
+    KOCHI_CASTLE_MUSEUM_BOUNDS[0][1] + OTEPIA_SHIFT_LNG,
+  ],
+  [
+    KOCHI_CASTLE_MUSEUM_BOUNDS[1][0] - OTEPIA_OFFSET_LAT,
+    KOCHI_CASTLE_MUSEUM_BOUNDS[1][1] + OTEPIA_SHIFT_LNG,
+  ],
 ];
-const BUILDING_COLUMN_EAST_LNG = 133.5296;
+const BUILDING_COLUMN_EAST_LNG = 133.5296 + LEFT_SIDE_SHIFT_LNG;
 const BUILDING_COLUMN_WIDTH = 0.0010;
 const BUILDING_COLUMN_HEIGHT = 0.0014;
 const BUILDING_COLUMN_GAP = 0;
@@ -111,13 +135,18 @@ const BUILDING_COLUMN_BOUNDS = BUILDING_COLUMN_TOP_LATS.map((topLat) => [
 ]) as [[number, number], [number, number]][];
 const BUILDING_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.slice(2);
 const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
-const ROAD_SEPARATOR_WIDTH_LNG = ROAD_WIDTH_LNG * 0.16;
+const ROAD_SEPARATOR_WIDTH_LNG = 0.00004;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
 const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
 const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
 const LEFT_SIDE_LABEL_LAT = RIGHT_SIDE_LABEL_LAT;
-const LEFT_SIDE_LABEL_LNG = Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0012;
+const LEFT_SIDE_LABEL_LNG =
+  Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0068 + LEFT_SIDE_SHIFT_LNG;
+const RIGHT_LABEL_HEIGHT_LAT = 0.12;
+const RIGHT_LABEL_WIDTH_LNG = 0.016;
+const LEFT_LABEL_HEIGHT_LAT = 0.076;
+const LEFT_LABEL_WIDTH_LNG = 0.012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
@@ -181,35 +210,7 @@ const BUILDING_SVG_URLS = BUILDING_COLOR_THEMES.map(
   (theme) => `data:image/svg+xml,${encodeURIComponent(buildBuildingSvg(theme))}`
 );
 
-type BagItem = {
-  id: string;
-  name: string;
-  fromShopId?: number;
-  category?: string;
-  qty?: string;
-  note?: string;
-  photo?: string;
-  createdAt: number;
-};
-
-const STORAGE_KEY = "nicchyo-fridge-items";
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
-
-function loadBag(): BagItem[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
-}
-
-function saveBag(items: BagItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
 
 function isIngredientName(name: string) {
   const lower = name.trim().toLowerCase();
@@ -264,7 +265,10 @@ type MapViewProps = {
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
   onMapInstance?: (map: L.Map) => void;
-  onUserLocationUpdate?: (coords: { lat: number; lng: number }) => void;
+  onUserLocationUpdate?: (coords: { lat: number; lng: number; inMarket: boolean }) => void;
+  aiShopIds?: number[];
+  commentShopId?: number;
+  kotoduteShopIds?: number[];
 };
 
 const MapView = memo(function MapView({
@@ -282,8 +286,12 @@ const MapView = memo(function MapView({
   highlightEventTargets = false,
   onMapInstance,
   onUserLocationUpdate,
+  aiShopIds,
+  commentShopId,
+  kotoduteShopIds,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const { addItem, items: bagItems } = useBag();
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
@@ -291,56 +299,45 @@ const MapView = memo(function MapView({
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
   );
-  const rightSideLabelIcon = useMemo(
-    () =>
-      L.divIcon({
-        className: "map-side-label",
-        html: `
-          <div style="
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 43px;
-            font-weight: 800;
-            letter-spacing: 6px;
-            color: #3b2b21;
-            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
-            line-height: 1;
-            white-space: nowrap;
-            transform: translateY(-200px);
-          ">
-            <span style="color: #f2c94c;">タテ</span><span>に</span><span style="color: #3aa856; display: block; margin-top: 100px;">なが～～い</span>
-          </div>
-        `,
-        iconSize: [1, 1],
-        iconAnchor: [0, 0],
-      }),
-    []
-  );
-  const leftSideLabelIcon = useMemo(
-    () =>
-      L.divIcon({
-        className: "map-side-label",
-        html: `
-          <div style="
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 48px;
-            font-weight: 800;
-            letter-spacing: 6px;
-            color: #d2b48c;
-            text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.7);
-            line-height: 1;
-            white-space: nowrap;
-            transform: translateX(-80px) translateY(50px);
-          ">
+  const rightSideLabelSvg = useMemo(() => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="260" height="860" viewBox="0 0 260 860">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <text x="200" y="150" writing-mode="vertical-rl" text-orientation="upright"
+            font-size="43" font-weight="800" letter-spacing="6" fill="#3b2b21">
+            <tspan dy="60" fill="#f2c94c">タ</tspan><tspan fill="#f2c94c">テ</tspan>
+            <tspan dy="-20">に</tspan>
+            <tspan dy="-55" dx="-45" fill="#3aa856">な</tspan><tspan fill="#3aa856">が</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">い</tspan>
+          </text>
+        </g>
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }, []);
+
+  const leftSideLabelSvg = useMemo(() => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="200" height="520" viewBox="0 0 200 520">
+        <defs>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <text x="110" y="230" writing-mode="vertical-rl" text-orientation="upright"
+            font-size="48" font-weight="800" letter-spacing="6" fill="#d2b48c">
             日曜市
-          </div>
-        `,
-        iconSize: [1, 1],
-        iconAnchor: [0, 0],
-      }),
-    []
-  );
+          </text>
+        </g>
+      </svg>
+    `;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }, []);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
@@ -387,7 +384,12 @@ const MapView = memo(function MapView({
       if (shop) {
         setSelectedShop(shop);
         if (mapRef.current) {
-          mapRef.current.setView([shop.lat, shop.lng], 18);
+          const currentZoom = mapRef.current.getZoom();
+          if (currentZoom < 18) {
+            mapRef.current.setView([shop.lat, shop.lng], 18);
+          } else {
+            mapRef.current.panTo([shop.lat, shop.lng]);
+          }
         }
       }
     }
@@ -421,6 +423,18 @@ const MapView = memo(function MapView({
       setSelectedShop(latest);
     }
   }, [shops, selectedShop]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (selectedShop) {
+      document.body.classList.add("shop-banner-open");
+    } else {
+      document.body.classList.remove("shop-banner-open");
+    }
+    return () => {
+      document.body.classList.remove("shop-banner-open");
+    };
+  }, [selectedShop]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -457,18 +471,44 @@ const MapView = memo(function MapView({
     };
   }, []);
 
+  const bagIngredientIds = useMemo(() => {
+    const ids = new Set<string>();
+    bagItems.forEach((item) => {
+      const match = findIngredientMatch(item.name);
+      if (match) ids.add(match.id);
+    });
+    return ids;
+  }, [bagItems]);
+
   const recipeIngredients = useMemo(() => {
     if (!selectedRecipe) return [];
-    return selectedRecipe.ingredients.map((ing) => {
-      const iconKey = Object.keys(ingredientIcons).find((key) =>
-        ing.name.toLowerCase().includes(key)
-      );
-      return {
+    return selectedRecipe.ingredients
+      .filter((ing) => !bagIngredientIds.has(ing.id))
+      .map((ing) => ({
         name: ing.name,
-        icon: iconKey ? ingredientIcons[iconKey] : "🛍️",
-      };
+        icon: ingredientIcons[ing.id] ?? "???",
+      }));
+  }, [bagIngredientIds, selectedRecipe]);
+
+  const recipeIngredientIconsByShop = useMemo(() => {
+    if (!showRecipeOverlay || !selectedRecipe || recipeIngredients.length === 0) return {};
+    const byShop: Record<number, string[]> = {};
+    shops.forEach((shop) => {
+      const icons = recipeIngredients
+        .filter((ing) =>
+          shop.products.some((product) =>
+            product.toLowerCase().includes(ing.name.toLowerCase()) ||
+            ing.name.toLowerCase().includes(product.toLowerCase())
+          )
+        )
+        .map((ing) => ing.icon);
+      if (icons.length > 0) {
+        const unique = Array.from(new Set(icons)).slice(0, 3);
+        byShop[shop.id] = unique;
+      }
     });
-  }, [selectedRecipe]);
+    return byShop;
+  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shops]);
 
   const shopsWithIngredients = useMemo(() => {
     if (!selectedRecipe || recipeIngredients.length === 0) return [];
@@ -496,6 +536,9 @@ const MapView = memo(function MapView({
 
     if (viewMode.mode === ViewMode.DETAIL) {
       // 詳細モード: 詳細バナーを表示
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
       setSelectedShop(clickedShop);
     } else {
       // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
@@ -561,22 +604,9 @@ const MapView = memo(function MapView({
   const handleAddToBag = useCallback((name: string, fromShopId?: number) => {
     const value = name.trim();
     if (!value) return;
-    const items = loadBag();
-    const normalized = value.toLowerCase();
-    const exists = items.some(
-      (item) =>
-        item.name.trim().toLowerCase() === normalized &&
-        item.fromShopId === fromShopId
-    );
-    if (exists) return;
-
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const category = isIngredientName(value) ? "食材" : undefined;
-    saveBag([{ id, name: value, fromShopId, category, createdAt: Date.now() }, ...items]);
-  }, []);
+    addItem({ name: value, fromShopId, category });
+  }, [addItem]);
 
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
@@ -629,15 +659,23 @@ const MapView = memo(function MapView({
         <RoadOverlay />
         <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
         <Pane name="map-label" style={{ zIndex: 900 }}>
-          <Marker
-            position={[RIGHT_SIDE_LABEL_LAT, RIGHT_SIDE_LABEL_LNG]}
-            icon={rightSideLabelIcon}
-            interactive={false}
+          <ImageOverlay
+            url={rightSideLabelSvg}
+            bounds={[
+              [RIGHT_SIDE_LABEL_LAT + RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG - RIGHT_LABEL_WIDTH_LNG / 2],
+              [RIGHT_SIDE_LABEL_LAT - RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG + RIGHT_LABEL_WIDTH_LNG / 2],
+            ]}
+            opacity={1}
+            zIndex={90}
           />
-          <Marker
-            position={[LEFT_SIDE_LABEL_LAT, LEFT_SIDE_LABEL_LNG]}
-            icon={leftSideLabelIcon}
-            interactive={false}
+          <ImageOverlay
+            url={leftSideLabelSvg}
+            bounds={[
+              [LEFT_SIDE_LABEL_LAT + LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG - LEFT_LABEL_WIDTH_LNG / 2],
+              [LEFT_SIDE_LABEL_LAT - LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG + LEFT_LABEL_WIDTH_LNG / 2],
+            ]}
+            opacity={1}
+            zIndex={90}
           />
         </Pane>
 
@@ -782,7 +820,11 @@ const MapView = memo(function MapView({
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
           favoriteShopIds={favoriteShopIds}
-          highlightShopIds={searchShopIds}
+          searchShopIds={searchShopIds}
+          aiHighlightShopIds={aiShopIds}
+          commentHighlightShopIds={commentShopId ? [commentShopId] : []}
+          kotoduteShopIds={kotoduteShopIds}
+          recipeIngredientIconsByShop={recipeIngredientIconsByShop}
         />
 
         {/* レシピオーバーレイ */}
@@ -828,9 +870,13 @@ const MapView = memo(function MapView({
 
         {/* ユーザー位置 */}
         <UserLocationMarker
-          onLocationUpdate={(_, position) => {
+          onLocationUpdate={(inMarket, position) => {
             setUserLocation(position);
-            onUserLocationUpdate?.({ lat: position[0], lng: position[1] });
+            onUserLocationUpdate?.({
+              lat: position[0],
+              lng: position[1],
+              inMarket,
+            });
           }}
         />
 
@@ -841,18 +887,8 @@ const MapView = memo(function MapView({
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
         {/* モバイルズームコントロール */}
-        {isMobile && <MobileZoomControls />}
+        {false && isMobile && <MobileZoomControls />}
       </MapContainer>
-
-      {/* レシピモード閉じるボタン */}
-      {showRecipeOverlay && onCloseRecipeOverlay && (
-        <button
-          onClick={onCloseRecipeOverlay}
-          className="absolute top-4 right-4 z-[1500] rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-lg hover:bg-gray-50"
-        >
-          レシピモードを閉じる
-        </button>
-      )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離

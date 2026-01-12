@@ -173,7 +173,7 @@ export const shops: Shop[] = [];
 // 実際の日曜市の範囲（1.3km）
 const startLat = 33.56500;  // 高知城前（西側）
 const endLat = 33.55330;    // 追手筋東端（東側）
-const latRange = startLat - endLat;
+const latRange = (startLat - endLat) / 2;
 const latStep = latRange / 150;
 
 const centerLng = 133.53100;    // 道の中心の経度
