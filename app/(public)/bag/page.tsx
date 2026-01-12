@@ -1,48 +1,16 @@
 ﻿'use client';
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
 import { shops } from "../map/data/shops";
 import { ingredientCatalog } from "../../../lib/recipes";
-
-type BagItem = {
-  id: string;
-  name: string;
-  fromShopId?: number;
-  category?: string;
-  qty?: string;
-  note?: string;
-  photo?: string;
-  createdAt: number;
-};
-
-const STORAGE_KEY = "nicchyo-fridge-items";
-
-function loadBagItems(): BagItem[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
-}
-
-function saveBagItems(items: BagItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
+import { useBag, type BagItem } from "../../../lib/storage/BagContext";
 
 export default function BagPage() {
-  const [items, setItems] = useState<BagItem[]>([]);
+  const { items, removeItem, clearBag } = useBag();
   const [pendingDeleteItem, setPendingDeleteItem] = useState<BagItem | null>(null);
   const [pendingReset, setPendingReset] = useState(false);
-
-  useEffect(() => {
-    setItems(loadBagItems());
-  }, []);
 
   const shopLookup = useMemo(() => {
     return new Map(shops.map((shop) => [shop.id, shop]));
@@ -84,17 +52,12 @@ export default function BagPage() {
   }, [sortedItems, shopLookup]);
 
   const handleRemove = (id: string) => {
-    setItems((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      saveBagItems(next);
-      return next;
-    });
+    removeItem(id);
     setPendingDeleteItem(null);
   };
 
   const handleReset = () => {
-    setItems([]);
-    saveBagItems([]);
+    clearBag();
     setPendingReset(false);
   };
 

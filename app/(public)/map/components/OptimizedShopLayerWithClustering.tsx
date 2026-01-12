@@ -13,7 +13,6 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
 import ShopIllustration from './ShopIllustration';
-import ShopBubble from './ShopBubble';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 
 interface OptimizedShopLayerWithClusteringProps {
@@ -21,7 +20,11 @@ interface OptimizedShopLayerWithClusteringProps {
   onShopClick: (shop: Shop) => void;
   selectedShopId?: number;
   favoriteShopIds?: number[];
-  highlightShopIds?: number[];
+  searchShopIds?: number[];
+  aiHighlightShopIds?: number[];
+  commentHighlightShopIds?: number[];
+  kotoduteShopIds?: number[];
+  recipeIngredientIconsByShop?: Record<number, string[]>;
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
@@ -34,7 +37,11 @@ export default function OptimizedShopLayerWithClustering({
   onShopClick,
   selectedShopId,
   favoriteShopIds,
-  highlightShopIds,
+  searchShopIds,
+  aiHighlightShopIds,
+  commentHighlightShopIds,
+  kotoduteShopIds,
+  recipeIngredientIconsByShop,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -44,8 +51,15 @@ export default function OptimizedShopLayerWithClustering({
   const compactIconsRef = useRef<Map<number, L.DivIcon>>(new Map());
   const favoriteSetRef = useRef<Set<number>>(new Set());
   const prevFavoriteSetRef = useRef<Set<number>>(new Set());
-  const highlightSetRef = useRef<Set<number>>(new Set());
-  const prevHighlightSetRef = useRef<Set<number>>(new Set());
+  const searchHighlightSetRef = useRef<Set<number>>(new Set());
+  const prevSearchHighlightSetRef = useRef<Set<number>>(new Set());
+  const aiHighlightSetRef = useRef<Set<number>>(new Set());
+  const prevAiHighlightSetRef = useRef<Set<number>>(new Set());
+  const commentHighlightSetRef = useRef<Set<number>>(new Set());
+  const prevCommentHighlightSetRef = useRef<Set<number>>(new Set());
+  const kotoduteSetRef = useRef<Set<number>>(new Set());
+  const prevKotoduteSetRef = useRef<Set<number>>(new Set());
+  const recipeIconsRef = useRef<Record<number, string[]>>({});
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
@@ -72,6 +86,56 @@ export default function OptimizedShopLayerWithClustering({
       if (selectedShopIdRef.current !== shopId) {
         marker.setZIndexOffset(0);
       }
+    }
+  };
+
+  const setMarkerSearchHighlight = (
+    marker: L.Marker,
+    isHighlighted: boolean
+  ) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-search');
+    } else {
+      icon.classList.remove('shop-marker-search');
+    }
+  };
+
+  const setMarkerCommentHighlight = (marker: L.Marker, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-comment');
+    } else {
+      icon.classList.remove('shop-marker-comment');
+    }
+  };
+
+  const setMarkerKotodute = (marker: L.Marker, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-kotodute');
+    } else {
+      icon.classList.remove('shop-marker-kotodute');
+    }
+  };
+
+  const setMarkerRecipeIcons = (marker: L.Marker, icons?: string[]) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    const container = icon.querySelector('.shop-recipe-icons');
+    if (!container) return;
+    const hasIcons = !!icons && icons.length > 0;
+    if (hasIcons) {
+      container.innerHTML = icons
+        ?.map((recipeIcon) => `<span class="shop-recipe-icon">${recipeIcon}</span>`)
+        .join('') ?? '';
+      icon.classList.add('shop-marker-recipe');
+    } else {
+      container.innerHTML = '';
+      icon.classList.remove('shop-marker-recipe');
     }
   };
 
@@ -124,15 +188,13 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
+          <div className="shop-recipe-icons" aria-hidden="true" />
+          <div className="shop-kotodute-badge" aria-hidden="true">
+            i
+          </div>
           <div className="shop-favorite-badge" aria-hidden="true">
             &#10084;
           </div>
-          <ShopBubble
-            icon={shop.icon}
-            products={shop.products}
-            side={shop.side}
-            offset={sizeConfig.bubbleOffset}
-          />
           <ShopIllustration
             type={shop.illustration?.type}
             size={sizeKey}
@@ -158,6 +220,10 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
+          <div className="shop-recipe-icons" aria-hidden="true" />
+          <div className="shop-kotodute-badge" aria-hidden="true">
+            i
+          </div>
           <div className="shop-favorite-badge" aria-hidden="true">
             &#10084;
           </div>
@@ -180,6 +246,8 @@ export default function OptimizedShopLayerWithClustering({
       const compactIcon = L.divIcon({
         html: `
           <div class="shop-marker-compact-wrapper shop-side-${shop.side}">
+            <div class="shop-recipe-icons" aria-hidden="true"></div>
+            <div class="shop-kotodute-badge" aria-hidden="true">i</div>
             <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
             <div class="shop-marker-compact"></div>
           </div>
@@ -198,6 +266,11 @@ export default function OptimizedShopLayerWithClustering({
       });
       marker.on('add', () => {
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
+        setMarkerHighlight(marker, shop.id, aiHighlightSetRef.current.has(shop.id));
+        setMarkerSearchHighlight(marker, searchHighlightSetRef.current.has(shop.id));
+        setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
+        setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
+        setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
       });
 
       markers.addLayer(marker);
@@ -228,6 +301,7 @@ export default function OptimizedShopLayerWithClustering({
         if (icon) {
           marker.setIcon(icon);
           setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
+          setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
           const markerElement = marker.getElement();
           if (markerElement) {
             if (shopId === selectedShopIdRef.current) {
@@ -237,13 +311,28 @@ export default function OptimizedShopLayerWithClustering({
               markerElement.classList.remove('shop-marker-selected');
               marker.setZIndexOffset(0);
             }
-            if (highlightSetRef.current.has(shopId)) {
+            if (aiHighlightSetRef.current.has(shopId)) {
               markerElement.classList.add('shop-marker-ai');
               if (shopId !== selectedShopIdRef.current) {
                 marker.setZIndexOffset(900);
               }
             } else {
               markerElement.classList.remove('shop-marker-ai');
+            }
+            if (searchHighlightSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-search');
+            } else {
+              markerElement.classList.remove('shop-marker-search');
+            }
+            if (commentHighlightSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-comment');
+            } else {
+              markerElement.classList.remove('shop-marker-comment');
+            }
+            if (kotoduteSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-kotodute');
+            } else {
+              markerElement.classList.remove('shop-marker-kotodute');
             }
           }
         }
@@ -290,9 +379,32 @@ export default function OptimizedShopLayerWithClustering({
   }, [favoriteShopIds]);
 
   useEffect(() => {
-    highlightSetRef.current = new Set(highlightShopIds ?? []);
-    const nextHighlights = highlightSetRef.current;
-    const prevHighlights = prevHighlightSetRef.current;
+    searchHighlightSetRef.current = new Set(searchShopIds ?? []);
+    const nextHighlights = searchHighlightSetRef.current;
+    const prevHighlights = prevSearchHighlightSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerSearchHighlight(marker, nextHighlights.has(id));
+      }
+    });
+
+    prevSearchHighlightSetRef.current = nextHighlights;
+  }, [searchShopIds]);
+
+  useEffect(() => {
+    aiHighlightSetRef.current = new Set(aiHighlightShopIds ?? []);
+    const nextHighlights = aiHighlightSetRef.current;
+    const prevHighlights = prevAiHighlightSetRef.current;
     const changed = new Set<number>();
 
     prevHighlights.forEach((id) => {
@@ -309,8 +421,61 @@ export default function OptimizedShopLayerWithClustering({
       }
     });
 
-    prevHighlightSetRef.current = nextHighlights;
-  }, [highlightShopIds]);
+    prevAiHighlightSetRef.current = nextHighlights;
+  }, [aiHighlightShopIds]);
+
+  useEffect(() => {
+    commentHighlightSetRef.current = new Set(commentHighlightShopIds ?? []);
+    const nextHighlights = commentHighlightSetRef.current;
+    const prevHighlights = prevCommentHighlightSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerCommentHighlight(marker, nextHighlights.has(id));
+      }
+    });
+
+    prevCommentHighlightSetRef.current = nextHighlights;
+  }, [commentHighlightShopIds]);
+
+  useEffect(() => {
+    kotoduteSetRef.current = new Set(kotoduteShopIds ?? []);
+    const nextHighlights = kotoduteSetRef.current;
+    const prevHighlights = prevKotoduteSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerKotodute(marker, nextHighlights.has(id));
+      }
+    });
+
+    prevKotoduteSetRef.current = nextHighlights;
+  }, [kotoduteShopIds]);
+
+  useEffect(() => {
+    recipeIconsRef.current = recipeIngredientIconsByShop ?? {};
+    markersRef.current.forEach((marker, shopId) => {
+      setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
+    });
+  }, [recipeIngredientIconsByShop]);
 
   useEffect(() => {
     markersRef.current.forEach((marker, shopId) => {
@@ -321,7 +486,7 @@ export default function OptimizedShopLayerWithClustering({
           marker.setZIndexOffset(1000);
         } else {
           icon.classList.remove('shop-marker-selected');
-          if (highlightSetRef.current.has(shopId)) {
+          if (aiHighlightSetRef.current.has(shopId)) {
             marker.setZIndexOffset(900);
           } else {
             marker.setZIndexOffset(0);

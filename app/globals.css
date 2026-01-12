@@ -199,7 +199,97 @@ body.grandma-chat-open .leaflet-container {
     drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
 }
 
+.shop-marker-search {
+  transform: scale(1.08);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
+    drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
+}
+
+.shop-marker-comment {
+  transform: scale(1.06);
+  filter:
+    drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))
+    drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
+}
+
+.shop-marker-search .stall-roof {
+  background: linear-gradient(135deg, #93c5fd, #2563eb) !important;
+}
+
+.shop-marker-search .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #2563eb 0 10%,
+    #93c5fd 10% 20%
+  ) !important;
+}
+
+.shop-marker-search .shop-marker-compact {
+  background: linear-gradient(180deg, #60a5fa 0%, #1d4ed8 100%) !important;
+}
+
+.shop-recipe-icons {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+  pointer-events: none;
+}
+
+.shop-recipe-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.shop-marker-recipe .shop-recipe-icons {
+  display: inline-flex;
+}
+
+.compact-shop-marker .shop-recipe-icons {
+  top: -14px;
+  padding: 1px 4px;
+}
+
+.compact-shop-marker .shop-recipe-icon {
+  font-size: 10px;
+}
+
+.shop-marker-ai .stall-roof {
+  background: linear-gradient(135deg, #fca5a5, #ef4444) !important;
+}
+
+.shop-marker-ai .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #ef4444 0 10%,
+    #fca5a5 10% 20%
+  ) !important;
+}
+
+.shop-marker-ai .shop-marker-compact {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%) !important;
+}
+
 .shop-marker-selected.shop-marker-ai {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.shop-marker-selected.shop-marker-search {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.shop-marker-selected.shop-marker-comment {
   transform: scale(1.15);
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
@@ -233,11 +323,48 @@ body.grandma-chat-open .leaflet-container {
   right: auto;
 }
 
+.shop-kotodute-badge {
+  position: absolute;
+  top: 0;
+  left: -36px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #1d4ed8;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.35);
+  pointer-events: none;
+}
+
+.shop-side-south .shop-kotodute-badge {
+  left: auto;
+  right: -36px;
+}
+
+.grandma-title-label {
+  font-size: 14px;
+}
+
+.shop-marker-kotodute .shop-kotodute-badge {
+  display: inline-flex;
+}
+
 .custom-shop-marker.is-favorite .shop-favorite-badge {
   display: inline-flex;
 }
 
 body.shop-banner-open .hamburger-button {
+  display: none;
+}
+
+body.home-poster-zoom-open .hamburger-button {
   display: none;
 }
 

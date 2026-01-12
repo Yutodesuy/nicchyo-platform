@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { memo } from "react";
+import type { MouseEvent } from "react";
 import { Shop } from "../../map/data/shops";
+import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 interface ShopResultCardProps {
   shop: Shop;
@@ -10,6 +13,8 @@ interface ShopResultCardProps {
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   compact?: boolean;
+  enableSearchMapHighlight?: boolean;
+  mapLabel?: string;
 }
 
 /**
@@ -22,12 +27,25 @@ function ShopResultCard({
   onToggleFavorite,
   onSelectShop,
   compact = false,
+  enableSearchMapHighlight = false,
+  mapLabel: mapLabelProp,
 }: ShopResultCardProps) {
   const previewImage =
     shop.images?.main ||
     shop.images?.thumbnail ||
     shop.images?.additional?.[0] ||
-    "/images/shops/tosahamono.webp";
+    getShopBannerImage(shop.category);
+  const mapLabel = mapLabelProp ?? shop.name;
+  const mapHref = enableSearchMapHighlight
+    ? `/map?search=1&label=${encodeURIComponent(mapLabel)}&shop=${shop.id}`
+    : `/map?shop=${shop.id}`;
+
+  const handleOpenMap = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+    if (enableSearchMapHighlight) {
+      saveSearchMapPayload({ ids: [shop.id], label: mapLabel });
+    }
+  };
 
   return (
     <div
@@ -108,8 +126,8 @@ function ShopResultCard({
       </div>
 
       <Link
-        href={`/map?shop=${shop.id}`}
-        onClick={(event) => event.stopPropagation()}
+        href={mapHref}
+        onClick={handleOpenMap}
         className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
           compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
         }`}

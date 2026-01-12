@@ -1,4 +1,4 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -30,6 +30,9 @@ type GrandmaChatterProps = {
   fullWidth?: boolean;
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
+  onActiveShopChange?: (shopId: number | null) => void;
+  onCommentShopFocus?: (shopId: number) => void;
+  introImageUrl?: string | null;
 };
 
 export default function GrandmaChatter({
@@ -44,6 +47,9 @@ export default function GrandmaChatter({
   fullWidth = false,
   onHoldChange,
   onDrop,
+  onActiveShopChange,
+  onCommentShopFocus,
+  introImageUrl,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -60,6 +66,8 @@ export default function GrandmaChatter({
     "idle"
   );
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
+  const [introLockUntil, setIntroLockUntil] = useState<number | null>(null);
+  const [isIntroImageOpen, setIsIntroImageOpen] = useState(false);
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
@@ -70,6 +78,7 @@ export default function GrandmaChatter({
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const askRequestRef = useRef(0);
+  const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -102,6 +111,25 @@ export default function GrandmaChatter({
     if (!pool.length) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
+
+  const isShopIntro = !isChatOpen && !priorityMessage && !!current?.shopId;
+  const activeShopId = isShopIntro ? current?.shopId ?? null : null;
+  const showIntroImage = isShopIntro && !!introImageUrl;
+  const introImageSize = { width: 108, height: 144, gap: 12 };
+
+  useEffect(() => {
+    onActiveShopChange?.(activeShopId);
+  }, [activeShopId, onActiveShopChange]);
+
+  useEffect(() => {
+    if (isShopIntro) {
+      const nextLock = Date.now() + 3500;
+      setIntroLockUntil((prev) => (prev ? Math.max(prev, nextLock) : nextLock));
+    } else {
+      setIntroLockUntil(null);
+      setIsIntroImageOpen(false);
+    }
+  }, [isShopIntro, current?.id]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -155,6 +183,8 @@ export default function GrandmaChatter({
   if (!current) return null;
 
   const handleNext = () => {
+    if (isIntroImageOpen) return;
+    if (introLockUntil && Date.now() < introLockUntil) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id);
   };
 
@@ -169,7 +199,7 @@ export default function GrandmaChatter({
 
   useEffect(() => {
     const shouldRotateInstructor = isChatOpen && aiStatus === "idle";
-    const shouldRotateNormal = !isChatOpen;
+    const shouldRotateNormal = !isChatOpen && !isIntroImageOpen;
     if (!shouldRotateInstructor && !shouldRotateNormal) return;
     const timer = window.setInterval(() => {
       if (isChatOpen) {
@@ -181,7 +211,7 @@ export default function GrandmaChatter({
       }
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [aiStatus, isChatOpen, pool]);
+  }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
@@ -196,9 +226,12 @@ export default function GrandmaChatter({
           inputRef.current.focus();
         }
       }
+      lastAvatarOffsetRef.current = avatarOffset;
+      setAvatarOffset({ x: 0, y: 0 });
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
+      setAvatarOffset(lastAvatarOffsetRef.current);
       inputRef.current?.blur();
     }
   };
@@ -242,7 +275,10 @@ export default function GrandmaChatter({
     const viewWidth = document.documentElement.clientWidth;
     const viewHeight = document.documentElement.clientHeight;
     const min = avatarOffset.x - rect.left;
-    const max = avatarOffset.x + (viewWidth - rect.right);
+    const reservedRight = showIntroImage
+      ? introImageSize.width + introImageSize.gap + 16
+      : 0;
+    const max = avatarOffset.x + Math.max(0, viewWidth - rect.right - reservedRight);
     const minY = avatarOffset.y - rect.top;
     const maxY = avatarOffset.y + (viewHeight - rect.bottom);
     dragStateRef.current = {
@@ -355,9 +391,10 @@ export default function GrandmaChatter({
   const avatarClassName = fullWidth
     ? "relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]"
     : "relative h-[33px] w-[33px] shrink-0 sm:h-[39px] sm:w-[39px]";
-  const bubbleClassName = fullWidth
-    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
-    : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 border-amber-400 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
+  const bubbleBaseClassName = fullWidth
+    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
+    : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
+  const bubbleBorderClass = isShopIntro ? "border-emerald-400" : "border-amber-400";
   const bubbleStateClass =
     holdPhase === "active"
       ? "invisible"
@@ -385,8 +422,8 @@ export default function GrandmaChatter({
     ? priorityMessage.text
     : current.text;
   const bubbleIcon = isChatOpen
-    ? "💬"
-    : priorityMessage?.badgeIcon ?? current.icon ?? genreIcon(current.genre);
+    ? "🤖"
+    : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
 
   return (
     <div className={shellClassName}>
@@ -398,7 +435,7 @@ export default function GrandmaChatter({
           }}
         >
           <div className={labelClassName}>
-            <span className="relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-[11px] font-semibold text-white shadow-sm">
+            <span className="grandma-title-label relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 font-semibold text-white shadow-sm">
               {titleLabel}
             </span>
           </div>
@@ -437,9 +474,15 @@ export default function GrandmaChatter({
                 : undefined
               : priorityMessage
               ? onPriorityClick
-              : handleNext
+              : () => {
+                  if (isShopIntro && current?.shopId) {
+                    onCommentShopFocus?.(current.shopId);
+                    return;
+                  }
+                  handleNext();
+                }
           }
-          className={`${bubbleClassName} ${bubbleStateClass}`}
+          className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
           aria-label="ばあちゃんのコメントを開く"
         >
           {!fullWidth && (
@@ -495,6 +538,79 @@ export default function GrandmaChatter({
         </button>
       </div>
 
+      {showIntroImage && (
+        <div className="fixed bottom-[calc(5rem+100px)] right-4 z-[1401] pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setIsIntroImageOpen(true)}
+            className="rounded-2xl border-2 border-amber-300 bg-white/95 p-1 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+            style={{
+              width: `${introImageSize.width}px`,
+              height: `${introImageSize.height}px`,
+            }}
+            aria-label="出店画像を拡大表示"
+          >
+            <div className="h-full w-full overflow-hidden rounded-xl border border-amber-100 bg-white">
+              <img
+                src={introImageUrl ?? ""}
+                alt=""
+                className="h-full w-full object-cover"
+                draggable={false}
+              />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {showIntroImage && isIntroImageOpen && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 px-4 pointer-events-auto">
+          <div
+            className="absolute inset-0"
+            onClick={() => {
+              setIsIntroImageOpen(false);
+              setIntroLockUntil(Date.now() + 3000);
+            }}
+          />
+          <div
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border-2 border-amber-200 bg-white shadow-2xl pointer-events-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIsIntroImageOpen(false);
+                setIntroLockUntil(Date.now() + 3000);
+              }}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-amber-100 bg-white/90 text-lg font-bold text-amber-700 shadow-sm hover:bg-amber-50"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+            <img
+              src={introImageUrl ?? ""}
+              alt=""
+              className="h-auto w-full object-cover"
+              draggable={false}
+            />
+            <div className="p-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (current?.shopId) {
+                    onCommentShopFocus?.(current.shopId);
+                  }
+                  setIsIntroImageOpen(false);
+                  setIntroLockUntil(Date.now() + 3000);
+                }}
+                className="w-full rounded-xl bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+              >
+                このお店をくわしく
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         className={`w-full px-3 transition-all duration-200 ${chatPanelLift} ${
           isChatOpen
@@ -524,25 +640,31 @@ export default function GrandmaChatter({
                   {aiSuggestedShops.length}店
                 </span>
               </div>
-              <div
-                className={`mt-3 flex gap-3 pb-2 ${
-                  aiSuggestedShops.length > 1 ? "overflow-x-auto" : ""
-                }`}
-              >
-                {aiSuggestedShops.map((shop) => (
-                  <div
-                    key={shop.id}
-                    className={aiSuggestedShops.length === 1 ? "w-full" : "shrink-0"}
-                  >
-                    <ShopResultCard
-                      shop={shop}
-                      isFavorite={false}
-                      onSelectShop={() => onSelectShop?.(shop.id)}
-                      compact={aiSuggestedShops.length > 1}
-                    />
-                  </div>
-                ))}
-              </div>
+              {aiStatus === "thinking" ? (
+                <div className="mt-6 flex items-center justify-center py-4">
+                  <span className="h-7 w-7 animate-spin rounded-full border-2 border-amber-300 border-t-transparent" aria-label="読み込み中" />
+                </div>
+              ) : (
+                <div
+                  className={`mt-3 flex gap-3 pb-2 ${
+                    aiSuggestedShops.length > 1 ? "overflow-x-auto" : ""
+                  }`}
+                >
+                  {aiSuggestedShops.map((shop) => (
+                    <div
+                      key={shop.id}
+                      className={aiSuggestedShops.length === 1 ? "w-full" : "shrink-0"}
+                    >
+                      <ShopResultCard
+                        shop={shop}
+                        isFavorite={false}
+                        onSelectShop={() => onSelectShop?.(shop.id)}
+                        compact={aiSuggestedShops.length > 1}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div
@@ -608,16 +730,37 @@ export default function GrandmaChatter({
   );
 }
 
-function genreIcon(genre: string) {
-  switch (genre) {
-    case "event":
-      return "??";
-    case "notice":
-      return "??";
-    case "tutorial":
-      return "??";
-    case "monologue":
-    default:
-      return "??";
+function pickCommentIcon(comment: { genre: string; text: string }) {
+  const text = comment.text;
+  if (comment.genre === "event") return "🎉";
+  if (comment.genre === "notice") {
+    if (text.includes("バッグ") || text.includes("bag")) return "👜";
+    if (text.includes("ブロック")) return "🧭";
+    return "⚠️";
   }
+  if (comment.genre === "tutorial") {
+    if (text.includes("検索") || text.includes("探")) return "🔎";
+    return "👆";
+  }
+
+  if (text.includes("雨")) return "☔";
+  if (text.includes("風")) return "🌬️";
+  if (text.includes("夕方")) return "🌇";
+  if (text.includes("朝")) return "🌅";
+  if (text.includes("写真")) return "📸";
+  if (text.includes("城") || text.includes("城下町")) return "🏯";
+  if (text.includes("季節")) return "🍁";
+  if (text.includes("果物")) return "🍊";
+  if (text.includes("野菜") || text.includes("食材")) return "🥬";
+  if (text.includes("飲み物")) return "🥤";
+  if (text.includes("甘い")) return "🍡";
+  if (text.includes("屋台") || text.includes("お腹") || text.includes("料理") || text.includes("食べ")) return "🍽️";
+  if (text.includes("休") || text.includes("座") || text.includes("ベンチ")) return "🪑";
+  if (text.includes("音楽")) return "🎵";
+  if (text.includes("迷子") || text.includes("人が多い")) return "👥";
+  if (text.includes("お土産") || text.includes("お気に入り")) return "🎁";
+  if (text.includes("道") || text.includes("散歩") || text.includes("歩")) return "🚶";
+  if (text.includes("時間") || text.includes("早め")) return "⏰";
+
+  return "💬";
 }
