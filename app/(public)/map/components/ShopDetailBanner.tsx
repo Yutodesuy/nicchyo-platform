@@ -16,12 +16,6 @@ import {
   loadKotodute,
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
-import {
-  FAVORITE_SHOPS_KEY,
-  FAVORITE_SHOPS_UPDATED_EVENT,
-  loadFavoriteShopIds,
-  toggleFavoriteShopId,
-} from "../../../../lib/favoriteShops";
 
 type ShopDetailBannerProps = {
   shop: Shop;
@@ -94,7 +88,6 @@ export default function ShopDetailBanner({
   const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
-  const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
   const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
@@ -132,29 +125,6 @@ export default function ShopDetailBanner({
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const updateFavorites = () => {
-      setFavoriteShopIds(loadFavoriteShopIds());
-    };
-    updateFavorites();
-    const handler = (event: StorageEvent) => {
-      if (event.key === FAVORITE_SHOPS_KEY) {
-        updateFavorites();
-      }
-    };
-    const updateHandler = (event: Event) => {
-      if (event.type === FAVORITE_SHOPS_UPDATED_EVENT) {
-        updateFavorites();
-      }
-    };
-    window.addEventListener("storage", handler);
-    window.addEventListener(FAVORITE_SHOPS_UPDATED_EVENT, updateHandler);
-    return () => {
-      window.removeEventListener("storage", handler);
-      window.removeEventListener(FAVORITE_SHOPS_UPDATED_EVENT, updateHandler);
-    };
-  }, [shop.id]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -225,7 +195,6 @@ export default function ShopDetailBanner({
     router.push("/bag");
   }, [router]);
 
-  const isFavorite = favoriteShopIds.includes(shop.id);
   const isKotodute = variant === "kotodute";
   const today = new Date();
   const matchedIngredientIds = useMemo(() => {
@@ -296,6 +265,12 @@ export default function ShopDetailBanner({
     }
     return ["おすすめの食べ方", "旬の話題", "市場のこと", "出店のこだわり"];
   }, [shop.aboutVendor, shop.description, shop.message, shop.topic]);
+  const shopNameSizeClass = useMemo(() => {
+    const length = shop.name?.length ?? 0;
+    if (length >= 18) return "text-2xl";
+    if (length >= 14) return "text-3xl";
+    return "text-4xl";
+  }, [shop.name]);
   const kotodutePresenceNotes = useMemo(
     () =>
       kotoduteNotes.filter((note) => {
@@ -330,10 +305,6 @@ export default function ShopDetailBanner({
     if (!shopOpenStatus) return;
   }, [shopOpenStatus]);
 
-  const handleToggleFavorite = useCallback(() => {
-    const next = toggleFavoriteShopId(shop.id);
-    setFavoriteShopIds(next);
-  }, [shop.id]);
 
   const canEditShop = permissions.canEditShop(shop.id);
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category);
@@ -363,9 +334,9 @@ export default function ShopDetailBanner({
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
-      <div className="h-full w-full max-w-none overflow-y-auto bg-white/95 px-6 pb-24 pt-6 shadow-2xl">
+      <div className="h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl">
         {/* 写真 */}
-        <div className="-mx-6 overflow-hidden border-y border-slate-200 bg-white">
+        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white">
           <Image
             src={bannerImage}
             alt={`${shop.name}の写真`}
@@ -383,19 +354,9 @@ export default function ShopDetailBanner({
         <div className="mt-6 flex items-start justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-4xl font-semibold text-slate-900">
+              <h2 className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis ${shopNameSizeClass}`}>
                 {shop.name}
               </h2>
-              {!isKotodute && (
-                <button
-                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xl shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"}`}
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
-                >
-                  <span className="text-2xl font-bold">{isFavorite ? "❤" : "♡"}</span>
-                </button>
-              )}
               {!isKotodute && canEditShop && (
                 <button
                   type="button"
