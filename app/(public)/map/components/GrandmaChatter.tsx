@@ -34,6 +34,7 @@ type GrandmaChatterProps = {
   onCommentShopFocus?: (shopId: number) => void;
   onCommentShopOpen?: (shopId: number) => void;
   introImageUrl?: string | null;
+  onAiImageClick?: (imageUrl: string) => void;
 };
 
 export default function GrandmaChatter({
@@ -52,6 +53,7 @@ export default function GrandmaChatter({
   onCommentShopFocus,
   onCommentShopOpen,
   introImageUrl,
+  onAiImageClick,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -403,17 +405,19 @@ export default function GrandmaChatter({
       : "";
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
   const isKeyboardOpen = isInputFocused || keyboardShift > 0;
+  const hasImageReply = !!aiImageUrl;
   const hasSuggestedBox =
     !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
+  const hasSupplement = hasSuggestedBox || hasImageReply;
   const chatLiftClassName = isChatOpen
     ? isKeyboardOpen
       ? "translate-y-[-230px]"
-      : hasSuggestedBox
+      : hasSupplement
       ? "translate-y-[-60px]"
       : "translate-y-[-230px]"
     : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
-  const inputOffsetPx = isKeyboardOpen ? -160 : hasSuggestedBox ? -10 : -120;
+  const inputOffsetPx = isKeyboardOpen ? -160 : hasSupplement ? 20 : -120;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const bubbleText = isChatOpen
@@ -494,23 +498,7 @@ export default function GrandmaChatter({
 
           <div className="flex items-start gap-3">
             {showIntroImage ? (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setIsIntroImageOpen(true);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setIsIntroImageOpen(true);
-                  }
-                }}
-                className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
-                aria-label="出店画像を拡大表示"
-              >
+              <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
                 <img
                   src={introImageUrl ?? ""}
                   alt=""
@@ -627,13 +615,18 @@ export default function GrandmaChatter({
       >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
           {aiImageUrl && (
-            <div className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
+            <button
+              type="button"
+              onClick={() => onAiImageClick?.(aiImageUrl)}
+              className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
+              aria-label="案内画像を開く"
+            >
               <img
                 src={aiImageUrl}
                 alt="案内画像"
                 className="h-36 w-full object-cover"
               />
-            </div>
+            </button>
           )}
           {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">

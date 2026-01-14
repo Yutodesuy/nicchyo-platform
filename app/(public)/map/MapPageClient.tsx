@@ -140,6 +140,18 @@ export default function MapPageClient({
     if (!showGrandma) return null;
     return grandmaEvents.find((event) => event.id === activeEventId) ?? null;
   }, [activeEventId, showGrandma]);
+  const aiImageTargets = useMemo(() => {
+    return grandmaEvents
+      .map((event) => {
+        const image = event.messages.find((message) => message.image)?.image;
+        if (!image) return null;
+        return { image, location: event.location };
+      })
+      .filter(Boolean) as Array<{
+      image: string;
+      location: { lat: number; lng: number; radiusMeters: number };
+    }>;
+  }, []);
   const shopById = useMemo(() => {
     const map = new Map<number, Shop>();
     shops.forEach((shop) => map.set(shop.id, shop));
@@ -358,6 +370,19 @@ export default function MapPageClient({
       }, 900);
     },
     [handleCommentShopFocus, router]
+  );
+  const handleAiImageClick = useCallback(
+    (imageUrl: string) => {
+      const target = aiImageTargets.find((entry) => entry.image === imageUrl);
+      if (!target || !mapRef.current) return;
+      const maxZoom = mapRef.current.getMaxZoom() ?? 19;
+      mapRef.current.flyTo([target.location.lat, target.location.lng], maxZoom, {
+        animate: true,
+        duration: 0.8,
+        easeLinearity: 0.25,
+      });
+    },
+    [aiImageTargets]
   );
 
   useEffect(() => {
@@ -595,6 +620,7 @@ export default function MapPageClient({
                   onCommentShopFocus={handleCommentShopFocus}
                   onCommentShopOpen={handleCommentShopOpen}
                   introImageUrl={introImageUrl}
+                  onAiImageClick={handleAiImageClick}
                   priorityMessage={
                     priority
                       ? {
