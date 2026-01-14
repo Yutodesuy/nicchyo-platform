@@ -28,6 +28,7 @@ type ShopDetailBannerProps = {
   onClose?: () => void;
   onAddToBag?: (name: string, fromShopId?: number) => void;
   variant?: "default" | "kotodute";
+  inMarket?: boolean;
 };
 
 type BagItem = {
@@ -59,6 +60,7 @@ export default function ShopDetailBanner({
   onClose,
   onAddToBag,
   variant = "default",
+  inMarket,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -201,6 +203,26 @@ export default function ShopDetailBanner({
   const isFavorite = favoriteShopIds.includes(shop.id);
   const isKotodute = variant === "kotodute";
   const today = new Date();
+  const shopStatusSignals = useMemo(() => {
+    const seed = typeof shop.id === "number" ? shop.id : Number(String(shop.id).replace(/\D/g, "")) || 0;
+    const total = (seed * 7) % 20;
+    const ratioSeed = ((seed % 7) + 2) / 10;
+    const openVotes = total === 0 ? 0 : Math.round(total * ratioSeed);
+    const closedVotes = Math.max(total - openVotes, 0);
+    const vendorPick = seed % 13 === 0 ? "open" : seed % 17 === 0 ? "closed" : null;
+    return { total, openVotes, closedVotes, vendorPick };
+  }, [shop.id]);
+  const shopStatusLabel = useMemo(() => {
+    if (shopStatusSignals.vendorPick === "open") return "出店している";
+    if (shopStatusSignals.vendorPick === "closed") return "出店していない";
+    if (shopStatusSignals.total < 10) return "わからない";
+    if (shopStatusSignals.total === 0) return "わからない";
+    const ratio = shopStatusSignals.openVotes / shopStatusSignals.total;
+    if (ratio >= 0.7) return "出店している可能性が高い";
+    if (ratio >= 0.5) return "おそらく出店している";
+    if (ratio >= 0.2) return "出店していないかもしれない";
+    return "出店していない可能性が高い";
+  }, [shopStatusSignals]);
   const askTopics = useMemo(() => {
     if (Array.isArray(shop.topic) && shop.topic.length > 0) {
       return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
@@ -331,7 +353,7 @@ export default function ShopDetailBanner({
                 {shop.category} | {shop.ownerName}
               </p>
             )}
-            {!isKotodute && (
+            {!isKotodute && inMarket === true && (
               <div className="mt-6 rounded-3xl border-2 border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
                 <p className="text-base font-semibold text-amber-800">今日はお店を</p>
                 <div className="mt-3 flex flex-wrap gap-3">
@@ -366,6 +388,12 @@ export default function ShopDetailBanner({
                     送信
                   </button>
                 </div>
+              </div>
+            )}
+            {!isKotodute && inMarket !== true && (
+              <div className="mt-6 rounded-3xl border-2 border-slate-200 bg-slate-50 px-5 py-4 shadow-sm">
+                <p className="text-base font-semibold text-slate-600">今日はお店を</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">{shopStatusLabel}</p>
               </div>
             )}
           </div>
