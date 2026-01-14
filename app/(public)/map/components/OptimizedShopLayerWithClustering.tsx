@@ -14,6 +14,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
 import ShopIllustration from './ShopIllustration';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
+import { getShopBannerImage } from '../../../../lib/shopImages';
 
 interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
@@ -61,6 +62,7 @@ export default function OptimizedShopLayerWithClustering({
   const prevKotoduteSetRef = useRef<Set<number>>(new Set());
   const recipeIconsRef = useRef<Record<number, string[]>>({});
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
+  const lastProductIconVisibleRef = useRef<boolean | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
   const setMarkerFavorite = (marker: L.Marker, isFavorite: boolean) => {
@@ -139,6 +141,16 @@ export default function OptimizedShopLayerWithClustering({
     }
   };
 
+  const setMarkerProductIconVisibility = (marker: L.Marker, isVisible: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isVisible) {
+      icon.classList.add('shop-product-icon-visible');
+    } else {
+      icon.classList.remove('shop-product-icon-visible');
+    }
+  };
+
   useEffect(() => {
     selectedShopIdRef.current = selectedShopId;
   }, [selectedShopId]);
@@ -186,6 +198,14 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
+          {(shop.images?.main || getShopBannerImage(shop.category)) && (
+            <img
+              src={shop.images?.main ?? getShopBannerImage(shop.category)}
+              alt=""
+              className="shop-product-icon"
+              aria-hidden="true"
+            />
+          )}
           <div className="shop-recipe-icons" aria-hidden="true" />
           <div className="shop-kotodute-badge" aria-hidden="true">
             i
@@ -269,6 +289,7 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
         setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
+        setMarkerProductIconVisibility(marker, map.getZoom() === map.getMaxZoom());
       });
 
       markers.addLayer(marker);
@@ -280,6 +301,7 @@ export default function OptimizedShopLayerWithClustering({
 
     const updateMarkerDensity = () => {
       const zoom = map.getZoom();
+      const showProductIcon = zoom === map.getMaxZoom();
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
@@ -287,8 +309,14 @@ export default function OptimizedShopLayerWithClustering({
         : useMid
           ? 'mid'
           : 'full';
-      if (lastIconModeRef.current === nextMode) return;
+      if (
+        lastIconModeRef.current === nextMode &&
+        lastProductIconVisibleRef.current === showProductIcon
+      ) {
+        return;
+      }
       lastIconModeRef.current = nextMode;
+      lastProductIconVisibleRef.current = showProductIcon;
 
       markersRef.current.forEach((marker, shopId) => {
         const icon = useCompact
@@ -300,6 +328,7 @@ export default function OptimizedShopLayerWithClustering({
           marker.setIcon(icon);
           setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
           setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
+          setMarkerProductIconVisibility(marker, showProductIcon);
           const markerElement = marker.getElement();
           if (markerElement) {
             if (shopId === selectedShopIdRef.current) {

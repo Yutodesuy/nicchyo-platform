@@ -343,6 +343,27 @@ body.grandma-chat-open .leaflet-container {
   pointer-events: none;
 }
 
+.shop-product-icon {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  padding: 8px;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  object-fit: contain;
+  display: none;
+}
+
+.shop-product-icon-visible .shop-product-icon {
+  display: block;
+}
+
 .shop-side-south .shop-kotodute-badge {
   left: auto;
   right: -36px;
