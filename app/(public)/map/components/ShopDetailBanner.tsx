@@ -230,8 +230,23 @@ export default function ShopDetailBanner({
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
       <div className="h-full w-full max-w-none overflow-y-auto bg-white/95 px-6 pb-24 pt-6 shadow-2xl">
+        {/* 写真 */}
+        <div className="-mx-6 overflow-hidden border-y border-slate-200 bg-white">
+          <Image
+            src={bannerImage}
+            alt={`${shop.name}の写真`}
+            width={960}
+            height={640}
+            className="h-56 w-full object-cover object-center md:h-72"
+            priority
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </div>
+
         {/* ヘッダー */}
-        <div className="mb-2 flex items-start justify-between">
+        <div className="mt-6 flex items-start justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-4xl font-semibold text-slate-900">
@@ -269,21 +284,6 @@ export default function ShopDetailBanner({
               ×
             </button>
           </div>
-        </div>
-
-        {/* 写真 */}
-        <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <Image
-            src={bannerImage}
-            alt={`${shop.name}の写真`}
-            width={960}
-            height={640}
-            className="h-56 w-full object-cover object-center md:h-72"
-            priority
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
         </div>
 
         <div className="mt-10 divide-y divide-slate-200">
