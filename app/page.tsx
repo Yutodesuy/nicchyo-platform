@@ -250,11 +250,11 @@ export default function HomePage() {
                         }, 350);
                       }}
                       className="relative h-14 w-full overflow-hidden rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-400 to-orange-400 px-6 text-lg font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:from-amber-400/95 hover:to-orange-400/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 active:translate-y-0.5"
-                      aria-label="歩き出す"
+                      aria-label="マップへ"
                     >
                       <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
                       <span className="inline-flex items-center justify-center gap-2">
-                        歩き出す
+                        マップへ
                         <span className="text-xl">↗</span>
                       </span>
                     </button>
