@@ -163,9 +163,7 @@ export default function OptimizedShopLayerWithClustering({
         }
 
         return L.divIcon({
-          html: `<div class="cluster-icon ${sizeClass}">
-                   <span>${count}</span>
-                 </div>`,
+          html: `<div class="cluster-icon ${sizeClass}"><span>${count}</span></div>`,
           className: 'custom-cluster-icon',
           iconSize: L.point(40, 40),
         });
