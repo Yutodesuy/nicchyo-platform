@@ -27,6 +27,16 @@ type MapPageClientProps = {
   shops: Shop[];
   showGrandma?: boolean;
   shopBannerVariant?: "default" | "kotodute";
+  attendanceEstimates?: Record<
+    number,
+    {
+      label: string;
+      p: number | null;
+      n_eff: number;
+      vendor_override: boolean;
+      evidence_summary: string;
+    }
+  >;
 };
 
 const INTRO_PRODUCT_COUNT = 2;
@@ -89,6 +99,7 @@ export default function MapPageClient({
   shops,
   showGrandma = true,
   shopBannerVariant = "default",
+  attendanceEstimates,
 }: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -567,6 +578,7 @@ export default function MapPageClient({
               commentShopId={commentHighlightShopId ?? undefined}
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
+              attendanceEstimates={attendanceEstimates}
             />
             {showGrandma && (
               <>
