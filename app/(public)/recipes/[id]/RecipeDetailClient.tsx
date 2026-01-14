@@ -56,8 +56,8 @@ export default function RecipeDetailClient({ id }: Props) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 text-center text-gray-800">
         <p className="text-lg font-semibold">レシピが見つかりませんでした。</p>
-        <Link href="/recipes" className="mt-4 inline-block text-amber-700 underline">
-          レシピ一覧に戻る
+        <Link href="/map" className="mt-4 inline-block text-amber-700 underline">
+          マップへもどる
         </Link>
       </div>
     );
@@ -139,10 +139,10 @@ export default function RecipeDetailClient({ id }: Props) {
 
         <section className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <Link
-            href="/recipes"
+            href="/map"
             className="flex-1 rounded-xl border border-amber-200 bg-white px-4 py-3 text-center text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
           >
-            レシピ一覧へ戻る
+            マップへもどる
           </Link>
           <Link
             href={`/map?recipe=${recipe.id}`}
