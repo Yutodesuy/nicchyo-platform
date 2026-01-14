@@ -25,6 +25,8 @@ const MapView = dynamic(() => import("./components/MapView"), {
 
 type MapPageClientProps = {
   shops: Shop[];
+  showGrandma?: boolean;
+  shopBannerVariant?: "default" | "kotodute";
 };
 
 const INTRO_PRODUCT_COUNT = 2;
@@ -83,7 +85,11 @@ function shuffleArray<T>(items: T[]): T[] {
   return result;
 }
 
-export default function MapPageClient({ shops }: MapPageClientProps) {
+export default function MapPageClient({
+  shops,
+  showGrandma = true,
+  shopBannerVariant = "default",
+}: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, permissions } = useAuth();
@@ -119,10 +125,10 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     label: string;
   } | null>(null);
   const vendorShopId = user?.vendorId ?? null;
-  const activeEvent = useMemo(
-    () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
-    [activeEventId]
-  );
+  const activeEvent = useMemo(() => {
+    if (!showGrandma) return null;
+    return grandmaEvents.find((event) => event.id === activeEventId) ?? null;
+  }, [activeEventId, showGrandma]);
   const shopById = useMemo(() => {
     const map = new Map<number, Shop>();
     shops.forEach((shop) => map.set(shop.id, shop));
@@ -142,15 +148,14 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     [shopById]
   );
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
-  const eventTargets = useMemo(
-    () =>
-      grandmaEvents.map((event) => ({
-        id: event.id,
-        lat: event.location.lat,
-        lng: event.location.lng,
-      })),
-    []
-  );
+  const eventTargets = useMemo(() => {
+    if (!showGrandma) return [];
+    return grandmaEvents.map((event) => ({
+      id: event.id,
+      lat: event.location.lat,
+      lng: event.location.lng,
+    }));
+  }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
   }, []);
@@ -233,6 +238,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
 
   const handleGrandmaDrop = useCallback(
     (position: { x: number; y: number }) => {
+      if (!showGrandma) return;
       if (!mapRef.current) return;
       const container = mapRef.current.getContainer();
       const rect = container.getBoundingClientRect();
@@ -250,7 +256,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       setActiveEventId(hit.id);
       setEventMessageIndex(0);
     },
-    []
+    [showGrandma]
   );
 
   const handleEventAdvance = () => {
@@ -414,11 +420,12 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
   }, [isInMarket, shops, userLocation]);
 
   const commentPool = useMemo(() => {
+    if (!showGrandma) return [];
     if (shopIntroComments.length > 0) {
       return interleaveComments(grandmaComments, shopIntroComments);
     }
     return grandmaComments;
-  }, [isInMarket, shopIntroComments]);
+  }, [isInMarket, shopIntroComments, showGrandma]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
@@ -551,7 +558,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
-              highlightEventTargets={isHoldActive}
+              highlightEventTargets={showGrandma ? isHoldActive : false}
               onMapInstance={handleMapInstance}
               onUserLocationUpdate={(coords) => {
                 setUserLocation({ lat: coords.lat, lng: coords.lng });
@@ -559,106 +566,111 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               }}
               commentShopId={commentHighlightShopId ?? undefined}
               kotoduteShopIds={kotoduteShopIds}
+              shopBannerVariant={shopBannerVariant}
             />
-            <GrandmaChatter
-              titleLabel="にちよさん"
-              fullWidth
-              comments={commentPool}
-              onAsk={handleGrandmaAsk}
-              aiSuggestedShops={aiSuggestedShops}
-              onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
-              onHoldChange={setIsHoldActive}
-              onDrop={handleGrandmaDrop}
-              onActiveShopChange={setCommentHighlightShopId}
-              onCommentShopFocus={handleCommentShopFocus}
-              onCommentShopOpen={handleCommentShopOpen}
-              introImageUrl={introImageUrl}
-              priorityMessage={
-                priority
-                  ? {
-                      text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
-                      badgeTitle: priority.badge.badge.title,
-                      badgeIcon: priority.badge.tierIcon,
-                    }
-                  : null
-              }
-              onPriorityClick={() => setShowBadgeModal(true)}
-              onPriorityDismiss={clearPriority}
-            />
-            <BadgeModal
-              open={showBadgeModal && !!priority}
-              onClose={() => {
-                setShowBadgeModal(false);
-                clearPriority();
-              }}
-              title={priority?.badge.badge.title ?? ""}
-              slot={priority?.badge.slot ?? ""}
-              tierTitle={priority?.badge.tierTitle ?? ""}
-              tierIcon={priority?.badge.tierIcon ?? ""}
-              count={priority?.badge.count ?? 0}
-            />
-            {activeEvent && activeMessage && (
-              <div className="fixed inset-0 z-[3000] flex items-center justify-center">
-                <div className="absolute inset-0 bg-black/70" />
-                <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
-                  <div className="absolute inset-0">
-                    <img
-                      src="/images/obaasan.webp"
-                      alt="おばあちゃん"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  </div>
-                  <div className="absolute left-6 top-4 z-10">
-                    <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
-                      {activeEvent.title}
-                    </h3>
-                  </div>
-                  <div className="relative flex min-h-[45vh] flex-col pt-16">
-                    <div className="mt-auto space-y-3 -translate-y-[10px]">
-                      {activeMessage.image && (
-                        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-                          <img
-                            src={activeMessage.image}
-                            alt=""
-                            className="h-44 w-full object-cover object-center sm:h-56"
-                          />
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                          {activeMessage.subtitle}
-                        </div>
-                        <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
-                          {activeMessage.text}
-                        </div>
+            {showGrandma && (
+              <>
+                <GrandmaChatter
+                  titleLabel="にちよさん"
+                  fullWidth
+                  comments={commentPool}
+                  onAsk={handleGrandmaAsk}
+                  aiSuggestedShops={aiSuggestedShops}
+                  onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
+                  onHoldChange={setIsHoldActive}
+                  onDrop={handleGrandmaDrop}
+                  onActiveShopChange={setCommentHighlightShopId}
+                  onCommentShopFocus={handleCommentShopFocus}
+                  onCommentShopOpen={handleCommentShopOpen}
+                  introImageUrl={introImageUrl}
+                  priorityMessage={
+                    priority
+                      ? {
+                          text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
+                          badgeTitle: priority.badge.badge.title,
+                          badgeIcon: priority.badge.tierIcon,
+                        }
+                      : null
+                  }
+                  onPriorityClick={() => setShowBadgeModal(true)}
+                  onPriorityDismiss={clearPriority}
+                />
+                <BadgeModal
+                  open={showBadgeModal && !!priority}
+                  onClose={() => {
+                    setShowBadgeModal(false);
+                    clearPriority();
+                  }}
+                  title={priority?.badge.badge.title ?? ""}
+                  slot={priority?.badge.slot ?? ""}
+                  tierTitle={priority?.badge.tierTitle ?? ""}
+                  tierIcon={priority?.badge.tierIcon ?? ""}
+                  count={priority?.badge.count ?? 0}
+                />
+                {activeEvent && activeMessage && (
+                  <div className="fixed inset-0 z-[3000] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/70" />
+                    <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
+                      <div className="absolute inset-0">
+                        <img
+                          src="/images/obaasan.webp"
+                          alt="おばあちゃん"
+                          className="h-full w-full object-cover object-center"
+                        />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>
-                          {eventMessageIndex + 1}/{activeEvent.messages.length}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {eventMessageIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleEventBack}
-                              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
-                            >
-                              戻る
-                            </button>
+                      <div className="absolute left-6 top-4 z-10">
+                        <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
+                          {activeEvent.title}
+                        </h3>
+                      </div>
+                      <div className="relative flex min-h-[45vh] flex-col pt-16">
+                        <div className="mt-auto space-y-3 -translate-y-[10px]">
+                          {activeMessage.image && (
+                            <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+                              <img
+                                src={activeMessage.image}
+                                alt=""
+                                className="h-44 w-full object-cover object-center sm:h-56"
+                              />
+                            </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={handleEventAdvance}
-                            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                          >
-                            {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                          </button>
+                          <div className="space-y-2">
+                            <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                              {activeMessage.subtitle}
+                            </div>
+                            <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
+                              {activeMessage.text}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>
+                              {eventMessageIndex + 1}/{activeEvent.messages.length}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {eventMessageIndex > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={handleEventBack}
+                                  className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                                >
+                                  戻る
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleEventAdvance}
+                                className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                              >
+                                {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
+              </>
             )}
           </div>
       </main>

@@ -80,6 +80,9 @@ export interface ShopEditableData {
   /** 出店者からのメッセージ（任意） */
   message?: string;
 
+  /** 来訪者に聞いてほしいトピック */
+  topic?: string[];
+
   /** 店舗画像URL（将来の実装用） */
   images?: {
     /** メイン画像 */
@@ -252,6 +255,7 @@ export const EDITABLE_FIELDS: (keyof ShopEditableData)[] = [
   'stallStyle',
   'schedule',
   'message',
+  'topic',
   'images',
   'socialLinks',
 ];
