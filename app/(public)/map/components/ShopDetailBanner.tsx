@@ -228,51 +228,10 @@ export default function ShopDetailBanner({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-500/40 px-4 pt-6 pb-20">
-      <div className="h-full w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-3 shadow-2xl">
-        {/* ヘッダー */}
-        <div className="mb-2 flex items-start justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-semibold text-slate-900">
-                {shop.name}
-              </h2>
-              <button
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-pink-100 text-pink-600" : "bg-white/70 text-pink-500"}`}
-                type="button"
-                onClick={handleToggleFavorite}
-                aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
-              >
-                <span className="text-lg font-bold">{isFavorite ? "❤" : "♡"}</span>
-              </button>
-              {canEditShop && (
-                <button
-                  type="button"
-                  onClick={handleEditShop}
-                  className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-                >
-                  編集する
-                </button>
-              )}
-            </div>
-            <p className="text-sm text-slate-600">
-              {shop.category} | {shop.ownerName}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-900 text-2xl font-bold shadow transition-transform hover:scale-110"
-              type="button"
-              aria-label="閉じる"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
+    <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
+      <div className="h-full w-full max-w-none overflow-y-auto bg-white/95 px-6 pb-24 pt-6 shadow-2xl">
         {/* 写真 */}
-        <div className="mt-2 overflow-hidden rounded-2xl border border-orange-300 bg-white">
+        <div className="-mx-6 overflow-hidden border-y border-slate-200 bg-white">
           <Image
             src={bannerImage}
             alt={`${shop.name}の写真`}
@@ -286,135 +245,184 @@ export default function ShopDetailBanner({
           />
         </div>
 
-        {/* 商品名 */}
-        <div className="mt-3 rounded-2xl border border-orange-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <span className="rounded-full bg-amber-500 px-2 py-[1px] text-sm font-semibold text-white">
-                商品名
-              </span>
-              <span className="text-sm text-amber-800">タップ/ドラッグでバッグへ</span>
+        {/* ヘッダー */}
+        <div className="mt-6 flex items-start justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-4xl font-semibold text-slate-900">
+                {shop.name}
+              </h2>
+              <button
+                className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xl shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"}`}
+                type="button"
+                onClick={handleToggleFavorite}
+                aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
+              >
+                <span className="text-2xl font-bold">{isFavorite ? "❤" : "♡"}</span>
+              </button>
+              {canEditShop && (
+                <button
+                  type="button"
+                  onClick={handleEditShop}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xl font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                >
+                  編集する
+                </button>
+              )}
             </div>
+            <p className="text-xl text-slate-600">
+              {shop.category} | {shop.ownerName}
+            </p>
+          </div>
+          <div className="fixed right-6 top-6 z-[2105] flex items-center gap-2">
             <button
+              onClick={onClose}
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-700 text-3xl font-bold shadow transition-transform hover:scale-110"
               type="button"
-              onClick={handleBagClick}
-              onDragOver={handleBagDragOver}
-              onDragLeave={handleBagDragLeave}
-              onDrop={handleBagDrop}
-              className={`flex items-center gap-2 rounded-full border px-3 py-[3px] text-sm font-semibold shadow-sm transition ${
-                isBagHover
-                  ? "border-amber-500 bg-amber-100 text-amber-900"
-                  : "border-amber-200 bg-white text-amber-800"
-              }`}
-              aria-label="買い物リストへ"
+              aria-label="閉じる"
             >
-              <span className="text-base" aria-hidden>
-                {"\u{1F6CD}"}
-              </span>
-              バッグ
+              ×
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {shop.products.map((product) => {
-              const specificKey = buildBagKey(product, shop.id);
-              const anyKey = buildBagKey(product, undefined);
-              const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
-              return (
-                <button
-                  key={product}
-                  type="button"
-                  draggable
-                  onDragStart={(event) => handleProductDragStart(event, product)}
-                  onDragEnd={handleProductDragEnd}
-                  onClick={() => handleProductTap(product)}
-                  className={`cursor-grab rounded-full border px-2 py-[2px] text-sm font-semibold shadow-sm active:cursor-grabbing ${
-                    isInBag
-                      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                      : "border-amber-200 bg-white text-amber-800"
-                  }`}
-                  aria-label={`${product}`}
-                >
-                  {product}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
-        <div className="mt-3 space-y-2">
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
-            <p className="text-[11px] font-semibold text-amber-700">出店スタイル</p>
-            <p className="mt-1 text-base text-slate-700">{shop.stallStyle ?? shop.schedule}</p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
-            <p className="text-[11px] font-semibold text-emerald-700">出店者の想い・こだわり</p>
-            <p className="mt-1 text-base leading-snug text-slate-800">
-              {shop.aboutVendor || shop.message || shop.description}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-3 text-slate-800 shadow-sm border border-orange-300">
-            <p className="text-[11px] font-semibold text-amber-700">得意料理</p>
-            <p className="mt-1 text-base font-semibold text-slate-900">
-              {shop.specialtyDish ?? "なし"}
-            </p>
-          </div>
-        </div>
+        <div className="mt-10 divide-y divide-slate-200">
+          <section className="py-10 text-xl text-slate-700">
+            <p className="text-base font-semibold text-slate-500">主な商品</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
+          </section>
 
-        {/* ことづてセクション */}
-        <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs text-slate-800 shadow-sm border border-orange-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <span className="rounded-full bg-lime-500 px-2 py-[1px] text-[11px] font-semibold text-white">
-                ことづて
+          {/* 商品名 */}
+          <section className="py-10 text-xl text-slate-700">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <span className="text-base font-semibold text-slate-500">
+                商品名
               </span>
-              <span className="ml-1 rounded-full bg-slate-100 px-2 text-[11px]">
-                {kotoduteNotes.length}
-              </span>
+              <button
+                type="button"
+                onClick={handleBagClick}
+                onDragOver={handleBagDragOver}
+                onDragLeave={handleBagDragLeave}
+                onDrop={handleBagDrop}
+                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xl font-semibold shadow-sm transition ${
+                  isBagHover
+                    ? "border-slate-500 bg-slate-100 text-slate-900"
+                    : "border-slate-200 bg-white text-slate-700"
+                }`}
+                aria-label="買い物リストへ"
+              >
+                <span className="text-xl" aria-hidden>
+                  {"\u{1F6CD}"}
+                </span>
+                バッグ
+              </button>
             </div>
-            <Link
-              href={`/kotodute?shopId=${shop.id}`}
-              className="rounded-full border border-lime-500 px-2 py-[2px] text-[11px] font-semibold text-lime-600"
-            >
-              投稿・もっと読む
-            </Link>
-          </div>
+            <div className="flex flex-wrap gap-4">
+              {shop.products.map((product) => {
+                const specificKey = buildBagKey(product, shop.id);
+                const anyKey = buildBagKey(product, undefined);
+                const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
+                return (
+                  <button
+                    key={product}
+                    type="button"
+                    draggable
+                    onDragStart={(event) => handleProductDragStart(event, product)}
+                    onDragEnd={handleProductDragEnd}
+                    onClick={() => handleProductTap(product)}
+                    className={`cursor-grab rounded-full border px-3 py-1.5 text-xl font-semibold shadow-sm active:cursor-grabbing ${
+                      isInBag
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                    aria-label={`${product}`}
+                  >
+                    {product}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="py-10 text-slate-800">
+            <div className="space-y-10 text-2xl">
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
+                <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                <p className="mt-2 text-2xl text-slate-700">
+                  {shop.stallStyle ?? shop.schedule}
+                </p>
+              </div>
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
+                <p className="text-base font-semibold text-slate-500">出店者の想い・こだわり</p>
+                <p className="mt-2 text-2xl leading-snug text-slate-800">
+                  {shop.aboutVendor || shop.message || shop.description}
+                </p>
+              </div>
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
+                <p className="text-base font-semibold text-slate-500">得意料理</p>
+                <p className="mt-2 text-2xl font-semibold text-slate-900">
+                  {shop.specialtyDish ?? "なし"}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* ことづてセクション */}
+          <section className="py-10 text-lg text-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-slate-500">
+                  ことづて
+                </span>
+                <span className="text-base text-slate-600">
+                  {kotoduteNotes.length}
+                </span>
+              </div>
+              <Link
+                href={`/kotodute?shopId=${shop.id}`}
+                className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
+              >
+                投稿・もっと読む
+              </Link>
+            </div>
 
           {kotoduteNotes.length === 0 ? (
-            <div className="mt-2 rounded-lg border border-dashed border-slate-200 bg-white/80 px-2 py-2 text-[11px] text-slate-600 text-center">
-              ことづてページで、お店の感想を共有できます。
-            </div>
-          ) : (
-            <div className="mt-2 space-y-2">
-              {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
-                <div
-                  key={note.id}
-                  className="rounded-lg border border-amber-100 bg-amber-50/70 px-2 py-2 text-[12px] text-slate-800"
-                >
-                  {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
-                </div>
-              ))}
-            </div>
-          )}
+              <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
+                ことづてページで、お店の感想を共有できます。
+              </div>
+            ) : (
+              <div className="mt-6 space-y-4">
+                {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
+                  <div
+                    key={note.id}
+                    className="border border-slate-200 bg-slate-50 px-3 py-3 text-lg text-slate-800"
+                  >
+                    {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
 
         {pendingProduct && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-xl font-semibold text-gray-900">
                 {`バッグに${pendingProduct}を入れますか？`}
               </p>
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={handleCancelAdd}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-lg font-semibold text-gray-600 hover:bg-gray-50"
                 >
                   いいえ
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmAdd}
-                  className="rounded-full bg-amber-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                  className="rounded-full bg-slate-800 px-3 py-2 text-lg font-semibold text-white shadow-sm hover:bg-slate-700"
                 >
                   はい
                 </button>

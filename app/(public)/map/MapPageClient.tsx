@@ -315,25 +315,32 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
       prefetchShopImage(shopId);
-      if (typeof document !== "undefined") {
-        document.body.classList.add("shop-banner-open");
-      }
-      if (introFocusTimerRef.current !== null) {
-        window.clearTimeout(introFocusTimerRef.current);
-        introFocusTimerRef.current = null;
-      }
       const maxZoom = map.getMaxZoom() ?? 19;
       map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
         duration: 0.8,
         easeLinearity: 0.25,
       });
+    },
+    [prefetchShopImage, shopById]
+  );
+
+  const handleCommentShopOpen = useCallback(
+    (shopId: number) => {
+      handleCommentShopFocus(shopId);
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+        introFocusTimerRef.current = null;
+      }
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
       introFocusTimerRef.current = window.setTimeout(() => {
         router.push(`/map?shop=${shopId}`);
         introFocusTimerRef.current = null;
       }, 900);
     },
-    [prefetchShopImage, router, shopById]
+    [handleCommentShopFocus, router]
   );
 
   useEffect(() => {
@@ -564,6 +571,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               onDrop={handleGrandmaDrop}
               onActiveShopChange={setCommentHighlightShopId}
               onCommentShopFocus={handleCommentShopFocus}
+              onCommentShopOpen={handleCommentShopOpen}
               introImageUrl={introImageUrl}
               priorityMessage={
                 priority
