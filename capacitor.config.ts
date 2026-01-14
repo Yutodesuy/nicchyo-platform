@@ -1,4 +1,9 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+type CapacitorConfig = {
+  appId: string;
+  appName: string;
+  webDir: string;
+  bundledWebRuntime?: boolean;
+};
 
 const config: CapacitorConfig = {
   appId: 'jp.nicchyo.app',
