@@ -14,7 +14,6 @@ type NavItem = {
 const baseNavItems: NavItem[] = [
   { name: "マップ", href: "/map", icon: "map" },
   { name: "検索", href: "/search", icon: "search" },
-  { name: "ことづて", href: "/kotodute", icon: "chat" },
 ];
 
 type NavigationBarProps = {

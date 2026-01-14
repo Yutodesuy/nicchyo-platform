@@ -1,7 +1,7 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,6 +27,7 @@ type ShopDetailBannerProps = {
   bagCount?: number;
   onClose?: () => void;
   onAddToBag?: (name: string, fromShopId?: number) => void;
+  variant?: "default" | "kotodute";
 };
 
 type BagItem = {
@@ -57,6 +58,7 @@ export default function ShopDetailBanner({
   bagCount,
   onClose,
   onAddToBag,
+  variant = "default",
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -67,6 +69,8 @@ export default function ShopDetailBanner({
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
+  const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
+  const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -195,6 +199,56 @@ export default function ShopDetailBanner({
   }, [router]);
 
   const isFavorite = favoriteShopIds.includes(shop.id);
+  const isKotodute = variant === "kotodute";
+  const today = new Date();
+  const askTopics = useMemo(() => {
+    if (Array.isArray(shop.topic) && shop.topic.length > 0) {
+      return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
+    }
+    const raw = (shop.message || shop.aboutVendor || shop.description || "").trim();
+    if (raw) {
+      const parsed = raw
+        .split(/[\n、,・]/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 5);
+      if (parsed.length > 0) return parsed;
+    }
+    return ["おすすめの食べ方", "旬の話題", "市場のこと", "出店のこだわり"];
+  }, [shop.aboutVendor, shop.description, shop.message, shop.topic]);
+  const kotodutePresenceNotes = useMemo(
+    () =>
+      kotoduteNotes.filter((note) => {
+        const d = new Date(note.createdAt);
+        return (
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate()
+        );
+      }),
+    [kotoduteNotes, today]
+  );
+  const kotoduteFootprintNotes = useMemo(
+    () =>
+      kotoduteNotes.filter((note) => {
+        const d = new Date(note.createdAt);
+        return (
+          d.getFullYear() !== today.getFullYear() ||
+          d.getMonth() !== today.getMonth() ||
+          d.getDate() !== today.getDate()
+        );
+      }),
+    [kotoduteNotes, today]
+  );
+  const handleKotoduteToggle = useCallback(
+    (next: "presence" | "footprints") => {
+      setKotoduteFilter((prev) => (prev === next ? null : next));
+    },
+    []
+  );
+  const handleShopStatusSubmit = useCallback(() => {
+    if (!shopOpenStatus) return;
+  }, [shopOpenStatus]);
 
   const handleToggleFavorite = useCallback(() => {
     const next = toggleFavoriteShopId(shop.id);
@@ -252,15 +306,17 @@ export default function ShopDetailBanner({
               <h2 className="text-4xl font-semibold text-slate-900">
                 {shop.name}
               </h2>
-              <button
-                className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xl shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"}`}
-                type="button"
-                onClick={handleToggleFavorite}
-                aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
-              >
-                <span className="text-2xl font-bold">{isFavorite ? "❤" : "♡"}</span>
-              </button>
-              {canEditShop && (
+              {!isKotodute && (
+                <button
+                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xl shadow-sm transition-transform hover:scale-105 ${isFavorite ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"}`}
+                  type="button"
+                  onClick={handleToggleFavorite}
+                  aria-label={isFavorite ? "お気に入りを解除" : "お気に入りに追加"}
+                >
+                  <span className="text-2xl font-bold">{isFavorite ? "❤" : "♡"}</span>
+                </button>
+              )}
+              {!isKotodute && canEditShop && (
                 <button
                   type="button"
                   onClick={handleEditShop}
@@ -270,9 +326,48 @@ export default function ShopDetailBanner({
                 </button>
               )}
             </div>
-            <p className="text-xl text-slate-600">
-              {shop.category} | {shop.ownerName}
-            </p>
+            {!isKotodute && (
+              <p className="text-xl text-slate-600">
+                {shop.category} | {shop.ownerName}
+              </p>
+            )}
+            {!isKotodute && (
+              <div className="mt-6 rounded-3xl border-2 border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
+                <p className="text-base font-semibold text-amber-800">今日はお店を</p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShopOpenStatus("open")}
+                    className={`rounded-full border px-4 py-2 text-lg font-semibold transition ${
+                      shopOpenStatus === "open"
+                        ? "border-emerald-400 bg-emerald-100 text-emerald-900"
+                        : "border-amber-200 bg-white text-amber-800"
+                    }`}
+                  >
+                    出店している
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShopOpenStatus("closed")}
+                    className={`rounded-full border px-4 py-2 text-lg font-semibold transition ${
+                      shopOpenStatus === "closed"
+                        ? "border-slate-500 bg-slate-200 text-slate-900"
+                        : "border-amber-200 bg-white text-amber-800"
+                    }`}
+                  >
+                    出店していない
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleShopStatusSubmit}
+                    disabled={!shopOpenStatus}
+                    className="rounded-full bg-amber-700 px-4 py-2 text-lg font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
+                  >
+                    送信
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           <div className="fixed right-6 top-6 z-[2105] flex items-center gap-2">
             <button
@@ -286,11 +381,12 @@ export default function ShopDetailBanner({
           </div>
         </div>
 
-        <div className="mt-10 divide-y divide-slate-200">
-          <section className="py-10 text-xl text-slate-700">
-            <p className="text-base font-semibold text-slate-500">主な商品</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
-          </section>
+        {!isKotodute && (
+          <div className="mt-10 divide-y divide-slate-200">
+            <section className="py-10 text-xl text-slate-700">
+              <p className="text-base font-semibold text-slate-500">主な商品</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
+            </section>
 
           {/* 商品名 */}
           <section className="py-10 text-xl text-slate-700">
@@ -368,42 +464,130 @@ export default function ShopDetailBanner({
           </section>
 
           {/* ことづてセクション */}
-          <section className="py-10 text-lg text-slate-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base font-semibold text-slate-500">
-                  ことづて
-                </span>
-                <span className="text-base text-slate-600">
-                  {kotoduteNotes.length}
-                </span>
+            <section className="py-10 text-lg text-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-slate-500">
+                    ことづて
+                  </span>
+                  <span className="text-base text-slate-600">
+                    {kotoduteNotes.length}
+                  </span>
+                </div>
+                <Link
+                  href={`/kotodute?shopId=${shop.id}`}
+                  className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
+                >
+                  投稿・もっと読む
+                </Link>
               </div>
-              <Link
-                href={`/kotodute?shopId=${shop.id}`}
-                className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
-              >
-                投稿・もっと読む
-              </Link>
-            </div>
 
-          {kotoduteNotes.length === 0 ? (
-              <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
-                ことづてページで、お店の感想を共有できます。
+              {kotoduteNotes.length === 0 ? (
+                <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
+                  ことづてページで、お店の感想を共有できます。
+                </div>
+              ) : (
+                <div className="mt-6 space-y-4">
+                  {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
+                    <div
+                      key={note.id}
+                      className="border border-slate-200 bg-slate-50 px-3 py-3 text-lg text-slate-800"
+                    >
+                      {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {isKotodute && (
+          <div className="mt-10">
+            <section className="py-10 text-lg text-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-slate-500">
+                    ことづて
+                  </span>
+                  <span className="text-base text-slate-600">
+                    {kotoduteNotes.length}
+                  </span>
+                </div>
+                <Link
+                  href={`/kotodute?shopId=${shop.id}`}
+                  className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
+                >
+                  投稿・もっと読む
+                </Link>
               </div>
-            ) : (
-              <div className="mt-6 space-y-4">
-                {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
-                  <div
-                    key={note.id}
-                    className="border border-slate-200 bg-slate-50 px-3 py-3 text-lg text-slate-800"
-                  >
-                    {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
-                  </div>
-                ))}
+
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleKotoduteToggle("presence")}
+                  className={`min-h-[88px] rounded-2xl px-4 py-5 text-left text-xl font-semibold transition ${
+                    kotoduteFilter === "presence"
+                      ? "bg-pink-200 text-pink-900"
+                      : "bg-pink-50 text-pink-700"
+                  }`}
+                >
+                  気配
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleKotoduteToggle("footprints")}
+                  className={`min-h-[88px] rounded-2xl px-4 py-5 text-left text-xl font-semibold transition ${
+                    kotoduteFilter === "footprints"
+                      ? "bg-sky-200 text-sky-900"
+                      : "bg-sky-50 text-sky-700"
+                  }`}
+                >
+                  足跡
+                </button>
               </div>
-            )}
-          </section>
-        </div>
+
+              {kotoduteFilter && (
+                <div className="mt-8 space-y-4">
+                  {(kotoduteFilter === "presence"
+                    ? kotodutePresenceNotes
+                    : kotoduteFootprintNotes
+                  )
+                    .slice(0, KOTODUTE_PREVIEW_LIMIT)
+                    .map((note) => (
+                      <div
+                        key={note.id}
+                        className="border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800"
+                      >
+                        {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
+                      </div>
+                    ))}
+                  {kotoduteFilter === "presence" && kotodutePresenceNotes.length === 0 && (
+                    <div className="border border-dashed border-pink-200 bg-pink-50 px-3 py-4 text-base text-pink-700">
+                      今日はまだ気配がありません。
+                    </div>
+                  )}
+                  {kotoduteFilter === "footprints" && kotoduteFootprintNotes.length === 0 && (
+                    <div className="border border-dashed border-sky-200 bg-sky-50 px-3 py-4 text-base text-sky-700">
+                      まだ足跡がありません。
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-10 border-t border-slate-200 pt-8">
+                <p className="text-base font-semibold text-slate-500">聞いてほしいこと</p>
+                <ul className="mt-4 space-y-3 text-lg text-slate-800">
+                  {askTopics.map((topic) => (
+                    <li key={topic} className="border border-slate-200 bg-white px-3 py-3">
+                      {topic}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          </div>
+        )}
 
         {pendingProduct && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">

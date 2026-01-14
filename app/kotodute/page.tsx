@@ -29,6 +29,7 @@ type ShopRow = {
   icon: string | null;
   schedule: string | null;
   message: string | null;
+  topic: string[] | null;
 };
 
 const CHOME_VALUES = new Set([
@@ -73,6 +74,7 @@ async function loadShops(): Promise<Shop[]> {
           "icon",
           "schedule",
           "message",
+          "topic",
         ].join(",")
       )
       .order("legacy_id", { ascending: true });
@@ -101,6 +103,7 @@ async function loadShops(): Promise<Shop[]> {
         icon: row.icon ?? "",
         schedule: row.schedule ?? "",
         message: row.message ?? undefined,
+        topic: Array.isArray(row.topic) ? row.topic : undefined,
       }));
   } catch {
     return staticShops;
@@ -115,7 +118,7 @@ export default async function KotodutePage() {
         <div className="flex h-screen items-center justify-center">Loading...</div>
       }
     >
-      <MapPageClient shops={shops} />
+      <MapPageClient shops={shops} showGrandma={false} shopBannerVariant="kotodute" />
     </Suspense>
   );
 }

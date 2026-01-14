@@ -269,6 +269,7 @@ type MapViewProps = {
   aiShopIds?: number[];
   commentShopId?: number;
   kotoduteShopIds?: number[];
+  shopBannerVariant?: "default" | "kotodute";
 };
 
 const MapView = memo(function MapView({
@@ -289,6 +290,7 @@ const MapView = memo(function MapView({
   aiShopIds,
   commentShopId,
   kotoduteShopIds,
+  shopBannerVariant,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const { addItem, items: bagItems } = useBag();
@@ -902,6 +904,7 @@ const MapView = memo(function MapView({
             shop={selectedShop}
             onClose={() => setSelectedShop(null)}
             onAddToBag={handleAddToBag}
+            variant={shopBannerVariant}
           />
         </>
       )}
