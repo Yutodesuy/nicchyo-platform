@@ -277,9 +277,7 @@ export default function GrandmaChatter({
     const viewWidth = document.documentElement.clientWidth;
     const viewHeight = document.documentElement.clientHeight;
     const min = avatarOffset.x - rect.left;
-    const reservedRight = showIntroImage
-      ? introImageSize.width + introImageSize.gap + 16
-      : 0;
+    const reservedRight = 0;
     const max = avatarOffset.x + Math.max(0, viewWidth - rect.right - reservedRight);
     const minY = avatarOffset.y - rect.top;
     const maxY = avatarOffset.y + (viewHeight - rect.bottom);
@@ -495,11 +493,30 @@ export default function GrandmaChatter({
           )}
 
           <div className="flex items-start gap-3">
-            <span className="text-xl" aria-hidden>
-              {bubbleIcon}
-            </span>
+            {showIntroImage ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsIntroImageOpen(true);
+                }}
+                className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
+                aria-label="出店画像を拡大表示"
+              >
+                <img
+                  src={introImageUrl ?? ""}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable={false}
+                />
+              </button>
+            ) : (
+              <span className="text-xl" aria-hidden>
+                {bubbleIcon}
+              </span>
+            )}
             <div className="space-y-1">
-              <p className="text-base leading-relaxed text-gray-900">
+              <p className="grandma-comment-text text-base leading-relaxed text-gray-900">
                 {bubbleText}
               </p>
               {current.link && !priorityMessage && !isChatOpen && (
@@ -539,30 +556,6 @@ export default function GrandmaChatter({
           </div>
         </button>
       </div>
-
-      {showIntroImage && (
-        <div className="fixed bottom-[calc(5rem+150px)] right-4 z-[1401] pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => setIsIntroImageOpen(true)}
-            className="rounded-2xl border-2 border-amber-300 bg-white/95 p-1 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-            style={{
-              width: `${introImageSize.width}px`,
-              height: `${introImageSize.height}px`,
-            }}
-            aria-label="出店画像を拡大表示"
-          >
-            <div className="h-full w-full overflow-hidden rounded-xl border border-amber-100 bg-white">
-              <img
-                src={introImageUrl ?? ""}
-                alt=""
-                className="h-full w-full object-cover"
-                draggable={false}
-              />
-            </div>
-          </button>
-        </div>
-      )}
 
       {showIntroImage && isIntroImageOpen && (
         <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 px-4 pointer-events-auto">

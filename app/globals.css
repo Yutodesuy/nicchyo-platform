@@ -373,6 +373,14 @@ body.grandma-chat-open .leaflet-container {
   font-size: 14px;
 }
 
+.grandma-comment-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 4.5em;
+}
+
 .shop-marker-kotodute .shop-kotodute-badge {
   display: inline-flex;
 }
