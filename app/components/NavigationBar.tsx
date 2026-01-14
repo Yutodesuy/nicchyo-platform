@@ -14,7 +14,6 @@ type NavItem = {
 const baseNavItems: NavItem[] = [
   { name: "マップ", href: "/map", icon: "map" },
   { name: "検索", href: "/search", icon: "search" },
-  { name: "レシピ", href: "/recipes", icon: "recipe" },
   { name: "ことづて", href: "/kotodute", icon: "chat" },
 ];
 
@@ -34,7 +33,7 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 text-sm leading-none backdrop-blur-md shadow-lg"
+      className="navigation-bar fixed bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 text-sm leading-none backdrop-blur-md shadow-lg"
       style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
     >
       <div className="mx-auto flex h-12 max-w-lg items-center justify-around">

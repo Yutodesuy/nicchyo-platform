@@ -32,6 +32,7 @@ type GrandmaChatterProps = {
   onDrop?: (position: { x: number; y: number }) => void;
   onActiveShopChange?: (shopId: number | null) => void;
   onCommentShopFocus?: (shopId: number) => void;
+  onCommentShopOpen?: (shopId: number) => void;
   introImageUrl?: string | null;
 };
 
@@ -49,6 +50,7 @@ export default function GrandmaChatter({
   onDrop,
   onActiveShopChange,
   onCommentShopFocus,
+  onCommentShopOpen,
   introImageUrl,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -539,7 +541,7 @@ export default function GrandmaChatter({
       </div>
 
       {showIntroImage && (
-        <div className="fixed bottom-[calc(5rem+100px)] right-4 z-[1401] pointer-events-auto">
+        <div className="fixed bottom-[calc(5rem+150px)] right-4 z-[1401] pointer-events-auto">
           <button
             type="button"
             onClick={() => setIsIntroImageOpen(true)}
@@ -592,12 +594,15 @@ export default function GrandmaChatter({
               className="h-auto w-full object-cover"
               draggable={false}
             />
+            <div className="border-t border-amber-100 bg-white px-4 py-3 text-base text-gray-700">
+              {bubbleText}
+            </div>
             <div className="p-4">
               <button
                 type="button"
                 onClick={() => {
                   if (current?.shopId) {
-                    onCommentShopFocus?.(current.shopId);
+                    onCommentShopOpen?.(current.shopId);
                   }
                   setIsIntroImageOpen(false);
                   setIntroLockUntil(Date.now() + 3000);
