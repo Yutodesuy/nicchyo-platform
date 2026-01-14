@@ -173,14 +173,30 @@ export const shops: Shop[] = [];
 // 実際の日曜市の範囲（1.3km）
 const startLat = 33.56500;  // 高知城前（西側）
 const endLat = 33.55330;    // 追手筋東端（東側）
-const latRange = startLat - endLat;
+const latRange = (startLat - endLat) / 2;
 const latStep = latRange / 150;
 
 const centerLng = 133.53100;    // 道の中心の経度
-const lngOffsetNorth = -0.0006; // 北側（左）のオフセット（道幅約50m）
-const lngOffsetSouth = 0.0006;  // 南側（右）のオフセット
+const lngOffsetNorth = -0.00015; // 北側（左）のオフセット（道幅約12.5m）
+const lngOffsetSouth = 0.00015;  // 南側（右）のオフセット
 
 let shopId = 1;
+
+/**
+ * 位置から丁目セクションを取得
+ * PDFの日曜市マップに基づいて7つのセクションに分割
+ */
+function getChomeFromPosition(position: number): '一丁目' | '二丁目' | '三丁目' | '四丁目' | '五丁目' | '六丁目' | '七丁目' {
+  // 150店舗を7セクションに分割
+  // 北西端（高知城前）が六丁目、南東端（はりまや橋方面）が七丁目
+  if (position <= 21) return '六丁目';      // 0-21: 22店舗
+  if (position <= 42) return '五丁目';      // 22-42: 21店舗
+  if (position <= 64) return '四丁目';      // 43-64: 22店舗
+  if (position <= 85) return '三丁目';      // 65-85: 21店舗
+  if (position <= 107) return '二丁目';     // 86-107: 22店舗
+  if (position <= 128) return '一丁目';     // 108-128: 21店舗
+  return '七丁目';                          // 129-149: 21店舗
+}
 
 // 北側（左側）の150店舗
 for (let i = 0; i < 150; i++) {
@@ -205,6 +221,7 @@ for (let i = 0; i < 150; i++) {
     position: i,
     lat,
     lng,
+    chome: getChomeFromPosition(i),
     category: category.name,
     products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
@@ -240,6 +257,7 @@ for (let i = 0; i < 150; i++) {
     position: i,
     lat,
     lng,
+    chome: getChomeFromPosition(i),
     category: category.name,
     products: getShopProducts(category.products, currentId),
     description: `${category.name}を扱う老舗のお店です。新鮮な商品を取り揃えています。`,
