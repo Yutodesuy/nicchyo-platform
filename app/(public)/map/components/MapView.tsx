@@ -270,6 +270,16 @@ type MapViewProps = {
   commentShopId?: number;
   kotoduteShopIds?: number[];
   shopBannerVariant?: "default" | "kotodute";
+  attendanceEstimates?: Record<
+    number,
+    {
+      label: string;
+      p: number | null;
+      n_eff: number;
+      vendor_override: boolean;
+      evidence_summary: string;
+    }
+  >;
 };
 
 const MapView = memo(function MapView({
@@ -291,6 +301,7 @@ const MapView = memo(function MapView({
   commentShopId,
   kotoduteShopIds,
   shopBannerVariant,
+  attendanceEstimates,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -908,6 +919,7 @@ const MapView = memo(function MapView({
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
             inMarket={isInMarket === true}
+            attendanceEstimate={attendanceEstimates?.[selectedShop.id]}
           />
         </>
       )}

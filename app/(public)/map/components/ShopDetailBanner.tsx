@@ -10,6 +10,7 @@ import { Shop } from "../data/shops";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
+import { ingredientCatalog, recipes } from "../../../../lib/recipes";
 import {
   KOTODUTE_UPDATED_EVENT,
   loadKotodute,
@@ -29,6 +30,13 @@ type ShopDetailBannerProps = {
   onAddToBag?: (name: string, fromShopId?: number) => void;
   variant?: "default" | "kotodute";
   inMarket?: boolean;
+  attendanceEstimate?: {
+    label: string;
+    p: number | null;
+    n_eff: number;
+    vendor_override: boolean;
+    evidence_summary: string;
+  };
 };
 
 type BagItem = {
@@ -42,6 +50,22 @@ const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
+
+function findIngredientMatch(name: string) {
+  const lower = name.trim().toLowerCase();
+  return ingredientCatalog.find(
+    (ing) =>
+      ing.name.toLowerCase().includes(lower) ||
+      lower.includes(ing.name.toLowerCase()) ||
+      ing.id.toLowerCase() === lower ||
+      ing.id.toLowerCase().includes(lower) ||
+      ing.aliases?.some(
+        (alias) =>
+          alias.toLowerCase().includes(lower) ||
+          lower.includes(alias.toLowerCase())
+      )
+  );
+}
 
 function loadBagItems(): BagItem[] {
   if (typeof window === "undefined") return [];
@@ -61,6 +85,7 @@ export default function ShopDetailBanner({
   onAddToBag,
   variant = "default",
   inMarket,
+  attendanceEstimate,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -203,6 +228,19 @@ export default function ShopDetailBanner({
   const isFavorite = favoriteShopIds.includes(shop.id);
   const isKotodute = variant === "kotodute";
   const today = new Date();
+  const matchedIngredientIds = useMemo(() => {
+    if (shop.category !== "食材") return [];
+    return shop.products
+      .map((product) => findIngredientMatch(product)?.id)
+      .filter(Boolean) as string[];
+  }, [shop.category, shop.products]);
+  const suggestedRecipes = useMemo(() => {
+    if (matchedIngredientIds.length === 0) return [];
+    const ids = new Set(matchedIngredientIds);
+    return recipes
+      .filter((recipe) => recipe.ingredientIds.some((id) => ids.has(id)))
+      .slice(0, 2);
+  }, [matchedIngredientIds]);
   const shopStatusSignals = useMemo(() => {
     const seed = typeof shop.id === "number" ? shop.id : Number(String(shop.id).replace(/\D/g, "")) || 0;
     const total = (seed * 7) % 20;
@@ -213,16 +251,36 @@ export default function ShopDetailBanner({
     return { total, openVotes, closedVotes, vendorPick };
   }, [shop.id]);
   const shopStatusLabel = useMemo(() => {
+    if (attendanceEstimate?.label) return attendanceEstimate.label;
     if (shopStatusSignals.vendorPick === "open") return "出店している";
     if (shopStatusSignals.vendorPick === "closed") return "出店していない";
-    if (shopStatusSignals.total < 10) return "わからない";
-    if (shopStatusSignals.total === 0) return "わからない";
-    const ratio = shopStatusSignals.openVotes / shopStatusSignals.total;
-    if (ratio >= 0.7) return "出店している可能性が高い";
-    if (ratio >= 0.5) return "おそらく出店している";
-    if (ratio >= 0.2) return "出店していないかもしれない";
-    return "出店していない可能性が高い";
-  }, [shopStatusSignals]);
+    const priorYes = 5;
+    const priorNo = 5;
+    const nEff = shopStatusSignals.total;
+    if (nEff < 3) return "わからない";
+    const yes = priorYes + shopStatusSignals.openVotes;
+    const no = priorNo + shopStatusSignals.closedVotes;
+    const p = yes / (yes + no);
+    if (p >= 0.85) return "出店している可能性が高い";
+    if (p >= 0.7) return "おそらく出店している";
+    if (p > 0.2 && p < 0.5) return "出店していないかもしれない";
+    if (p <= 0.2) return "出店していない可能性が高い";
+    return "おそらく出店している";
+  }, [shopStatusSignals, attendanceEstimate]);
+  const shopStatusDisplay = useMemo(() => {
+    if (shopStatusLabel === "出店している" || shopStatusLabel === "出店していない") {
+      return shopStatusLabel;
+    }
+    const rangeMap: Record<string, string> = {
+      "出店している可能性が高い": "85〜100%",
+      "おそらく出店している": "70〜85%",
+      "出店していないかもしれない": "20〜50%",
+      "出店していない可能性が高い": "0〜20%",
+      "わからない": "50%",
+    };
+    const range = rangeMap[shopStatusLabel] ?? "50%";
+    return `${shopStatusLabel}（${range}）`;
+  }, [shopStatusLabel]);
   const askTopics = useMemo(() => {
     if (Array.isArray(shop.topic) && shop.topic.length > 0) {
       return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
@@ -353,7 +411,7 @@ export default function ShopDetailBanner({
                 {shop.category} | {shop.ownerName}
               </p>
             )}
-            {!isKotodute && inMarket === true && (
+            {!isKotodute && inMarket === true && !attendanceEstimate?.vendor_override && (
               <div className="mt-6 rounded-3xl border-2 border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
                 <p className="text-base font-semibold text-amber-800">今日はお店を</p>
                 <div className="mt-3 flex flex-wrap gap-3">
@@ -390,10 +448,10 @@ export default function ShopDetailBanner({
                 </div>
               </div>
             )}
-            {!isKotodute && inMarket !== true && (
+            {!isKotodute && (inMarket !== true || attendanceEstimate?.vendor_override) && (
               <div className="mt-6 rounded-3xl border-2 border-slate-200 bg-slate-50 px-5 py-4 shadow-sm">
                 <p className="text-base font-semibold text-slate-600">今日はお店を</p>
-                <p className="mt-2 text-xl font-semibold text-slate-900">{shopStatusLabel}</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">{shopStatusDisplay}</p>
               </div>
             )}
           </div>
@@ -466,6 +524,34 @@ export default function ShopDetailBanner({
                 );
               })}
             </div>
+            {!isKotodute && shop.category === "食材" && suggestedRecipes.length > 0 && (
+              <div className="mt-6 border-t border-slate-200 pt-6">
+                <p className="text-base font-semibold text-slate-500">この食材で作れるレシピ</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {suggestedRecipes.map((recipe) => (
+                    <Link
+                      key={recipe.id}
+                      href={`/recipes/${recipe.id}`}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800 shadow-sm transition hover:bg-slate-50"
+                    >
+                      {recipe.heroImage && (
+                        <div className="mb-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                          <Image
+                            src={recipe.heroImage}
+                            alt={`${recipe.title}の写真`}
+                            width={640}
+                            height={360}
+                            className="h-32 w-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <p className="font-semibold text-slate-900">{recipe.title}</p>
+                      <p className="mt-1 text-base text-slate-600">{recipe.description}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="py-10 text-slate-800">
