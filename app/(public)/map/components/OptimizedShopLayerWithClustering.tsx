@@ -289,7 +289,8 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
         setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
-        setMarkerProductIconVisibility(marker, map.getZoom() === map.getMaxZoom());
+        const maxZoom = map.getMaxZoom() ?? map.getZoom();
+        setMarkerProductIconVisibility(marker, map.getZoom() >= maxZoom - 1);
       });
 
       markers.addLayer(marker);
@@ -301,7 +302,8 @@ export default function OptimizedShopLayerWithClustering({
 
     const updateMarkerDensity = () => {
       const zoom = map.getZoom();
-      const showProductIcon = zoom === map.getMaxZoom();
+      const maxZoom = map.getMaxZoom() ?? zoom;
+      const showProductIcon = zoom >= maxZoom - 1;
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
