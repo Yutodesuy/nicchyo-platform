@@ -1,18 +1,20 @@
-'use client';
+﻿"use client";
 
-import { useEffect, useState } from 'react';
-import NavigationBar from '../../components/NavigationBar';
-import { listTimeBadgeProgress, type TimeBadgeProgress } from '../map/services/timeBadgeService';
-import { getShoppingProgress, SHOPPING_SEGMENTS } from './services/shoppingBadgeService';
-import { getKotoduteProgress, NOTE_BADGES, LIKE_BADGES } from './services/kotoduteBadgeService';
+import { useEffect, useState } from "react";
+import NavigationBar from "../../components/NavigationBar";
+import { listTimeBadgeProgress, type TimeBadgeProgress } from "../map/services/timeBadgeService";
+import { getShoppingProgress, SHOPPING_SEGMENTS } from "./services/shoppingBadgeService";
+import { getKotoduteProgress } from "./services/kotoduteBadgeService";
 
 export default function BadgesPage() {
   const [badges, setBadges] = useState<TimeBadgeProgress[]>([]);
   const [shoppingUnlocked, setShoppingUnlocked] = useState<Set<string>>(new Set());
-  const [kotoduteCounts, setKotoduteCounts] = useState<{ notes: number; likes: number }>({
-    notes: 0,
-    likes: 0,
-  });
+  const [kotoduteCounts, setKotoduteCounts] = useState<{ notes: number; likes: number }>(
+    {
+      notes: 0,
+      likes: 0,
+    }
+  );
 
   useEffect(() => {
     setBadges(listTimeBadgeProgress());
@@ -25,27 +27,28 @@ export default function BadgesPage() {
   const collected = badges.filter((b) => b.count > 0).length;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16">
-      <header className="border-b border-amber-100/70 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">badges</p>
-            <h1 className="text-2xl font-bold">集めたバッジ</h1>
-            <p className="text-sm text-gray-700">日曜市で集めたバッジを見返せます。</p>
-          </div>
-          <div className="rounded-full bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800 border border-amber-200">
-            {collected} / {badges.length || '–'} 獲得
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
+        <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+          <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Badges</p>
+          <h1 className="mt-1 text-4xl font-bold text-gray-900">集めたバッジ</h1>
+          <p className="mt-1 text-xl text-gray-700">日曜市で集めたバッジをまとめて確認できます。</p>
+        </div>
+        <div className="flex justify-center">
+          <div className="rounded-full border border-amber-200 bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+            {collected} / {badges.length} 取得
           </div>
         </div>
-      </header>
+      </div>
 
-      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-8">
-        <section className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm space-y-4">
+      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4">
+        <section className="space-y-4 rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">時間帯ゲージ</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">時間帯ゲージ</p>
+              <h2 className="text-xl font-bold text-gray-900">時間帯ゲージ</h2>
               <p className="text-sm text-gray-700">
-                毎週日曜の30分ごとの来訪状況をゲージで表示します。緑が訪問済み、灰色が未訪問。
+                朝から夕方まで、訪れた時間帯の記録がゲージに溜まっていきます。
               </p>
             </div>
             <a
@@ -64,10 +67,10 @@ export default function BadgesPage() {
                   return (
                     <div key={entry.slot} className="relative h-10 w-[21px] shrink-0 overflow-hidden rounded-full">
                       <span className="sr-only">
-                        {entry.slot} {acquired ? `訪問済み (${entry.count}回)` : '未訪問'}
+                        {entry.slot} {acquired ? `取得済み (${entry.count}回)` : "未取得"}
                       </span>
                       <div
-                        className={`absolute inset-0 ${acquired ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                        className={`absolute inset-0 ${acquired ? "bg-emerald-500" : "bg-gray-300"}`}
                         aria-hidden
                       />
                     </div>
@@ -76,34 +79,59 @@ export default function BadgesPage() {
               </div>
 
               <div className="flex flex-nowrap items-center gap-6 text-[11px] text-gray-600">
-                {['05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map(
-                  (label) => (
-                    <span key={label} className="shrink-0">{label}</span>
-                  )
-                )}
+                {[
+                  "05:00",
+                  "06:00",
+                  "07:00",
+                  "08:00",
+                  "09:00",
+                  "10:00",
+                  "11:00",
+                  "12:00",
+                  "13:00",
+                  "14:00",
+                  "15:00",
+                  "16:00",
+                  "17:00",
+                ].map((label) => (
+                  <span key={label} className="shrink-0">
+                    {label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="mt-2 rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 p-5 shadow-inner">
-            <p className="text-sm font-semibold text-amber-900 mb-2">日曜市の小路イメージ（仮）</p>
-            <div className="flex items-center gap-3 text-4xl">
-              <span role="img" aria-label="market-stall">🏘️</span>
-              <span role="img" aria-label="fruit">🍊</span>
-              <span role="img" aria-label="vegetable">🥕</span>
-              <span role="img" aria-label="fish">🐟</span>
-              <span role="img" aria-label="flower">🌼</span>
+            <p className="mb-2 text-sm font-semibold text-amber-900">日曜市の小さなイメージ</p>
+            <div className="flex items-center gap-3 text-3xl">
+              <span role="img" aria-label="market-stall">
+                🏮
+              </span>
+              <span role="img" aria-label="fruit">
+                🍊
+              </span>
+              <span role="img" aria-label="vegetable">
+                🥕
+              </span>
+              <span role="img" aria-label="fish">
+                🐟
+              </span>
+              <span role="img" aria-label="flower">
+                🌼
+              </span>
             </div>
-            <p className="mt-2 text-xs text-amber-800">後日イラストに差し替え予定です。</p>
+            <p className="mt-2 text-xs text-amber-800">ゲージを埋めて、朝から夕方までの記録を集めよう。</p>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-emerald-100 bg-white/95 p-5 shadow-sm space-y-4">
+        <section className="space-y-4 rounded-2xl border border-emerald-100 bg-white/95 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">お買い物バッジ</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-700">お買い物バッジ</p>
+              <h2 className="text-xl font-bold text-gray-900">お買い物バッジ</h2>
               <p className="text-sm text-gray-700">
-                bag に入れたカテゴリに応じて塗り絵が色付きます。色がついたパートは獲得済みです。
+                bag に入れたカテゴリが増えるほど、買い物バッジが解放されます。
               </p>
             </div>
             <a
@@ -115,7 +143,7 @@ export default function BadgesPage() {
           </div>
 
           <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs font-semibold text-gray-600">塗り絵（仮の線画）</p>
+            <p className="text-xs font-semibold text-gray-600">カテゴリ別の進捗</p>
             <div className="relative mx-auto flex h-40 w-full max-w-md items-center justify-center">
               <svg viewBox="0 0 260 140" className="h-full w-full">
                 {SHOPPING_SEGMENTS.map((seg, idx) => {
@@ -132,7 +160,7 @@ export default function BadgesPage() {
                         rx={6}
                         className="stroke-gray-700"
                         strokeWidth={2}
-                        fill={unlocked ? seg.color : 'white'}
+                        fill={unlocked ? seg.color : "white"}
                         fillOpacity={unlocked ? 1 : 0}
                       />
                       <rect
@@ -157,12 +185,12 @@ export default function BadgesPage() {
                 <div key={seg.id} className="flex items-center gap-2">
                   <span
                     className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300"
-                    style={{ backgroundColor: shoppingUnlocked.has(seg.id) ? seg.color : 'white' }}
+                    style={{ backgroundColor: shoppingUnlocked.has(seg.id) ? seg.color : "white" }}
                     aria-hidden
                   />
                   <span>{seg.label}</span>
                   <span className="text-[10px] text-gray-500">
-                    {shoppingUnlocked.has(seg.id) ? '獲得' : '未獲得'}
+                    {shoppingUnlocked.has(seg.id) ? "取得済み" : "未取得"}
                   </span>
                 </div>
               ))}
@@ -170,12 +198,13 @@ export default function BadgesPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-sky-100 bg-white/95 p-5 shadow-sm space-y-4">
+        <section className="space-y-4 rounded-2xl border border-sky-100 bg-white/95 p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">ことづてバッジ</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-sky-700">ことづてバッジ</p>
+              <h2 className="text-xl font-bold text-gray-900">ことづてバッジ</h2>
               <p className="text-sm text-gray-700">
-                投稿数に応じてラブレターが積み重なります。いいね数のバッジも用意しています。
+                投稿数やいいね数に応じて、ことづてバッジが増えていきます。
               </p>
             </div>
             <a
@@ -187,7 +216,7 @@ export default function BadgesPage() {
           </div>
 
           <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs font-semibold text-gray-600">積み上がるラブレター（投稿数に応じて色付き）</p>
+            <p className="text-xs font-semibold text-gray-600">投稿といいねの進捗</p>
             <div className="relative mx-auto flex h-48 w-full max-w-md items-end justify-center">
               {Array.from({ length: 8 }).map((_, idx) => {
                 const filled = idx < Math.min(kotoduteCounts.notes, 8);
@@ -209,23 +238,13 @@ export default function BadgesPage() {
                       width="100"
                       height="40"
                       rx="6"
-                      fill={filled ? '#fef3c7' : '#ffffff'}
+                      fill={filled ? "#fef3c7" : "#ffffff"}
                       stroke="#0f172a"
-                      strokeWidth="2"
+                      strokeWidth={2}
                     />
-                    <path
-                      d="M10 10 L60 40 L110 10"
-                      fill="none"
-                      stroke="#0f172a"
-                      strokeWidth="2"
-                    />
+                    <path d="M10 10 L60 40 L110 10" fill="none" stroke="#0f172a" strokeWidth="2" />
                     {filled && (
-                      <path
-                        d="M55 33 L60 38 L65 33"
-                        fill="none"
-                        stroke="#f97316"
-                        strokeWidth="2"
-                      />
+                      <path d="M55 33 L60 38 L65 33" fill="none" stroke="#f97316" strokeWidth="2" />
                     )}
                   </svg>
                 );
@@ -234,14 +253,20 @@ export default function BadgesPage() {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-300 border border-amber-400" aria-hidden />
+                <span
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-amber-400 bg-amber-300"
+                  aria-hidden
+                />
                 <span>投稿数</span>
-                <span className="text-[10px] text-gray-500">{kotoduteCounts.notes} 通</span>
+                <span className="text-[10px] text-gray-500">{kotoduteCounts.notes} 件</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-300 border border-sky-400" aria-hidden />
+                <span
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-sky-400 bg-sky-300"
+                  aria-hidden
+                />
                 <span>いいね数</span>
-                <span className="text-[10px] text-gray-500">{kotoduteCounts.likes} 個</span>
+                <span className="text-[10px] text-gray-500">{kotoduteCounts.likes} 件</span>
               </div>
             </div>
           </div>

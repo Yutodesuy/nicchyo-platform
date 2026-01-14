@@ -11,7 +11,9 @@ export function useTimeBadge() {
   const tickingRef = useRef(false);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
+    let intervalId: number | null = null;
+
+    const tick = () => {
       if (tickingRef.current) return;
       tickingRef.current = true;
 
@@ -36,9 +38,35 @@ export function useTimeBadge() {
         },
         { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
       );
-    }, 15000);
+    };
 
-    return () => window.clearInterval(id);
+    const start = () => {
+      if (intervalId !== null) return;
+      tick();
+      intervalId = window.setInterval(tick, 15000);
+    };
+
+    const stop = () => {
+      if (intervalId === null) return;
+      window.clearInterval(intervalId);
+      intervalId = null;
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        start();
+      }
+    };
+
+    handleVisibility();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const clearPriority = () => setPriority(null);
