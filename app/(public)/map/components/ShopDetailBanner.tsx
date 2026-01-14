@@ -336,7 +336,7 @@ export default function ShopDetailBanner({
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
       <div className="h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl">
         {/* 写真 */}
-        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white">
+        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative">
           <Image
             src={bannerImage}
             alt={`${shop.name}の写真`}
@@ -348,6 +348,49 @@ export default function ShopDetailBanner({
               e.currentTarget.style.display = "none";
             }}
           />
+          {!isKotodute && inMarket === true && !attendanceEstimate?.vendor_override && (
+            <div className="absolute bottom-4 right-4 rounded-2xl border-2 border-amber-200 bg-amber-50/90 px-4 py-3 shadow-lg">
+              <p className="text-base font-semibold text-amber-800">今日はお店を</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShopOpenStatus("open")}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    shopOpenStatus === "open"
+                      ? "border-emerald-400 bg-emerald-100 text-emerald-900"
+                      : "border-amber-200 bg-white text-amber-800"
+                  }`}
+                >
+                  出店している
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShopOpenStatus("closed")}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    shopOpenStatus === "closed"
+                      ? "border-slate-500 bg-slate-200 text-slate-900"
+                      : "border-amber-200 bg-white text-amber-800"
+                  }`}
+                >
+                  出店していない
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShopStatusSubmit}
+                  disabled={!shopOpenStatus}
+                  className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
+                >
+                  送信
+                </button>
+              </div>
+            </div>
+          )}
+          {!isKotodute && (inMarket !== true || attendanceEstimate?.vendor_override) && (
+            <div className="absolute bottom-4 right-4 rounded-2xl border-2 border-slate-200 bg-white/90 px-4 py-3 shadow-lg">
+              <p className="text-base font-semibold text-slate-600">今日はお店を</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">{shopStatusDisplay}</p>
+            </div>
+          )}
         </div>
 
         {/* ヘッダー */}
@@ -372,49 +415,6 @@ export default function ShopDetailBanner({
                 {shop.category} | {shop.ownerName}
               </p>
             )}
-            {!isKotodute && inMarket === true && !attendanceEstimate?.vendor_override && (
-              <div className="mt-6 rounded-3xl border-2 border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
-                <p className="text-base font-semibold text-amber-800">今日はお店を</p>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShopOpenStatus("open")}
-                    className={`rounded-full border px-4 py-2 text-lg font-semibold transition ${
-                      shopOpenStatus === "open"
-                        ? "border-emerald-400 bg-emerald-100 text-emerald-900"
-                        : "border-amber-200 bg-white text-amber-800"
-                    }`}
-                  >
-                    出店している
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShopOpenStatus("closed")}
-                    className={`rounded-full border px-4 py-2 text-lg font-semibold transition ${
-                      shopOpenStatus === "closed"
-                        ? "border-slate-500 bg-slate-200 text-slate-900"
-                        : "border-amber-200 bg-white text-amber-800"
-                    }`}
-                  >
-                    出店していない
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShopStatusSubmit}
-                    disabled={!shopOpenStatus}
-                    className="rounded-full bg-amber-700 px-4 py-2 text-lg font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
-                  >
-                    送信
-                  </button>
-                </div>
-              </div>
-            )}
-            {!isKotodute && (inMarket !== true || attendanceEstimate?.vendor_override) && (
-              <div className="mt-6 rounded-3xl border-2 border-slate-200 bg-slate-50 px-5 py-4 shadow-sm">
-                <p className="text-base font-semibold text-slate-600">今日はお店を</p>
-                <p className="mt-2 text-xl font-semibold text-slate-900">{shopStatusDisplay}</p>
-              </div>
-            )}
           </div>
           <div className="fixed right-6 top-6 z-[2105] flex items-center gap-2">
             <button
@@ -429,8 +429,8 @@ export default function ShopDetailBanner({
         </div>
 
         {!isKotodute && (
-          <div className="mt-10 divide-y divide-slate-200">
-            <section className="py-10 text-xl text-slate-700">
+          <div className="mt-6 divide-y divide-slate-200">
+            <section className="py-8 text-xl text-slate-700">
               <p className="text-base font-semibold text-slate-500">主な商品</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
             </section>

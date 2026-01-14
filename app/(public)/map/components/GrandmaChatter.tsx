@@ -494,11 +494,19 @@ export default function GrandmaChatter({
 
           <div className="flex items-start gap-3">
             {showIntroImage ? (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={(event) => {
                   event.stopPropagation();
                   setIsIntroImageOpen(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsIntroImageOpen(true);
+                  }
                 }}
                 className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm"
                 aria-label="出店画像を拡大表示"
@@ -509,7 +517,7 @@ export default function GrandmaChatter({
                   className="h-full w-full object-cover"
                   draggable={false}
                 />
-              </button>
+              </span>
             ) : (
               <span className="text-xl" aria-hidden>
                 {bubbleIcon}
