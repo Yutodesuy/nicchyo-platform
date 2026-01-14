@@ -293,6 +293,7 @@ const MapView = memo(function MapView({
   shopBannerVariant,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const { addItem, items: bagItems } = useBag();
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
@@ -874,6 +875,7 @@ const MapView = memo(function MapView({
         <UserLocationMarker
           onLocationUpdate={(inMarket, position) => {
             setUserLocation(position);
+            setIsInMarket(inMarket);
             onUserLocationUpdate?.({
               lat: position[0],
               lng: position[1],
@@ -905,6 +907,7 @@ const MapView = memo(function MapView({
             onClose={() => setSelectedShop(null)}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
+            inMarket={isInMarket === true}
           />
         </>
       )}
