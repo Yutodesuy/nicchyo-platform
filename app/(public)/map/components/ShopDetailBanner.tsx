@@ -229,7 +229,7 @@ export default function ShopDetailBanner({
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
-      <div className="h-full w-full max-w-none overflow-y-auto bg-white/95 p-6 shadow-2xl">
+      <div className="h-full w-full max-w-none overflow-y-auto bg-white/95 px-6 pb-24 pt-6 shadow-2xl">
         {/* ヘッダー */}
         <div className="mb-2 flex items-start justify-between">
           <div>
@@ -286,15 +286,15 @@ export default function ShopDetailBanner({
           />
         </div>
 
-        <div className="mt-8 divide-y divide-slate-200">
-          <section className="py-6 text-xl text-slate-700">
+        <div className="mt-10 divide-y divide-slate-200">
+          <section className="py-10 text-xl text-slate-700">
             <p className="text-base font-semibold text-slate-500">主な商品</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
           </section>
 
           {/* 商品名 */}
-          <section className="py-6 text-xl text-slate-700">
-            <div className="mb-4 flex items-center justify-between gap-3">
+          <section className="py-10 text-xl text-slate-700">
+            <div className="mb-6 flex items-center justify-between gap-3">
               <span className="text-base font-semibold text-slate-500">
                 商品名
               </span>
@@ -317,7 +317,7 @@ export default function ShopDetailBanner({
                 バッグ
               </button>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4">
               {shop.products.map((product) => {
                 const specificKey = buildBagKey(product, shop.id);
                 const anyKey = buildBagKey(product, undefined);
@@ -344,21 +344,21 @@ export default function ShopDetailBanner({
             </div>
           </section>
 
-          <section className="py-6 text-slate-800">
-            <div className="space-y-6 text-2xl">
-              <div className="border-t border-slate-200 pt-6 first:border-t-0 first:pt-0">
+          <section className="py-10 text-slate-800">
+            <div className="space-y-10 text-2xl">
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
                 <p className="text-base font-semibold text-slate-500">出店スタイル</p>
                 <p className="mt-2 text-2xl text-slate-700">
                   {shop.stallStyle ?? shop.schedule}
                 </p>
               </div>
-              <div className="border-t border-slate-200 pt-6 first:border-t-0 first:pt-0">
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
                 <p className="text-base font-semibold text-slate-500">出店者の想い・こだわり</p>
                 <p className="mt-2 text-2xl leading-snug text-slate-800">
                   {shop.aboutVendor || shop.message || shop.description}
                 </p>
               </div>
-              <div className="border-t border-slate-200 pt-6 first:border-t-0 first:pt-0">
+              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
                 <p className="text-base font-semibold text-slate-500">得意料理</p>
                 <p className="mt-2 text-2xl font-semibold text-slate-900">
                   {shop.specialtyDish ?? "なし"}
@@ -368,7 +368,7 @@ export default function ShopDetailBanner({
           </section>
 
           {/* ことづてセクション */}
-          <section className="py-6 text-lg text-slate-800">
+          <section className="py-10 text-lg text-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base font-semibold text-slate-500">
@@ -386,12 +386,12 @@ export default function ShopDetailBanner({
               </Link>
             </div>
 
-            {kotoduteNotes.length === 0 ? (
-              <div className="mt-4 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
+          {kotoduteNotes.length === 0 ? (
+              <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
                 ことづてページで、お店の感想を共有できます。
               </div>
             ) : (
-              <div className="mt-4 space-y-3">
+              <div className="mt-6 space-y-4">
                 {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
                   <div
                     key={note.id}
