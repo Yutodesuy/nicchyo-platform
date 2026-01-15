@@ -24,7 +24,7 @@ type GrandmaChatterProps = {
   priorityMessage?: PriorityMessage | null;
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
-  onAsk?: (text: string) => Promise<{ reply: string; imageUrl?: string }>;
+  onAsk?: (text: string) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number) => void;
   fullWidth?: boolean;
@@ -68,7 +68,13 @@ export default function GrandmaChatter({
   const [askText, setAskText] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(initialOpen);
   const [chatMessages, setChatMessages] = useState<
-    Array<{ id: string; role: "user" | "assistant"; text: string; imageUrl?: string }>
+    Array<{
+      id: string;
+      role: "user" | "assistant";
+      text: string;
+      imageUrl?: string;
+      shopIds?: number[];
+    }>
   >([]);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
@@ -295,6 +301,7 @@ export default function GrandmaChatter({
           role: "assistant",
           text: reply,
           imageUrl: response.imageUrl,
+          shopIds: response.shopIds,
         },
       ]);
     } catch {
@@ -540,7 +547,10 @@ export default function GrandmaChatter({
                   : "入力待ち"}
               </span>
             </div>
-            <div ref={chatScrollRef} className="mt-4 flex max-h-[calc(100vh-240px)] flex-col gap-3 overflow-y-auto pr-1">
+            <div
+              ref={chatScrollRef}
+              className="mt-4 flex max-h-[calc(100vh-240px)] flex-col gap-3 overflow-y-auto pr-1"
+            >
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
@@ -554,6 +564,42 @@ export default function GrandmaChatter({
                     }`}
                   >
                     <p>{message.text}</p>
+                    {message.role === "assistant" &&
+                      message.shopIds &&
+                      message.shopIds.length > 0 &&
+                      aiSuggestedShops &&
+                      aiSuggestedShops.length > 0 && (
+                        <div className="mt-2 rounded-2xl border border-orange-300 bg-white/95 p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="ai-label-playful text-lg text-pink-600">AIおすすめ</span>
+                              <span className="text-sm font-semibold text-gray-900">提案されたお店</span>
+                            </div>
+                            <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800 border border-amber-100">
+                              {
+                                aiSuggestedShops.filter((shop) =>
+                                  message.shopIds?.includes(shop.id)
+                                ).length
+                              }
+                              店
+                            </span>
+                          </div>
+                          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+                            {aiSuggestedShops
+                              .filter((shop) => message.shopIds?.includes(shop.id))
+                              .map((shop) => (
+                                <div key={shop.id} className="shrink-0">
+                                  <ShopResultCard
+                                    shop={shop}
+                                    isFavorite={false}
+                                    onSelectShop={() => onSelectShop?.(shop.id)}
+                                    compact
+                                  />
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     {message.imageUrl && (
                       <button
                         type="button"
@@ -744,7 +790,7 @@ export default function GrandmaChatter({
               />
             </button>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && (
+          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

@@ -327,6 +327,7 @@ export default function MapPageClient({
         return {
           reply: cleaned || "おすすめのお店を表示したよ。",
           imageUrl: payload.imageUrl,
+          shopIds: payload.shopIds,
         };
       }
       setAiMarkerPayload(null);
