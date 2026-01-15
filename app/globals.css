@@ -364,6 +364,89 @@ body.grandma-chat-open .leaflet-container {
   display: block;
 }
 
+.shop-simple-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  display: none;
+  width: 220px;
+  padding: 8px 10px;
+  gap: 10px;
+  align-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+}
+
+.shop-side-north .shop-simple-banner {
+  transform: translateX(calc(-50% - 90px));
+  flex-direction: row-reverse;
+}
+
+.shop-side-south .shop-simple-banner {
+  transform: translateX(calc(-50% + 90px));
+}
+
+.shop-simple-banner-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: #f1f5f9;
+  flex-shrink: 0;
+}
+
+.shop-simple-banner-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shop-simple-banner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shop-simple-banner-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-simple-banner-product {
+  font-size: 11px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-simple-banner-status {
+  font-size: 11px;
+  color: #0f172a;
+}
+
+.shop-simple-banner-visible .shop-simple-banner {
+  display: flex;
+}
+
+.shop-simple-banner-visible .shop-recipe-icons,
+.shop-simple-banner-visible .shop-kotodute-badge,
+.shop-simple-banner-visible .shop-favorite-badge,
+.shop-simple-banner-visible .shop-product-icon {
+  display: none !important;
+}
+
 .shop-side-south .shop-kotodute-badge {
   left: auto;
   right: -36px;

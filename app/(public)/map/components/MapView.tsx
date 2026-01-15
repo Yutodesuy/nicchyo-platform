@@ -536,6 +536,18 @@ const MapView = memo(function MapView({
     );
   }, [selectedRecipe, recipeIngredients, shops]);
 
+  const attendanceLabelsByShop = useMemo(() => {
+    const labels: Record<number, string> = {};
+    if (attendanceEstimates) {
+      Object.entries(attendanceEstimates).forEach(([id, estimate]) => {
+        if (estimate?.label) {
+          labels[Number(id)] = estimate.label;
+        }
+      });
+    }
+    return labels;
+  }, [attendanceEstimates]);
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント7】店舗クリック時のコールバック（段階的ズームアップ対応）
   // - useCallback でメモ化（不要な再生成を防ぐ）
@@ -839,6 +851,7 @@ const MapView = memo(function MapView({
           commentHighlightShopIds={commentShopId ? [commentShopId] : []}
           kotoduteShopIds={kotoduteShopIds}
           recipeIngredientIconsByShop={recipeIngredientIconsByShop}
+          attendanceLabelsByShop={attendanceLabelsByShop}
         />
 
         {/* レシピオーバーレイ */}
