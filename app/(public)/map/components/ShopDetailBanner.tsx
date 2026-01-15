@@ -250,6 +250,12 @@ export default function ShopDetailBanner({
     const range = rangeMap[shopStatusLabel] ?? "50%";
     return `${shopStatusLabel}（${range}）`;
   }, [shopStatusLabel]);
+  const statusBoxTone = useMemo(() => {
+    if (!attendanceEstimate?.vendor_override) return "neutral";
+    if (shopStatusLabel === "出店している") return "open";
+    if (shopStatusLabel === "出店していない") return "closed";
+    return "neutral";
+  }, [attendanceEstimate, shopStatusLabel]);
   const askTopics = useMemo(() => {
     if (Array.isArray(shop.topic) && shop.topic.length > 0) {
       return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
@@ -386,9 +392,17 @@ export default function ShopDetailBanner({
             </div>
           )}
           {!isKotodute && (inMarket !== true || attendanceEstimate?.vendor_override) && (
-            <div className="absolute bottom-4 right-4 rounded-2xl border-2 border-slate-200 bg-white/90 px-4 py-3 shadow-lg">
-              <p className="text-base font-semibold text-slate-600">今日はお店を</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">{shopStatusDisplay}</p>
+            <div
+              className={`absolute bottom-4 right-4 rounded-2xl border-2 px-4 py-3 shadow-lg ${
+                statusBoxTone === "open"
+                  ? "border-emerald-400 bg-emerald-100 text-emerald-900"
+                  : statusBoxTone === "closed"
+                  ? "border-red-400 bg-red-100 text-red-900"
+                  : "border-slate-200 bg-white/90 text-slate-900"
+              }`}
+            >
+              <p className="text-base font-semibold">今日はお店を</p>
+              <p className="mt-2 text-lg font-semibold">{shopStatusDisplay}</p>
             </div>
           )}
         </div>
