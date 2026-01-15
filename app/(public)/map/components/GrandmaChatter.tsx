@@ -120,6 +120,8 @@ export default function GrandmaChatter({
   const activeShopId = isShopIntro ? current?.shopId ?? null : null;
   const showIntroImage = isShopIntro && !!introImageUrl;
   const introImageSize = { width: 108, height: 144, gap: 12 };
+  const showAvatarButton = false;
+  const showBubbleAvatar = !isShopIntro;
 
   useEffect(() => {
     onActiveShopChange?.(activeShopId);
@@ -432,42 +434,44 @@ export default function GrandmaChatter({
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
-        <div
-          className="relative shrink-0 z-[2000]"
-          style={{
-            transform: `translate(${avatarOffset.x}px, ${avatarOffset.y + (isChatOpen ? -15 : 0)}px)`,
-          }}
-        >
-          <div className={labelClassName}>
-            <span className="grandma-title-label relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 font-semibold text-white shadow-sm">
-              {titleLabel}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleAvatarClick}
-            onPointerDown={handleAvatarPointerDown}
-            onPointerMove={handleAvatarPointerMove}
-            onPointerUp={handleAvatarPointerUp}
-            onPointerCancel={handleAvatarPointerUp}
-            onContextMenu={handleAvatarContextMenu}
-            onDragStart={handleAvatarDragStart}
-            className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
-            style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}
-            aria-label="おばあちゃんチャットを開く"
+        {showAvatarButton && (
+          <div
+            className="relative shrink-0 z-[2000]"
+            style={{
+              transform: `translate(${avatarOffset.x}px, ${avatarOffset.y + (isChatOpen ? -15 : 0)}px)`,
+            }}
           >
-            {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
-            <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
-            <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
-              <img
-                src={PLACEHOLDER_IMAGE}
-                alt="おせっかいばあちゃん"
-                className="h-full w-full scale-110 object-cover object-center select-none"
-                draggable={false}
-              />
+            <div className={labelClassName}>
+              <span className="grandma-title-label relative -top-[4px] z-[2001] inline-flex items-center whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 font-semibold text-white shadow-sm">
+                {titleLabel}
+              </span>
             </div>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              onPointerDown={handleAvatarPointerDown}
+              onPointerMove={handleAvatarPointerMove}
+              onPointerUp={handleAvatarPointerUp}
+              onPointerCancel={handleAvatarPointerUp}
+              onContextMenu={handleAvatarContextMenu}
+              onDragStart={handleAvatarDragStart}
+              className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
+              style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}
+              aria-label="おばあちゃんチャットを開く"
+            >
+              {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
+              <div className="absolute inset-0 rounded-2xl border-2 border-amber-500 bg-gradient-to-br from-amber-200 via-orange-200 to-amber-300 shadow-lg" />
+              <div className="absolute inset-1 overflow-hidden rounded-xl border border-white bg-white shadow-inner">
+                <img
+                  src={PLACEHOLDER_IMAGE}
+                  alt="おせっかいばあちゃん"
+                  className="h-full w-full scale-110 object-cover object-center select-none"
+                  draggable={false}
+                />
+              </div>
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
@@ -496,11 +500,20 @@ export default function GrandmaChatter({
             </>
           )}
 
-          <div className="flex items-start gap-3">
+          <div className="grandma-bubble-content flex items-center gap-3">
             {showIntroImage ? (
               <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
                 <img
                   src={introImageUrl ?? ""}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable={false}
+                />
+              </span>
+            ) : showBubbleAvatar ? (
+              <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
+                <img
+                  src={PLACEHOLDER_IMAGE}
                   alt=""
                   className="h-full w-full object-cover"
                   draggable={false}
@@ -512,7 +525,13 @@ export default function GrandmaChatter({
               </span>
             )}
             <div className="space-y-1">
-              <p className="grandma-comment-text text-base leading-relaxed text-gray-900">
+              <p
+                className={`grandma-comment-text ${
+                  isChatOpen || isShopIntro
+                    ? "text-base leading-relaxed"
+                    : "text-2xl leading-relaxed"
+                } text-gray-900`}
+              >
                 {bubbleText}
               </p>
               {current.link && !priorityMessage && !isChatOpen && (
