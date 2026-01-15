@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import { grandmaComments } from "../map/data/grandmaComments";
+import { shops } from "../map/data/shops";
 
 export default function ConsultPage() {
+  const [aiSuggestedShops, setAiSuggestedShops] = useState<typeof shops>([]);
+
   const handleGrandmaAsk = useCallback(async (text: string) => {
     try {
       const response = await fetch("/api/grandma/ask", {
@@ -24,14 +27,23 @@ export default function ConsultPage() {
       const payload = (await response.json()) as {
         reply?: string;
         imageUrl?: string;
+        shopIds?: number[];
       };
+      if (payload.shopIds && payload.shopIds.length > 0) {
+        const shopSet = new Set(payload.shopIds);
+        setAiSuggestedShops(shops.filter((shop) => shopSet.has(shop.id)));
+      } else {
+        setAiSuggestedShops([]);
+      }
       return {
         reply:
           payload.reply ??
           "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
         imageUrl: payload.imageUrl,
+        shopIds: payload.shopIds,
       };
     } catch {
+      setAiSuggestedShops([]);
       return {
         reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
       };
@@ -58,6 +70,7 @@ export default function ConsultPage() {
           fullWidth
           comments={grandmaComments}
           onAsk={handleGrandmaAsk}
+          aiSuggestedShops={aiSuggestedShops}
           initialOpen
           layout="page"
         />
