@@ -48,67 +48,72 @@ export default function HomePage() {
 
           </header>
 
-          <div className="relative mx-auto flex h-full w-full max-w-4xl flex-col justify-center px-6 pb-28">
+          <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col justify-center px-3 pb-0">
             <div className="relative space-y-6">
                 <div className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
                   <span className="h-2 w-2 rounded-full bg-amber-400" />
                   日曜市×高知高専×デジタルマップ
                 </div>
 
-                <article className="mt-6 max-h-[calc(100vh-220px)] overflow-y-auto rounded-3xl border border-amber-200/80 bg-white/95 px-5 py-6 shadow-sm">
-                  <div className="flex items-center justify-between text-[26px] font-semibold tracking-[0.2em] text-amber-700">
-                    <span>特集</span>
-                    <span>Sunday Market</span>
-                  </div>
-                  <h1 className="mt-5 text-3xl font-semibold leading-snug text-slate-900">
+                <article className="relative z-[900] mt-6 h-[calc(100vh-120px)] overflow-y-auto rounded-3xl border border-amber-200/80 bg-white/95 px-5 pb-[250px] pt-6 shadow-sm">
+                  <div className="mt-2" />
+                  <h1 className="mt-6 text-3xl font-semibold leading-snug text-slate-900">
                     情報を詰め込まない、話しかけるようなマップ。
                   </h1>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     高知の日曜市は、ずらりと店が並び、人の気配にあふれた魅力的な場所です。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
-                    一方で、初めて訪れると「どこから見ればいいのか」「自分に合う店があるのか」と、少し戸惑ってしまうこともあります。
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
+                    一方で、初めて訪れると「どこから見ればいいのか」「自分に合う店があるのか」と、
+                    <span className="font-semibold text-slate-800">少し戸惑ってしまうこともあります。</span>
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     nicchyoのマップは、そんなときのためのデジタルガイドです。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     市の全体像や雰囲気を把握しながら、無理に計画を立てることなく、安心して歩き始めることができます。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     nicchyoのマップには、案内役として「にちよさん」というおばあちゃんが登場します。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
-                    お店を探すというより、「ちょっと聞いてみる」感覚で使えるのが特徴です。
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
+                    お店を探すというより、
+                    <span className="font-semibold text-slate-800">「ちょっと聞いてみる」</span>
+                    感覚で使えるのが特徴です。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     無機質な情報を並べるのではなく、人の気配を感じられる形で情報を届けることで、
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     日曜市らしい寄り道や偶然の出会いを邪魔しない設計になっています。
                   </p>
+                  <hr className="mt-8 border-slate-200" />
                   <h2 className="mt-8 text-2xl font-semibold leading-snug text-slate-900">
                     調べすぎなくても、迷っても大丈夫。
                   </h2>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     このマップは、効率よく回るためのものではありません。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     どこに何があるのかを大まかに知りながら、自分のペースで歩くためのものです。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     「今日はなんとなくぶらぶらしたい」
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
-                    そんな気分のまま使ってもらえるよう、必要以上の情報は載せていません。
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
+                    そんな気分のまま使ってもらえるよう、
+                    <span className="font-semibold text-slate-800">必要以上の情報は載せていません。</span>
                   </p>
+                  <hr className="mt-8 border-slate-200" />
                   <h2 className="mt-8 text-2xl font-semibold leading-snug text-slate-900">
                     日曜市を、少し安心して楽しむために。
                   </h2>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
-                    nicchyoは、初めての日曜市でも、構えすぎずに一歩を踏み出せるようにつくられました。
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
+                    nicchyoは、初めての日曜市でも、
+                    <span className="font-semibold text-slate-800">構えすぎずに一歩を踏み出せる</span>
+                    ようにつくられました。
                   </p>
-                  <p className="mt-5 text-lg leading-relaxed text-slate-700">
+                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
                     誰かに付き添ってもらうような感覚で、マップを開いてみてください。
                   </p>
                 </article>
@@ -118,7 +123,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+8px)] left-1/2 z-[1300] w-[min(520px,92vw)] -translate-x-1/2 px-6">
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+40px)] left-1/2 z-[1400] w-[min(680px,98vw)] -translate-x-1/2 px-3">
         <div className="relative">
           <div className="pointer-events-none absolute -inset-3 rounded-[28px] bg-amber-200/40 blur-xl opacity-80 animate-pulse" />
           <button
