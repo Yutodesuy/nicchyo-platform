@@ -35,6 +35,8 @@ type GrandmaChatterProps = {
   onCommentShopOpen?: (shopId: number) => void;
   introImageUrl?: string | null;
   onAiImageClick?: (imageUrl: string) => void;
+  initialOpen?: boolean;
+  layout?: "floating" | "page";
 };
 
 export default function GrandmaChatter({
@@ -54,6 +56,8 @@ export default function GrandmaChatter({
   onCommentShopOpen,
   introImageUrl,
   onAiImageClick,
+  initialOpen = false,
+  layout = "floating",
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -62,7 +66,10 @@ export default function GrandmaChatter({
     [pool, currentId]
   );
   const [askText, setAskText] = useState("");
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(initialOpen);
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ id: string; role: "user" | "assistant"; text: string; imageUrl?: string }>
+  >([]);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -83,6 +90,7 @@ export default function GrandmaChatter({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const askRequestRef = useRef(0);
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -184,7 +192,22 @@ export default function GrandmaChatter({
     setAiBubbleText(nextLine);
     setAiStatus("idle");
     setAiImageUrl(null);
+    setChatMessages((prev) => {
+      if (prev.length > 0) return prev;
+      return [
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          text: nextLine,
+        },
+      ];
+    });
   }, [isChatOpen]);
+
+  useEffect(() => {
+    if (!isChatOpen || !chatScrollRef.current) return;
+    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  }, [chatMessages, isChatOpen, aiStatus]);
 
   if (!current) return null;
 
@@ -247,6 +270,10 @@ export default function GrandmaChatter({
     const value = (text ?? askText).trim();
     if (!value) return;
     setAskText("");
+    setChatMessages((prev) => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: "user", text: value },
+    ]);
     setAiStatus("thinking");
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
@@ -257,15 +284,32 @@ export default function GrandmaChatter({
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       setAiStatus("answered");
-      setAiBubbleText(
-        response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。"
-      );
+      const reply =
+        response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。";
+      setAiBubbleText(reply);
       setAiImageUrl(response.imageUrl ?? null);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          text: reply,
+          imageUrl: response.imageUrl,
+        },
+      ]);
     } catch {
       if (requestId !== askRequestRef.current) return;
       setAiStatus("error");
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        },
+      ]);
     }
   };
 
@@ -384,19 +428,25 @@ export default function GrandmaChatter({
     event.preventDefault();
   };
 
-  const shellClassName = fullWidth
-    ? "fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none"
-    : "fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none";
-  const containerClassName = fullWidth
-    ? isChatOpen
-      ? "relative flex w-full flex-row-reverse items-end justify-center gap-3 pointer-events-none"
-      : "relative flex w-full flex-col items-center gap-2 pointer-events-none"
-    : "relative flex items-end gap-2 sm:gap-3 pointer-events-none";
+  const shellClassName = layout === "page"
+    ? "relative w-full pointer-events-auto"
+    : fullWidth
+      ? "fixed bottom-20 left-0 right-0 z-[1400] pointer-events-none"
+      : "fixed bottom-20 left-3 z-[1400] sm:left-4 pointer-events-none";
+  const containerClassName = layout === "page"
+    ? "relative flex w-full flex-col items-center gap-2"
+    : fullWidth
+      ? isChatOpen
+        ? "relative flex w-full flex-row-reverse items-end justify-center gap-3 pointer-events-none"
+        : "relative flex w-full flex-col items-center gap-2 pointer-events-none"
+      : "relative flex items-end gap-2 sm:gap-3 pointer-events-none";
   const avatarClassName = fullWidth
     ? "relative h-[84px] w-[84px] shrink-0 sm:h-[96px] sm:w-[96px]"
     : "relative h-[33px] w-[33px] shrink-0 sm:h-[39px] sm:w-[39px]";
   const bubbleBaseClassName = fullWidth
-    ? "group relative z-[1000] w-[min(520px,92vw)] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
+    ? isChatOpen
+      ? "relative z-[1000] w-full max-w-none border-0 bg-transparent px-4 py-0 text-left shadow-none pointer-events-auto"
+      : "group relative z-[1000] w-full max-w-3xl rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl pointer-events-auto"
     : "group relative z-[1000] max-w-[280px] rounded-2xl border-2 bg-white/95 px-4 py-4 text-left shadow-xl backdrop-blur transition hover:-translate-y-0.5 hover:shadow-2xl sm:max-w-sm pointer-events-auto";
   const bubbleBorderClass = isShopIntro ? "border-emerald-400" : "border-amber-400";
   const bubbleStateClass =
@@ -411,17 +461,20 @@ export default function GrandmaChatter({
   const hasSuggestedBox =
     !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
   const hasSupplement = hasSuggestedBox || hasImageReply;
-  const chatLiftClassName = isChatOpen
-    ? isKeyboardOpen
-      ? "translate-y-[-230px]"
-      : hasSupplement
-      ? "translate-y-[-60px]"
-      : "translate-y-[-230px]"
-    : "translate-y-0";
+  const chatLiftClassName = layout === "page"
+    ? "translate-y-0"
+    : isChatOpen
+      ? isKeyboardOpen
+        ? "translate-y-[-230px]"
+        : hasSupplement
+        ? "translate-y-[-60px]"
+        : "translate-y-[-230px]"
+      : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
-  const inputOffsetPx = isKeyboardOpen ? -160 : hasSupplement ? 20 : -120;
+  const inputOffsetPx = isKeyboardOpen ? 0 : 60;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
-  const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
+  const chatPanelLift =
+    layout === "page" ? "translate-y-0" : isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage
@@ -473,103 +526,138 @@ export default function GrandmaChatter({
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={
-            isChatOpen
-              ? aiStatus === "idle"
-                ? handleInstructorNext
-                : undefined
-              : priorityMessage
-              ? onPriorityClick
-              : () => {
-                  if (isShopIntro && current?.shopId) {
-                    onCommentShopFocus?.(current.shopId);
-                    return;
-                  }
-                  handleNext();
-                }
-          }
-          className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
-          aria-label="ばあちゃんのコメントを開く"
-        >
-          {!fullWidth && (
-            <>
-              <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
-              <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
-            </>
-          )}
-
-          <div className="grandma-bubble-content flex items-center gap-3">
-            {showIntroImage ? (
-              <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
-                <img
-                  src={introImageUrl ?? ""}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
+        {isChatOpen ? (
+          <div
+            className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
+            aria-label="ばあちゃんのチャット"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-amber-100 pb-3">
+              <div className="text-sm font-semibold text-amber-800">にちよさんAI</div>
+              <span className="text-[11px] text-gray-500">
+                {aiStatus === "thinking"
+                  ? "回答を作成中…"
+                  : aiStatus === "answered"
+                  ? "入力を続けてね"
+                  : "入力待ち"}
               </span>
-            ) : showBubbleAvatar ? (
-              <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
-                <img
-                  src={PLACEHOLDER_IMAGE}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
-              </span>
-            ) : (
-              <span className="text-xl" aria-hidden>
-                {bubbleIcon}
-              </span>
-            )}
-            <div className="space-y-1">
-              <p
-                className={`grandma-comment-text ${
-                  isChatOpen || isShopIntro
-                    ? "text-base leading-relaxed"
-                    : "text-2xl leading-relaxed"
-                } text-gray-900`}
-              >
-                {bubbleText}
-              </p>
-              {current.link && !priorityMessage && !isChatOpen && (
-                <Link
-                  href={current.link.href}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
+            </div>
+            <div ref={chatScrollRef} className="mt-4 flex max-h-[calc(100vh-240px)] flex-col gap-3 overflow-y-auto pr-1">
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {current.link.label}
-                  <span aria-hidden>→</span>
-                </Link>
-              )}
-              {priorityMessage && !isChatOpen && (
-                <p className="text-[11px] text-gray-500">最新バッジの情報</p>
-              )}
-              {priorityMessage && onPriorityDismiss && !isChatOpen && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPriorityDismiss();
-                  }}
-                  className="text-[11px] font-semibold text-amber-700 underline"
-                >
-                  解除する
-                </button>
-              )}
-              {isChatOpen && (
-                <p className="text-[11px] text-gray-500">
-                  {aiStatus === "thinking"
-                    ? "回答を作成中…"
-                    : aiStatus === "answered"
-                    ? "入力を続けてね"
-                    : "入力待ち"}
-                </p>
-              )}
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm ${
+                      message.role === "user"
+                        ? "bg-amber-500 text-white"
+                        : "bg-amber-50 text-slate-900"
+                    }`}
+                  >
+                    <p>{message.text}</p>
+                    {message.imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
+                        className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white"
+                        aria-label="案内画像を開く"
+                      >
+                        <img
+                          src={message.imageUrl}
+                          alt="案内画像"
+                          className="h-28 w-full object-cover"
+                        />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={
+              priorityMessage
+                ? onPriorityClick
+                : () => {
+                    if (isShopIntro && current?.shopId) {
+                      onCommentShopFocus?.(current.shopId);
+                      return;
+                    }
+                    handleNext();
+                  }
+            }
+            className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
+            aria-label="ばあちゃんのコメントを開く"
+          >
+            {!fullWidth && (
+              <>
+                <div className="absolute -left-3 bottom-6 h-0 w-0 border-y-8 border-y-transparent border-r-8 border-r-amber-400" />
+                <div className="absolute -left-2 bottom-6 h-0 w-0 border-y-7 border-y-transparent border-r-7 border-r-white" />
+              </>
+            )}
+
+            <div className="grandma-bubble-content flex items-center gap-3">
+              {showIntroImage ? (
+                <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
+                  <img
+                    src={introImageUrl ?? ""}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                </span>
+              ) : showBubbleAvatar ? (
+                <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-sm" aria-hidden="true">
+                  <img
+                    src={PLACEHOLDER_IMAGE}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                </span>
+              ) : (
+                <span className="text-xl" aria-hidden>
+                  {bubbleIcon}
+                </span>
+              )}
+              <div className="space-y-1">
+                <p
+                  className={`grandma-comment-text ${
+                    isShopIntro ? "text-base leading-relaxed" : "text-2xl leading-relaxed"
+                  } text-gray-900`}
+                >
+                  {bubbleText}
+                </p>
+                {current.link && !priorityMessage && !isChatOpen && (
+                  <Link
+                    href={current.link.href}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 underline decoration-amber-400 decoration-2 underline-offset-4 transition group-hover:text-amber-700"
+                  >
+                    {current.link.label}
+                    <span aria-hidden>→</span>
+                  </Link>
+                )}
+                {priorityMessage && !isChatOpen && (
+                  <p className="text-[11px] text-gray-500">最新バッジの情報</p>
+                )}
+                {priorityMessage && onPriorityDismiss && !isChatOpen && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPriorityDismiss();
+                    }}
+                    className="text-[11px] font-semibold text-amber-700 underline"
+                  >
+                    解除する
+                  </button>
+                )}
+              </div>
+            </div>
+          </button>
+        )}
       </div>
 
       {showIntroImage && isIntroImageOpen && (
@@ -633,7 +721,7 @@ export default function GrandmaChatter({
         aria-hidden={!isChatOpen}
       >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
-          {aiImageUrl && (
+          {aiImageUrl && !isChatOpen && (
             <button
               type="button"
               onClick={() => onAiImageClick?.(aiImageUrl)}

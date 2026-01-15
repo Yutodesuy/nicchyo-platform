@@ -13,6 +13,7 @@ type NavItem = {
 
 const baseNavItems: NavItem[] = [
   { name: "マップ", href: "/map", icon: "map" },
+  { name: "相談", href: "/consult", icon: "chat" },
   { name: "検索", href: "/search", icon: "search" },
 ];
 
@@ -44,7 +45,12 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
               key={item.name}
               href={item.href}
               onClick={handleClick}
-              prefetch={item.href === "/search" || item.href === "/recipes" || item.href === "/kotodute"}
+              prefetch={
+                item.href === "/search" ||
+                item.href === "/recipes" ||
+                item.href === "/kotodute" ||
+                item.href === "/consult"
+              }
               className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
               }`}
