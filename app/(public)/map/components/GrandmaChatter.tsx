@@ -816,13 +816,23 @@ export default function GrandmaChatter({
                 </span>
               )}
               <div className="space-y-1">
-                <p
-                  className={`grandma-comment-text ${
-                    isShopIntro ? "text-lg leading-relaxed" : "text-2xl leading-relaxed"
-                  } text-gray-900`}
-                >
-                  {bubbleText}
-                </p>
+                {isShopIntro ? (
+                  (() => {
+                    const [title, ...rest] = bubbleText.split("\n");
+                    return (
+                      <div className="text-gray-900">
+                        <div className="text-lg font-semibold">{title}</div>
+                        <div className="whitespace-pre-line text-base leading-relaxed">
+                          {rest.join("\n")}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="grandma-comment-text text-2xl leading-relaxed text-gray-900">
+                    {bubbleText}
+                  </p>
+                )}
                 {current.link && !priorityMessage && !isChatOpen && (
                   <Link
                     href={current.link.href}
