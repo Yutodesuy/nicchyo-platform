@@ -83,6 +83,7 @@ export default function GrandmaChatter({
     }>
   >([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [hasUserAsked, setHasUserAsked] = useState(false);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
@@ -155,15 +156,32 @@ export default function GrandmaChatter({
       return;
     }
     try {
-      const parsed = JSON.parse(saved) as Array<{
-        id: string;
-        role: "user" | "assistant";
-        text: string;
-        imageUrl?: string;
-        shopIds?: number[];
-      }>;
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setChatMessages(parsed);
+      const parsed = JSON.parse(saved) as
+        | Array<{
+            id: string;
+            role: "user" | "assistant";
+            text: string;
+            imageUrl?: string;
+            shopIds?: number[];
+          }>
+        | {
+            messages: Array<{
+              id: string;
+              role: "user" | "assistant";
+              text: string;
+              imageUrl?: string;
+              shopIds?: number[];
+            }>;
+            hasUserAsked?: boolean;
+          };
+      const messages = Array.isArray(parsed) ? parsed : parsed.messages;
+      if (Array.isArray(messages) && messages.length > 0) {
+        setChatMessages(messages);
+        setHasUserAsked(
+          Array.isArray(parsed)
+            ? messages.some((message) => message.role === "user")
+            : !!parsed.hasUserAsked || messages.some((message) => message.role === "user")
+        );
       }
     } catch {
       // ignore malformed history
@@ -275,8 +293,14 @@ export default function GrandmaChatter({
       imageUrl: message.imageUrl,
       shopIds: message.shopIds,
     }));
-    localStorage.setItem(chatStorageKeyRef.current, JSON.stringify(serializable));
-  }, [chatMessages, hasLoadedHistory, layout]);
+    localStorage.setItem(
+      chatStorageKeyRef.current,
+      JSON.stringify({
+        messages: serializable,
+        hasUserAsked,
+      })
+    );
+  }, [chatMessages, hasLoadedHistory, hasUserAsked, layout]);
 
   useEffect(() => {
     if (!isChatOpen || !chatScrollRef.current) return;
@@ -361,6 +385,7 @@ export default function GrandmaChatter({
         localImageUrl: imagePreview ?? undefined,
       },
     ]);
+    setHasUserAsked(true);
     setAiStatus("thinking");
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
@@ -948,7 +973,7 @@ export default function GrandmaChatter({
           )}
           <div
             className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
-              isChatOpen ? "max-h-24" : "max-h-0 overflow-hidden"
+              isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
             }`}
           >
             {templateChips.map((label) => (
