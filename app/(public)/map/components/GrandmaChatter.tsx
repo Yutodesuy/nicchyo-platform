@@ -705,8 +705,8 @@ export default function GrandmaChatter({
                       message.shopIds.length > 0 &&
                       shopLookup.size > 0 && (
                         <div className="mt-2 rounded-2xl border border-orange-300 bg-white/95 p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex flex-col">
                               <span className="ai-label-playful text-lg text-pink-600">AIおすすめ</span>
                               <span className="text-sm font-semibold text-gray-900">提案されたお店</span>
                             </div>
