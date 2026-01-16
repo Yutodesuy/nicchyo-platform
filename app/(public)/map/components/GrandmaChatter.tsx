@@ -24,7 +24,10 @@ type GrandmaChatterProps = {
   priorityMessage?: PriorityMessage | null;
   onPriorityClick?: () => void;
   onPriorityDismiss?: () => void;
-  onAsk?: (text: string) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
+  onAsk?: (
+    text: string,
+    imageFile?: File | null
+  ) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number) => void;
   fullWidth?: boolean;
@@ -74,8 +77,12 @@ export default function GrandmaChatter({
       text: string;
       imageUrl?: string;
       shopIds?: number[];
+      localImageUrl?: string;
     }>
   >([]);
+  const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -94,6 +101,7 @@ export default function GrandmaChatter({
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const askRequestRef = useRef(0);
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -274,11 +282,24 @@ export default function GrandmaChatter({
   const handleAskSubmit = async (text?: string) => {
     if (aiStatus === "thinking") return;
     const value = (text ?? askText).trim();
-    if (!value) return;
+    if (!value && !selectedImageFile) return;
+    const imageFile = selectedImageFile;
+    const imagePreview = selectedImagePreview;
     setAskText("");
+    setSelectedImageName(null);
+    setSelectedImageFile(null);
+    setSelectedImagePreview(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
     setChatMessages((prev) => [
       ...prev,
-      { id: `user-${Date.now()}`, role: "user", text: value },
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: value || "（画像を送信）",
+        localImageUrl: imagePreview ?? undefined,
+      },
     ]);
     setAiStatus("thinking");
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
@@ -286,7 +307,7 @@ export default function GrandmaChatter({
     const requestId = ++askRequestRef.current;
     try {
       const response = onAsk
-        ? await onAsk(value)
+        ? await onAsk(value, imageFile ?? undefined)
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       setAiStatus("answered");
@@ -318,6 +339,19 @@ export default function GrandmaChatter({
         },
       ]);
     }
+  };
+
+  const handleImagePick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setSelectedImageName(null);
+      setSelectedImageFile(null);
+      setSelectedImagePreview(null);
+      return;
+    }
+    setSelectedImageName(file.name);
+    setSelectedImageFile(file);
+    setSelectedImagePreview(URL.createObjectURL(file));
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -564,6 +598,15 @@ export default function GrandmaChatter({
                     }`}
                   >
                     <p>{message.text}</p>
+                    {message.localImageUrl && (
+                      <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
+                        <img
+                          src={message.localImageUrl}
+                          alt="送信画像"
+                          className="h-28 w-full object-cover"
+                        />
+                      </div>
+                    )}
                     {message.role === "assistant" &&
                       message.shopIds &&
                       message.shopIds.length > 0 &&
@@ -856,21 +899,43 @@ export default function GrandmaChatter({
             }`}
           >
             <div className="flex flex-col gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={askText}
-                onChange={(e) => setAskText(e.target.value)}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setIsInputFocused(false)}
-                disabled={aiStatus === "thinking"}
-                className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                    : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
-                }`}
-                placeholder="おばあちゃんに質問してね"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePick}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+                  aria-label="画像を追加"
+                >
+                  +
+                </button>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={askText}
+                  onChange={(e) => setAskText(e.target.value)}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => setIsInputFocused(false)}
+                  disabled={aiStatus === "thinking"}
+                  className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
+                    aiStatus === "thinking"
+                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                      : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
+                  }`}
+                  placeholder="おばあちゃんに質問してね"
+                />
+              </div>
+              {selectedImageName && (
+                <div className="text-[11px] text-slate-600">
+                  画像: {selectedImageName}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => handleAskSubmit()}

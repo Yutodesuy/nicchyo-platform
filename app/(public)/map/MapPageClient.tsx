@@ -299,15 +299,25 @@ export default function MapPageClient({
     }
   };
 
-  const handleGrandmaAsk = useCallback(async (text: string) => {
+  const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
     try {
+      const useForm = !!imageFile;
+      const body = useForm
+        ? (() => {
+            const form = new FormData();
+            form.append("text", text);
+            form.append("location", JSON.stringify(userLocation ?? null));
+            if (imageFile) form.append("image", imageFile);
+            return form;
+          })()
+        : JSON.stringify({
+            text,
+            location: userLocation,
+          });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          location: userLocation,
-        }),
+        headers: useForm ? undefined : { "Content-Type": "application/json" },
+        body,
       });
       if (!response.ok) {
         return {
