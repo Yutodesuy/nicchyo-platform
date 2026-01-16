@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import type { CSSProperties } from "react";
 import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,6 +32,7 @@ type ShopDetailBannerProps = {
     vendor_override: boolean;
     evidence_summary: string;
   };
+  originRect?: { x: number; y: number; width: number; height: number };
 };
 
 type BagItem = {
@@ -80,6 +82,7 @@ export default function ShopDetailBanner({
   variant = "default",
   inMarket,
   attendanceEstimate,
+  originRect,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -338,9 +341,32 @@ export default function ShopDetailBanner({
     setPendingProduct(null);
   }, []);
 
+  const bannerStyle = useMemo(() => {
+    if (!originRect || typeof window === "undefined") return undefined;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const originCenterX = originRect.x + originRect.width / 2;
+    const originCenterY = originRect.y + originRect.height / 2;
+    const translateX = originCenterX - vw / 2;
+    const translateY = originCenterY - vh / 2;
+    const scaleX = Math.max(0.08, originRect.width / vw);
+    const scaleY = Math.max(0.08, originRect.height / vh);
+    return {
+      ["--banner-translate-x" as any]: `${translateX}px`,
+      ["--banner-translate-y" as any]: `${translateY}px`,
+      ["--banner-scale-x" as any]: scaleX,
+      ["--banner-scale-y" as any]: scaleY,
+    } as CSSProperties;
+  }, [originRect]);
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
-      <div className="h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl">
+      <div
+        className={`h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl ${
+          originRect ? "shop-banner-animate" : ""
+        }`}
+        style={bannerStyle}
+      >
         {/* 写真 */}
         <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative">
           <Image

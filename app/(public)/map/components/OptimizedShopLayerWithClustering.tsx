@@ -16,9 +16,11 @@ import ShopIllustration from './ShopIllustration';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 import { getShopBannerImage } from '../../../../lib/shopImages';
 
+type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
+
 interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
-  onShopClick: (shop: Shop) => void;
+  onShopClick: (shop: Shop, origin?: ShopBannerOrigin) => void;
   selectedShopId?: number;
   favoriteShopIds?: number[];
   searchShopIds?: number[];
@@ -323,7 +325,8 @@ export default function OptimizedShopLayerWithClustering({
       });
 
       marker.on('click', () => {
-        onShopClick(shop);
+        const origin = getOriginRect(marker);
+        onShopClick(shop, origin);
       });
       marker.on('add', () => {
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
@@ -592,3 +595,17 @@ export default function OptimizedShopLayerWithClustering({
 
   return null;
 }
+  const getOriginRect = (marker: L.Marker): ShopBannerOrigin | undefined => {
+    const element = marker.getElement();
+    if (!element) return undefined;
+    const banner = element.querySelector<HTMLElement>(".shop-simple-banner");
+    const target = banner && banner.offsetParent ? banner : element;
+    const rect = target.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return undefined;
+    return {
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
