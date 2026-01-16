@@ -512,7 +512,7 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
-  const inputOffsetPx = isKeyboardOpen ? 0 : 60;
+  const inputOffsetPx = isKeyboardOpen ? 0 : 0;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
     layout === "page" ? "translate-y-0" : isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
@@ -583,7 +583,11 @@ export default function GrandmaChatter({
             </div>
             <div
               ref={chatScrollRef}
-              className="mt-4 flex max-h-[calc(100vh-240px)] flex-col gap-3 overflow-y-auto pr-1"
+              className={`mt-4 flex flex-col gap-3 overflow-y-auto pr-1 ${
+                layout === "page"
+                  ? "h-[calc(100vh-220px)] pb-28"
+                  : "max-h-[calc(100vh-240px)]"
+              }`}
             >
               {chatMessages.map((message) => (
                 <div
@@ -811,7 +815,11 @@ export default function GrandmaChatter({
       )}
 
       <div
-        className={`w-full px-3 transition-all duration-200 ${chatPanelLift} ${
+        className={`w-full px-3 transition-all duration-200 ${
+          layout === "page"
+            ? `fixed left-0 right-0 z-[1405] ${isKeyboardOpen ? "bottom-2" : "bottom-6"}`
+            : chatPanelLift
+        } ${
           isChatOpen
             ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
             : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
@@ -930,24 +938,37 @@ export default function GrandmaChatter({
                   }`}
                   placeholder="おばあちゃんに質問してね"
                 />
+                <button
+                  type="button"
+                  onClick={() => handleAskSubmit()}
+                  disabled={aiStatus === "thinking"}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
+                    aiStatus === "thinking"
+                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                      : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
+                  }`}
+                  aria-label="送信"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M22 2 11 13" />
+                    <path d="M22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
               </div>
               {selectedImageName && (
                 <div className="text-[11px] text-slate-600">
                   画像: {selectedImageName}
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => handleAskSubmit()}
-                disabled={aiStatus === "thinking"}
-                className={`w-full rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                    : "bg-amber-600 text-white hover:bg-amber-500"
-                }`}
-              >
-                {aiStatus === "thinking" ? "送信中…" : "送信"}
-              </button>
             </div>
           </div>
         </div>
