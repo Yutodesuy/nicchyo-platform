@@ -12,8 +12,8 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-  { name: "マップ", href: "/map", icon: "map" },
   { name: "相談", href: "/consult", icon: "chat" },
+  { name: "マップ", href: "/map", icon: "map" },
   { name: "検索", href: "/search", icon: "search" },
 ];
 
