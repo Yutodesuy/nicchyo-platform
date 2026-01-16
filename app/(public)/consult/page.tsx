@@ -61,7 +61,7 @@ export default function ConsultPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-[#fbf8f3] pb-16">
+    <div className="relative h-screen overflow-hidden bg-[#fbf8f3]">
       <div
         className="pointer-events-none fixed inset-0 z-0"
         style={{
@@ -74,7 +74,7 @@ export default function ConsultPage() {
         }}
         aria-hidden="true"
       />
-      <main className="relative z-10 flex min-h-screen w-full items-center justify-center px-3 pb-24 pt-16">
+      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-16">
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
