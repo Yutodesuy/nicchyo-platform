@@ -42,7 +42,7 @@ type MapPageClientProps = {
 const INTRO_PRODUCT_COUNT = 2;
 const NEARBY_RADIUS_METERS = 120;
 const NEARBY_MAX_SHOPS = 10;
-const INTRO_TAP_HINT = "👆";
+const INTRO_TAP_HINT = "";
 
 function buildShopIntroText(shop: Shop): string {
   const name = shop.name?.trim() || `お店${shop.id}`;
@@ -51,12 +51,12 @@ function buildShopIntroText(shop: Shop): string {
   const categoryLabel = icon ? `${category} ${icon}` : category;
   const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
   if (products.length === 0) {
-    return `「${name}」は${categoryLabel}のお店で、いろいろ売りゆうよ。${INTRO_TAP_HINT}`;
+    return `${name}\n${categoryLabel}のお店やきね。\n主な商品: いろいろ${INTRO_TAP_HINT}`;
   }
   const picked = products.slice(0, INTRO_PRODUCT_COUNT);
   const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
   const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
-  return `「${name}」は${categoryLabel}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
+  return `${name}\n${categoryLabel}のお店やきね。\n主な商品: ${joined}${suffix}${INTRO_TAP_HINT}`;
 }
 
 function distanceMeters(
