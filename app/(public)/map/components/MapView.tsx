@@ -282,6 +282,8 @@ type MapViewProps = {
   >;
 };
 
+type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
+
 const MapView = memo(function MapView({
   shops: initialShops,
   initialShopId,
@@ -359,6 +361,7 @@ const MapView = memo(function MapView({
   // - 地図操作（pan/zoom）で React が再レンダリングされない
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
@@ -554,7 +557,7 @@ const MapView = memo(function MapView({
   // - Leaflet から直接呼ばれる（React の state を経由しない）
   // - ViewMode に応じて段階的にズームアップ
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleShopClick = useCallback((clickedShop: Shop) => {
+  const handleShopClick = useCallback((clickedShop: Shop, origin?: ShopBannerOrigin) => {
     if (!mapRef.current) return;
 
     const currentZoom = mapRef.current.getZoom();
@@ -566,6 +569,7 @@ const MapView = memo(function MapView({
         document.body.classList.add("shop-banner-open");
       }
       setSelectedShop(clickedShop);
+      setShopBannerOrigin(origin ?? null);
     } else {
       // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
       // OVERVIEW → INTERMEDIATE（18.0）
@@ -928,11 +932,15 @@ const MapView = memo(function MapView({
         <>
           <ShopDetailBanner
             shop={selectedShop}
-            onClose={() => setSelectedShop(null)}
+            onClose={() => {
+              setSelectedShop(null);
+              setShopBannerOrigin(null);
+            }}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
             inMarket={isInMarket === true}
             attendanceEstimate={attendanceEstimates?.[selectedShop.id]}
+            originRect={shopBannerOrigin ?? undefined}
           />
         </>
       )}
