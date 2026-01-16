@@ -61,7 +61,10 @@ export default function ConsultPage() {
   }, []);
 
   return (
-    <div className="relative h-screen overflow-hidden bg-[#fbf8f3]">
+    <div
+      className="relative overflow-hidden bg-[#fbf8f3]"
+      style={{ height: "100svh" }}
+    >
       <div
         className="pointer-events-none fixed inset-0 z-0"
         style={{
