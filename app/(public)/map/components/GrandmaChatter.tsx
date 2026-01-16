@@ -522,8 +522,8 @@ export default function GrandmaChatter({
   const inputBottomOffset =
     layout === "page"
       ? isKeyboardOpen
-        ? Math.max(8, keyboardOffset + 8)
-        : 24
+        ? Math.max(8, keyboardOffset + 28)
+        : 50
       : undefined;
   const bubbleText = isChatOpen
     ? aiBubbleText

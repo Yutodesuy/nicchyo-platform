@@ -85,7 +85,7 @@ export default function ConsultPage() {
           layout="page"
         />
       </main>
-      <NavigationBar activeHref="/consult" />
+      <NavigationBar activeHref="/consult" position="absolute" />
     </div>
   );
 }
