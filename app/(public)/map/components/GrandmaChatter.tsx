@@ -96,6 +96,7 @@ export default function GrandmaChatter({
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
@@ -177,7 +178,9 @@ export default function GrandmaChatter({
     if (!viewport) return;
     const update = () => {
       const heightLoss = Math.max(0, window.innerHeight - viewport.height);
+      const offset = Math.max(0, heightLoss - (viewport.offsetTop ?? 0));
       setKeyboardShift(heightLoss / 2);
+      setKeyboardOffset(offset);
     };
     update();
     viewport.addEventListener("resize", update);
@@ -516,6 +519,12 @@ export default function GrandmaChatter({
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
     layout === "page" ? "translate-y-0" : isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
+  const inputBottomOffset =
+    layout === "page"
+      ? isKeyboardOpen
+        ? Math.max(8, keyboardOffset + 8)
+        : 24
+      : undefined;
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage
@@ -817,13 +826,14 @@ export default function GrandmaChatter({
       <div
         className={`w-full px-3 transition-all duration-200 ${
           layout === "page"
-            ? `fixed left-0 right-0 z-[1405] ${isKeyboardOpen ? "bottom-2" : "bottom-6"}`
+            ? "fixed left-0 right-0 z-[1405]"
             : chatPanelLift
         } ${
           isChatOpen
             ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
             : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
         }`}
+        style={layout === "page" ? { bottom: `${inputBottomOffset}px` } : undefined}
         aria-hidden={!isChatOpen}
       >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
