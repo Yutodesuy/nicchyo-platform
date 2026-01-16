@@ -28,6 +28,7 @@ type GrandmaChatterProps = {
     text: string,
     imageFile?: File | null
   ) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
+  allShops?: Shop[];
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number) => void;
   fullWidth?: boolean;
@@ -49,6 +50,7 @@ export default function GrandmaChatter({
   onPriorityClick,
   onPriorityDismiss,
   onAsk,
+  allShops,
   aiSuggestedShops,
   onSelectShop,
   fullWidth = false,
@@ -80,6 +82,7 @@ export default function GrandmaChatter({
       localImageUrl?: string;
     }>
   >([]);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
@@ -106,6 +109,7 @@ export default function GrandmaChatter({
   const askRequestRef = useRef(0);
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const chatStorageKeyRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -139,12 +143,47 @@ export default function GrandmaChatter({
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
 
+  useEffect(() => {
+    if (layout !== "page") return;
+    if (typeof window === "undefined") return;
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `nicchyo-consult-chat-${today}`;
+    chatStorageKeyRef.current = key;
+    const saved = localStorage.getItem(key);
+    if (!saved) {
+      setHasLoadedHistory(true);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(saved) as Array<{
+        id: string;
+        role: "user" | "assistant";
+        text: string;
+        imageUrl?: string;
+        shopIds?: number[];
+      }>;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setChatMessages(parsed);
+      }
+    } catch {
+      // ignore malformed history
+    } finally {
+      setHasLoadedHistory(true);
+    }
+  }, [layout]);
+
   const isShopIntro = !isChatOpen && !priorityMessage && !!current?.shopId;
   const activeShopId = isShopIntro ? current?.shopId ?? null : null;
   const showIntroImage = isShopIntro && !!introImageUrl;
   const introImageSize = { width: 108, height: 144, gap: 12 };
   const showAvatarButton = false;
   const showBubbleAvatar = !isShopIntro;
+  const shopLookup = useMemo(() => {
+    const source = allShops && allShops.length > 0 ? allShops : aiSuggestedShops ?? [];
+    const map = new Map<number, Shop>();
+    source.forEach((shop) => map.set(shop.id, shop));
+    return map;
+  }, [allShops, aiSuggestedShops]);
 
   useEffect(() => {
     onActiveShopChange?.(activeShopId);
@@ -211,6 +250,9 @@ export default function GrandmaChatter({
     setAiImageUrl(null);
     setChatMessages((prev) => {
       if (prev.length > 0) return prev;
+      if (layout === "page" && hasLoadedHistory) {
+        return prev;
+      }
       return [
         {
           id: `assistant-${Date.now()}`,
@@ -219,7 +261,22 @@ export default function GrandmaChatter({
         },
       ];
     });
-  }, [isChatOpen]);
+  }, [hasLoadedHistory, isChatOpen, layout]);
+
+  useEffect(() => {
+    if (layout !== "page") return;
+    if (!hasLoadedHistory) return;
+    if (typeof window === "undefined") return;
+    if (!chatStorageKeyRef.current) return;
+    const serializable = chatMessages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      text: message.text,
+      imageUrl: message.imageUrl,
+      shopIds: message.shopIds,
+    }));
+    localStorage.setItem(chatStorageKeyRef.current, JSON.stringify(serializable));
+  }, [chatMessages, hasLoadedHistory, layout]);
 
   useEffect(() => {
     if (!isChatOpen || !chatScrollRef.current) return;
@@ -580,21 +637,19 @@ export default function GrandmaChatter({
             className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
             aria-label="ばあちゃんのチャット"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-amber-100 pb-3">
+            <div className="flex items-center justify-between gap-3 pb-3">
               <div className="text-sm font-semibold text-amber-800">にちよさんAI</div>
-              <span className="text-[11px] text-gray-500">
-                {aiStatus === "thinking"
-                  ? "回答を作成中…"
-                  : aiStatus === "answered"
-                  ? "入力を続けてね"
-                  : "入力待ち"}
-              </span>
+              {aiStatus !== "idle" && (
+                <span className="text-[11px] text-gray-500">
+                  {aiStatus === "thinking" ? "回答を作成中…" : "入力を続けてね"}
+                </span>
+              )}
             </div>
             <div
               ref={chatScrollRef}
-              className={`mt-4 flex flex-col gap-3 overflow-y-auto pr-1 ${
+              className={`mt-2 flex flex-col gap-3 overflow-y-auto pr-1 ${
                 layout === "page"
-                  ? "h-[calc(100vh-220px)] pb-28"
+                  ? "h-[calc(100vh-260px)] pb-28"
                   : "max-h-[calc(100vh-240px)]"
               }`}
             >
@@ -623,8 +678,7 @@ export default function GrandmaChatter({
                     {message.role === "assistant" &&
                       message.shopIds &&
                       message.shopIds.length > 0 &&
-                      aiSuggestedShops &&
-                      aiSuggestedShops.length > 0 && (
+                      shopLookup.size > 0 && (
                         <div className="mt-2 rounded-2xl border border-orange-300 bg-white/95 p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -633,17 +687,18 @@ export default function GrandmaChatter({
                             </div>
                             <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800 border border-amber-100">
                               {
-                                aiSuggestedShops.filter((shop) =>
-                                  message.shopIds?.includes(shop.id)
-                                ).length
+                                message.shopIds.filter((id) => shopLookup.has(id)).length
                               }
                               店
                             </span>
                           </div>
                           <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-                            {aiSuggestedShops
-                              .filter((shop) => message.shopIds?.includes(shop.id))
-                              .map((shop) => (
+                            {message.shopIds
+                              .map((id) => shopLookup.get(id))
+                              .filter(Boolean)
+                              .map((shop) => {
+                                if (!shop) return null;
+                                return (
                                 <div key={shop.id} className="shrink-0">
                                   <ShopResultCard
                                     shop={shop}
@@ -652,7 +707,9 @@ export default function GrandmaChatter({
                                     compact
                                   />
                                 </div>
-                              ))}
+                                );
+                              })
+                              .filter(Boolean)}
                           </div>
                         </div>
                       )}

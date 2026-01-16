@@ -74,12 +74,13 @@ export default function ConsultPage() {
         }}
         aria-hidden="true"
       />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-16">
+      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-6">
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
           comments={grandmaComments}
           onAsk={handleGrandmaAsk}
+          allShops={shops}
           aiSuggestedShops={aiSuggestedShops}
           initialOpen
           layout="page"

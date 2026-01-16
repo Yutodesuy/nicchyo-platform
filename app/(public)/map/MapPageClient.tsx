@@ -623,6 +623,7 @@ export default function MapPageClient({
                   fullWidth
                   comments={commentPool}
                   onAsk={handleGrandmaAsk}
+                  allShops={shops}
                   aiSuggestedShops={aiSuggestedShops}
                   onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
                   onHoldChange={setIsHoldActive}
