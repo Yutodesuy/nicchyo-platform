@@ -37,7 +37,7 @@ export default function NavigationBar({
 
   return (
     <nav
-      className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 text-sm leading-none backdrop-blur-md shadow-lg`}
+      className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white text-sm leading-none shadow-lg`}
       style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
     >
       <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
