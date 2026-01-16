@@ -680,7 +680,7 @@ export default function GrandmaChatter({
               <div className="space-y-1">
                 <p
                   className={`grandma-comment-text ${
-                    isShopIntro ? "text-base leading-relaxed" : "text-2xl leading-relaxed"
+                    isShopIntro ? "text-lg leading-relaxed" : "text-2xl leading-relaxed"
                   } text-gray-900`}
                 >
                   {bubbleText}
