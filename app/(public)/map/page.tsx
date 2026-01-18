@@ -49,6 +49,9 @@ function normalizeChome(value: string | null): Shop["chome"] {
 }
 
 async function loadShops(): Promise<Shop[]> {
+  // TODO: 一時的に静的データを強制使用（デバッグ用）
+  return staticShops;
+
   try {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
