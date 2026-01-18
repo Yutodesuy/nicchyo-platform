@@ -7,7 +7,7 @@ import type { Shop } from "../map/data/shops";
 
 export const metadata: Metadata = {
   title: "店舗検索 | nicchyo",
-  description: "日曜市の300店舗から、お店の名前・商品・カテゴリー・ブロック番号で検索できます。",
+  description: "日曜市の300店舗から、お店の名前・商品・カテゴリーで検索できます。",
 };
 
 type ShopRow = {

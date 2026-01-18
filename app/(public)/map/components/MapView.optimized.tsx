@@ -432,24 +432,6 @@ export default function MapView({
             onClose={() => setSelectedShop(null)}
             onAddToBag={handleAddToBag}
           />
-          {canNavigate && (
-            <div className="fixed bottom-28 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(-1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                ←前へ
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                次へ→
-              </button>
-            </div>
-          )}
         </>
       )}
 

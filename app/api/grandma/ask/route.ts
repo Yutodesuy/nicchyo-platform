@@ -38,11 +38,42 @@ type KnowledgeRow = {
 
 export async function POST(request: Request) {
   try {
-    const { text, location } = (await request.json()) as {
-      text?: string;
-      location?: { lat: number; lng: number } | null;
-    };
-    const question = (text ?? "").trim();
+    const contentType = request.headers.get("content-type") ?? "";
+    let text: string | undefined;
+    let location: { lat: number; lng: number } | null | undefined;
+    let imageDataUrl: string | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const formText = form.get("text");
+      const formLocation = form.get("location");
+      const formImage = form.get("image");
+      text = typeof formText === "string" ? formText : undefined;
+      if (typeof formLocation === "string") {
+        try {
+          location = JSON.parse(formLocation) as { lat: number; lng: number } | null;
+        } catch {
+          location = null;
+        }
+      }
+      if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
+        const imageFile = formImage as File;
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        const mime = imageFile.type || "image/jpeg";
+        imageDataUrl = `data:${mime};base64,${base64}`;
+      }
+    } else {
+      const payload = (await request.json()) as {
+        text?: string;
+        location?: { lat: number; lng: number } | null;
+      };
+      text = payload.text;
+      location = payload.location;
+    }
+
+    const rawQuestion = (text ?? "").trim();
+    const question = rawQuestion || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
       return NextResponse.json({ reply: "質問を入力してね。" }, { status: 400 });
     }
@@ -337,6 +368,16 @@ export async function POST(request: Request) {
         .map((item) => item.id);
     };
 
+    const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
+      location ? `${location.lat}, ${location.lng}` : "不明"
+    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`;
+    const userContent = imageDataUrl
+      ? [
+          { type: "text", text: `${userContextText}\n画像が添付されています。` },
+          { type: "image_url", image_url: { url: imageDataUrl } },
+        ]
+      : userContextText;
+
     const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -351,9 +392,7 @@ export async function POST(request: Request) {
           { role: "system", content: grandmaAiSystemPrompt },
           {
             role: "user",
-            content: `ユーザー質問: ${question}\n現在位置: ${
-              location ? `${location.lat}, ${location.lng}` : "不明"
-            }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`,
+            content: userContent,
           },
         ],
       }),

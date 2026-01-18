@@ -20,7 +20,7 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick }: Em
           キーワードを入力してください
         </p>
         <p className="mt-1 text-xs text-gray-600">
-          お店の名前、商品名、カテゴリー、ブロック番号で検索できます
+          お店の名前、商品名、カテゴリーで検索できます
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs text-gray-700">
@@ -28,9 +28,6 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick }: Em
           </span>
           <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs text-gray-700">
             例: 包丁
-          </span>
-          <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs text-gray-700">
-            例: #42
           </span>
         </div>
       </div>
