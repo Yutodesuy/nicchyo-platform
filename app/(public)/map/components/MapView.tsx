@@ -269,7 +269,20 @@ type MapViewProps = {
   aiShopIds?: number[];
   commentShopId?: number;
   kotoduteShopIds?: number[];
+  shopBannerVariant?: "default" | "kotodute";
+  attendanceEstimates?: Record<
+    number,
+    {
+      label: string;
+      p: number | null;
+      n_eff: number;
+      vendor_override: boolean;
+      evidence_summary: string;
+    }
+  >;
 };
+
+type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
 const MapView = memo(function MapView({
   shops: initialShops,
@@ -289,8 +302,11 @@ const MapView = memo(function MapView({
   aiShopIds,
   commentShopId,
   kotoduteShopIds,
+  shopBannerVariant,
+  attendanceEstimates,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
+  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const { addItem, items: bagItems } = useBag();
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
@@ -345,10 +361,11 @@ const MapView = memo(function MapView({
   // - 地図操作（pan/zoom）で React が再レンダリングされない
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [planOrder, setPlanOrder] = useState<number[]>([]);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
+  const [planOrder, setPlanOrder] = useState<number[]>([]);
   const mapRef = useRef<L.Map | null>(null);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -522,13 +539,25 @@ const MapView = memo(function MapView({
     );
   }, [selectedRecipe, recipeIngredients, shops]);
 
+  const attendanceLabelsByShop = useMemo(() => {
+    const labels: Record<number, string> = {};
+    if (attendanceEstimates) {
+      Object.entries(attendanceEstimates).forEach(([id, estimate]) => {
+        if (estimate?.label) {
+          labels[Number(id)] = estimate.label;
+        }
+      });
+    }
+    return labels;
+  }, [attendanceEstimates]);
+
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント7】店舗クリック時のコールバック（段階的ズームアップ対応）
   // - useCallback でメモ化（不要な再生成を防ぐ）
   // - Leaflet から直接呼ばれる（React の state を経由しない）
   // - ViewMode に応じて段階的にズームアップ
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  const handleShopClick = useCallback((clickedShop: Shop) => {
+  const handleShopClick = useCallback((clickedShop: Shop, origin?: ShopBannerOrigin) => {
     if (!mapRef.current) return;
 
     const currentZoom = mapRef.current.getZoom();
@@ -540,6 +569,7 @@ const MapView = memo(function MapView({
         document.body.classList.add("shop-banner-open");
       }
       setSelectedShop(clickedShop);
+      setShopBannerOrigin(origin ?? null);
     } else {
       // 【段階的ズームアップ】現在の段階から次の段階へ自然にズーム
       // OVERVIEW → INTERMEDIATE（18.0）
@@ -825,6 +855,7 @@ const MapView = memo(function MapView({
           commentHighlightShopIds={commentShopId ? [commentShopId] : []}
           kotoduteShopIds={kotoduteShopIds}
           recipeIngredientIconsByShop={recipeIngredientIconsByShop}
+          attendanceLabelsByShop={attendanceLabelsByShop}
         />
 
         {/* レシピオーバーレイ */}
@@ -872,6 +903,7 @@ const MapView = memo(function MapView({
         <UserLocationMarker
           onLocationUpdate={(inMarket, position) => {
             setUserLocation(position);
+            setIsInMarket(inMarket);
             onUserLocationUpdate?.({
               lat: position[0],
               lng: position[1],
@@ -900,27 +932,16 @@ const MapView = memo(function MapView({
         <>
           <ShopDetailBanner
             shop={selectedShop}
-            onClose={() => setSelectedShop(null)}
+            onClose={() => {
+              setSelectedShop(null);
+              setShopBannerOrigin(null);
+            }}
             onAddToBag={handleAddToBag}
+            variant={shopBannerVariant}
+            inMarket={isInMarket === true}
+            attendanceEstimate={attendanceEstimates?.[selectedShop.id]}
+            originRect={shopBannerOrigin ?? undefined}
           />
-          {canNavigate && (
-            <div className="fixed bottom-28 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(-1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                ←前へ
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                次へ→
-              </button>
-            </div>
-          )}
         </>
       )}
 
