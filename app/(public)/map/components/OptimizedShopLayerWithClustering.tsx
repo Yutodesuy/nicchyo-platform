@@ -223,6 +223,8 @@ export default function OptimizedShopLayerWithClustering({
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
       const mainProduct = shop.products?.[0] ?? shop.category ?? '-';
       const attendanceLabel = attendanceLabelsRef.current[shop.id] ?? 'わからない';
+      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
       const iconMarkup = renderToStaticMarkup(
         <div
@@ -233,9 +235,9 @@ export default function OptimizedShopLayerWithClustering({
             transition: 'transform 0.2s ease',
           }}
         >
-          {(shop.images?.main || getShopBannerImage(shop.category)) && (
+          {bannerImage && (
             <img
-              src={shop.images?.main ?? getShopBannerImage(shop.category)}
+              src={bannerImage}
               alt=""
               className="shop-product-icon"
               aria-hidden="true"
@@ -243,7 +245,7 @@ export default function OptimizedShopLayerWithClustering({
           )}
           <div className="shop-simple-banner" aria-hidden="true">
             <div className="shop-simple-banner-image">
-              <img src={shop.images?.main ?? getShopBannerImage(shop.category)} alt="" />
+              <img src={bannerImage} alt="" />
             </div>
             <div className="shop-simple-banner-body">
               <div className="shop-simple-banner-name">{shop.name}</div>
