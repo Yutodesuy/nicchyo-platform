@@ -776,6 +776,9 @@ export default function GrandmaChatter({
                 : () => {
                     if (isShopIntro && current?.shopId) {
                       onCommentShopFocus?.(current.shopId);
+                      if (showIntroImage) {
+                        setIsIntroImageOpen(true);
+                      }
                       return;
                     }
                     handleNext();
