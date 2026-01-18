@@ -236,10 +236,9 @@ export default function OptimizedShopLayerWithClustering({
           }}
         >
           {bannerImage && (
-            <img
-              src={bannerImage}
-              alt=""
+            <span
               className="shop-product-icon"
+              style={{ backgroundImage: `url(${bannerImage})` }}
               aria-hidden="true"
             />
           )}
