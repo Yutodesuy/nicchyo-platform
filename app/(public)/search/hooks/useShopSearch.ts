@@ -10,7 +10,7 @@ interface UseShopSearchParams {
   searchIndex: ShopSearchIndex[];
   textQuery: string;
   category: string | null;
-  blockNumber: string;
+  chome: string | null;
 }
 
 /**
@@ -18,9 +18,8 @@ interface UseShopSearchParams {
  * UIから検索ロジックを分離し、useMemoで最適化
  *
  * フィルタリング優先順位:
- * 1. ブロック番号（排他的検索、単一結果）
- * 2. カテゴリー（完全一致）
- * 3. テキストクエリ（部分一致、名前・商品・オーナー名）
+ * 1. カテゴリー（完全一致）
+ * 2. テキストクエリ（部分一致、名前・商品・オーナー名）
  *
  * @param params - 検索パラメータ
  * @returns フィルタリングされた店舗配列
@@ -30,25 +29,21 @@ export function useShopSearch({
   searchIndex,
   textQuery,
   category,
-  blockNumber,
+  chome,
 }: UseShopSearchParams): Shop[] {
   return useMemo(() => {
-    // 1. ブロック番号検索（最優先、単一結果）
-    if (blockNumber.trim()) {
-      const blockNum = parseInt(blockNumber, 10);
-      if (blockNum >= 1 && blockNum <= 300) {
-        return shops.filter(s => s.id === blockNum);
-      }
-      return []; // 範囲外
-    }
-
-    // 2. インデックスをフィルタリング
+    // 1. インデックスをフィルタリング
     let filtered = searchIndex;
 
     // カテゴリーフィルター（完全一致）
     if (category) {
       const catLower = category.toLowerCase();
       filtered = filtered.filter(idx => idx.categoryLower === catLower);
+    }
+
+    // 丁目フィルター（完全一致）
+    if (chome) {
+      filtered = filtered.filter(idx => idx.chome === chome);
     }
 
     // テキストクエリフィルター（部分一致）
@@ -61,8 +56,8 @@ export function useShopSearch({
       );
     }
 
-    // 3. 元の Shop オブジェクトを返す
+    // 2. 元の Shop オブジェクトを返す
     const resultIds = new Set(filtered.map(idx => idx.id));
     return shops.filter(shop => resultIds.has(shop.id));
-  }, [shops, searchIndex, textQuery, category, blockNumber]);
+  }, [shops, searchIndex, textQuery, category, chome]);
 }
