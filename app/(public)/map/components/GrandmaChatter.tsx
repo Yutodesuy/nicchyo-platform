@@ -770,20 +770,19 @@ export default function GrandmaChatter({
         ) : (
           <button
             type="button"
-            onClick={
-              priorityMessage
-                ? onPriorityClick
-                : () => {
-                    if (isShopIntro && current?.shopId) {
-                      onCommentShopFocus?.(current.shopId);
-                      if (showIntroImage) {
-                        setIsIntroImageOpen(true);
+          onClick={
+            priorityMessage
+              ? onPriorityClick
+              : () => {
+                    if (isShopIntro) {
+                      if (current?.shopId) {
+                        onCommentShopFocus?.(current.shopId);
                       }
                       return;
                     }
                     handleNext();
                   }
-            }
+          }
             className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
             aria-label="ばあちゃんのコメントを開く"
           >
