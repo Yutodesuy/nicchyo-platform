@@ -10,11 +10,16 @@ import { LatLngBoundsExpression } from 'leaflet';
 
 const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 
-export default function RoadOverlay() {
+type RoadOverlayProps = {
+  transformBounds?: (bounds: [[number, number], [number, number]]) => [[number, number], [number, number]];
+};
+
+export default function RoadOverlay({ transformBounds }: RoadOverlayProps = {}) {
   const config = ROAD_CONFIG;
   const roadWidthLng = Math.abs(config.bounds[0][1] - config.bounds[1][1]);
   const separatorWidthLng = 0.00004;
   const roadOffsetLng = roadWidthLng + separatorWidthLng;
+  const toDisplayBounds = transformBounds ?? ((bounds) => bounds);
 
   if (config.type === 'curved' && config.segments) {
     return (
@@ -22,6 +27,7 @@ export default function RoadOverlay() {
         config={config}
         roadWidthLng={roadWidthLng}
         roadOffsetLng={roadOffsetLng}
+        transformBounds={toDisplayBounds}
       />
     );
   }
@@ -32,6 +38,7 @@ export default function RoadOverlay() {
         config={config}
         roadWidthLng={roadWidthLng}
         roadOffsetLng={roadOffsetLng}
+        transformBounds={toDisplayBounds}
       />
     );
   }
@@ -41,21 +48,23 @@ export default function RoadOverlay() {
       <>
         <ImageOverlay
           url={config.imagePath}
-          bounds={config.bounds as LatLngBoundsExpression}
+          bounds={toDisplayBounds(config.bounds) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
         <ImageOverlay
           url={config.imagePath}
-          bounds={offsetBounds(config.bounds, roadOffsetLng) as LatLngBoundsExpression}
+          bounds={toDisplayBounds(offsetBounds(config.bounds, roadOffsetLng)) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
         {renderSeparatorBricks(
-          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+          toDisplayBounds
         )}
         {renderSeparatorPalms(
-          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+          toDisplayBounds
         )}
       </>
     );
@@ -66,21 +75,23 @@ export default function RoadOverlay() {
       <>
         <ImageOverlay
           url={config.imagePath}
-          bounds={config.bounds as LatLngBoundsExpression}
+          bounds={toDisplayBounds(config.bounds) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
         <ImageOverlay
           url={config.imagePath}
-          bounds={offsetBounds(config.bounds, roadOffsetLng) as LatLngBoundsExpression}
+          bounds={toDisplayBounds(offsetBounds(config.bounds, roadOffsetLng)) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
         {renderSeparatorBricks(
-          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+          toDisplayBounds
         )}
         {renderSeparatorPalms(
-          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+          getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+          toDisplayBounds
         )}
       </>
     );
@@ -89,10 +100,12 @@ export default function RoadOverlay() {
   return (
     <>
       {renderSeparatorBricks(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        toDisplayBounds
       )}
       {renderSeparatorPalms(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        toDisplayBounds
       )}
     </>
   );
@@ -102,10 +115,12 @@ function PlaceholderRoad({
   config,
   roadWidthLng,
   roadOffsetLng,
+  transformBounds,
 }: {
   config: RoadConfig;
   roadWidthLng: number;
   roadOffsetLng: number;
+  transformBounds: (bounds: [[number, number], [number, number]]) => [[number, number], [number, number]];
 }) {
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1000" preserveAspectRatio="none">
@@ -129,21 +144,23 @@ function PlaceholderRoad({
     <>
       <ImageOverlay
         url={svgDataUrl}
-        bounds={config.bounds as LatLngBoundsExpression}
+        bounds={transformBounds(config.bounds) as LatLngBoundsExpression}
         opacity={config.opacity}
         zIndex={config.zIndex}
       />
       <ImageOverlay
         url={svgDataUrl}
-        bounds={offsetBounds(config.bounds, roadOffsetLng) as LatLngBoundsExpression}
+        bounds={transformBounds(offsetBounds(config.bounds, roadOffsetLng)) as LatLngBoundsExpression}
         opacity={config.opacity}
         zIndex={config.zIndex}
       />
       {renderSeparatorBricks(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        transformBounds
       )}
       {renderSeparatorPalms(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        transformBounds
       )}
     </>
   );
@@ -153,10 +170,12 @@ function CurvedRoad({
   config,
   roadWidthLng,
   roadOffsetLng,
+  transformBounds,
 }: {
   config: RoadConfig;
   roadWidthLng: number;
   roadOffsetLng: number;
+  transformBounds: (bounds: [[number, number], [number, number]]) => [[number, number], [number, number]];
 }) {
   if (!config.segments) {
     return null;
@@ -186,7 +205,7 @@ function CurvedRoad({
         <ImageOverlay
           key={`road-segment-${segment.name}-${index}`}
           url={svgDataUrl}
-          bounds={segment.bounds as LatLngBoundsExpression}
+          bounds={transformBounds(segment.bounds) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
@@ -195,23 +214,26 @@ function CurvedRoad({
         <ImageOverlay
           key={`road-segment-offset-${segment.name}-${index}`}
           url={svgDataUrl}
-          bounds={offsetBounds(segment.bounds, roadOffsetLng) as LatLngBoundsExpression}
+          bounds={transformBounds(offsetBounds(segment.bounds, roadOffsetLng)) as LatLngBoundsExpression}
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
       ))}
       {renderSeparatorBricks(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        transformBounds
       )}
       {renderSeparatorPalms(
-        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng)
+        getRoadSeparatorBounds(config.bounds, roadWidthLng, roadOffsetLng),
+        transformBounds
       )}
     </>
   );
 }
 
 function renderSeparatorBricks(
-  separatorBounds: [[number, number], [number, number]]
+  separatorBounds: [[number, number], [number, number]],
+  transformBounds: (bounds: [[number, number], [number, number]]) => [[number, number], [number, number]]
 ) {
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1000" preserveAspectRatio="none">
@@ -224,7 +246,7 @@ function renderSeparatorBricks(
   return (
     <ImageOverlay
       url={svgDataUrl}
-      bounds={separatorBounds as LatLngBoundsExpression}
+      bounds={transformBounds(separatorBounds) as LatLngBoundsExpression}
       opacity={0.95}
       zIndex={65}
     />
@@ -232,7 +254,8 @@ function renderSeparatorBricks(
 }
 
 function renderSeparatorPalms(
-  separatorBounds: [[number, number], [number, number]]
+  separatorBounds: [[number, number], [number, number]],
+  transformBounds: (bounds: [[number, number], [number, number]]) => [[number, number], [number, number]]
 ) {
   const palmAspect = 1;
   const northLat = Math.max(separatorBounds[0][0], separatorBounds[1][0]);
@@ -261,7 +284,7 @@ function renderSeparatorPalms(
       <ImageOverlay
         key={`separator-palm-${index}`}
         url={PALM_IMAGE}
-        bounds={bounds as LatLngBoundsExpression}
+        bounds={transformBounds(bounds) as LatLngBoundsExpression}
         opacity={1}
         zIndex={66}
       />

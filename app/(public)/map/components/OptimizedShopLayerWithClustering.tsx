@@ -29,6 +29,7 @@ interface OptimizedShopLayerWithClusteringProps {
   kotoduteShopIds?: number[];
   recipeIngredientIconsByShop?: Record<number, string[]>;
   attendanceLabelsByShop?: Record<number, string>;
+  getDisplayLatLng?: (shop: Shop) => [number, number];
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
@@ -47,6 +48,7 @@ export default function OptimizedShopLayerWithClustering({
   kotoduteShopIds,
   recipeIngredientIconsByShop,
   attendanceLabelsByShop,
+  getDisplayLatLng,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -321,7 +323,8 @@ export default function OptimizedShopLayerWithClustering({
         iconAnchor: COMPACT_ICON_ANCHOR,
       });
 
-      const marker = L.marker([shop.lat, shop.lng], {
+      const displayLatLng = getDisplayLatLng ? getDisplayLatLng(shop) : [shop.lat, shop.lng];
+      const marker = L.marker(displayLatLng, {
         icon: fullIcon,
       });
 

@@ -18,6 +18,8 @@ import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
+import { getRoadBounds } from "./config/roadConfig";
+import { createAxisSwapTransform } from "./utils/coordinateTransform";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -43,6 +45,8 @@ const INTRO_PRODUCT_COUNT = 2;
 const NEARBY_RADIUS_METERS = 120;
 const NEARBY_MAX_SHOPS = 10;
 const INTRO_TAP_HINT = "";
+const MAP_CENTER: [number, number] = [33.5611589, 133.5366987];
+const AXIS_SWAP = createAxisSwapTransform(MAP_CENTER);
 
 function buildShopIntroText(shop: Shop): string {
   const name = shop.name?.trim() || `お店${shop.id}`;
@@ -273,7 +277,8 @@ export default function MapPageClient({
       const latlng = mapRef.current.containerPointToLatLng(point);
       const hit = grandmaEvents.find((event) => {
         const target = { lat: event.location.lat, lng: event.location.lng };
-        const dist = mapRef.current?.distance(latlng, target) ?? Infinity;
+        const [displayLat, displayLng] = AXIS_SWAP.toDisplayLatLng(target.lat, target.lng);
+        const dist = mapRef.current?.distance(latlng, { lat: displayLat, lng: displayLng }) ?? Infinity;
         return dist <= event.location.radiusMeters;
       });
       if (!hit) return;

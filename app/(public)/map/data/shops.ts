@@ -170,15 +170,27 @@ const messages = [
 // 300店舗を生成（実測1.3kmに基づく正確な配置）
 export const shops: Shop[] = [];
 
-// 実際の日曜市の範囲（1.3km）
-const startLat = 33.56500;  // 高知城前（西側）
-const endLat = 33.55330;    // 追手筋東端（東側）
-const latRange = (startLat - endLat) / 2;
-const latStep = latRange / 150;
+// 実際の日曜市の範囲（西端〜東端）
+const westPoint = { lat: 33.5606208, lng: 133.5338143 };
+const eastPoint = { lat: 33.5621214, lng: 133.5424269 };
+const totalPositions = 150;
+const lngStep = (eastPoint.lng - westPoint.lng) / (totalPositions - 1);
 
-const centerLng = 133.53100;    // 道の中心の経度
 const lngOffsetNorth = -0.00015; // 北側（左）のオフセット（道幅約12.5m）
 const lngOffsetSouth = 0.00015;  // 南側（右）のオフセット
+
+function getBaseLatForPosition(position: number) {
+  // 2〜7丁目は西端の緯度で揃える
+  if (position < 108 || position > 128) {
+    return westPoint.lat;
+  }
+
+  // 1丁目は西端→東端の斜めライン
+  const segmentStart = 108;
+  const segmentEnd = 128;
+  const ratio = (position - segmentStart) / (segmentEnd - segmentStart);
+  return westPoint.lat + (eastPoint.lat - westPoint.lat) * ratio;
+}
 
 let shopId = 1;
 
@@ -201,8 +213,8 @@ function getChomeFromPosition(position: number): '一丁目' | '二丁目' | '�
 // 北側（左側）の150店舗
 for (let i = 0; i < 150; i++) {
   const category = categories[i % categories.length];
-  const lat = startLat - (i * latStep);
-  const lng = centerLng + lngOffsetNorth;
+  const lat = getBaseLatForPosition(i);
+  const lng = westPoint.lng + (i * lngStep) + lngOffsetNorth;
   const ownerName = ownerNames[i % ownerNames.length];
   const schedule = schedules[i % schedules.length];
   // 30%の確率でメッセージを追加
@@ -237,8 +249,8 @@ for (let i = 0; i < 150; i++) {
 // 南側（右側）の150店舗
 for (let i = 0; i < 150; i++) {
   const category = categories[i % categories.length];
-  const lat = startLat - (i * latStep);
-  const lng = centerLng + lngOffsetSouth;
+  const lat = getBaseLatForPosition(i);
+  const lng = westPoint.lng + (i * lngStep) + lngOffsetSouth;
   const ownerName = ownerNames[(i + 14) % ownerNames.length]; // 少しずらす
   const schedule = schedules[(i + 3) % schedules.length];
   // 30%の確率でメッセージを追加

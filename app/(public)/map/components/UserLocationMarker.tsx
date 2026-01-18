@@ -19,9 +19,13 @@ const ANIMATION_MS = 300;
 
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
+  getDisplayLatLng?: (lat: number, lng: number) => [number, number];
 }
 
-export default function UserLocationMarker({ onLocationUpdate }: UserLocationMarkerProps) {
+export default function UserLocationMarker({
+  onLocationUpdate,
+  getDisplayLatLng,
+}: UserLocationMarkerProps) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const lastUpdateRef = useRef(0);
@@ -116,9 +120,9 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
             return;
           }
           lastUpdateRef.current = now;
-          const displayPosition: [number, number] = inMarket
-            ? [latitude, longitude]
-            : MARKET_CENTER;
+          const displayPosition: [number, number] = getDisplayLatLng
+            ? getDisplayLatLng(latitude, longitude)
+            : [latitude, longitude];
 
           if (markerRef.current) {
             animateMarkerTo(displayPosition);
@@ -143,9 +147,12 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
         (error) => {
           console.warn('Failed to get geolocation', error);
           const defaultPosition = MARKET_CENTER;
+          const displayPosition: [number, number] = getDisplayLatLng
+            ? getDisplayLatLng(defaultPosition[0], defaultPosition[1])
+            : defaultPosition;
 
           if (!markerRef.current) {
-            const newMarker = L.marker(defaultPosition, {
+            const newMarker = L.marker(displayPosition, {
               icon: userIcon,
               zIndexOffset: 1000,
             }).addTo(map);
@@ -183,7 +190,10 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
 
     console.warn('Geolocation is not supported by this browser');
     const defaultPosition = MARKET_CENTER;
-    const newMarker = L.marker(defaultPosition, {
+    const displayPosition: [number, number] = getDisplayLatLng
+      ? getDisplayLatLng(defaultPosition[0], defaultPosition[1])
+      : defaultPosition;
+    const newMarker = L.marker(displayPosition, {
       icon: userIcon,
       zIndexOffset: 1000,
     }).addTo(map);

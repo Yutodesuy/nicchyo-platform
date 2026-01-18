@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker, Polygon } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -35,6 +35,7 @@ import {
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
 import { getZoomConfig } from '../utils/zoomCalculator';
+import { createAxisSwapTransform } from '../utils/coordinateTransform';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import {
   applyShopEdits,
@@ -50,10 +51,8 @@ import { useBag } from "../../../../lib/storage/BagContext";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
-const KOCHI_SUNDAY_MARKET: [number, number] = [
-  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // latitude center
-  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
-];
+const MAP_CENTER: [number, number] = [33.5611589, 133.5366987];
+const AXIS_SWAP = createAxisSwapTransform(MAP_CENTER);
 
 // Sunday Market area boundaries (restrict pan operations to this area)
 const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
@@ -85,6 +84,35 @@ const INITIAL_ZOOM = MAX_ZOOM;
 
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
+const MASK_RADIUS_METERS = 1000;
+
+function buildCircleRing(
+  center: [number, number],
+  radiusMeters: number,
+  points: number = 72
+): [number, number][] {
+  const [centerLat, centerLng] = center;
+  const earthRadius = 6378137;
+  const ring: [number, number][] = [];
+  for (let i = 0; i < points; i += 1) {
+    const angle = (2 * Math.PI * i) / points;
+    const lat1 = (centerLat * Math.PI) / 180;
+    const lng1 = (centerLng * Math.PI) / 180;
+    const angularDistance = radiusMeters / earthRadius;
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angularDistance) +
+        Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(angle)
+    );
+    const lng2 =
+      lng1 +
+      Math.atan2(
+        Math.sin(angle) * Math.sin(angularDistance) * Math.cos(lat1),
+        Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+      );
+    ring.push([(lat2 * 180) / Math.PI, (lng2 * 180) / Math.PI]);
+  }
+  return ring;
+}
 
 const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
 const LEFT_SIDE_SHIFT_LNG = 0.0009;
@@ -315,6 +343,16 @@ const MapView = memo(function MapView({
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
   );
+  const toDisplayLatLng = AXIS_SWAP.toDisplayLatLng;
+  const toDisplayBounds = AXIS_SWAP.toDisplayBounds;
+  const displayCenter = useMemo(
+    () => toDisplayLatLng(MAP_CENTER[0], MAP_CENTER[1]),
+    [toDisplayLatLng]
+  );
+  const maskInnerRing = useMemo(
+    () => buildCircleRing(displayCenter, MASK_RADIUS_METERS),
+    [displayCenter]
+  );
   const rightSideLabelSvg = useMemo(() => {
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="260" height="860" viewBox="0 0 260 860">
@@ -403,14 +441,14 @@ const MapView = memo(function MapView({
         if (mapRef.current) {
           const currentZoom = mapRef.current.getZoom();
           if (currentZoom < 18) {
-            mapRef.current.setView([shop.lat, shop.lng], 18);
+            mapRef.current.setView(toDisplayLatLng(shop.lat, shop.lng), 18);
           } else {
-            mapRef.current.panTo([shop.lat, shop.lng]);
+            mapRef.current.panTo(toDisplayLatLng(shop.lat, shop.lng));
           }
         }
       }
     }
-  }, [initialShopId, shops]);
+  }, [initialShopId, shops, toDisplayLatLng]);
 
   useEffect(() => {
     const updateShops = () => {
@@ -605,11 +643,12 @@ const MapView = memo(function MapView({
         targetZoom = 18.5;
       }
 
-      mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
+      const [displayLat, displayLng] = toDisplayLatLng(centerLat, centerLng);
+      mapRef.current.flyTo([displayLat, displayLng], targetZoom, {
         duration: 0.75,
       });
     }
-  }, [shops]);
+  }, [shops, toDisplayLatLng]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
@@ -656,7 +695,7 @@ const MapView = memo(function MapView({
   return (
     <div className="relative h-full w-full">
       <MapContainer
-        center={KOCHI_SUNDAY_MARKET}
+        center={toDisplayLatLng(MAP_CENTER[0], MAP_CENTER[1])}
         zoom={INITIAL_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
@@ -672,8 +711,6 @@ const MapView = memo(function MapView({
         }}
         zoomControl={!isMobile}
         attributionControl={false}
-        maxBounds={MAX_BOUNDS}
-        maxBoundsViscosity={1.0}
         whenReady={() => {
           onMapReady?.();
         }}
@@ -686,24 +723,23 @@ const MapView = memo(function MapView({
         <BackgroundOverlay />
 
         {/* 道路 */}
-        <RoadOverlay />
-        <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
+        <RoadOverlay transformBounds={toDisplayBounds} />
         <Pane name="map-label" style={{ zIndex: 900 }}>
           <ImageOverlay
             url={rightSideLabelSvg}
-            bounds={[
+            bounds={toDisplayBounds([
               [RIGHT_SIDE_LABEL_LAT + RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG - RIGHT_LABEL_WIDTH_LNG / 2],
               [RIGHT_SIDE_LABEL_LAT - RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG + RIGHT_LABEL_WIDTH_LNG / 2],
-            ]}
+            ])}
             opacity={1}
             zIndex={90}
           />
           <ImageOverlay
             url={leftSideLabelSvg}
-            bounds={[
+            bounds={toDisplayBounds([
               [LEFT_SIDE_LABEL_LAT + LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG - LEFT_LABEL_WIDTH_LNG / 2],
               [LEFT_SIDE_LABEL_LAT - LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG + LEFT_LABEL_WIDTH_LNG / 2],
-            ]}
+            ])}
             opacity={1}
             zIndex={90}
           />
@@ -711,13 +747,15 @@ const MapView = memo(function MapView({
 
         <EventDimOverlay active={highlightEventTargets} />
 
+        <MarketMask innerRing={maskInnerRing} />
+
         {highlightEventTargets && (
           <Pane name="event-glow" style={{ zIndex: 2000 }}>
             {eventTargets?.map((target) => (
               <Fragment key={target.id}>
                 <CircleMarker
                   key={`${target.id}-r1`}
-                  center={[target.lat, target.lng]}
+                  center={toDisplayLatLng(target.lat, target.lng)}
                   radius={20}
                   pane="event-glow"
                   pathOptions={{
@@ -731,7 +769,7 @@ const MapView = memo(function MapView({
                 />
                 <CircleMarker
                   key={`${target.id}-r2`}
-                  center={[target.lat, target.lng]}
+                  center={toDisplayLatLng(target.lat, target.lng)}
                   radius={30}
                   pane="event-glow"
                   pathOptions={{
@@ -745,7 +783,7 @@ const MapView = memo(function MapView({
                 />
                 <CircleMarker
                   key={`${target.id}-r3`}
-                  center={[target.lat, target.lng]}
+                  center={toDisplayLatLng(target.lat, target.lng)}
                   radius={40}
                   pane="event-glow"
                   pathOptions={{
@@ -766,25 +804,25 @@ const MapView = memo(function MapView({
           <Pane name="event-focus" style={{ zIndex: 3000 }}>
             <ImageOverlay
               url="/images/maps/elements/buildings/KochiCastleMusium2.png"
-              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+              bounds={toDisplayBounds(KOCHI_CASTLE_MUSEUM_BOUNDS)}
               opacity={1}
               className="map-event-museum-highlight"
             />
             <ImageOverlay
               url="/images/maps/elements/buildings/Otepia2.png"
-              bounds={OTEPIA_BOUNDS}
+              bounds={toDisplayBounds(OTEPIA_BOUNDS)}
               opacity={1}
               className="map-event-museum-highlight"
             />
             <ImageOverlay
               url="/images/maps/elements/buildings/KochiCastle.png"
-              bounds={KOCHI_CASTLE_BOUNDS}
+              bounds={toDisplayBounds(KOCHI_CASTLE_BOUNDS)}
               opacity={1}
               className="map-event-museum-highlight"
             />
             <ImageOverlay
               url="/images/maps/elements/buildings/TinTinDensha2.png"
-              bounds={TINTIN_DENSHA_BOUNDS}
+              bounds={toDisplayBounds(TINTIN_DENSHA_BOUNDS)}
               opacity={1}
               className="map-event-museum-highlight"
             />
@@ -793,13 +831,13 @@ const MapView = memo(function MapView({
           <>
             <ImageOverlay
               url="/images/maps/elements/buildings/KochiCastleMusium2.png"
-              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+              bounds={toDisplayBounds(KOCHI_CASTLE_MUSEUM_BOUNDS)}
               opacity={1}
               zIndex={60}
             />
             <ImageOverlay
               url="/images/maps/elements/buildings/Otepia2.png"
-              bounds={OTEPIA_BOUNDS}
+              bounds={toDisplayBounds(OTEPIA_BOUNDS)}
               opacity={1}
               zIndex={60}
             />
@@ -807,13 +845,13 @@ const MapView = memo(function MapView({
         )}
         <ImageOverlay
           url="/images/maps/elements/buildings/KochiCastle.png"
-          bounds={KOCHI_CASTLE_BOUNDS}
+          bounds={toDisplayBounds(KOCHI_CASTLE_BOUNDS)}
           opacity={1}
           zIndex={70}
         />
         <ImageOverlay
           url="/images/maps/elements/buildings/TinTinDensha2.png"
-          bounds={TINTIN_DENSHA_BOUNDS}
+          bounds={toDisplayBounds(TINTIN_DENSHA_BOUNDS)}
           opacity={1}
           zIndex={70}
         />
@@ -821,7 +859,7 @@ const MapView = memo(function MapView({
           <ImageOverlay
             key={`building-column-${index}`}
             url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
-            bounds={bounds}
+            bounds={toDisplayBounds(bounds)}
             opacity={1}
             zIndex={55}
             className="map-building-tilted"
@@ -831,7 +869,7 @@ const MapView = memo(function MapView({
           <ImageOverlay
             key={`building-right-column-${index}`}
             url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
-            bounds={bounds}
+            bounds={toDisplayBounds(bounds)}
             opacity={1}
             zIndex={55}
             className="map-building-tilted"
@@ -856,6 +894,7 @@ const MapView = memo(function MapView({
           kotoduteShopIds={kotoduteShopIds}
           recipeIngredientIconsByShop={recipeIngredientIconsByShop}
           attendanceLabelsByShop={attendanceLabelsByShop}
+          getDisplayLatLng={(shop) => toDisplayLatLng(shop.lat, shop.lng)}
         />
 
         {/* レシピオーバーレイ */}
@@ -870,7 +909,7 @@ const MapView = memo(function MapView({
           return (
             <CircleMarker
               key={`recipe-${shop.id}`}
-              center={[shop.lat, shop.lng]}
+              center={toDisplayLatLng(shop.lat, shop.lng)}
               radius={40}
               pathOptions={{
                 fillColor: "#f59e0b",
@@ -901,6 +940,7 @@ const MapView = memo(function MapView({
 
         {/* ユーザー位置 */}
         <UserLocationMarker
+          getDisplayLatLng={toDisplayLatLng}
           onLocationUpdate={(inMarket, position) => {
             setUserLocation(position);
             setIsInMarket(inMarket);
@@ -1021,6 +1061,49 @@ function EventDimOverlay({ active }: { active: boolean }) {
           weight: 0,
           fillColor: "#050505",
           fillOpacity: 0.55,
+        }}
+        interactive={false}
+      />
+    </Pane>
+  );
+}
+
+function MarketMask({ innerRing }: { innerRing: [number, number][] }) {
+  const map = useMap();
+  const [outerRing, setOuterRing] = useState<[number, number][]>([]);
+
+  useEffect(() => {
+    const update = () => {
+      const bounds = map.getBounds();
+      const north = bounds.getNorth();
+      const south = bounds.getSouth();
+      const west = bounds.getWest();
+      const east = bounds.getEast();
+      setOuterRing([
+        [north, west],
+        [north, east],
+        [south, east],
+        [south, west],
+      ]);
+    };
+    update();
+    map.on("move zoom resize", update);
+    return () => {
+      map.off("move zoom resize", update);
+    };
+  }, [map]);
+
+  if (outerRing.length === 0) return null;
+
+  return (
+    <Pane name="market-mask" style={{ zIndex: 950 }}>
+      <Polygon
+        positions={[outerRing, innerRing]}
+        pathOptions={{
+          color: "transparent",
+          fillColor: "#050505",
+          fillOpacity: 0.55,
+          weight: 0,
         }}
         interactive={false}
       />
