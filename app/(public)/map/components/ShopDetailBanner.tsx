@@ -452,7 +452,7 @@ export default function ShopDetailBanner({
             </div>
             {!isKotodute && (
               <p className="text-xl text-slate-600">
-                {shop.category} | {shop.ownerName}
+                {shop.chome ?? "丁目未設定"} | {shop.ownerName}
               </p>
             )}
           </div>
