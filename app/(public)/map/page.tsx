@@ -80,30 +80,19 @@ export default async function MapPage() {
     )
     .order('legacy_id', { ascending: true });
 
-  const shops = (shopRows as unknown as ShopRow[] | null)
-    ? (shopRows as unknown as ShopRow[])
-        .filter((row) => row.legacy_id !== null)
-        .map((row) => ({
-          id: row.legacy_id ?? 0,
-          name: row.name ?? '',
-          ownerName: row.owner_name ?? '',
-          side: (row.side ?? 'north') as 'north' | 'south',
-          position: row.position ?? 0,
-          lat: row.lat ?? 0,
-          lng: row.lng ?? 0,
-          chome: normalizeChome(row.chome),
-          category: row.category ?? '',
-          products: Array.isArray(row.products) ? row.products : [],
-          description: row.description ?? '',
-          specialtyDish: row.specialty_dish ?? undefined,
-          aboutVendor: row.about_vendor ?? undefined,
-          stallStyle: row.stall_style ?? undefined,
-          icon: row.icon ?? '',
-          schedule: row.schedule ?? '',
-          message: row.message ?? undefined,
-          topic: Array.isArray(row.topic) ? row.topic : undefined,
-        }))
-    : staticShops;
+  // Supabaseからtopicデータを取得してマップを作成
+  const topicByLegacyId = new Map<number, string[]>();
+  (shopRows as unknown as ShopRow[] | null)?.forEach((row) => {
+    if (row.legacy_id !== null && Array.isArray(row.topic)) {
+      topicByLegacyId.set(row.legacy_id, row.topic);
+    }
+  });
+
+  // 静的データの座標を使用し、Supabaseからtopicのみマージ
+  const shops = staticShops.map((shop) => ({
+    ...shop,
+    topic: topicByLegacyId.get(shop.id),
+  }));
 
   const uuidToLegacy = new Map<string, number>();
   (shopRows as unknown as ShopRow[] | null)?.forEach((row) => {
