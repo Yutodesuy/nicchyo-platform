@@ -31,6 +31,7 @@ type ShopRow = {
   schedule: string | null;
   message: string | null;
   topic: string[] | null;
+  shop_strength: string | null;
 };
 
 const CHOME_VALUES = new Set([
@@ -76,6 +77,7 @@ export default async function MapPage() {
         'schedule',
         'message',
         'topic',
+        'shop_strength',
       ].join(',')
     )
     .order('legacy_id', { ascending: true });
@@ -102,6 +104,7 @@ export default async function MapPage() {
           schedule: row.schedule ?? '',
           message: row.message ?? undefined,
           topic: Array.isArray(row.topic) ? row.topic : undefined,
+          shopStrength: row.shop_strength ?? undefined,
         }))
     : staticShops;
 
