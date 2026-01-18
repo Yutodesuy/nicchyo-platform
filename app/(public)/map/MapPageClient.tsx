@@ -163,7 +163,8 @@ export default function MapPageClient({
       if (typeof window === "undefined") return;
       const shop = shopById.get(shopId);
       if (!shop) return;
-      const src = shop.images?.main ?? getShopBannerImage(shop.category);
+      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const src = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
       if (!src) return;
       const img = new Image();
       img.src = src;
@@ -417,7 +418,8 @@ export default function MapPageClient({
     if (!commentHighlightShopId) return null;
     const shop = shopById.get(commentHighlightShopId);
     if (!shop) return null;
-    return shop.images?.main ?? getShopBannerImage(shop.category);
+    const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+    return shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
   }, [commentHighlightShopId, shopById]);
 
   const kotoduteShopIds = useMemo(() => {
@@ -563,10 +565,22 @@ export default function MapPageClient({
                       ×
                     </button>
                   </div>
-                  {(vendorShop?.images?.main || getShopBannerImage(vendorShop?.category)) && (
+                  {(vendorShop?.images?.main ||
+                    getShopBannerImage(
+                      vendorShop?.category,
+                      ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
+                        (vendorShop?.side === "south" ? 1 : 0)
+                    )) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
                       <img
-                        src={vendorShop?.images?.main ?? getShopBannerImage(vendorShop?.category)}
+                        src={
+                          vendorShop?.images?.main ??
+                          getShopBannerImage(
+                            vendorShop?.category,
+                            ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
+                              (vendorShop?.side === "south" ? 1 : 0)
+                          )
+                        }
                         alt={`${vendorShopName}の写真`}
                         className="h-40 w-full object-cover object-center"
                       />

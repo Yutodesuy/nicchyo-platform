@@ -316,7 +316,8 @@ export default function ShopDetailBanner({
 
 
   const canEditShop = permissions.canEditShop(shop.id);
-  const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category);
+  const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+  const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
   const handleEditShop = useCallback(() => {
     router.push("/my-shop");
