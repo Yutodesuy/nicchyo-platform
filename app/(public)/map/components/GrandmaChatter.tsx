@@ -41,6 +41,7 @@ type GrandmaChatterProps = {
   onAiImageClick?: (imageUrl: string) => void;
   initialOpen?: boolean;
   layout?: "floating" | "page";
+  onClear?: () => void;
 };
 
 export default function GrandmaChatter({
@@ -63,6 +64,7 @@ export default function GrandmaChatter({
   onAiImageClick,
   initialOpen = false,
   layout = "floating",
+  onClear,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -664,33 +666,83 @@ export default function GrandmaChatter({
           >
             <div className="flex items-center justify-between gap-3 pb-3">
               <div className="text-sm font-semibold text-amber-800">にちよさんAI</div>
-              {aiStatus !== "idle" && (
-                <span className="text-[11px] text-gray-500">
-                  {aiStatus === "thinking" ? "回答を作成中…" : "入力を続けてね"}
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                {aiStatus !== "idle" && (
+                  <span className="text-[11px] text-gray-500">
+                    {aiStatus === "thinking" ? "回答を作成中…" : "入力を続けてね"}
+                  </span>
+                )}
+                {layout === "page" && chatMessages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("会話の履歴を削除しますか？")) {
+                        setChatMessages([]);
+                        setHasUserAsked(false);
+                        onClear?.();
+                        if (chatStorageKeyRef.current) {
+                          localStorage.removeItem(chatStorageKeyRef.current);
+                        }
+                      }
+                    }}
+                    className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
+                  >
+                    履歴を削除
+                  </button>
+                )}
+              </div>
             </div>
             <div
               ref={chatScrollRef}
-              className={`mt-2 flex flex-col gap-3 overflow-y-auto pr-1 ${
+              className={`mt-2 flex flex-col gap-4 overflow-y-auto pr-1 ${
                 layout === "page"
-                  ? "h-[calc(100svh-72px-var(--safe-bottom,0px))] pb-6"
+                  ? "h-[calc(100svh-72px-var(--safe-bottom,0px))] pb-40"
                   : "max-h-[calc(100vh-240px)]"
               }`}
             >
+              <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
+                <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-amber-200 bg-amber-50 shadow-sm">
+                  <img
+                    src={PLACEHOLDER_IMAGE}
+                    alt="にちよさん"
+                    className="h-full w-full scale-110 object-cover object-center"
+                    draggable={false}
+                  />
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-amber-800">にちよさん</div>
+                  <div className="text-sm text-gray-600">日曜市のことをなんでも聞いてね</div>
+                </div>
+              </div>
+
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex ${
+                    message.role === "user" ? "justify-end" : "justify-start items-end gap-2"
+                  }`}
                 >
+                  {message.role === "assistant" && (
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm">
+                        <img
+                          src={PLACEHOLDER_IMAGE}
+                          alt="にちよさん"
+                          className="h-full w-full scale-110 object-cover object-center"
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm ${
+                    className={`relative max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
                       message.role === "user"
-                        ? "bg-amber-500 text-white"
-                        : "bg-amber-50 text-slate-900"
+                        ? "bg-amber-500 text-white rounded-tr-sm"
+                        : "bg-white border border-amber-100 text-slate-900 rounded-tl-sm"
                     }`}
                   >
-                    <p>{message.text}</p>
+                    <p className="whitespace-pre-wrap">{message.text}</p>
                     {message.localImageUrl && (
                       <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
                         <img
@@ -704,34 +756,27 @@ export default function GrandmaChatter({
                       message.shopIds &&
                       message.shopIds.length > 0 &&
                       shopLookup.size > 0 && (
-                        <div className="mt-2 rounded-2xl border border-orange-300 bg-white/95 p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex flex-col">
-                              <span className="ai-label-playful text-lg text-pink-600">AIおすすめ</span>
-                              <span className="text-sm font-semibold text-gray-900">提案されたお店</span>
-                            </div>
-                            <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800 border border-amber-100">
-                              {
-                                message.shopIds.filter((id) => shopLookup.has(id)).length
-                              }
-                              店
+                        <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-xs font-bold text-orange-800">
+                              おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
                             </span>
                           </div>
-                          <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+                          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
                             {message.shopIds
                               .map((id) => shopLookup.get(id))
                               .filter(Boolean)
                               .map((shop) => {
                                 if (!shop) return null;
                                 return (
-                                <div key={shop.id} className="shrink-0">
-                                  <ShopResultCard
-                                    shop={shop}
-                                    isFavorite={false}
-                                    onSelectShop={() => onSelectShop?.(shop.id)}
-                                    compact
-                                  />
-                                </div>
+                                  <div key={shop.id} className="shrink-0 w-48">
+                                    <ShopResultCard
+                                      shop={shop}
+                                      isFavorite={false}
+                                      onSelectShop={() => onSelectShop?.(shop.id)}
+                                      compact
+                                    />
+                                  </div>
                                 );
                               })
                               .filter(Boolean)}
@@ -742,25 +787,15 @@ export default function GrandmaChatter({
                       <button
                         type="button"
                         onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
-                        className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white"
+                        className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
                         aria-label="案内画像を開く"
                       >
                         <img
                           src={message.imageUrl}
                           alt="案内画像"
-                          className="h-28 w-full object-cover"
+                          className="h-32 w-full object-cover"
                         />
                       </button>
-                    )}
-                    {message.role === "assistant" && (
-                      <div className="mt-3 flex justify-center">
-                        <img
-                          src={PLACEHOLDER_IMAGE}
-                          alt="にちよさん"
-                          className="h-20 w-20 rounded-2xl object-cover"
-                          draggable={false}
-                        />
-                      </div>
                     )}
                   </div>
                 </div>
