@@ -118,6 +118,7 @@ export default function MapPageClient({
   } | null>(null);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
+  const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
@@ -623,6 +624,7 @@ export default function MapPageClient({
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
+              onZoomChange={setCurrentZoom}
             />
             {showGrandma && (
               <>
@@ -641,6 +643,7 @@ export default function MapPageClient({
                   onCommentShopOpen={handleCommentShopOpen}
                   introImageUrl={introImageUrl}
                   onAiImageClick={handleAiImageClick}
+                  currentZoom={currentZoom}
                   priorityMessage={
                     priority
                       ? {
