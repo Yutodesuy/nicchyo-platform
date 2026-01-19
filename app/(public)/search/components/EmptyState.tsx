@@ -8,35 +8,19 @@ interface EmptyStateProps {
 
 /**
  * 空状態表示コンポーネント
- * クエリ未入力時と結果なし時で異なるメッセージを表示
+ * 結果なし時（0件）のメッセージを表示
+ * ※ クエリ未入力時の表示は SearchDiscovery コンポーネントに委譲
  */
 export default function EmptyState({ hasQuery, categories, onCategoryClick }: EmptyStateProps) {
+  // 注意: hasQueryがfalseの場合は親コンポーネントでSearchDiscoveryが表示されるため
+  // ここでは理論上到達しないか、あるいは単純に何も表示しない
   if (!hasQuery) {
-    // クエリ未入力時
-    return (
-      <div className="rounded-2xl border border-dashed border-amber-200 bg-white/80 px-6 py-8 text-center">
-        <p className="text-4xl">🔍</p>
-        <p className="mt-3 text-sm font-semibold text-gray-900">
-          キーワードを入力してください
-        </p>
-        <p className="mt-1 text-xs text-gray-600">
-          お店の名前、商品名、カテゴリーで検索できます
-        </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs text-gray-700">
-            例: レタス
-          </span>
-          <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs text-gray-700">
-            例: 包丁
-          </span>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // 結果なし時
   return (
-    <div className="rounded-2xl border border-dashed border-amber-200 bg-white/80 px-6 py-8 text-center">
+    <div className="rounded-2xl border border-dashed border-amber-200 bg-white/80 px-6 py-8 text-center animate-in fade-in duration-300">
       <p className="text-4xl">😢</p>
       <p className="mt-3 text-sm font-semibold text-gray-900">
         条件に合うお店が見つかりません
