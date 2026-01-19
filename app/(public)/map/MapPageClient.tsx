@@ -294,7 +294,11 @@ export default function MapPageClient({
     }
   };
 
-  const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
+  const handleGrandmaAsk = useCallback(async (
+    text: string,
+    imageFile?: File | null,
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
+  ) => {
     try {
       const useForm = !!imageFile;
       const body = useForm
@@ -302,12 +306,16 @@ export default function MapPageClient({
             const form = new FormData();
             form.append("text", text);
             form.append("location", JSON.stringify(userLocation ?? null));
+            if (context?.shopId) form.append("shopId", String(context.shopId));
+            if (context?.shopName) form.append("shopName", context.shopName);
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
         : JSON.stringify({
             text,
             location: userLocation,
+            shopId: context?.shopId ?? null,
+            shopName: context?.shopName ?? null,
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",

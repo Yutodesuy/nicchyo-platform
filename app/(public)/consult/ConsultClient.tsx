@@ -15,7 +15,11 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
   const searchParams = useSearchParams();
 
-  const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
+  const handleGrandmaAsk = useCallback(async (
+    text: string,
+    imageFile?: File | null,
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
+  ) => {
     try {
       const useForm = !!imageFile;
       const body = useForm
@@ -23,12 +27,16 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
             const form = new FormData();
             form.append("text", text);
             form.append("location", JSON.stringify(null));
+            if (context?.shopId) form.append("shopId", String(context.shopId));
+            if (context?.shopName) form.append("shopName", context.shopName);
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
         : JSON.stringify({
             text,
             location: null,
+            shopId: context?.shopId ?? null,
+            shopName: context?.shopName ?? null,
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
@@ -67,6 +75,13 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
   }, [shops]);
 
   const autoAskText = searchParams?.get("q") || null;
+  const autoAskShopIdRaw = searchParams?.get("shopId");
+  const autoAskShopId = autoAskShopIdRaw ? Number(autoAskShopIdRaw) : undefined;
+  const autoAskShopName = searchParams?.get("shopName") || undefined;
+  const autoAskContext =
+    autoAskShopId || autoAskShopName
+      ? { shopId: Number.isFinite(autoAskShopId) ? autoAskShopId : undefined, shopName: autoAskShopName }
+      : undefined;
 
   return (
     <div
@@ -97,6 +112,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           layout="page"
           onClear={() => setAiSuggestedShops([])}
           autoAskText={autoAskText}
+          autoAskContext={autoAskContext}
         />
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
