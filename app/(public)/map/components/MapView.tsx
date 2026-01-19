@@ -308,6 +308,13 @@ const MapView = memo(function MapView({
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const { addItem, items: bagItems } = useBag();
+  const bagShopIds = useMemo(() => {
+    return bagItems
+      .filter((item) => item.fromShopId)
+      .map((item) => item.fromShopId!)
+      .filter((id, index, self) => self.indexOf(id) === index);
+  }, [bagItems]);
+
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
@@ -856,6 +863,7 @@ const MapView = memo(function MapView({
           kotoduteShopIds={kotoduteShopIds}
           recipeIngredientIconsByShop={recipeIngredientIconsByShop}
           attendanceLabelsByShop={attendanceLabelsByShop}
+          bagShopIds={bagShopIds}
         />
 
         {/* レシピオーバーレイ */}
