@@ -13,7 +13,11 @@ import {
   Store,
   ChevronRight,
   ClipboardList,
-  Edit2
+  Edit2,
+  HelpCircle,
+  X,
+  ListTodo,
+  ShoppingCart
 } from "lucide-react";
 import NavigationBar from "../../components/NavigationBar";
 import { shops } from "../map/data/shops";
@@ -68,6 +72,20 @@ export default function BagPage() {
   const [mode, setMode] = useState<Mode>('plan');
   const [pendingDeleteItem, setPendingDeleteItem] = useState<BagItem | null>(null);
   const [pendingReset, setPendingReset] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+
+  // Load guide state on mount
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('nicchyo-bag-guide-seen');
+    if (!hasSeenGuide) {
+      setShowGuide(true);
+    }
+  }, []);
+
+  const handleCloseGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem('nicchyo-bag-guide-seen', 'true');
+  };
 
   // Shop Lookup Map
   const shopLookup = useMemo(() => {
@@ -104,20 +122,24 @@ export default function BagPage() {
   const checkedCount = items.filter(i => checkedIds.has(i.id)).length;
   const progress = totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0;
 
-  // Toggle Mode Handler
-  const toggleMode = () => {
-    setMode(prev => prev === 'plan' ? 'shop' : 'plan');
-  };
-
   return (
     <main className="min-h-screen bg-[#faf8f3] text-gray-900 pb-24 md:pb-16">
       {/* --- Header Area --- */}
       <header className="sticky top-0 z-20 bg-[#faf8f3]/95 backdrop-blur-sm border-b border-stone-200 px-4 pt-safe-top transition-all duration-300">
         <div className="mx-auto max-w-lg py-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-xs font-bold tracking-wider text-amber-700 uppercase mb-0.5">Shopping List</p>
-              <h1 className="text-2xl font-extrabold text-stone-800 tracking-tight">お買い物リスト</h1>
+              <h1 className="text-2xl font-extrabold text-stone-800 tracking-tight flex items-center gap-2">
+                お買い物リスト
+                <button
+                  onClick={() => setShowGuide(true)}
+                  className="text-stone-400 hover:text-stone-600 transition-colors p-1"
+                  aria-label="使い方ガイドを開く"
+                >
+                  <HelpCircle size={20} />
+                </button>
+              </h1>
             </div>
             <Link
               href="/map"
@@ -128,55 +150,61 @@ export default function BagPage() {
             </Link>
           </div>
 
-          {/* Stats & Mode Toggle */}
-          <div className="flex items-end justify-between gap-4 mt-4">
-            <div className="flex gap-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-stone-500 uppercase">Shops</span>
-                <span className="text-xl font-black text-stone-800 leading-none">{totalShops}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-stone-500 uppercase">Items</span>
-                <span className="text-xl font-black text-stone-800 leading-none">{totalItems}</span>
-              </div>
-              {mode === 'shop' && (
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Done</span>
-                  <span className="text-xl font-black text-emerald-600 leading-none">{checkedCount}</span>
-                </div>
-              )}
-            </div>
+          {/* Mode Tabs (Segmented Control) */}
+          <div className="bg-stone-200/50 p-1 rounded-xl flex gap-1 mb-4 relative">
+            {/* Animated Background */}
+            <motion.div
+              layoutId="activeTab"
+              className="absolute bg-white rounded-lg shadow-sm top-1 bottom-1"
+              initial={false}
+              animate={{
+                left: mode === 'plan' ? '4px' : '50%',
+                right: mode === 'plan' ? '50%' : '4px',
+                x: mode === 'plan' ? 0 : 0
+              }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            />
 
             <button
-              onClick={toggleMode}
-              className={`
-                relative flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs shadow-sm transition-all duration-300
-                ${mode === 'shop'
-                  ? 'bg-emerald-500 text-white shadow-emerald-200'
-                  : 'bg-white text-stone-600 border border-stone-200'}
-              `}
+              onClick={() => setMode('plan')}
+              className={`flex-1 relative z-10 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${mode === 'plan' ? 'text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
             >
-              {mode === 'shop' ? (
-                <>
-                  <CheckCircle2 size={14} />
-                  <span>買い物中</span>
-                </>
-              ) : (
-                <>
-                  <Edit2 size={14} />
-                  <span>編集モード</span>
-                </>
-              )}
+              <ListTodo size={16} />
+              準備（編集）
+            </button>
+            <button
+              onClick={() => setMode('shop')}
+              className={`flex-1 relative z-10 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${mode === 'shop' ? 'text-emerald-700' : 'text-stone-500 hover:text-stone-700'}`}
+            >
+              <ShoppingCart size={16} />
+              買い物中
             </button>
           </div>
 
-          {/* Progress Bar (Visible in Shop Mode) */}
-          <div className={`mt-4 h-1 w-full bg-stone-200 rounded-full overflow-hidden transition-all duration-500 ${mode === 'shop' ? 'opacity-100 max-h-1' : 'opacity-0 max-h-0 mt-0'}`}>
-            <div
-              className="h-full bg-emerald-500 transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          {/* Progress Bar (Only visible in Shop Mode) */}
+          <AnimatePresence>
+            {mode === 'shop' && (
+              <motion.div
+                initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-[10px] font-bold text-emerald-700">お買い物達成度</span>
+                  <span className="text-sm font-black text-emerald-600 font-mono">{progress}%</span>
+                </div>
+                <div className="h-2 w-full bg-stone-200 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-emerald-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </header>
 
@@ -343,6 +371,9 @@ export default function BagPage() {
         </div>
       )}
 
+      {/* --- Guide Modal --- */}
+      <BagGuideModal isOpen={showGuide} onClose={handleCloseGuide} />
+
       {/* --- Modals --- */}
       <ConfirmModal
         isOpen={!!pendingDeleteItem}
@@ -379,6 +410,96 @@ export default function BagPage() {
 }
 
 // --- Sub Components ---
+
+function BagGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          >
+            {/* Header Image Area */}
+            <div className="bg-amber-100 p-6 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-3 text-3xl">
+                🛍️
+              </div>
+              <h2 className="text-xl font-bold text-stone-800">お買い物リストの使い方</h2>
+            </div>
+
+            {/* Steps */}
+            <div className="p-6 space-y-6">
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0 text-stone-600 font-bold">
+                  1
+                </div>
+                <div>
+                  <h3 className="font-bold text-stone-800 mb-1 flex items-center gap-2">
+                    <ListTodo size={16} />
+                    欲しいものを登録
+                  </h3>
+                  <p className="text-xs text-stone-500 leading-relaxed">
+                    「準備モード」で、マップのお店やレシピから欲しいものをリストに追加・整理します。
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600 font-bold">
+                  2
+                </div>
+                <div>
+                  <h3 className="font-bold text-stone-800 mb-1 flex items-center gap-2">
+                    <ShoppingCart size={16} />
+                    現地でチェック
+                  </h3>
+                  <p className="text-xs text-stone-500 leading-relaxed">
+                    日曜市についたら「買い物中モード」へ。買ったものをタップしてチェック！進捗バーで買い忘れを防げます。
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-600 font-bold">
+                  3
+                </div>
+                <div>
+                  <h3 className="font-bold text-stone-800 mb-1 flex items-center gap-2">
+                    <MapIcon size={16} />
+                    マップで場所を確認
+                  </h3>
+                  <p className="text-xs text-stone-500 leading-relaxed">
+                    「マップで場所を確認」ボタンを押すと、リストに入れたお店がマップ上でハイライトされます。
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-stone-50 border-t border-stone-100">
+              <button
+                onClick={onClose}
+                className="w-full py-3 bg-stone-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors"
+              >
+                はじめる
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 function EmptyState() {
   return (
