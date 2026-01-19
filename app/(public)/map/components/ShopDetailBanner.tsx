@@ -3,7 +3,6 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
-import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,6 +16,8 @@ import {
   loadKotodute,
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
+import { Plus, Check, ShoppingBag, Info, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type ShopDetailBannerProps = {
   shop: Shop;
@@ -35,19 +36,10 @@ type ShopDetailBannerProps = {
   originRect?: { x: number; y: number; width: number; height: number };
 };
 
-type BagItem = {
-  name: string;
-  fromShopId?: number;
-};
-
-const STORAGE_KEY = "nicchyo-fridge-items";
 const KOTODUTE_PREVIEW_LIMIT = 3;
 const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 const OSEKKAI_FALLBACK =
   "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
-
-const buildBagKey = (name: string, shopId?: number) =>
-  `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -65,17 +57,6 @@ function findIngredientMatch(name: string) {
   );
 }
 
-function loadBagItems(): BagItem[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
-}
-
 export default function ShopDetailBanner({
   shop,
   bagCount,
@@ -88,14 +69,13 @@ export default function ShopDetailBanner({
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
-  const { addItem } = useBag();
-  const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
-  const [isBagHover, setIsBagHover] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState<string | null>(null);
-  const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
+  const { addItem, isInBag, removeItem, items: bagItems } = useBag();
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
   const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
+
+  // Guide State
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -107,29 +87,18 @@ export default function ShopDetailBanner({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const updateBag = () => {
-      const items = loadBagItems();
-      const keys = new Set<string>();
-      items.forEach((item) => {
-        const key = buildBagKey(item.name, item.fromShopId);
-        keys.add(key);
-        // 互換性: fromShopId が無いデータは any として扱う
-        if (item.fromShopId === undefined) {
-          keys.add(buildBagKey(item.name, undefined));
-        }
-      });
-      setBagProductKeys(keys);
-    };
-    updateBag();
-    const handler = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
-        updateBag();
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    const hasSeenGuide = localStorage.getItem("nicchyo-shop-banner-guide-seen");
+    if (!hasSeenGuide) {
+      // Delay slightly to allow animation to settle
+      const timer = setTimeout(() => setShowGuide(true), 600);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
+  const handleCloseGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem("nicchyo-shop-banner-guide-seen", "true");
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -155,46 +124,28 @@ export default function ShopDetailBanner({
     };
   }, [shop.id]);
 
-  const handleProductDragStart = useCallback(
-    (event: DragEvent<HTMLButtonElement>, product: string) => {
-      event.dataTransfer.setData("text/plain", product);
-      event.dataTransfer.effectAllowed = "move";
-      setDraggedProduct(product);
-    },
-    []
-  );
+  const handleProductToggle = useCallback(
+    (product: string) => {
+      const inBag = isInBag(product, shop.id);
 
-  const handleProductDragEnd = useCallback(() => {
-    setDraggedProduct(null);
-    setIsBagHover(false);
-  }, []);
-
-  const handleBagDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setIsBagHover(true);
-  }, []);
-
-  const handleBagDragLeave = useCallback(() => {
-    setIsBagHover(false);
-  }, []);
-
-  const handleBagDrop = useCallback(
-    (event: DragEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      const product = event.dataTransfer.getData("text/plain") || draggedProduct;
-      if (product) {
-        setPendingProduct(product);
+      if (inBag) {
+        // Find item ID to remove
+        const item = bagItems.find(
+          i => i.name === product && i.fromShopId === shop.id
+        );
+        if (item) {
+          removeItem(item.id);
+        }
+      } else {
+        if (onAddToBag) {
+          onAddToBag(product, shop.id);
+        } else {
+          addItem({ name: product, fromShopId: shop.id });
+        }
       }
-      setIsBagHover(false);
-      setDraggedProduct(null);
     },
-    [draggedProduct]
+    [addItem, isInBag, onAddToBag, removeItem, bagItems, shop.id]
   );
-
-  const handleProductTap = useCallback((product: string) => {
-    setPendingProduct(product);
-  }, []);
 
   const handleBagClick = useCallback(() => {
     router.push("/bag");
@@ -325,25 +276,6 @@ export default function ShopDetailBanner({
     router.push("/my-shop");
   }, [router]);
 
-  const handleConfirmAdd = useCallback(() => {
-    if (!pendingProduct) return;
-    if (onAddToBag) {
-      onAddToBag(pendingProduct, shop.id);
-    } else {
-      addItem({ name: pendingProduct, fromShopId: shop.id });
-    }
-    setBagProductKeys((prev) => {
-      const next = new Set(prev);
-      next.add(buildBagKey(pendingProduct, shop.id));
-      return next;
-    });
-    setPendingProduct(null);
-  }, [addItem, onAddToBag, pendingProduct, shop.id]);
-
-  const handleCancelAdd = useCallback(() => {
-    setPendingProduct(null);
-  }, []);
-
   const bannerStyle = useMemo(() => {
     if (!originRect || typeof window === "undefined") return undefined;
     const vw = window.innerWidth;
@@ -370,6 +302,45 @@ export default function ShopDetailBanner({
         }`}
         style={bannerStyle}
       >
+        {/* Guide Overlay */}
+        <AnimatePresence>
+          {showGuide && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 flex flex-col bg-slate-900/80 p-6 text-white"
+              onClick={handleCloseGuide}
+            >
+              <div className="mt-auto mb-32 space-y-8 max-w-lg mx-auto w-full relative">
+                {/* Product Tip */}
+                <div className="relative">
+                  <div className="absolute -top-12 -left-4 text-4xl">👆</div>
+                  <h3 className="text-xl font-bold text-amber-300 mb-1">商品をタップ！</h3>
+                  <p className="text-sm leading-relaxed">
+                    気になる商品をタップすると、「買い物リスト」に追加されます。<br/>
+                    買う予定のものをメモしておきましょう。
+                  </p>
+                </div>
+
+                {/* Osekkai Tip */}
+                <div className="relative pt-4 border-t border-white/20">
+                  <h3 className="text-xl font-bold text-amber-300 mb-1">お店の情報をチェック</h3>
+                  <p className="text-sm leading-relaxed">
+                    お店の特徴や、おばあちゃんからの一言（おせっかい）が見られます。
+                  </p>
+                </div>
+
+                <button
+                  className="mt-8 w-full rounded-full bg-white py-3 text-slate-900 font-bold shadow-lg active:scale-95 transition-transform"
+                >
+                  わかった！
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* 写真 */}
         <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative">
           <Image
@@ -506,47 +477,44 @@ export default function ShopDetailBanner({
               <button
                 type="button"
                 onClick={handleBagClick}
-                onDragOver={handleBagDragOver}
-                onDragLeave={handleBagDragLeave}
-                onDrop={handleBagDrop}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xl font-semibold shadow-sm transition ${
-                  isBagHover
-                    ? "border-slate-500 bg-slate-100 text-slate-900"
-                    : "border-slate-200 bg-white text-slate-700"
-                }`}
+                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xl font-semibold shadow-sm transition hover:bg-slate-50 text-slate-700"
                 aria-label="買い物リストへ"
               >
-                <span className="text-xl" aria-hidden>
-                  {"\u{1F6CD}"}
-                </span>
-                バッグ
+                <ShoppingBag size={20} />
+                バッグを見る
               </button>
             </div>
-            <div className="flex flex-wrap gap-4">
+
+            <div className="flex flex-wrap gap-3">
               {shop.products.map((product) => {
-                const specificKey = buildBagKey(product, shop.id);
-                const anyKey = buildBagKey(product, undefined);
-                const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
+                const inBag = isInBag(product, shop.id);
                 return (
                   <button
                     key={product}
                     type="button"
-                    draggable
-                    onDragStart={(event) => handleProductDragStart(event, product)}
-                    onDragEnd={handleProductDragEnd}
-                    onClick={() => handleProductTap(product)}
-                    className={`cursor-grab rounded-full border px-3 py-1.5 text-xl font-semibold shadow-sm active:cursor-grabbing ${
-                      isInBag
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                    aria-label={`${product}`}
+                    onClick={() => handleProductToggle(product)}
+                    className={`
+                      relative group flex items-center gap-2 rounded-xl px-4 py-3 text-lg font-bold shadow-sm transition-all active:scale-95 border
+                      ${inBag
+                        ? "bg-emerald-500 border-emerald-600 text-white shadow-emerald-200"
+                        : "bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
+                      }
+                    `}
+                    aria-label={`${product}${inBag ? 'をリストから外す' : 'をリストに追加'}`}
+                    aria-pressed={inBag}
                   >
+                    {inBag ? <Check size={18} strokeWidth={3} /> : <Plus size={18} strokeWidth={3} />}
                     {product}
                   </button>
                 );
               })}
             </div>
+
+            <p className="mt-4 text-sm text-slate-400 flex items-center gap-1">
+              <Info size={14} />
+              タップして買い物リストに追加
+            </p>
+
             {!isKotodute && shop.category === "食材" && suggestedRecipes.length > 0 && (
               <div className="mt-6 border-t border-slate-200 pt-6">
                 <p className="text-base font-semibold text-slate-500">この食材で作れるレシピ</p>
@@ -723,32 +691,6 @@ export default function ShopDetailBanner({
                 </ul>
               </div>
             </section>
-          </div>
-        )}
-
-        {pendingProduct && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
-            <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
-              <p className="text-xl font-semibold text-gray-900">
-                {`バッグに${pendingProduct}を入れますか？`}
-              </p>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleCancelAdd}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-                >
-                  いいえ
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmAdd}
-                  className="rounded-full bg-slate-800 px-3 py-2 text-lg font-semibold text-white shadow-sm hover:bg-slate-700"
-                >
-                  はい
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>

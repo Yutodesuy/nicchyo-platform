@@ -11,16 +11,6 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
-  // Mock supabase client if env vars are missing
-  if (!supabaseUrl || !supabaseKey) {
-    const mockSupabase = {
-      auth: {
-        getUser: async () => ({ data: { user: null }, error: null }),
-      },
-    } as any;
-    return { supabase: mockSupabase, response: supabaseResponse };
-  }
-
   const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
     cookies: {
       getAll() {
