@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import { grandmaComments } from "../map/data/grandmaComments";
@@ -8,6 +9,8 @@ import { shops } from "../map/data/shops";
 
 export default function ConsultPage() {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<typeof shops>([]);
+  const searchParams = useSearchParams();
+  const hasAutoAskedRef = useRef(false);
 
   const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
     try {
@@ -60,6 +63,8 @@ export default function ConsultPage() {
     }
   }, []);
 
+  const autoAskText = searchParams?.get("q") || null;
+
   return (
     <div
       className="relative overflow-hidden bg-[#fbf8f3]"
@@ -88,6 +93,7 @@ export default function ConsultPage() {
           initialOpen
           layout="page"
           onClear={() => setAiSuggestedShops([])}
+          autoAskText={autoAskText}
         />
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
