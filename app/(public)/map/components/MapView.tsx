@@ -280,9 +280,27 @@ type MapViewProps = {
       evidence_summary: string;
     }
   >;
+  onZoomChange?: (zoom: number) => void;
 };
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
+
+function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onZoomChange) return;
+    const handleZoom = () => {
+      onZoomChange(map.getZoom());
+    };
+    // 初期値も通知
+    handleZoom();
+    map.on("zoomend", handleZoom);
+    return () => {
+      map.off("zoomend", handleZoom);
+    };
+  }, [map, onZoomChange]);
+  return null;
+}
 
 const MapView = memo(function MapView({
   shops: initialShops,
@@ -304,6 +322,7 @@ const MapView = memo(function MapView({
   kotoduteShopIds,
   shopBannerVariant,
   attendanceEstimates,
+  onZoomChange,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -682,6 +701,7 @@ const MapView = memo(function MapView({
           if (map) onMapInstance?.(map);
         }}
       >
+        <MapZoomListener onZoomChange={onZoomChange} />
         {/* 背景 */}
         <BackgroundOverlay />
 
