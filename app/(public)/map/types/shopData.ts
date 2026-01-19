@@ -80,6 +80,9 @@ export interface ShopEditableData {
   /** 出店者からのメッセージ（任意） */
   message?: string;
 
+  /** おせっかいコメント（任意） */
+  shopStrength?: string;
+
   /** 来訪者に聞いてほしいトピック */
   topic?: string[];
 
