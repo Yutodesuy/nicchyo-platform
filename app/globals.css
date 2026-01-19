@@ -564,6 +564,37 @@ body.home-poster-zoom-open .hamburger-button {
   height: 100%;
 }
 
+.nav-map-arc {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-map-arc-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.nav-map-arc-ring {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 120px;
+  height: 68px;
+  border: 2px solid rgba(34, 197, 94, 0.9);
+  border-bottom: none;
+  border-top-left-radius: 9999px;
+  border-top-right-radius: 9999px;
+  background: rgba(220, 252, 231, 0.85);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
+  box-shadow: 0 -8px 18px rgba(34, 197, 94, 0.22);
+}
+
 .map-building-tilted {
   transform: rotate(90deg);
   transform-origin: center;
