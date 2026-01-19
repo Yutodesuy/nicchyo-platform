@@ -10,11 +10,10 @@ import L from 'leaflet';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { Shop } from '../data/shops';
-import ShopIllustration from './ShopIllustration';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 import { getShopBannerImage } from '../../../../lib/shopImages';
+import { generateShopMarkerHtml } from '../utils/markerHtmlGenerator';
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
@@ -226,46 +225,13 @@ export default function OptimizedShopLayerWithClustering({
       const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
       const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
-      const iconMarkup = renderToStaticMarkup(
-        <div
-          className={`shop-marker-container shop-side-${shop.side}`}
-          style={{
-            position: 'relative',
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease',
-          }}
-        >
-          {bannerImage && (
-            <span
-              className="shop-product-icon"
-              style={{ backgroundImage: `url(${bannerImage})` }}
-              aria-hidden="true"
-            />
-          )}
-          <div className="shop-simple-banner" aria-hidden="true">
-            <div className="shop-simple-banner-image">
-              <img src={bannerImage} alt="" />
-            </div>
-            <div className="shop-simple-banner-body">
-              <div className="shop-simple-banner-name">{shop.name}</div>
-              <div className="shop-simple-banner-product">主な商品: {mainProduct}</div>
-              <div className="shop-simple-banner-status">今日: {attendanceLabel}</div>
-            </div>
-          </div>
-          <div className="shop-recipe-icons" aria-hidden="true" />
-          <div className="shop-kotodute-badge" aria-hidden="true">
-            i
-          </div>
-          <div className="shop-favorite-badge" aria-hidden="true">
-            &#10084;
-          </div>
-          <ShopIllustration
-            type={shop.illustration?.type}
-            size={sizeKey}
-            color={shop.illustration?.color}
-            customSvg={shop.illustration?.customSvg}
-          />
-        </div>
+      const iconMarkup = generateShopMarkerHtml(
+        shop,
+        'full',
+        bannerImage,
+        attendanceLabel,
+        sizeKey,
+        mainProduct
       );
 
       const fullIcon = L.divIcon({
@@ -275,29 +241,13 @@ export default function OptimizedShopLayerWithClustering({
         iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
       });
 
-      const midIconMarkup = renderToStaticMarkup(
-        <div
-          className={`shop-marker-container shop-side-${shop.side}`}
-          style={{
-            position: 'relative',
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease',
-          }}
-        >
-          <div className="shop-recipe-icons" aria-hidden="true" />
-          <div className="shop-kotodute-badge" aria-hidden="true">
-            i
-          </div>
-          <div className="shop-favorite-badge" aria-hidden="true">
-            &#10084;
-          </div>
-          <ShopIllustration
-            type={shop.illustration?.type}
-            size={sizeKey}
-            color={shop.illustration?.color}
-            customSvg={shop.illustration?.customSvg}
-          />
-        </div>
+      const midIconMarkup = generateShopMarkerHtml(
+        shop,
+        'mid',
+        bannerImage,
+        attendanceLabel,
+        sizeKey,
+        mainProduct
       );
 
       const midIcon = L.divIcon({

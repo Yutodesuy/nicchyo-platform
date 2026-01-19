@@ -39,24 +39,16 @@ type MapPageClientProps = {
   >;
 };
 
-const INTRO_PRODUCT_COUNT = 2;
 const NEARBY_RADIUS_METERS = 120;
 const NEARBY_MAX_SHOPS = 10;
 const INTRO_TAP_HINT = "";
+const INTRO_STRENGTH_FALLBACK =
+  "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
 
 function buildShopIntroText(shop: Shop): string {
   const name = shop.name?.trim() || `お店${shop.id}`;
-  const category = shop.category?.trim() || "いろいろ";
-  const icon = shop.icon?.trim() || "";
-  const categoryLabel = icon ? `${category} ${icon}` : category;
-  const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
-  if (products.length === 0) {
-    return `${name}\n${categoryLabel}のお店やきね。\n主な商品: いろいろ${INTRO_TAP_HINT}`;
-  }
-  const picked = products.slice(0, INTRO_PRODUCT_COUNT);
-  const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
-  const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
-  return `${name}\n${categoryLabel}のお店やきね。\n主な商品: ${joined}${suffix}${INTRO_TAP_HINT}`;
+  const strength = shop.shopStrength?.trim() || INTRO_STRENGTH_FALLBACK;
+  return `${name}\n${strength}${INTRO_TAP_HINT}`;
 }
 
 function distanceMeters(

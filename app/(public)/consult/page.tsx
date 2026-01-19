@@ -77,7 +77,7 @@ export default function ConsultPage() {
         }}
         aria-hidden="true"
       />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-6">
+      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
@@ -87,6 +87,7 @@ export default function ConsultPage() {
           aiSuggestedShops={aiSuggestedShops}
           initialOpen
           layout="page"
+          onClear={() => setAiSuggestedShops([])}
         />
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
