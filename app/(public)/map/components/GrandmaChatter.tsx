@@ -880,6 +880,29 @@ export default function GrandmaChatter({
                   </div>
                 </div>
               ))}
+              {aiStatus === "thinking" && (
+                <div className="flex justify-start items-start gap-2">
+                  <div className="flex-shrink-0">
+                    <div className="h-10 w-10 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm">
+                      <img
+                        src={PLACEHOLDER_IMAGE}
+                        alt="にちよさん"
+                        className="h-full w-full scale-110 object-cover object-center"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                        aria-label="回答を作成中"
+                      />
+                      <span className="text-xs text-gray-500">考え中…</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             {showScrollToBottom && (
               <button
