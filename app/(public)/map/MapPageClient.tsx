@@ -18,6 +18,7 @@ import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
+import FirstVisitGuide from "./components/FirstVisitGuide";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -470,6 +471,7 @@ export default function MapPageClient({
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+      <FirstVisitGuide />
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>

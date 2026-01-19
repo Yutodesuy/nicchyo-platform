@@ -620,6 +620,7 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
+  const smartSuggestionChips = ["今日のランチは？", "旬の食材は？", "お土産なにがいい？"];
   const inputOffsetPx = isKeyboardOpen ? 0 : 0;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
@@ -678,6 +679,31 @@ export default function GrandmaChatter({
               </div>
             </button>
           </div>
+        )}
+
+        {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
+        {!isChatOpen && !priorityMessage && !isShopIntro && layout === "floating" && (
+           <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
+             {smartSuggestionChips.map((label, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isChatOpen) {
+                      setIsChatOpen(true);
+                      // 少し待ってから送信（チャットが開くアニメーションのため）
+                      setTimeout(() => handleAskSubmit(label), 300);
+                    }
+                  }}
+                  className="rounded-full bg-white/90 border border-amber-200 px-4 py-2 text-sm font-bold text-amber-800 shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-white active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <span className="mr-1">💡</span>
+                  {label}
+                </button>
+             ))}
+           </div>
         )}
 
         {isChatOpen ? (
