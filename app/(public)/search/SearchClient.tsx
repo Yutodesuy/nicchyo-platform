@@ -8,7 +8,6 @@ import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
 import CategoryFilter from './components/CategoryFilter';
-import BlockNumberInput from './components/BlockNumberInput';
 import SearchResults from './components/SearchResults';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
 import ShopDetailBanner from '../map/components/ShopDetailBanner';
@@ -26,8 +25,9 @@ export default function SearchClient({ shops }: SearchClientProps) {
   const router = useRouter();
   const itemsPerPage = 10;
   const [textQuery, setTextQuery] = useState('');
+  const [filterMode, setFilterMode] = useState<'genre' | 'location'>('genre');
   const [category, setCategory] = useState<string | null>(null);
-  const [blockNumber, setBlockNumber] = useState('');
+  const [selectedChome, setSelectedChome] = useState<string | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [visibleCount, setVisibleCount] = useState(itemsPerPage);
@@ -51,7 +51,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
     searchIndex,
     textQuery,
     category,
-    blockNumber,
+    chome: selectedChome,
   });
   const visibleShops = useMemo(
     () => filteredShops.slice(0, visibleCount),
@@ -61,9 +61,30 @@ export default function SearchClient({ shops }: SearchClientProps) {
 
   // カテゴリー一覧
   const categories = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
+  const chomeOptions = useMemo(
+    () => [
+      { label: '1丁目', value: '一丁目' },
+      { label: '2丁目', value: '二丁目' },
+      { label: '3丁目', value: '三丁目' },
+      { label: '4丁目', value: '四丁目' },
+      { label: '5丁目', value: '五丁目' },
+      { label: '6丁目', value: '六丁目' },
+      { label: '7丁目', value: '七丁目' },
+    ],
+    []
+  );
+
+  const handleFilterModeChange = useCallback((nextMode: 'genre' | 'location') => {
+    setFilterMode(nextMode);
+    if (nextMode === 'genre') {
+      setSelectedChome(null);
+    } else {
+      setCategory(null);
+    }
+  }, []);
 
   // 検索クエリが入力されているか
-  const hasQuery = textQuery.trim() !== '' || category !== null || blockNumber.trim() !== '';
+  const hasQuery = textQuery.trim() !== '' || category !== null || selectedChome !== null;
   const selectedIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return filteredShops.findIndex((shop) => shop.id === selectedShop.id);
@@ -75,17 +96,18 @@ export default function SearchClient({ shops }: SearchClientProps) {
     const trimmedText = textQuery.trim();
     if (trimmedText) return trimmedText;
     if (category) return category;
-    const trimmedBlock = blockNumber.trim();
-    if (trimmedBlock) return `ブロック${trimmedBlock}`;
+    if (selectedChome) {
+      return chomeOptions.find((chome) => chome.value === selectedChome)?.label ?? selectedChome;
+    }
     return '検索結果';
-  }, [textQuery, category, blockNumber]);
+  }, [textQuery, category, selectedChome, chomeOptions]);
 
   const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
-  const shouldShowMapButton = category !== null || hasNameResults;
+  const shouldShowMapButton = category !== null || selectedChome !== null || hasNameResults;
 
   useEffect(() => {
     setVisibleCount(itemsPerPage);
-  }, [itemsPerPage, textQuery, category, blockNumber]);
+  }, [itemsPerPage, textQuery, category, selectedChome]);
 
   useEffect(() => {
     setVisibleCount((prev) => Math.min(prev, filteredShops.length || itemsPerPage));
@@ -148,13 +170,15 @@ export default function SearchClient({ shops }: SearchClientProps) {
 
             {/* カテゴリーフィルター */}
             <CategoryFilter
-              selected={category}
-              onChange={setCategory}
+              mode={filterMode}
+              onModeChange={handleFilterModeChange}
+              selectedCategory={category}
+              onCategoryChange={setCategory}
+              selectedChome={selectedChome}
+              onChomeChange={setSelectedChome}
               categories={categories}
+              chomeOptions={chomeOptions}
             />
-
-            {/* ブロック番号入力 */}
-            <BlockNumberInput value={blockNumber} onChange={setBlockNumber} />
 
             <p className="mt-3 text-[11px] text-gray-600">
               💡 ヒント: カテゴリーとキーワードを組み合わせて絞り込めます
@@ -189,24 +213,6 @@ export default function SearchClient({ shops }: SearchClientProps) {
             shop={selectedShop}
             onClose={() => setSelectedShop(null)}
           />
-          {canNavigate && (
-            <div className="fixed bottom-20 left-1/2 z-[2100] flex -translate-x-1/2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(-1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                ←前へ
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectByOffset(1)}
-                className="rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-              >
-                次へ→
-              </button>
-            </div>
-          )}
         </div>
       )}
 

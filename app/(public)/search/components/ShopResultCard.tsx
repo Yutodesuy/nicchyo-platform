@@ -34,7 +34,10 @@ function ShopResultCard({
     shop.images?.main ||
     shop.images?.thumbnail ||
     shop.images?.additional?.[0] ||
-    getShopBannerImage(shop.category);
+    getShopBannerImage(
+      shop.category,
+      (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0)
+    );
   const mapLabel = mapLabelProp ?? shop.name;
   const mapHref = enableSearchMapHighlight
     ? `/map?search=1&label=${encodeURIComponent(mapLabel)}&shop=${shop.id}`

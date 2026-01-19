@@ -1,4 +1,4 @@
-import { getRoadBounds } from '../config/roadConfig';
+import { isInsideSundayMarket } from '../config/roadConfig';
 import { timeBadgeMaster, type TimeBadge } from '../data/timeBadgeMaster';
 
 type Position = { lat: number; lng: number };
@@ -32,16 +32,6 @@ export type TimeBadgeProgress = {
 };
 
 const STORAGE_KEY = 'nicchyo-time-badges';
-const BOUNDS = getRoadBounds();
-
-function normalizeBounds(bounds: [[number, number], [number, number]]) {
-  const [nw, se] = bounds;
-  const minLat = Math.min(nw[0], se[0]);
-  const maxLat = Math.max(nw[0], se[0]);
-  const minLng = Math.min(nw[1], se[1]);
-  const maxLng = Math.max(nw[1], se[1]);
-  return { minLat, maxLat, minLng, maxLng };
-}
 
 function loadProgress(): StoredProgress {
   if (typeof window === 'undefined') return { slots: {} };
@@ -78,15 +68,8 @@ function formatSlot(now: Date): string {
     .padStart(2, '0')}`;
 }
 
-const NORMALIZED = normalizeBounds(BOUNDS);
-
 function isInsideBounds(pos: Position) {
-  return (
-    pos.lat >= NORMALIZED.minLat &&
-    pos.lat <= NORMALIZED.maxLat &&
-    pos.lng >= NORMALIZED.minLng &&
-    pos.lng <= NORMALIZED.maxLng
-  );
+  return isInsideSundayMarket(pos.lat, pos.lng);
 }
 
 function todayString(now: Date) {
