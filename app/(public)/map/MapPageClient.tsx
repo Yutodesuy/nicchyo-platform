@@ -25,12 +25,24 @@ const MapView = dynamic(() => import("./components/MapView"), {
 
 type MapPageClientProps = {
   shops: Shop[];
+  showGrandma?: boolean;
+  shopBannerVariant?: "default" | "kotodute";
+  attendanceEstimates?: Record<
+    number,
+    {
+      label: string;
+      p: number | null;
+      n_eff: number;
+      vendor_override: boolean;
+      evidence_summary: string;
+    }
+  >;
 };
 
 const INTRO_PRODUCT_COUNT = 2;
 const NEARBY_RADIUS_METERS = 120;
 const NEARBY_MAX_SHOPS = 10;
-const INTRO_TAP_HINT = "👆";
+const INTRO_TAP_HINT = "";
 
 function buildShopIntroText(shop: Shop): string {
   const name = shop.name?.trim() || `お店${shop.id}`;
@@ -39,12 +51,12 @@ function buildShopIntroText(shop: Shop): string {
   const categoryLabel = icon ? `${category} ${icon}` : category;
   const products = (shop.products ?? []).filter((item) => item && item.trim().length > 0);
   if (products.length === 0) {
-    return `「${name}」は${categoryLabel}のお店で、いろいろ売りゆうよ。${INTRO_TAP_HINT}`;
+    return `${name}\n${categoryLabel}のお店やきね。\n主な商品: いろいろ${INTRO_TAP_HINT}`;
   }
   const picked = products.slice(0, INTRO_PRODUCT_COUNT);
   const joined = picked.length === 1 ? picked[0] : `${picked[0]}や${picked[1]}`;
   const suffix = products.length > INTRO_PRODUCT_COUNT ? "など" : "";
-  return `「${name}」は${categoryLabel}のお店で、${joined}${suffix}を売りゆうよ。${INTRO_TAP_HINT}`;
+  return `${name}\n${categoryLabel}のお店やきね。\n主な商品: ${joined}${suffix}${INTRO_TAP_HINT}`;
 }
 
 function distanceMeters(
@@ -83,7 +95,12 @@ function shuffleArray<T>(items: T[]): T[] {
   return result;
 }
 
-export default function MapPageClient({ shops }: MapPageClientProps) {
+export default function MapPageClient({
+  shops,
+  showGrandma = true,
+  shopBannerVariant = "default",
+  attendanceEstimates,
+}: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, permissions } = useAuth();
@@ -119,10 +136,22 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     label: string;
   } | null>(null);
   const vendorShopId = user?.vendorId ?? null;
-  const activeEvent = useMemo(
-    () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
-    [activeEventId]
-  );
+  const activeEvent = useMemo(() => {
+    if (!showGrandma) return null;
+    return grandmaEvents.find((event) => event.id === activeEventId) ?? null;
+  }, [activeEventId, showGrandma]);
+  const aiImageTargets = useMemo(() => {
+    return grandmaEvents
+      .map((event) => {
+        const image = event.messages.find((message) => message.image)?.image;
+        if (!image) return null;
+        return { image, location: event.location };
+      })
+      .filter(Boolean) as Array<{
+      image: string;
+      location: { lat: number; lng: number; radiusMeters: number };
+    }>;
+  }, []);
   const shopById = useMemo(() => {
     const map = new Map<number, Shop>();
     shops.forEach((shop) => map.set(shop.id, shop));
@@ -134,7 +163,8 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       if (typeof window === "undefined") return;
       const shop = shopById.get(shopId);
       if (!shop) return;
-      const src = shop.images?.main ?? getShopBannerImage(shop.category);
+      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const src = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
       if (!src) return;
       const img = new Image();
       img.src = src;
@@ -142,15 +172,14 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     [shopById]
   );
   const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
-  const eventTargets = useMemo(
-    () =>
-      grandmaEvents.map((event) => ({
-        id: event.id,
-        lat: event.location.lat,
-        lng: event.location.lng,
-      })),
-    []
-  );
+  const eventTargets = useMemo(() => {
+    if (!showGrandma) return [];
+    return grandmaEvents.map((event) => ({
+      id: event.id,
+      lat: event.location.lat,
+      lng: event.location.lng,
+    }));
+  }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
   }, []);
@@ -233,6 +262,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
 
   const handleGrandmaDrop = useCallback(
     (position: { x: number; y: number }) => {
+      if (!showGrandma) return;
       if (!mapRef.current) return;
       const container = mapRef.current.getContainer();
       const rect = container.getBoundingClientRect();
@@ -250,7 +280,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       setActiveEventId(hit.id);
       setEventMessageIndex(0);
     },
-    []
+    [showGrandma]
   );
 
   const handleEventAdvance = () => {
@@ -270,15 +300,25 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     }
   };
 
-  const handleGrandmaAsk = useCallback(async (text: string) => {
+  const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
     try {
+      const useForm = !!imageFile;
+      const body = useForm
+        ? (() => {
+            const form = new FormData();
+            form.append("text", text);
+            form.append("location", JSON.stringify(userLocation ?? null));
+            if (imageFile) form.append("image", imageFile);
+            return form;
+          })()
+        : JSON.stringify({
+            text,
+            location: userLocation,
+          });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          location: userLocation,
-        }),
+        headers: useForm ? undefined : { "Content-Type": "application/json" },
+        body,
       });
       if (!response.ok) {
         return {
@@ -298,6 +338,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
         return {
           reply: cleaned || "おすすめのお店を表示したよ。",
           imageUrl: payload.imageUrl,
+          shopIds: payload.shopIds,
         };
       }
       setAiMarkerPayload(null);
@@ -315,25 +356,45 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
       prefetchShopImage(shopId);
-      if (typeof document !== "undefined") {
-        document.body.classList.add("shop-banner-open");
-      }
-      if (introFocusTimerRef.current !== null) {
-        window.clearTimeout(introFocusTimerRef.current);
-        introFocusTimerRef.current = null;
-      }
       const maxZoom = map.getMaxZoom() ?? 19;
       map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
         duration: 0.8,
         easeLinearity: 0.25,
       });
+    },
+    [prefetchShopImage, shopById]
+  );
+
+  const handleCommentShopOpen = useCallback(
+    (shopId: number) => {
+      handleCommentShopFocus(shopId);
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+        introFocusTimerRef.current = null;
+      }
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
       introFocusTimerRef.current = window.setTimeout(() => {
         router.push(`/map?shop=${shopId}`);
         introFocusTimerRef.current = null;
       }, 900);
     },
-    [prefetchShopImage, router, shopById]
+    [handleCommentShopFocus, router]
+  );
+  const handleAiImageClick = useCallback(
+    (imageUrl: string) => {
+      const target = aiImageTargets.find((entry) => entry.image === imageUrl);
+      if (!target || !mapRef.current) return;
+      const maxZoom = mapRef.current.getMaxZoom() ?? 19;
+      mapRef.current.flyTo([target.location.lat, target.location.lng], maxZoom, {
+        animate: true,
+        duration: 0.8,
+        easeLinearity: 0.25,
+      });
+    },
+    [aiImageTargets]
   );
 
   useEffect(() => {
@@ -357,7 +418,8 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
     if (!commentHighlightShopId) return null;
     const shop = shopById.get(commentHighlightShopId);
     if (!shop) return null;
-    return shop.images?.main ?? getShopBannerImage(shop.category);
+    const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+    return shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
   }, [commentHighlightShopId, shopById]);
 
   const kotoduteShopIds = useMemo(() => {
@@ -407,11 +469,12 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
   }, [isInMarket, shops, userLocation]);
 
   const commentPool = useMemo(() => {
+    if (!showGrandma) return [];
     if (shopIntroComments.length > 0) {
       return interleaveComments(grandmaComments, shopIntroComments);
     }
     return grandmaComments;
-  }, [isInMarket, shopIntroComments]);
+  }, [isInMarket, shopIntroComments, showGrandma]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
@@ -502,10 +565,22 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
                       ×
                     </button>
                   </div>
-                  {(vendorShop?.images?.main || getShopBannerImage(vendorShop?.category)) && (
+                  {(vendorShop?.images?.main ||
+                    getShopBannerImage(
+                      vendorShop?.category,
+                      ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
+                        (vendorShop?.side === "south" ? 1 : 0)
+                    )) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
                       <img
-                        src={vendorShop?.images?.main ?? getShopBannerImage(vendorShop?.category)}
+                        src={
+                          vendorShop?.images?.main ??
+                          getShopBannerImage(
+                            vendorShop?.category,
+                            ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
+                              (vendorShop?.side === "south" ? 1 : 0)
+                          )
+                        }
                         alt={`${vendorShopName}の写真`}
                         className="h-40 w-full object-cover object-center"
                       />
@@ -544,7 +619,7 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
-              highlightEventTargets={isHoldActive}
+              highlightEventTargets={showGrandma ? isHoldActive : false}
               onMapInstance={handleMapInstance}
               onUserLocationUpdate={(coords) => {
                 setUserLocation({ lat: coords.lat, lng: coords.lng });
@@ -552,105 +627,114 @@ export default function MapPageClient({ shops }: MapPageClientProps) {
               }}
               commentShopId={commentHighlightShopId ?? undefined}
               kotoduteShopIds={kotoduteShopIds}
+              shopBannerVariant={shopBannerVariant}
+              attendanceEstimates={attendanceEstimates}
             />
-            <GrandmaChatter
-              titleLabel="にちよさん"
-              fullWidth
-              comments={commentPool}
-              onAsk={handleGrandmaAsk}
-              aiSuggestedShops={aiSuggestedShops}
-              onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
-              onHoldChange={setIsHoldActive}
-              onDrop={handleGrandmaDrop}
-              onActiveShopChange={setCommentHighlightShopId}
-              onCommentShopFocus={handleCommentShopFocus}
-              introImageUrl={introImageUrl}
-              priorityMessage={
-                priority
-                  ? {
-                      text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
-                      badgeTitle: priority.badge.badge.title,
-                      badgeIcon: priority.badge.tierIcon,
-                    }
-                  : null
-              }
-              onPriorityClick={() => setShowBadgeModal(true)}
-              onPriorityDismiss={clearPriority}
-            />
-            <BadgeModal
-              open={showBadgeModal && !!priority}
-              onClose={() => {
-                setShowBadgeModal(false);
-                clearPriority();
-              }}
-              title={priority?.badge.badge.title ?? ""}
-              slot={priority?.badge.slot ?? ""}
-              tierTitle={priority?.badge.tierTitle ?? ""}
-              tierIcon={priority?.badge.tierIcon ?? ""}
-              count={priority?.badge.count ?? 0}
-            />
-            {activeEvent && activeMessage && (
-              <div className="fixed inset-0 z-[3000] flex items-center justify-center">
-                <div className="absolute inset-0 bg-black/70" />
-                <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
-                  <div className="absolute inset-0">
-                    <img
-                      src="/images/obaasan.webp"
-                      alt="おばあちゃん"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  </div>
-                  <div className="absolute left-6 top-4 z-10">
-                    <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
-                      {activeEvent.title}
-                    </h3>
-                  </div>
-                  <div className="relative flex min-h-[45vh] flex-col pt-16">
-                    <div className="mt-auto space-y-3 -translate-y-[10px]">
-                      {activeMessage.image && (
-                        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-                          <img
-                            src={activeMessage.image}
-                            alt=""
-                            className="h-44 w-full object-cover object-center sm:h-56"
-                          />
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                          {activeMessage.subtitle}
-                        </div>
-                        <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
-                          {activeMessage.text}
-                        </div>
+            {showGrandma && (
+              <>
+                <GrandmaChatter
+                  titleLabel="にちよさん"
+                  fullWidth
+                  comments={commentPool}
+                  onAsk={handleGrandmaAsk}
+                  allShops={shops}
+                  aiSuggestedShops={aiSuggestedShops}
+                  onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
+                  onHoldChange={setIsHoldActive}
+                  onDrop={handleGrandmaDrop}
+                  onActiveShopChange={setCommentHighlightShopId}
+                  onCommentShopFocus={handleCommentShopFocus}
+                  onCommentShopOpen={handleCommentShopOpen}
+                  introImageUrl={introImageUrl}
+                  onAiImageClick={handleAiImageClick}
+                  priorityMessage={
+                    priority
+                      ? {
+                          text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
+                          badgeTitle: priority.badge.badge.title,
+                          badgeIcon: priority.badge.tierIcon,
+                        }
+                      : null
+                  }
+                  onPriorityClick={() => setShowBadgeModal(true)}
+                  onPriorityDismiss={clearPriority}
+                />
+                <BadgeModal
+                  open={showBadgeModal && !!priority}
+                  onClose={() => {
+                    setShowBadgeModal(false);
+                    clearPriority();
+                  }}
+                  title={priority?.badge.badge.title ?? ""}
+                  slot={priority?.badge.slot ?? ""}
+                  tierTitle={priority?.badge.tierTitle ?? ""}
+                  tierIcon={priority?.badge.tierIcon ?? ""}
+                  count={priority?.badge.count ?? 0}
+                />
+                {activeEvent && activeMessage && (
+                  <div className="fixed inset-0 z-[3000] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/70" />
+                    <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
+                      <div className="absolute inset-0">
+                        <img
+                          src="/images/obaasan.webp"
+                          alt="おばあちゃん"
+                          className="h-full w-full object-cover object-center"
+                        />
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>
-                          {eventMessageIndex + 1}/{activeEvent.messages.length}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {eventMessageIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleEventBack}
-                              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
-                            >
-                              戻る
-                            </button>
+                      <div className="absolute left-6 top-4 z-10">
+                        <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
+                          {activeEvent.title}
+                        </h3>
+                      </div>
+                      <div className="relative flex min-h-[45vh] flex-col pt-16">
+                        <div className="mt-auto space-y-3 -translate-y-[10px]">
+                          {activeMessage.image && (
+                            <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+                              <img
+                                src={activeMessage.image}
+                                alt=""
+                                className="h-44 w-full object-cover object-center sm:h-56"
+                              />
+                            </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={handleEventAdvance}
-                            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                          >
-                            {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                          </button>
+                          <div className="space-y-2">
+                            <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                              {activeMessage.subtitle}
+                            </div>
+                            <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
+                              {activeMessage.text}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>
+                              {eventMessageIndex + 1}/{activeEvent.messages.length}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {eventMessageIndex > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={handleEventBack}
+                                  className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
+                                >
+                                  戻る
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={handleEventAdvance}
+                                className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
+                              >
+                                {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
+              </>
             )}
           </div>
       </main>
