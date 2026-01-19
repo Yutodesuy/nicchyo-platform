@@ -371,7 +371,7 @@ body.grandma-chat-open .leaflet-container {
 .shop-simple-banner {
   position: absolute;
   left: 50%;
-  bottom: 40px;
+  bottom: 52px;
   transform: translateX(-50%);
   display: none;
   width: 220px;
@@ -386,12 +386,12 @@ body.grandma-chat-open .leaflet-container {
 }
 
 .shop-side-north .shop-simple-banner {
-  transform: translateX(calc(-50% - 90px));
-  flex-direction: row-reverse;
+  transform: translateX(calc(-50% + 10px));
 }
 
 .shop-side-south .shop-simple-banner {
-  transform: translateX(calc(-50% + 90px));
+  transform: translateX(calc(-50% - 10px));
+  flex-direction: row-reverse;
 }
 
 .shop-simple-banner-image {
