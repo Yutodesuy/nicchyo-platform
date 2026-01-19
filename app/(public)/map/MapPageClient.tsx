@@ -47,7 +47,7 @@ const NEARBY_MAX_SHOPS = 10;
 const INTRO_TAP_HINT = "";
 const INTRO_STRENGTH_FALLBACK =
   "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
-const MAP_CENTER: [number, number] = [33.5611589, 133.5366987];
+const MAP_CENTER: [number, number] = [33.5605308, 133.5385885];
 const AXIS_SWAP = createAxisSwapTransform(MAP_CENTER);
 
 function buildShopIntroText(shop: Shop): string {

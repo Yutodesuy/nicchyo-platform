@@ -504,7 +504,12 @@ body.home-poster-zoom-open .hamburger-button {
 }
 
 .map-building-tilted {
-  transform: rotate(90deg);
+  transform: rotate(0deg);
+  transform-origin: center;
+}
+
+.map-road-rotated {
+  rotate: 90deg;
   transform-origin: center;
 }
 

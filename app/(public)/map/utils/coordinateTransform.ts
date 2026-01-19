@@ -9,6 +9,12 @@ export function createAxisSwapTransform(center: LatLngTuple) {
     return [nextLat, nextLng];
   };
 
+  const toDataLatLng = (lat: number, lng: number): LatLngTuple => {
+    const nextLat = centerLat + (lng - centerLng);
+    const nextLng = centerLng - (lat - centerLat);
+    return [nextLat, nextLng];
+  };
+
   const toDisplayBounds = (
     bounds: [[number, number], [number, number]]
   ): [[number, number], [number, number]] => {
@@ -26,5 +32,5 @@ export function createAxisSwapTransform(center: LatLngTuple) {
     ];
   };
 
-  return { toDisplayLatLng, toDisplayBounds };
+  return { toDisplayLatLng, toDataLatLng, toDisplayBounds };
 }

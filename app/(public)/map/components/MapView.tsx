@@ -51,7 +51,7 @@ import { useBag } from "../../../../lib/storage/BagContext";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
-const MAP_CENTER: [number, number] = [33.5611589, 133.5366987];
+const MAP_CENTER: [number, number] = [33.5605308, 133.5385885];
 const AXIS_SWAP = createAxisSwapTransform(MAP_CENTER);
 
 // Sunday Market area boundaries (restrict pan operations to this area)
@@ -85,6 +85,7 @@ const INITIAL_ZOOM = MAX_ZOOM;
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 const MASK_RADIUS_METERS = 1000;
+const SHOW_MARKET_MASK = false;
 
 function buildCircleRing(
   center: [number, number],
@@ -177,11 +178,14 @@ const LEFT_LABEL_HEIGHT_LAT = 0.076;
 const LEFT_LABEL_WIDTH_LNG = 0.012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
-const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
-const KOCHI_CASTLE_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0019;
-const KOCHI_CASTLE_BOUNDS: [[number, number], [number, number]] = [
-  [KOCHI_CASTLE_TOP_LAT, KOCHI_CASTLE_EAST_LNG],
-  [KOCHI_CASTLE_TOP_LAT - KOCHI_CASTLE_HEIGHT, KOCHI_CASTLE_EAST_LNG - KOCHI_CASTLE_WIDTH],
+const KOCHI_CASTLE_DEFAULT_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
+const KOCHI_CASTLE_DEFAULT_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0019;
+const KOCHI_CASTLE_DEFAULT_BOUNDS: [[number, number], [number, number]] = [
+  [KOCHI_CASTLE_DEFAULT_TOP_LAT, KOCHI_CASTLE_DEFAULT_EAST_LNG],
+  [
+    KOCHI_CASTLE_DEFAULT_TOP_LAT - KOCHI_CASTLE_HEIGHT,
+    KOCHI_CASTLE_DEFAULT_EAST_LNG - KOCHI_CASTLE_WIDTH,
+  ],
 ];
 const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (1.6 / 1.5);
 const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
@@ -344,6 +348,7 @@ const MapView = memo(function MapView({
     applyShopEdits(sourceShops)
   );
   const toDisplayLatLng = AXIS_SWAP.toDisplayLatLng;
+  const toDataLatLng = AXIS_SWAP.toDataLatLng;
   const toDisplayBounds = AXIS_SWAP.toDisplayBounds;
   const displayCenter = useMemo(
     () => toDisplayLatLng(MAP_CENTER[0], MAP_CENTER[1]),
@@ -413,6 +418,19 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const shops = displayShops;
+  const kochiCastleBounds = useMemo(() => {
+    if (!shops.length) return KOCHI_CASTLE_DEFAULT_BOUNDS;
+    const westernShop = shops.reduce((min, shop) =>
+      shop.lng < min.lng ? shop : min
+    );
+    const [displayLat, displayLng] = toDisplayLatLng(westernShop.lat, westernShop.lng);
+    const [anchorLat, anchorLng] = toDataLatLng(displayLat - 0.0006, displayLng);
+    const westLng = anchorLng - KOCHI_CASTLE_WIDTH / 2;
+    return [
+      [anchorLat, westLng + KOCHI_CASTLE_WIDTH],
+      [anchorLat - KOCHI_CASTLE_HEIGHT, westLng],
+    ] as [[number, number], [number, number]];
+  }, [shops, toDisplayLatLng, toDataLatLng]);
 
   const planOrderMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -723,7 +741,7 @@ const MapView = memo(function MapView({
         <BackgroundOverlay />
 
         {/* 道路 */}
-        <RoadOverlay transformBounds={toDisplayBounds} />
+        <RoadOverlay transformBounds={toDisplayBounds} overlayClassName="map-road-rotated" />
         <Pane name="map-label" style={{ zIndex: 900 }}>
           <ImageOverlay
             url={rightSideLabelSvg}
@@ -747,7 +765,7 @@ const MapView = memo(function MapView({
 
         <EventDimOverlay active={highlightEventTargets} />
 
-        <MarketMask innerRing={maskInnerRing} />
+        {SHOW_MARKET_MASK && <MarketMask innerRing={maskInnerRing} />}
 
         {highlightEventTargets && (
           <Pane name="event-glow" style={{ zIndex: 2000 }}>
@@ -816,7 +834,7 @@ const MapView = memo(function MapView({
             />
             <ImageOverlay
               url="/images/maps/elements/buildings/KochiCastle.png"
-              bounds={toDisplayBounds(KOCHI_CASTLE_BOUNDS)}
+              bounds={toDisplayBounds(kochiCastleBounds)}
               opacity={1}
               className="map-event-museum-highlight"
             />
@@ -845,7 +863,7 @@ const MapView = memo(function MapView({
         )}
         <ImageOverlay
           url="/images/maps/elements/buildings/KochiCastle.png"
-          bounds={toDisplayBounds(KOCHI_CASTLE_BOUNDS)}
+          bounds={toDisplayBounds(kochiCastleBounds)}
           opacity={1}
           zIndex={70}
         />
@@ -862,7 +880,6 @@ const MapView = memo(function MapView({
             bounds={toDisplayBounds(bounds)}
             opacity={1}
             zIndex={55}
-            className="map-building-tilted"
           />
         ))}
         {BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
@@ -872,7 +889,6 @@ const MapView = memo(function MapView({
             bounds={toDisplayBounds(bounds)}
             opacity={1}
             zIndex={55}
-            className="map-building-tilted"
           />
         ))}
 
