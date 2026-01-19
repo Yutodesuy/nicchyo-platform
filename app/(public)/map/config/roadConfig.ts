@@ -149,6 +149,21 @@ export function getRoadCenterLine(): number {
   return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
 }
 
+/**
+ * イラスト座標を道路中央にスナップ
+ * 緯度（縦位置）はそのまま、経度（横位置）を中央線に吸着
+ */
+export function snapToRoadCenter(
+  illustLat: number,
+  illustLng: number
+): { lat: number; lng: number } {
+  const centerLng = getRoadCenterLine();
+  return {
+    lat: illustLat,
+    lng: centerLng,
+  };
+}
+
 export function getRoadWidthOffset(useDynamic: boolean = false): number {
   if (!useDynamic) {
     return ROAD_CONFIG.widthOffset;
