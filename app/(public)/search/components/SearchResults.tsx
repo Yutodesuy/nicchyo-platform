@@ -2,12 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { Shop } from '../../map/data/shops';
+import { Facility } from '../../map/data/facilities';
 import ShopResultCard from './ShopResultCard';
+import FacilityResultCard from './FacilityResultCard';
 import EmptyState from './EmptyState';
 import { Map } from 'lucide-react';
 
 interface SearchResultsProps {
   shops: Shop[];
+  facilities?: Facility[];
   totalCount: number;
   hasQuery: boolean;
   categories: string[];
@@ -28,6 +31,7 @@ interface SearchResultsProps {
  */
 export default function SearchResults({
   shops,
+  facilities,
   totalCount,
   hasQuery,
   categories,
@@ -60,7 +64,7 @@ export default function SearchResults({
   }, [hasMore, onLoadMore]);
 
   // 結果がない場合は空状態を表示
-  if (shops.length === 0) {
+  if (shops.length === 0 && (!facilities || facilities.length === 0)) {
     return <EmptyState hasQuery={hasQuery} categories={categories} onCategoryClick={onCategoryClick} />;
   }
 
@@ -76,7 +80,7 @@ export default function SearchResults({
             <h2 className="text-lg font-bold text-gray-900">お店一覧</h2>
           </div>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
-            {totalCount}件
+            {totalCount + (facilities?.length || 0)}件
           </span>
         </div>
 
@@ -93,6 +97,9 @@ export default function SearchResults({
 
         {/* 検索結果グリッド */}
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          {facilities?.map((facility) => (
+            <FacilityResultCard key={facility.id} facility={facility} />
+          ))}
           {shops.map((shop) => (
             <ShopResultCard
               key={shop.id}

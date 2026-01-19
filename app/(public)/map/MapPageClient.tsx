@@ -99,8 +99,24 @@ export default function MapPageClient({
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
+  const latParam = searchParams?.get("lat");
+  const lngParam = searchParams?.get("lng");
+  const zoomParam = searchParams?.get("zoom");
+
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
+
+  const initialCenter = useMemo(() => {
+    if (latParam && lngParam) {
+      return {
+        lat: Number(latParam),
+        lng: Number(lngParam),
+        zoom: zoomParam ? Number(zoomParam) : undefined,
+      };
+    }
+    return undefined;
+  }, [latParam, lngParam, zoomParam]);
+
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showRecipeOverlay, setShowRecipeOverlay] = useState(false);
@@ -603,6 +619,7 @@ export default function MapPageClient({
             <MapView
               shops={shops}
               initialShopId={initialShopId}
+              initialCenter={initialCenter}
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
