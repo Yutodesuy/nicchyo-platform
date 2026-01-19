@@ -328,7 +328,10 @@ export default function BagPage() {
 
       {/* --- Footer Action --- */}
       {items.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 p-4 bg-gradient-to-t from-[#faf8f3] via-[#faf8f3]/95 to-transparent pb-safe-bottom">
+        <div
+          className="fixed left-0 right-0 z-30 p-4 bg-gradient-to-t from-[#faf8f3] via-[#faf8f3]/95 to-transparent"
+          style={{ bottom: "calc(3rem + var(--safe-bottom, 0px))" }}
+        >
           <Link
             href="/map"
             className="flex items-center justify-center gap-2 w-full max-w-sm mx-auto bg-stone-900 text-white font-bold py-3.5 rounded-full shadow-lg active:scale-95 transition-all hover:bg-black hover:shadow-xl"
