@@ -1,109 +1,117 @@
-"use client";
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
+import ConsultClient from "./ConsultClient";
+import { shops as staticShops } from "../map/data/shops";
+import type { Shop } from "../map/data/shops";
 
-import { useCallback, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import NavigationBar from "../../components/NavigationBar";
-import GrandmaChatter from "../map/components/GrandmaChatter";
-import { grandmaComments } from "../map/data/grandmaComments";
-import { shops } from "../map/data/shops";
+type ShopRow = {
+  legacy_id: number | null;
+  name: string | null;
+  owner_name: string | null;
+  side: "north" | "south" | null;
+  position: number | null;
+  lat: number | null;
+  lng: number | null;
+  chome: string | null;
+  category: string | null;
+  products: string[] | null;
+  description: string | null;
+  specialty_dish: string | null;
+  about_vendor: string | null;
+  stall_style: string | null;
+  icon: string | null;
+  schedule: string | null;
+  message: string | null;
+  topic: string[] | null;
+  shop_strength: string | null;
+};
 
-function ConsultPageContent() {
-  const [aiSuggestedShops, setAiSuggestedShops] = useState<typeof shops>([]);
-  const searchParams = useSearchParams();
+const CHOME_VALUES = new Set([
+  "一丁目",
+  "二丁目",
+  "三丁目",
+  "四丁目",
+  "五丁目",
+  "六丁目",
+  "七丁目",
+]);
 
-  const handleGrandmaAsk = useCallback(async (text: string, imageFile?: File | null) => {
-    try {
-      const useForm = !!imageFile;
-      const body = useForm
-        ? (() => {
-            const form = new FormData();
-            form.append("text", text);
-            form.append("location", JSON.stringify(null));
-            if (imageFile) form.append("image", imageFile);
-            return form;
-          })()
-        : JSON.stringify({
-            text,
-            location: null,
-          });
-      const response = await fetch("/api/grandma/ask", {
-        method: "POST",
-        headers: useForm ? undefined : { "Content-Type": "application/json" },
-        body,
-      });
-      if (!response.ok) {
-        return {
-          reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        };
-      }
-      const payload = (await response.json()) as {
-        reply?: string;
-        imageUrl?: string;
-        shopIds?: number[];
-      };
-      if (payload.shopIds && payload.shopIds.length > 0) {
-        const shopSet = new Set(payload.shopIds);
-        setAiSuggestedShops(shops.filter((shop) => shopSet.has(shop.id)));
-      } else {
-        setAiSuggestedShops([]);
-      }
-      return {
-        reply:
-          payload.reply ??
-          "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        imageUrl: payload.imageUrl,
-        shopIds: payload.shopIds,
-      };
-    } catch {
-      setAiSuggestedShops([]);
-      return {
-        reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-      };
-    }
-  }, []);
-
-  const autoAskText = searchParams?.get("q") || null;
-
-  return (
-    <div
-      className="relative overflow-hidden bg-[#fbf8f3]"
-      style={{ height: "100svh" }}
-    >
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          backgroundImage: "url('/images/maps/placeholder-map.svg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(8px)",
-          opacity: 0.35,
-          transform: "scale(1.05)",
-        }}
-        aria-hidden="true"
-      />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
-        <GrandmaChatter
-          titleLabel="にちよさん"
-          fullWidth
-          comments={grandmaComments}
-          onAsk={handleGrandmaAsk}
-          allShops={shops}
-          aiSuggestedShops={aiSuggestedShops}
-          initialOpen
-          layout="page"
-          onClear={() => setAiSuggestedShops([])}
-          autoAskText={autoAskText}
-        />
-      </main>
-      <NavigationBar activeHref="/consult" position="absolute" />
-    </div>
-  );
+function normalizeChome(value: string | null): Shop["chome"] {
+  if (value && CHOME_VALUES.has(value)) {
+    return value as Shop["chome"];
+  }
+  return undefined;
 }
 
-export default function ConsultPage() {
+async function loadShops(): Promise<Shop[]> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data, error } = await supabase
+      .from("shops")
+      .select(
+        [
+          "legacy_id",
+          "name",
+          "owner_name",
+          "side",
+          "position",
+          "lat",
+          "lng",
+          "chome",
+          "category",
+          "products",
+          "description",
+          "specialty_dish",
+          "about_vendor",
+          "stall_style",
+          "icon",
+          "schedule",
+          "message",
+          "topic",
+          "shop_strength",
+        ].join(",")
+      )
+      .order("legacy_id", { ascending: true });
+
+    if (error || !data) {
+      return staticShops;
+    }
+
+    return (data as unknown as ShopRow[])
+      .filter((row) => row.legacy_id !== null)
+      .map((row) => ({
+        id: row.legacy_id ?? 0,
+        name: row.name ?? "",
+        ownerName: row.owner_name ?? "",
+        side: (row.side ?? "north") as "north" | "south",
+        position: row.position ?? 0,
+        lat: row.lat ?? 0,
+        lng: row.lng ?? 0,
+        chome: normalizeChome(row.chome),
+        category: row.category ?? "",
+        products: Array.isArray(row.products) ? row.products : [],
+        description: row.description ?? "",
+        specialtyDish: row.specialty_dish ?? undefined,
+        aboutVendor: row.about_vendor ?? undefined,
+        stallStyle: row.stall_style ?? undefined,
+        icon: row.icon ?? "",
+        schedule: row.schedule ?? "",
+        message: row.message ?? undefined,
+        topic: Array.isArray(row.topic) ? row.topic : undefined,
+        shopStrength: row.shop_strength ?? undefined,
+      }));
+  } catch {
+    return staticShops;
+  }
+}
+
+export default async function ConsultPage() {
+  const shops = await loadShops();
   return (
     <Suspense fallback={<div className="h-screen w-full bg-[#fbf8f3]" />}>
-      <ConsultPageContent />
+      <ConsultClient shops={shops} />
     </Suspense>
   );
 }
