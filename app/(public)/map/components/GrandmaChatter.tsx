@@ -8,6 +8,7 @@ import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 import type { Shop } from "../data/shops";
 import ShopResultCard from "../../search/components/ShopResultCard";
+import { getSmartSuggestions } from "../utils/suggestionGenerator";
 
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
@@ -44,6 +45,7 @@ type GrandmaChatterProps = {
   layout?: "floating" | "page";
   onClear?: () => void;
   autoAskText?: string | null;
+  currentZoom?: number;
 };
 
 export default function GrandmaChatter({
@@ -68,6 +70,7 @@ export default function GrandmaChatter({
   layout = "floating",
   onClear,
   autoAskText,
+  currentZoom,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -638,7 +641,22 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
-  const smartSuggestionChips = ["今日のランチは？", "旬の食材は？", "お土産なにがいい？"];
+  const smartSuggestionChips = useMemo(() => {
+    // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
+    // つまり zoom < 20 の時に表示
+    // layout === "page" (相談ページ) の場合は常に表示したいかもしれないが、
+    // ここではマップ上のチップとしてのロジックなので、floating時のみズーム考慮
+    if (layout === "floating" && currentZoom !== undefined && currentZoom >= 20) {
+      return [];
+    }
+
+    if (isShopIntro && current?.shopId) {
+      const shop = shopLookup.get(current.shopId);
+      return getSmartSuggestions(current.text, shop);
+    }
+    return getSmartSuggestions(current.text);
+  }, [current, isShopIntro, shopLookup, layout, currentZoom]);
+
   const inputOffsetPx = isKeyboardOpen ? 0 : 0;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
@@ -701,7 +719,7 @@ export default function GrandmaChatter({
         )}
 
         {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
-        {!isChatOpen && !priorityMessage && !isShopIntro && layout === "floating" && (
+        {!isChatOpen && !priorityMessage && smartSuggestionChips.length > 0 && layout === "floating" && (
            <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
              {smartSuggestionChips.map((label, i) => (
                 <button
