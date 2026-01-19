@@ -43,6 +43,8 @@ type BagItem = {
 const STORAGE_KEY = "nicchyo-fridge-items";
 const KOTODUTE_PREVIEW_LIMIT = 3;
 const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
+const OSEKKAI_FALLBACK =
+  "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
@@ -474,6 +476,25 @@ export default function ShopDetailBanner({
             <section className="py-8 text-xl text-slate-700">
               <p className="text-base font-semibold text-slate-500">主な商品</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
+              <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
+              <div className="mt-3 flex items-start gap-4">
+                <div className="shrink-0">
+                  <Image
+                    src="/images/obaasan_transparent.png"
+                    alt="おせっかいばあちゃん"
+                    width={88}
+                    height={88}
+                    className="h-20 w-20 opacity-70"
+                  />
+                </div>
+                <div className="relative w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xl leading-relaxed text-slate-700">
+                  <span
+                    className="absolute -left-2 top-6 h-4 w-4 rotate-45 border-b border-l border-amber-200 bg-amber-50"
+                    aria-hidden
+                  />
+                  {shop.shopStrength?.trim() || OSEKKAI_FALLBACK}
+                </div>
+              </div>
             </section>
 
           {/* 商品名 */}
