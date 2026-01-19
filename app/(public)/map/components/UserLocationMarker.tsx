@@ -15,6 +15,8 @@ const ANIMATION_MS = 300;
 const ACCURACY_THRESHOLD_METERS = 15;
 // 精度が悪い状態が続いた場合のフォールバック時間（ミリ秒）
 const ACCURACY_FALLBACK_MS = 5000;
+// 初回位置取得時のズームレベル
+const INITIAL_ZOOM_LEVEL = 19;
 
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
@@ -33,6 +35,8 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
   const lowAccuracyStartRef = useRef<number | null>(null);
   // 最後に受け入れた精度
   const lastAccuracyRef = useRef<number | null>(null);
+  // 初回位置取得フラグ（マップを位置に移動させるため）
+  const isFirstLocationRef = useRef(true);
 
   useEffect(() => {
     onLocationUpdateRef.current = onLocationUpdate;
@@ -152,6 +156,15 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
             displayPosition = [snapped.lat, snapped.lng];
           } else {
             displayPosition = MARKET_CENTER;
+          }
+
+          // 初回位置取得時はマップをその位置に移動
+          if (isFirstLocationRef.current) {
+            isFirstLocationRef.current = false;
+            map.flyTo(displayPosition, INITIAL_ZOOM_LEVEL, {
+              animate: true,
+              duration: 1.0,
+            });
           }
 
           if (markerRef.current) {
