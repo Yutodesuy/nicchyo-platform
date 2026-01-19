@@ -112,6 +112,7 @@ export default function GrandmaChatter({
   const askRequestRef = useRef(0);
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
     startX: number;
@@ -306,8 +307,28 @@ export default function GrandmaChatter({
 
   useEffect(() => {
     if (!isChatOpen || !chatScrollRef.current) return;
-    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    const scrollContainer = chatScrollRef.current;
+
+    // Only auto-scroll if we were already near bottom or it's a new message from user/assistant
+    const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+
+    if (isNearBottom || chatMessages.length > 0) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
   }, [chatMessages, isChatOpen, aiStatus]);
+
+  useEffect(() => {
+    const scrollContainer = chatScrollRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const isNearBottom = scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+      setShowScrollToBottom(!isNearBottom);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [isChatOpen]);
 
   if (!current) return null;
 
@@ -769,7 +790,7 @@ export default function GrandmaChatter({
                               .map((shop) => {
                                 if (!shop) return null;
                                 return (
-                                  <div key={shop.id} className="shrink-0 w-48">
+                                  <div key={shop.id} className="shrink-0 w-64">
                                     <ShopResultCard
                                       shop={shop}
                                       isFavorite={false}
@@ -801,6 +822,36 @@ export default function GrandmaChatter({
                 </div>
               ))}
             </div>
+            {showScrollToBottom && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (chatScrollRef.current) {
+                    chatScrollRef.current.scrollTo({
+                      top: chatScrollRef.current.scrollHeight,
+                      behavior: "smooth"
+                    });
+                  }
+                }}
+                className="absolute bottom-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-amber-600 text-white shadow-lg transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+                aria-label="一番下へスクロール"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         ) : (
           <button
