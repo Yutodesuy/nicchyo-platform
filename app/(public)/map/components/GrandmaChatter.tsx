@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 import type { Shop } from "../data/shops";
@@ -42,6 +43,7 @@ type GrandmaChatterProps = {
   initialOpen?: boolean;
   layout?: "floating" | "page";
   onClear?: () => void;
+  autoAskText?: string | null;
 };
 
 export default function GrandmaChatter({
@@ -65,6 +67,7 @@ export default function GrandmaChatter({
   initialOpen = false,
   layout = "floating",
   onClear,
+  autoAskText,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -86,6 +89,7 @@ export default function GrandmaChatter({
   >([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [hasUserAsked, setHasUserAsked] = useState(false);
+  const [hasProcessedAutoAsk, setHasProcessedAutoAsk] = useState(false);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
@@ -316,6 +320,20 @@ export default function GrandmaChatter({
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, [chatMessages, isChatOpen, aiStatus]);
+
+  useEffect(() => {
+    if (autoAskText && !hasProcessedAutoAsk) {
+      setHasProcessedAutoAsk(true);
+      // レイアウトがpageの場合は最初から開いているので即座に、
+      // floatingの場合は開いてから少し待って送信するなどの制御ができるが、
+      // ここではシンプルに少し遅延させて送信する
+      if (!isChatOpen) setIsChatOpen(true);
+
+      setTimeout(() => {
+        handleAskSubmit(autoAskText);
+      }, 600);
+    }
+  }, [autoAskText, hasProcessedAutoAsk, isChatOpen]);
 
   useEffect(() => {
     const scrollContainer = chatScrollRef.current;
@@ -620,6 +638,7 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
+  const smartSuggestionChips = ["今日のランチは？", "旬の食材は？", "お土産なにがいい？"];
   const inputOffsetPx = isKeyboardOpen ? 0 : 0;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
@@ -638,6 +657,7 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const router = useRouter();
 
   return (
     <div className={shellClassName}>
@@ -678,6 +698,27 @@ export default function GrandmaChatter({
               </div>
             </button>
           </div>
+        )}
+
+        {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
+        {!isChatOpen && !priorityMessage && !isShopIntro && layout === "floating" && (
+           <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
+             {smartSuggestionChips.map((label, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/consult?q=${encodeURIComponent(label)}`);
+                  }}
+                  className="rounded-full bg-white/90 border border-amber-200 px-4 py-2 text-sm font-bold text-amber-800 shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-white active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <span className="mr-1">💡</span>
+                  {label}
+                </button>
+             ))}
+           </div>
         )}
 
         {isChatOpen ? (

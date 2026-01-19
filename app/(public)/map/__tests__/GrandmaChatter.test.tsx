@@ -1,7 +1,14 @@
-﻿import React from 'react';
+import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi } from 'vitest';
 import GrandmaChatter from '../components/GrandmaChatter';
+
+// Mock useRouter
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
 
 describe('GrandmaChatter', () => {
   const getCommentText = () => {
