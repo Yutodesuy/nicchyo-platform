@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapLoading } from "./components/MapLoadingProvider";
 import { motion } from "framer-motion";
-import { Search, MapPin, Smile } from "lucide-react";
+import { MapPin, Coffee, Utensils, HelpCircle, ChevronRight, User } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -23,113 +23,186 @@ export default function HomePage() {
 
   const handleMapClick = () => {
     startMapLoading();
-    // Short delay to allow animation if needed, or immediate
     setTimeout(() => {
       router.push("/map");
     }, 300);
   };
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-900 text-white">
-      {/* Background Image */}
-      <div
-        className={`absolute inset-0 z-0 transition-opacity duration-1000 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-10" />
-        <img
-          src="/homepagebackground.png"
-          alt="Background"
-          className="h-full w-full object-cover scale-[1.02]"
-        />
-      </div>
+    <div className="min-h-screen w-full bg-[#FAFAF8] text-amber-950 font-sans selection:bg-amber-200">
 
-      {/* Header (Branding) */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center p-6 pt-[calc(env(safe-area-inset-top)+24px)]">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 overflow-hidden rounded-xl border-2 border-white/80 shadow-lg">
-            <img
-              src="/images/obaasan.webp"
-              alt="nicchyo icon"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <span className="text-xl font-bold tracking-widest text-white drop-shadow-md">
-            nicchyo
-          </span>
+      {/* --- HERO SECTION --- */}
+      <section className="relative h-[85vh] w-full overflow-hidden">
+        {/* Background Image with Warm Overlay */}
+        <div className="absolute inset-0 z-0">
+           <img
+            src="/homepagebackground.png"
+            alt="Sunday Market Atmosphere"
+            className="h-full w-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-amber-50/20 to-amber-50/90" />
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="relative z-20 flex h-full flex-col items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col items-center text-center"
-        >
-          <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl drop-shadow-lg leading-tight">
-            迷ってこそが
-            <br />
-            日曜市！
-          </h1>
-          <p className="mt-6 max-w-md text-base md:text-lg font-medium text-white/90 drop-shadow-md leading-relaxed">
-            迷う楽しみと、見つける喜び。
-            <br />
-            高知の日曜市を、もっと自由に。
-          </p>
-        </motion.div>
+        {/* Content */}
+        <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 pt-12 text-center">
 
-        {/* CTA Button */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-10 w-full max-w-xs"
-        >
-          <button
-            onClick={handleMapClick}
-            className="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-amber-500 to-orange-600 p-[2px] shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-transform active:scale-95"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="flex flex-col items-center"
           >
-            <div className="relative flex h-14 w-full items-center justify-center rounded-full bg-transparent px-8 transition-colors group-hover:bg-white/10">
-              <span className="text-lg font-bold tracking-wide text-white">
-                マップを見る
-              </span>
-              <MapPin className="ml-2 h-5 w-5 text-white animate-bounce" />
+            {/* Branding Icon */}
+            <div className="mb-6 h-20 w-20 overflow-hidden rounded-full border-4 border-white shadow-lg">
+              <img
+                src="/images/obaasan.webp"
+                alt="にちよさん"
+                className="h-full w-full object-cover"
+              />
             </div>
-          </button>
-        </motion.div>
-      </main>
 
-      {/* Features / Benefits (Bottom Overlay) */}
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 1 }}
-        className="absolute bottom-0 left-0 right-0 z-20 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-6 bg-gradient-to-t from-black/80 to-transparent"
-      >
-        <div className="mx-auto grid max-w-4xl grid-cols-3 gap-4 px-6 text-center text-white/90">
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
-              <Search className="h-5 w-5 text-amber-300" />
+            <h1 className="font-serif text-3xl font-bold tracking-widest text-amber-900 md:text-5xl drop-shadow-sm">
+              迷ってこそが<br />
+              <span className="text-4xl md:text-6xl text-orange-700">日曜市！</span>
+            </h1>
+
+            <p className="mt-6 text-base font-medium leading-loose text-amber-900/80 md:text-lg">
+              迷子を楽しむための、<br className="md:hidden" />
+              お守りマップ。
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-10 w-full max-w-sm"
+          >
+            <button
+              onClick={handleMapClick}
+              className="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 active:scale-95"
+            >
+              <div className="flex items-center justify-center gap-2 text-lg font-bold tracking-wide">
+                <span>地図を見る</span>
+                <ChevronRight className="h-5 w-5 animate-pulse" />
+              </div>
+              <div className="absolute inset-0 -z-10 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
+            <p className="mt-3 text-xs text-amber-800/60">
+              ※登録不要で、すぐに使えます
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* --- EMPATHY SECTION (Warm & Reassuring) --- */}
+      <section className="relative -mt-12 z-20 px-6 pb-20">
+        <div className="mx-auto max-w-2xl rounded-3xl bg-white p-8 shadow-xl shadow-amber-900/5 ring-1 ring-amber-100">
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-amber-800 md:text-xl">
+              こんな不安、ありませんか？
+            </h2>
+            <div className="mt-6 space-y-4 text-left">
+              <div className="flex items-start gap-4 rounded-xl bg-amber-50 p-4">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-800 font-bold">
+                  ?
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900">お店が多すぎて、見方がわからない</p>
+                  <p className="text-sm text-amber-800/70 mt-1">
+                    全長1km以上ある日曜市。どこから見ればいいのか、迷ってしまいがちです。
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4 rounded-xl bg-amber-50 p-4">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-800 font-bold">
+                  !
+                </div>
+                <div>
+                  <p className="font-bold text-amber-900">トイレや休憩所はどこ？</p>
+                  <p className="text-sm text-amber-800/70 mt-1">
+                    人混みの中、急に探すのは大変。事前にわかれば安心です。
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className="text-xs font-bold tracking-wide">探せる</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
-              <Smile className="h-5 w-5 text-amber-300" />
+
+            <div className="mt-8">
+              <p className="text-lg font-bold text-orange-700 leading-relaxed">
+                そんなあなたへ。<br />
+                nicchyoは、<br className="md:hidden" />
+                あなたの「歩くパートナー」です。
+              </p>
             </div>
-            <span className="text-xs font-bold tracking-wide">ガイド</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
-              <MapPin className="h-5 w-5 text-amber-300" />
-            </div>
-            <span className="text-xs font-bold tracking-wide">迷わない</span>
           </div>
         </div>
-      </motion.div>
+      </section>
+
+      {/* --- FEATURES SECTION (Concrete Benefits) --- */}
+      <section className="bg-amber-50/50 py-16 px-6">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-center text-2xl font-bold text-amber-900 mb-10">
+            安心して楽しむための<br className="md:hidden" />
+            3つのポイント
+          </h2>
+
+          <div className="grid gap-8 md:grid-cols-3">
+            {/* Feature 1 */}
+            <div className="flex flex-col items-center text-center bg-white rounded-2xl p-6 shadow-sm ring-1 ring-amber-100/50">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <Coffee className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-900">休憩スポットが<br />すぐわかる</h3>
+              <p className="mt-3 text-sm text-amber-800/80 leading-relaxed">
+                トイレやベンチの場所を一目でチェック。疲れたらすぐに一休みできます。
+              </p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="flex flex-col items-center text-center bg-white rounded-2xl p-6 shadow-sm ring-1 ring-amber-100/50">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <User className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-900">おせっかいな<br />案内人</h3>
+              <p className="mt-3 text-sm text-amber-800/80 leading-relaxed">
+                「にちよさん」が、おすすめのお店や旬の食材を教えてくれます。
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="flex flex-col items-center text-center bg-white rounded-2xl p-6 shadow-sm ring-1 ring-amber-100/50">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <MapPin className="h-8 w-8" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-900">現在地から<br />迷わず探せる</h3>
+              <p className="mt-3 text-sm text-amber-800/80 leading-relaxed">
+                今いる場所の近くに何があるか、GPSですぐにわかります。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- FOOTER CTA --- */}
+      <section className="py-20 px-6 text-center">
+        <h2 className="text-xl font-bold text-amber-900 mb-6">
+          さあ、日曜市へ出かけましょう。
+        </h2>
+        <div className="mx-auto w-full max-w-sm">
+          <button
+             onClick={handleMapClick}
+             className="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-white shadow-xl transition-all hover:shadow-2xl hover:-translate-y-1 active:scale-95"
+           >
+             <div className="flex items-center justify-center gap-2 text-xl font-bold tracking-wide">
+               <span>マップを開く</span>
+               <ChevronRight className="h-6 w-6" />
+             </div>
+           </button>
+           <p className="mt-4 text-sm text-amber-800/60">
+             nicchyo - 日曜市デジタルマップ
+           </p>
+        </div>
+      </section>
     </div>
   );
 }
