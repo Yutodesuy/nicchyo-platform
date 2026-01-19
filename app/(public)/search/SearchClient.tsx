@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,7 @@ import { useShopSearch } from './hooks/useShopSearch';
 import SearchInput from './components/SearchInput';
 import CategoryFilter from './components/CategoryFilter';
 import SearchResults from './components/SearchResults';
+import SearchDiscovery from './components/SearchDiscovery';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
 import ShopDetailBanner from '../map/components/ShopDetailBanner';
 import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
@@ -155,52 +156,73 @@ export default function SearchClient({ shops }: SearchClientProps) {
       <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
           <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
-            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Search</p>
-            <h2 className="mt-1 text-4xl font-bold text-gray-900">検索ボックス</h2>
-            <p className="mt-1 text-xl text-gray-700">キーワードとカテゴリからお店を探す</p>
+            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
+            <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
+            <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
           </div>
 
           {/* 検索フォーム */}
           <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
 
             {/* テキスト検索 */}
-            <div className="mt-3">
+            <div className="mt-1">
               <SearchInput value={textQuery} onChange={setTextQuery} />
             </div>
 
-            {/* カテゴリーフィルター */}
-            <CategoryFilter
-              mode={filterMode}
-              onModeChange={handleFilterModeChange}
-              selectedCategory={category}
-              onCategoryChange={setCategory}
-              selectedChome={selectedChome}
-              onChomeChange={setSelectedChome}
-              categories={categories}
-              chomeOptions={chomeOptions}
-            />
+            {/* コンテンツ切り替え: 未入力時はDiscovery、入力時はFilter+Results */}
+            {!hasQuery ? (
+              <SearchDiscovery
+                categories={categories}
+                chomeOptions={chomeOptions}
+                onCategorySelect={(cat) => {
+                  setFilterMode('genre');
+                  setCategory(cat);
+                }}
+                onChomeSelect={(chome) => {
+                  setFilterMode('location');
+                  setSelectedChome(chome);
+                }}
+                onKeywordSelect={setTextQuery}
+              />
+            ) : (
+              <div className="animate-in slide-in-from-bottom-2 duration-300">
+                {/* カテゴリーフィルター */}
+                <CategoryFilter
+                  mode={filterMode}
+                  onModeChange={handleFilterModeChange}
+                  selectedCategory={category}
+                  onCategoryChange={setCategory}
+                  selectedChome={selectedChome}
+                  onChomeChange={setSelectedChome}
+                  categories={categories}
+                  chomeOptions={chomeOptions}
+                />
 
-            <p className="mt-3 text-[11px] text-gray-600">
-              💡 ヒント: カテゴリーとキーワードを組み合わせて絞り込めます
-            </p>
+                <p className="mt-3 text-[11px] text-gray-600">
+                  💡 ヒント: カテゴリーとキーワードを組み合わせて絞り込めます
+                </p>
+
+                <div className="mt-6">
+                    {/* 検索結果 */}
+                    <SearchResults
+                        shops={visibleShops}
+                        totalCount={filteredShops.length}
+                        hasQuery={hasQuery}
+                        categories={categories}
+                        onCategoryClick={setCategory}
+                        favoriteShopIds={favoriteShopIds}
+                        hasMore={hasMore}
+                        onLoadMore={handleLoadMore}
+                        onToggleFavorite={handleToggleFavorite}
+                        onSelectShop={setSelectedShop}
+                        onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
+                        mapLabel={searchLabel}
+                        enableSearchMapHighlight
+                    />
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* 検索結果 */}
-          <SearchResults
-            shops={visibleShops}
-            totalCount={filteredShops.length}
-            hasQuery={hasQuery}
-            categories={categories}
-            onCategoryClick={setCategory}
-            favoriteShopIds={favoriteShopIds}
-            hasMore={hasMore}
-            onLoadMore={handleLoadMore}
-            onToggleFavorite={handleToggleFavorite}
-            onSelectShop={setSelectedShop}
-            onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
-            mapLabel={searchLabel}
-            enableSearchMapHighlight
-          />
         </section>
       </main>
 
@@ -221,4 +243,3 @@ export default function SearchClient({ shops }: SearchClientProps) {
     </div>
   );
 }
-
