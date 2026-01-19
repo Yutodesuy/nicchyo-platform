@@ -719,7 +719,7 @@ export default function GrandmaChatter({
                 <div
                   key={message.id}
                   className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start items-end gap-2"
+                    message.role === "user" ? "justify-end" : "justify-start items-start gap-2"
                   }`}
                 >
                   {message.role === "assistant" && (
@@ -762,7 +762,7 @@ export default function GrandmaChatter({
                               おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
                             </span>
                           </div>
-                          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                          <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
                             {message.shopIds
                               .map((id) => shopLookup.get(id))
                               .filter(Boolean)
