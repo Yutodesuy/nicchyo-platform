@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { isInsideSundayMarket, convertGpsToIllustration } from '../config/roadConfig';
+import { isInsideSundayMarket, convertGpsToIllustration, snapToRoadCenter } from '../config/roadConfig';
 
 const MARKET_CENTER: [number, number] = [33.55915, 133.53100];
 
@@ -144,11 +144,12 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
           lastUpdateRef.current = now;
           lastAccuracyRef.current = accuracy;
 
-          // 実際のGPS座標を道路イラスト上の座標に変換
+          // 実際のGPS座標を道路イラスト上の座標に変換し、道路中央にスナップ
           let displayPosition: [number, number];
           if (inMarket) {
             const converted = convertGpsToIllustration(latitude, longitude);
-            displayPosition = [converted.lat, converted.lng];
+            const snapped = snapToRoadCenter(converted.lat, converted.lng);
+            displayPosition = [snapped.lat, snapped.lng];
           } else {
             displayPosition = MARKET_CENTER;
           }
