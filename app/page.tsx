@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapLoading } from "./components/MapLoadingProvider";
+import { motion } from "framer-motion";
+import { MapPin, Coffee, Utensils, HelpCircle, ChevronRight, User } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -13,139 +15,178 @@ export default function HomePage() {
     setLoaded(true);
   }, []);
 
+  // Remove zooming class if it exists from previous navigation
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.classList.remove("home-poster-zoom-open");
   }, []);
 
+  const handleMapClick = () => {
+    startMapLoading();
+    setTimeout(() => {
+      router.push("/map");
+    }, 300);
+  };
 
   return (
-    <div className="h-screen overflow-hidden text-gray-900">
-      <section className="relative h-screen w-screen overflow-hidden">
-        <div
-          className={`absolute inset-0 z-0 scale-[1.06] transition-opacity duration-300 filter blur-[3px] brightness-95 contrast-90 ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <img
+    <div className="min-h-screen w-full bg-[#FAFAF8] text-amber-950 font-sans selection:bg-amber-200">
+
+      {/* --- HERO SECTION --- */}
+      <section className="relative h-[90vh] w-full overflow-hidden flex items-center justify-center">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+           <img
             src="/homepagebackground.png"
-            alt=""
-            className="h-full w-full object-cover"
+            alt="Sunday Market Atmosphere"
+            className="h-full w-full object-cover object-center scale-105 blur-[2px] opacity-90"
           />
+          {/* Gentle overlay to harmonize */}
+          <div className="absolute inset-0 bg-amber-900/10" />
         </div>
-        <div className="absolute inset-0 z-10 flex flex-col text-gray-900">
-          <header className="relative mx-auto flex w-full max-w-md items-center justify-between px-6 pt-[calc(env(safe-area-inset-top)+12px)]">
-            <div className="flex items-center gap-3 text-2xl font-semibold tracking-[0.18em] text-amber-900">
-              <span className="inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-amber-200/80 shadow-sm">
-                <img
-                  src="/images/obaasan.webp"
-                  alt="おせっかいばあちゃん"
-                  className="h-full w-full object-cover"
-                />
-              </span>
-              nicchyo
+
+        {/* Smart Card Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative z-10 mx-6 w-full max-w-sm rounded-[2.5rem] bg-white/90 backdrop-blur-md p-8 shadow-2xl ring-1 ring-white/50"
+        >
+          <div className="flex flex-col items-center text-center">
+            {/* Branding Icon */}
+            <div className="mb-6 h-24 w-24 overflow-hidden rounded-full border-[6px] border-white shadow-lg">
+              <img
+                src="/images/obaasan.webp"
+                alt="にちよさん"
+                className="h-full w-full object-cover"
+              />
             </div>
 
-          </header>
+            <h1 className="font-serif text-2xl font-bold tracking-widest text-amber-950/90 mb-2">
+              迷ってこそが
+            </h1>
+            <div className="text-4xl font-extrabold text-orange-600 tracking-wider mb-6 drop-shadow-sm">
+              日曜市！
+            </div>
 
-          <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col justify-center px-3 pb-0">
-            <div className="relative space-y-6">
-                <div className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-amber-200/80 bg-white/90 px-3 py-1 text-[11px] font-semibold tracking-[0.2em] text-amber-700 shadow-sm">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" />
-                  日曜市×高知高専×デジタルマップ
-                </div>
+            <p className="text-sm font-medium leading-relaxed text-amber-800/80 mb-8">
+              広くてにぎやかな日曜市。<br />
+              <span className="font-bold text-amber-900">「お守りマップ」</span>があれば、<br />
+              もう迷子も怖くありません。
+            </p>
 
-                <article className="relative z-[900] mt-6 h-[calc(100vh-120px)] overflow-y-auto rounded-3xl border border-amber-200/80 bg-white/95 px-5 pb-[250px] pt-6 shadow-sm">
-                  <div className="mt-2" />
-                  <h1 className="mt-6 text-3xl font-semibold leading-snug text-slate-900">
-                    情報を詰め込まない、話しかけるようなマップ。
-                  </h1>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    高知の日曜市は、ずらりと店が並び、人の気配にあふれた魅力的な場所です。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    一方で、初めて訪れると「どこから見ればいいのか」「自分に合う店があるのか」と、
-                    <span className="font-semibold text-slate-800">少し戸惑ってしまうこともあります。</span>
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    nicchyoのマップは、そんなときのためのデジタルガイドです。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    市の全体像や雰囲気を把握しながら、無理に計画を立てることなく、安心して歩き始めることができます。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    nicchyoのマップには、案内役として「にちよさん」というおばあちゃんが登場します。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    お店を探すというより、
-                    <span className="font-semibold text-slate-800">「ちょっと聞いてみる」</span>
-                    感覚で使えるのが特徴です。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    無機質な情報を並べるのではなく、人の気配を感じられる形で情報を届けることで、
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    日曜市らしい寄り道や偶然の出会いを邪魔しない設計になっています。
-                  </p>
-                  <hr className="mt-8 border-slate-200" />
-                  <h2 className="mt-8 text-2xl font-semibold leading-snug text-slate-900">
-                    調べすぎなくても、迷っても大丈夫。
-                  </h2>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    このマップは、効率よく回るためのものではありません。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    どこに何があるのかを大まかに知りながら、自分のペースで歩くためのものです。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    「今日はなんとなくぶらぶらしたい」
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    そんな気分のまま使ってもらえるよう、
-                    <span className="font-semibold text-slate-800">必要以上の情報は載せていません。</span>
-                  </p>
-                  <hr className="mt-8 border-slate-200" />
-                  <h2 className="mt-8 text-2xl font-semibold leading-snug text-slate-900">
-                    日曜市を、少し安心して楽しむために。
-                  </h2>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    nicchyoは、初めての日曜市でも、
-                    <span className="font-semibold text-slate-800">構えすぎずに一歩を踏み出せる</span>
-                    ようにつくられました。
-                  </p>
-                  <p className="mt-6 text-lg leading-relaxed text-slate-700">
-                    誰かに付き添ってもらうような感覚で、マップを開いてみてください。
-                  </p>
-                </article>
+            <button
+              onClick={handleMapClick}
+              className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
+            >
+              <div className="flex items-center justify-center gap-2 text-lg font-bold tracking-wide">
+                <span>地図を見る</span>
+                <ChevronRight className="h-5 w-5" />
+              </div>
+              <div className="absolute inset-0 -z-10 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
+            </button>
 
-                                <div className="mt-5" />
+            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">
+               <span>Smart Guide</span>
+               <span>•</span>
+               <span>Free</span>
+            </div>
+          </div>
+        </motion.div>
+      </section>
 
+      {/* --- EMPATHY SECTION (Warm & Reassuring) --- */}
+      <section className="relative z-20 px-6 py-16 -mt-10 bg-gradient-to-b from-[#FAFAF8] to-white rounded-t-[3rem]">
+        <div className="mx-auto max-w-2xl">
+          <div className="text-center mb-10">
+            <h2 className="text-lg font-bold text-amber-800 md:text-xl">
+              はじめてでも、大丈夫。
+            </h2>
+            <p className="mt-4 text-amber-900/70 leading-relaxed">
+              「お店が多すぎてわからない」<br />
+              「トイレはどこにあるの？」<br />
+              そんな不安を解消します。
+            </p>
+          </div>
+
+            <div className="mt-8 bg-amber-50 rounded-2xl p-6 border border-amber-100">
+              <p className="text-center text-lg font-bold text-orange-700 leading-relaxed">
+                nicchyoは、<br />
+                あなたの「歩くパートナー」です。
+              </p>
+            </div>
+        </div>
+      </section>
+
+      {/* --- FEATURES SECTION (Concrete Benefits) --- */}
+      <section className="bg-white py-16 px-6">
+        <div className="mx-auto max-w-4xl">
+          <h2 className="text-center text-xl font-bold text-amber-900 mb-10">
+            安心して楽しむための<br className="md:hidden" />
+            3つの機能
+          </h2>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Feature 1 */}
+            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <Coffee className="h-6 w-6" />
+              </div>
+              <div className="text-left md:text-center">
+                <h3 className="font-bold text-amber-900">休憩スポット検索</h3>
+                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
+                  トイレやベンチの場所を一目でチェック。
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <User className="h-6 w-6" />
+              </div>
+              <div className="text-left md:text-center">
+                <h3 className="font-bold text-amber-900">おせっかいな案内人</h3>
+                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
+                  「にちよさん」がおすすめのお店を紹介。
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <MapPin className="h-6 w-6" />
+              </div>
+              <div className="text-left md:text-center">
+                <h3 className="font-bold text-amber-900">GPS現在地マップ</h3>
+                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
+                  今いる場所の近くに何があるかすぐわかる。
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+40px)] left-1/2 z-[1400] w-[min(680px,98vw)] -translate-x-1/2 px-3">
-        <div className="relative">
-          <div className="pointer-events-none absolute -inset-3 rounded-[28px] bg-amber-200/40 blur-xl opacity-80 animate-pulse" />
-          <button
-            type="button"
-            onClick={() => {
-              startMapLoading();
-              window.setTimeout(() => {
-                router.push("/map");
-              }, 350);
-            }}
-            className="relative h-14 w-full overflow-hidden rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-400 to-orange-400 px-6 text-lg font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:from-amber-400/95 hover:to-orange-400/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 active:translate-y-0.5"
-            aria-label="マップへ"
-          >
-            <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
-            <span className="inline-flex items-center justify-center gap-2">
-              マップへ
-              <span className="text-xl">↗</span>
-            </span>
-          </button>
-        </div>
-      </div>
+      </section>
 
+      {/* --- FOOTER CTA --- */}
+      <section className="py-20 px-6 text-center bg-amber-50">
+        <h2 className="text-lg font-bold text-amber-900 mb-6">
+          さあ、日曜市へ出かけましょう。
+        </h2>
+        <div className="mx-auto w-full max-w-sm">
+          <button
+             onClick={handleMapClick}
+             className="group relative w-full overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-amber-500 p-5 text-white shadow-xl transition-all hover:shadow-2xl hover:-translate-y-1 active:scale-95"
+           >
+             <div className="flex items-center justify-center gap-2 text-xl font-bold tracking-wide">
+               <span>マップを開く</span>
+               <ChevronRight className="h-6 w-6" />
+             </div>
+           </button>
+           <p className="mt-4 text-xs text-amber-800/50">
+             nicchyo - 日曜市デジタルマップ
+           </p>
+        </div>
       </section>
     </div>
   );
