@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } fro
 import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
+import { Navigation } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
@@ -388,6 +389,7 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
+  const [isTracking, setIsTracking] = useState(true);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
@@ -938,7 +940,22 @@ const MapView = memo(function MapView({
               inMarket,
             });
           }}
+          isTracking={isTracking}
         />
+
+        {/* 追従ボタン */}
+        <div className="absolute top-4 left-4 z-[1000]">
+          <button
+            type="button"
+            onClick={() => setIsTracking((prev) => !prev)}
+            className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-colors ${
+              isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700"
+            }`}
+            aria-label={isTracking ? "追従中" : "追従オフ"}
+          >
+            <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
+          </button>
+        </div>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【削除】ZoomTracker を削除
