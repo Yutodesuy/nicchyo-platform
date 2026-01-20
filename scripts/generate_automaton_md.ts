@@ -10,6 +10,7 @@ const generateMarkdown = () => {
     md += `**${p.question}**\n\n`;
     md += `### 解答\n${p.answer}\n\n`;
     md += `### 解説\n${p.explanation}\n\n`;
+    md += `### 間違いやすいポイント\n> ${p.commonMistakes}\n\n`;
     md += `### 正式な証明\n\`\`\`\n${p.formalProof}\n\`\`\`\n\n---\n\n`;
   });
 

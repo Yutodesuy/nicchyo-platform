@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { problems, Problem } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers, AlertTriangle } from "lucide-react";
 
 // Define sections map
 const SECTIONS: Record<string, string> = {
@@ -154,6 +154,17 @@ export default function AutomatonPage() {
                                   <p className="text-gray-600 leading-relaxed">
                                     {problem.explanation}
                                   </p>
+                                </div>
+
+                                {/* Common Mistakes */}
+                                <div className="space-y-2 pt-2 border-t border-gray-200/60">
+                                  <div className="flex items-center gap-2 text-amber-600 font-semibold uppercase tracking-wider text-xs">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    Common Mistakes
+                                  </div>
+                                  <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-amber-900 leading-relaxed">
+                                    {problem.commonMistakes}
+                                  </div>
                                 </div>
 
                                 {/* Formal Proof */}
