@@ -170,14 +170,14 @@ export default function BagPage() {
               className={`flex-1 relative z-10 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${mode === 'plan' ? 'text-stone-800' : 'text-stone-500 hover:text-stone-700'}`}
             >
               <ListTodo size={16} />
-              準備（編集）
+              リストを作る
             </button>
             <button
               onClick={() => setMode('shop')}
               className={`flex-1 relative z-10 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${mode === 'shop' ? 'text-emerald-700' : 'text-stone-500 hover:text-stone-700'}`}
             >
               <ShoppingCart size={16} />
-              買い物中
+              お買い物中
             </button>
           </div>
 
@@ -191,7 +191,7 @@ export default function BagPage() {
                 className="overflow-hidden"
               >
                 <div className="flex justify-between items-end mb-1">
-                  <span className="text-[10px] font-bold text-emerald-700">お買い物達成度</span>
+                  <span className="text-[10px] font-bold text-emerald-700">買い物の進み具合</span>
                   <span className="text-sm font-black text-emerald-600 font-mono">{progress}%</span>
                 </div>
                 <div className="h-2 w-full bg-stone-200 rounded-full overflow-hidden">
@@ -327,7 +327,7 @@ export default function BagPage() {
                             {(item.qty || item.note) && (
                               <div className="mt-1 space-y-0.5">
                                 {item.qty && <p className="text-xs text-stone-600 font-medium bg-stone-100 inline-block px-1.5 py-0.5 rounded">数量: {item.qty}</p>}
-                                {item.note && <p className="text-xs text-stone-500">Note: {item.note}</p>}
+                                {item.note && <p className="text-xs text-stone-500">メモ: {item.note}</p>}
                               </div>
                             )}
                           </div>
@@ -348,7 +348,7 @@ export default function BagPage() {
               onClick={() => setPendingReset(true)}
               className="text-xs font-bold text-stone-400 hover:text-red-500 underline decoration-stone-300 underline-offset-4 transition-colors"
             >
-              リストをすべて削除する
+              リストを空にする
             </button>
           </div>
         )}
@@ -446,10 +446,10 @@ function BagGuideModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 <div>
                   <h3 className="font-bold text-stone-800 mb-1 flex items-center gap-2">
                     <ListTodo size={16} />
-                    欲しいものを登録
+                    欲しいものをメモ
                   </h3>
                   <p className="text-xs text-stone-500 leading-relaxed">
-                    「準備モード」で、マップのお店やレシピから欲しいものをリストに追加・整理します。
+                    「リストを作る」モードで、マップのお店やレシピから欲しいものをリストに追加・整理します。
                   </p>
                 </div>
               </div>
