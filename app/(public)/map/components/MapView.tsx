@@ -240,13 +240,21 @@ function MapControls({
 }) {
   const map = useMap();
 
-  // Mobile: Only tracking button at bottom-right (above nav bar)
+  // Mobile: Only tracking button at top-left
   if (isMobile) {
     return (
-      <div className="absolute bottom-24 right-4 z-[1000]">
+      <div
+        className="absolute top-4 left-4 z-[1000]"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
-          onClick={onToggleTracking}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleTracking();
+          }}
           className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
             isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
           }`}
