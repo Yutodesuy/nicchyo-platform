@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { problems } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 export default function AutomatonPage() {
@@ -81,7 +81,8 @@ export default function AutomatonPage() {
                   transition={{ duration: 0.3 }}
                   className="border-t border-gray-100 bg-gray-50/50"
                 >
-                  <div className="p-5 pl-20 pr-8 space-y-4">
+                  <div className="p-5 pl-20 pr-8 space-y-6">
+                    {/* Short Answer */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm uppercase tracking-wider">
                         <CheckCircle className="w-4 h-4" />
@@ -90,6 +91,7 @@ export default function AutomatonPage() {
                       <p className="text-gray-800 font-medium">{problem.answer}</p>
                     </div>
 
+                    {/* Casual Explanation */}
                     <div className="space-y-2 pt-2 border-t border-gray-200/60">
                       <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
                         Explanation
@@ -97,6 +99,19 @@ export default function AutomatonPage() {
                       <p className="text-gray-600 leading-7 text-sm">
                         {problem.explanation}
                       </p>
+                    </div>
+
+                    {/* Formal Proof */}
+                    <div className="space-y-3 pt-2 border-t border-gray-200/60">
+                      <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm uppercase tracking-wider">
+                        <BookOpen className="w-4 h-4" />
+                        Formal Proof
+                      </div>
+                      <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono leading-relaxed overflow-x-auto">
+                          {problem.formalProof}
+                        </pre>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
