@@ -24,6 +24,7 @@ type ShopRow = {
   stall_style: string | null;
   schedule: string | null;
   message: string | null;
+  shop_strength: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -42,11 +43,15 @@ export async function POST(request: Request) {
     let text: string | undefined;
     let location: { lat: number; lng: number } | null | undefined;
     let imageDataUrl: string | null = null;
+    let targetShopId: number | null = null;
+    let targetShopName: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
       const formText = form.get("text");
       const formLocation = form.get("location");
+      const formShopId = form.get("shopId");
+      const formShopName = form.get("shopName");
       const formImage = form.get("image");
       text = typeof formText === "string" ? formText : undefined;
       if (typeof formLocation === "string") {
@@ -55,6 +60,13 @@ export async function POST(request: Request) {
         } catch {
           location = null;
         }
+      }
+      if (typeof formShopId === "string" && formShopId.trim()) {
+        const parsed = Number(formShopId);
+        targetShopId = Number.isFinite(parsed) ? parsed : null;
+      }
+      if (typeof formShopName === "string" && formShopName.trim()) {
+        targetShopName = formShopName.trim();
       }
       if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
         const imageFile = formImage as File;
@@ -67,9 +79,16 @@ export async function POST(request: Request) {
       const payload = (await request.json()) as {
         text?: string;
         location?: { lat: number; lng: number } | null;
+        shopId?: number | null;
+        shopName?: string | null;
       };
       text = payload.text;
       location = payload.location;
+      targetShopId =
+        typeof payload.shopId === "number" && Number.isFinite(payload.shopId)
+          ? payload.shopId
+          : null;
+      targetShopName = payload.shopName?.trim() || null;
     }
 
     const rawQuestion = (text ?? "").trim();
@@ -132,6 +151,42 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    let targetShop: ShopRow | null = null;
+    if (targetShopId || targetShopName) {
+      const { data } = await supabase
+        .from("shops")
+        .select(
+          [
+            "id",
+            "legacy_id",
+            "name",
+            "owner_name",
+            "chome",
+            "category",
+            "products",
+            "description",
+            "specialty_dish",
+            "about_vendor",
+            "stall_style",
+            "schedule",
+            "message",
+            "shop_strength",
+            "lat",
+            "lng",
+          ].join(",")
+        )
+        .or(
+          [
+            targetShopId ? `legacy_id.eq.${targetShopId}` : null,
+            targetShopName ? `name.ilike.%${targetShopName}%` : null,
+          ]
+            .filter(Boolean)
+            .join(",")
+        )
+        .limit(1);
+      const rows = Array.isArray(data) ? (data as unknown as ShopRow[]) : [];
+      targetShop = rows[0] ?? null;
+    }
     const { data: matches } = await supabase
       .rpc("match_shop_embeddings", {
         query_embedding: embedding,
@@ -164,6 +219,7 @@ export async function POST(request: Request) {
             "stall_style",
             "schedule",
             "message",
+            "shop_strength",
             "lat",
             "lng",
           ].join(",")
@@ -212,6 +268,7 @@ export async function POST(request: Request) {
             "stall_style",
             "schedule",
             "message",
+            "shop_strength",
             "lat",
             "lng",
           ].join(",")
@@ -251,6 +308,7 @@ export async function POST(request: Request) {
             "stall_style",
             "schedule",
             "message",
+            "shop_strength",
             "lat",
             "lng",
           ].join(",")
@@ -288,29 +346,6 @@ export async function POST(request: Request) {
       knowledgeRows = (data ?? []) as unknown as KnowledgeRow[];
     }
 
-    const shopContext =
-      shops.length > 0
-        ? shops
-            .map((shop) => {
-              const parts = [
-                `id:${shop.id}`,
-                shop.legacy_id
-                  ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}`
-                  : null,
-                shop.name ? `name:${shop.name}` : null,
-                shop.category ? `category:${shop.category}` : null,
-                shop.products?.length
-                  ? `products:${shop.products.join(" / ")}`
-                  : null,
-                shop.specialty_dish ? `specialty:${shop.specialty_dish}` : null,
-                shop.description ? `desc:${shop.description}` : null,
-                shop.message ? `message:${shop.message}` : null,
-              ].filter(Boolean);
-              return parts.join(" | ");
-            })
-            .join("\n")
-        : "該当なし";
-
     const knowledgeContext =
       knowledgeRows.length > 0
         ? knowledgeRows
@@ -326,6 +361,50 @@ export async function POST(request: Request) {
             })
             .join("\n")
         : "該当なし";
+    let shopContext =
+      shops.length > 0
+        ? shops
+            .map((shop) => {
+              const parts = [
+                `id:${shop.id}`,
+                shop.legacy_id
+                  ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}`
+                  : null,
+                shop.name ? `name:${shop.name}` : null,
+                shop.category ? `category:${shop.category}` : null,
+                shop.products?.length
+                  ? `products:${shop.products.join(" / ")}`
+                  : null,
+                shop.specialty_dish ? `specialty:${shop.specialty_dish}` : null,
+                shop.description ? `desc:${shop.description}` : null,
+                shop.shop_strength ? `strength:${shop.shop_strength}` : null,
+                shop.message ? `message:${shop.message}` : null,
+              ].filter(Boolean);
+              return parts.join(" | ");
+            })
+            .join("\n")
+        : "該当なし";
+    if (targetShop) {
+      shopIntent = true;
+      const targetParts = [
+        targetShop.legacy_id
+          ? `legacy_id:${String(targetShop.legacy_id).padStart(3, "0")}`
+          : null,
+        targetShop.name ? `name:${targetShop.name}` : null,
+        targetShop.category ? `category:${targetShop.category}` : null,
+        targetShop.products?.length
+          ? `products:${targetShop.products.join(" / ")}`
+          : null,
+        targetShop.shop_strength ? `strength:${targetShop.shop_strength}` : null,
+      ].filter(Boolean);
+      if (targetParts.length > 0) {
+        const targetContext = `TARGET_SHOP: ${targetParts.join(" | ")}`;
+        shopContext = `${targetContext}\n${shopContext}`.trim();
+        shops = [targetShop, ...shops.filter((shop) => shop.id !== targetShop!.id)];
+        matchIds = [targetShop.id, ...matchIds.filter((id) => id !== targetShop!.id)];
+        matchIds = Array.from(new Set(matchIds));
+      }
+    }
 
     const haversine = (
       a: { lat: number; lng: number },
