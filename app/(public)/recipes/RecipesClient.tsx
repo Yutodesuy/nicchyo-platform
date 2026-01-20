@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
+import { Map as MapIcon, ShoppingBag, ArrowRight } from "lucide-react";
 import {
   ingredientCatalog,
   ingredientIcons,
@@ -232,7 +233,47 @@ export default function RecipesClient() {
               </span>
             </div>
 
-            {fridgeIngredientIds.length > 0 && ranked.length > 0 ? (
+            {fridgeIngredientIds.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                  <ShoppingBag size={32} />
+                </div>
+                <h3 className="mb-2 text-lg font-bold text-gray-900">
+                  食材を集めよう
+                </h3>
+                <p className="mx-auto mb-6 max-w-sm text-sm text-gray-600 leading-relaxed">
+                  日曜市マップで気になる食材をタップして、レシピを見つけましょう。
+                  <br />
+                  あなたの冷蔵庫（バッグ）の中身に合わせて、おすすめのレシピを提案します。
+                </p>
+                <Link
+                  href="/map"
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-200/50 transition hover:bg-amber-500 hover:shadow-xl active:scale-95"
+                >
+                  <MapIcon size={18} />
+                  マップで食材を探す
+                  <ArrowRight size={16} className="opacity-60" />
+                </Link>
+              </div>
+            ) : ranked.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-8 text-center">
+                <p className="text-3xl mb-2">🤔</p>
+                <h3 className="mb-2 text-base font-bold text-gray-900">
+                  一致するレシピが見つかりません
+                </h3>
+                <p className="text-sm text-gray-600">
+                  現在の食材の組み合わせではレシピが見つかりませんでした。
+                  <br />
+                  他の食材も追加して、バリエーションを広げてみましょう！
+                </p>
+                <Link
+                  href="/map"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-amber-700 hover:text-amber-800 underline decoration-amber-300 underline-offset-4"
+                >
+                  マップに戻る
+                </Link>
+              </div>
+            ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {ranked.map(({ recipe }) => (
                   <article
@@ -297,10 +338,6 @@ export default function RecipesClient() {
                     </div>
                   </article>
                 ))}
-              </div>
-            ) : (
-              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-4 py-6 text-center text-base text-gray-800">
-                冷蔵庫に食材がないか、一致するレシピが見つかりません。食材を追加してください。
               </div>
             )}
             </div>
