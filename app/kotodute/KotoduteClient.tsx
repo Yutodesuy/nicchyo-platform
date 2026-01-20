@@ -6,6 +6,7 @@ import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
 import { useSearchParams } from "next/navigation";
+import { MessageSquarePlus, Sparkles } from "lucide-react";
 
 const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
 
@@ -144,8 +145,19 @@ export default function KotoduteClient() {
           </div>
 
           {filteredNotes.length === 0 ? (
-            <div className="mt-3 rounded-xl border border-dashed border-amber-200 bg-white/80 px-4 py-6 text-center text-sm text-gray-700">
-              まだ投稿がありません。
+            <div className="mt-3 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-10 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <MessageSquarePlus size={32} />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-gray-900 flex items-center justify-center gap-2">
+                <Sparkles size={20} className="text-yellow-500" />
+                一番乗りで投稿しよう！
+              </h3>
+              <p className="mx-auto max-w-sm text-sm text-gray-600 leading-relaxed">
+                まだコメントがありません。
+                <br />
+                あなたの日曜市体験や、お店への応援メッセージをシェアしてください。
+              </p>
             </div>
           ) : (
             <div className="mt-3 space-y-2">
