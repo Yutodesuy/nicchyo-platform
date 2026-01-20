@@ -28,6 +28,7 @@ import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
+import FacilityLayer from "./FacilityLayer";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
   getRoadBounds,
@@ -318,6 +319,7 @@ function MapControls({
 type MapViewProps = {
   shops?: Shop[];
   initialShopId?: number;
+  initialCenter?: { lat: number; lng: number; zoom?: number };
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
@@ -380,6 +382,7 @@ function MapDragListener({ onDragStart }: { onDragStart: () => void }) {
 const MapView = memo(function MapView({
   shops: initialShops,
   initialShopId,
+  initialCenter,
   selectedRecipe,
   showRecipeOverlay,
   onCloseRecipeOverlay,
@@ -511,8 +514,13 @@ const MapView = memo(function MapView({
           }
         }
       }
+    } else if (initialCenter && mapRef.current) {
+      mapRef.current.setView(
+        [initialCenter.lat, initialCenter.lng],
+        initialCenter.zoom ?? 18
+      );
     }
-  }, [initialShopId, shops]);
+  }, [initialShopId, shops, initialCenter]);
 
   useEffect(() => {
     const updateShops = () => {
@@ -962,6 +970,9 @@ const MapView = memo(function MapView({
           attendanceLabelsByShop={attendanceLabelsByShop}
           bagShopIds={bagShopIds}
         />
+
+        {/* トイレ・ベンチレイヤー */}
+        <FacilityLayer />
 
         {/* レシピオーバーレイ */}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {

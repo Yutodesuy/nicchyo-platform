@@ -6,6 +6,7 @@ import NavigationBar from '../../components/NavigationBar';
 import type { Shop } from '../map/data/shops';
 import { buildSearchIndex } from './lib/searchIndex';
 import { useShopSearch } from './hooks/useShopSearch';
+import { useFacilitySearch } from './hooks/useFacilitySearch';
 import SearchInput from './components/SearchInput';
 import CategoryFilter from './components/CategoryFilter';
 import SearchResults from './components/SearchResults';
@@ -54,6 +55,10 @@ export default function SearchClient({ shops }: SearchClientProps) {
     category,
     chome: selectedChome,
   });
+
+  // 施設検索
+  const filteredFacilities = useFacilitySearch(textQuery);
+
   const visibleShops = useMemo(
     () => filteredShops.slice(0, visibleCount),
     [filteredShops, visibleCount]
@@ -103,7 +108,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
     return '検索結果';
   }, [textQuery, category, selectedChome, chomeOptions]);
 
-  const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
+  const hasNameResults = textQuery.trim() !== '' && (filteredShops.length > 0 || filteredFacilities.length > 0);
   const shouldShowMapButton = category !== null || selectedChome !== null || hasNameResults;
 
   useEffect(() => {
@@ -206,6 +211,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
                     {/* 検索結果 */}
                     <SearchResults
                         shops={visibleShops}
+                        facilities={filteredFacilities}
                         totalCount={filteredShops.length}
                         hasQuery={hasQuery}
                         categories={categories}

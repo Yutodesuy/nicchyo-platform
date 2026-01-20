@@ -26,6 +26,7 @@ import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
+import FacilityLayer from "./FacilityLayer";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import { getRoadBounds } from '../config/roadConfig';
 import { getZoomConfig } from '../utils/zoomCalculator';
@@ -121,6 +122,7 @@ function MobileZoomControls() {
 
 type MapViewProps = {
   initialShopId?: number;
+  initialCenter?: { lat: number; lng: number; zoom?: number };
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
@@ -130,6 +132,7 @@ type MapViewProps = {
 
 export default function MapView({
   initialShopId,
+  initialCenter,
   selectedRecipe,
   showRecipeOverlay,
   onCloseRecipeOverlay,
@@ -184,8 +187,13 @@ export default function MapView({
           mapRef.current.setView([shop.lat, shop.lng], 18);
         }
       }
+    } else if (initialCenter && mapRef.current) {
+      mapRef.current.setView(
+        [initialCenter.lat, initialCenter.lng],
+        initialCenter.zoom ?? 18
+      );
     }
-  }, [initialShopId]);
+  }, [initialShopId, initialCenter]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -350,6 +358,9 @@ export default function MapView({
           onShopClick={handleShopClick}
           selectedShopId={selectedShop?.id}
         />
+
+        {/* トイレ・ベンチレイヤー */}
+        <FacilityLayer />
 
         {/* レシピオーバーレイ */}
         {showRecipeOverlay && shopsWithIngredients.map((shop) => {
