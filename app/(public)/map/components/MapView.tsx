@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } fro
 import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
-import { Navigation } from "lucide-react";
+import { Navigation, Plus, Minus } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
@@ -229,24 +229,79 @@ function isIngredientName(name: string) {
 }
 
 // ===== Mobile zoom buttons =====
-function MobileZoomControls() {
+function MapControls({
+  isMobile,
+  isTracking,
+  onToggleTracking,
+}: {
+  isMobile: boolean;
+  isTracking: boolean;
+  onToggleTracking: () => void;
+}) {
   const map = useMap();
 
+  // Mobile: Only tracking button at bottom-right (above nav bar)
+  if (isMobile) {
+    return (
+      <div className="absolute bottom-24 right-4 z-[1000]">
+        <button
+          type="button"
+          onClick={onToggleTracking}
+          className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
+            isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+          aria-label={isTracking ? "追従中" : "追従オフ"}
+        >
+          <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
+        </button>
+      </div>
+    );
+  }
+
+  // Desktop: Unified stack at top-left
   return (
-    <div className="pointer-events-none absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+    <div
+      className="absolute top-4 left-4 z-[1000] flex flex-col overflow-hidden rounded-lg bg-white shadow-md ring-1 ring-gray-900/5"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       <button
         type="button"
-        onClick={() => map.zoomIn()}
-        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-white text-xl shadow-lg active:scale-95"
+        onClick={(e) => {
+          e.stopPropagation();
+          map.zoomIn();
+        }}
+        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        aria-label="ズームイン"
       >
-        +
+        <Plus className="h-5 w-5" />
       </button>
       <button
         type="button"
-        onClick={() => map.zoomOut()}
-        className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-white text-xl shadow-lg active:scale-95"
+        onClick={(e) => {
+          e.stopPropagation();
+          map.zoomOut();
+        }}
+        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        aria-label="ズームアウト"
       >
-        −
+        <Minus className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleTracking();
+        }}
+        className={`flex h-9 w-9 items-center justify-center transition-colors ${
+          isTracking
+            ? "bg-blue-50 text-blue-600"
+            : "bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        }`}
+        aria-label={isTracking ? "追従中" : "追従オフ"}
+      >
+        <Navigation className={`h-4 w-4 ${isTracking ? "fill-current" : ""}`} />
       </button>
     </div>
   );
@@ -300,6 +355,17 @@ function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => vo
       map.off("zoomend", handleZoom);
     };
   }, [map, onZoomChange]);
+  return null;
+}
+
+function MapDragListener({ onDragStart }: { onDragStart: () => void }) {
+  const map = useMap();
+  useEffect(() => {
+    map.on("dragstart", onDragStart);
+    return () => {
+      map.off("dragstart", onDragStart);
+    };
+  }, [map, onDragStart]);
   return null;
 }
 
@@ -698,7 +764,7 @@ const MapView = memo(function MapView({
           width: "100%",
           backgroundColor: "#faf8f3",
         }}
-        zoomControl={!isMobile}
+        zoomControl={false}
         attributionControl={false}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1.0}
@@ -711,6 +777,7 @@ const MapView = memo(function MapView({
         }}
       >
         <MapZoomListener onZoomChange={onZoomChange} />
+        <MapDragListener onDragStart={() => setIsTracking(false)} />
         {/* 背景 */}
         <BackgroundOverlay />
 
@@ -943,28 +1010,18 @@ const MapView = memo(function MapView({
           isTracking={isTracking}
         />
 
-        {/* 追従ボタン */}
-        <div className="absolute top-4 left-4 z-[1000]">
-          <button
-            type="button"
-            onClick={() => setIsTracking((prev) => !prev)}
-            className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-colors ${
-              isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700"
-            }`}
-            aria-label={isTracking ? "追従中" : "追従オフ"}
-          >
-            <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-          </button>
-        </div>
+        {/* マップコントロール (ズーム・追従) */}
+        <MapControls
+          isMobile={isMobile}
+          isTracking={isTracking}
+          onToggleTracking={() => setIsTracking((prev) => !prev)}
+        />
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【削除】ZoomTracker を削除
             - currentZoom を state で管理しないため不要
             - ズーム操作で React が再レンダリングされない
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-
-        {/* モバイルズームコントロール */}
-        {false && isMobile && <MobileZoomControls />}
       </MapContainer>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
