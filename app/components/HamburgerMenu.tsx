@@ -295,32 +295,6 @@ export default function HamburgerMenu() {
                       </div>
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      href="/login"
-                      onClick={closeMenu}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-amber-200 bg-white px-4 py-3 text-gray-700 transition hover:bg-amber-100"
-                    >
-                      <MenuIcon name="user" className="h-5 w-5 text-amber-700" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">ログイン</p>
-                        <p className="text-xs text-gray-600">ログイン画面へ進む</p>
-                      </div>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/signup"
-                      onClick={closeMenu}
-                      className="flex w-full items-center gap-3 rounded-lg border-2 border-orange-200 bg-white px-4 py-3 text-gray-700 transition hover:bg-orange-50"
-                    >
-                      <MenuIcon name="user" className="h-5 w-5 text-orange-600" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-semibold">サインアップ</p>
-                        <p className="text-xs text-gray-600">アカウントを作成</p>
-                      </div>
-                    </Link>
-                  </li>
                 </>
               )}
 
@@ -338,6 +312,30 @@ export default function HamburgerMenu() {
                   <p className="text-sm font-medium">このサービスについて</p>
                 </Link>
               </li>
+              {!isLoggedIn && (
+                <>
+                  <li>
+                    <Link
+                      href="/login"
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <MenuIcon name="user" className="h-5 w-5 text-gray-600" />
+                      <p className="text-sm font-medium">ログイン</p>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/signup"
+                      onClick={closeMenu}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <MenuIcon name="user" className="h-5 w-5 text-gray-600" />
+                      <p className="text-sm font-medium">サインアップ</p>
+                    </Link>
+                  </li>
+                </>
+              )}
               <li>
                 <Link
                   href="/faq"

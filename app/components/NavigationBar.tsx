@@ -57,10 +57,15 @@ export default function NavigationBar({
               }
               className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
-              }`}
+              } ${item.href === "/map" ? "nav-map-arc" : ""}`}
             >
-              <NavIcon name={item.icon} className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-none">{item.name}</span>
+              {item.href === "/map" && (
+                <span className="nav-map-arc-ring" aria-hidden="true" />
+              )}
+              <span className="nav-map-arc-content">
+                <NavIcon name={item.icon} className="h-5 w-5" />
+                <span className="text-[10px] font-medium leading-none">{item.name}</span>
+              </span>
             </Link>
           );
         })}

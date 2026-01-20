@@ -28,7 +28,8 @@ type GrandmaChatterProps = {
   onPriorityDismiss?: () => void;
   onAsk?: (
     text: string,
-    imageFile?: File | null
+    imageFile?: File | null,
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
   ) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
@@ -45,6 +46,7 @@ type GrandmaChatterProps = {
   layout?: "floating" | "page";
   onClear?: () => void;
   autoAskText?: string | null;
+  autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
 };
 
@@ -70,6 +72,7 @@ export default function GrandmaChatter({
   layout = "floating",
   onClear,
   autoAskText,
+  autoAskContext,
   currentZoom,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -121,6 +124,7 @@ export default function GrandmaChatter({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
+  const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
     startY: number;
@@ -333,10 +337,10 @@ export default function GrandmaChatter({
       if (!isChatOpen) setIsChatOpen(true);
 
       setTimeout(() => {
-        handleAskSubmit(autoAskText);
+        handleAskSubmit(autoAskText, autoAskContext);
       }, 600);
     }
-  }, [autoAskText, hasProcessedAutoAsk, isChatOpen]);
+  }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen]);
 
   useEffect(() => {
     const scrollContainer = chatScrollRef.current;
@@ -407,10 +411,17 @@ export default function GrandmaChatter({
     }
   };
 
-  const handleAskSubmit = async (text?: string) => {
+  const handleAskSubmit = async (
+    text?: string,
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
+    openChat?: boolean
+  ) => {
     if (aiStatus === "thinking") return;
     const value = (text ?? askText).trim();
     if (!value && !selectedImageFile) return;
+    if (openChat && !isChatOpen) {
+      setIsChatOpen(true);
+    }
     const imageFile = selectedImageFile;
     const imagePreview = selectedImagePreview;
     setAskText("");
@@ -436,7 +447,7 @@ export default function GrandmaChatter({
     const requestId = ++askRequestRef.current;
     try {
       const response = onAsk
-        ? await onAsk(value, imageFile ?? undefined)
+        ? await onAsk(value, imageFile ?? undefined, context)
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       setAiStatus("answered");
@@ -675,8 +686,6 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
-  const router = useRouter();
-
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -727,7 +736,16 @@ export default function GrandmaChatter({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push(`/consult?q=${encodeURIComponent(label)}`);
+                    const params = new URLSearchParams();
+                    params.set("q", label);
+                    if (current?.shopId) {
+                      params.set("shopId", String(current.shopId));
+                      const shopName = shopLookup.get(current.shopId)?.name;
+                      if (shopName) {
+                        params.set("shopName", shopName);
+                      }
+                    }
+                    router.push(`/consult?${params.toString()}`);
                   }}
                   className="rounded-full bg-white/90 border border-amber-200 px-4 py-2 text-sm font-bold text-amber-800 shadow-md backdrop-blur-sm transition hover:scale-105 hover:bg-white active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${i * 100}ms` }}
@@ -880,6 +898,29 @@ export default function GrandmaChatter({
                   </div>
                 </div>
               ))}
+              {aiStatus === "thinking" && (
+                <div className="flex justify-start items-start gap-2">
+                  <div className="flex-shrink-0">
+                    <div className="h-10 w-10 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm">
+                      <img
+                        src={PLACEHOLDER_IMAGE}
+                        alt="にちよさん"
+                        className="h-full w-full scale-110 object-cover object-center"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                        aria-label="回答を作成中"
+                      />
+                      <span className="text-xs text-gray-500">考え中…</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             {showScrollToBottom && (
               <button
@@ -1137,7 +1178,7 @@ export default function GrandmaChatter({
               <button
                 key={label}
                 type="button"
-                onClick={() => handleAskSubmit(label)}
+                onClick={() => handleAskSubmit(label, { source: "input" })}
                 disabled={aiStatus === "thinking"}
                 className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
                   aiStatus === "thinking"

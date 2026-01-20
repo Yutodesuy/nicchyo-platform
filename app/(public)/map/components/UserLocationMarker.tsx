@@ -27,6 +27,7 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const arrowRef = useRef<HTMLDivElement | null>(null);
+  const lastHeadingRef = useRef<number | null>(null);
   const lastUpdateRef = useRef(0);
   const onLocationUpdateRef = useRef(onLocationUpdate);
   const isTrackingRef = useRef(isTracking);
@@ -40,6 +41,13 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
   const lastAccuracyRef = useRef<number | null>(null);
   // 初回位置取得フラグ（マップを位置に移動させるため）
   const isFirstLocationRef = useRef(true);
+
+  const applyHeading = (heading: number) => {
+    lastHeadingRef.current = heading;
+    if (!arrowRef.current) return;
+    arrowRef.current.style.transform = `rotate(${heading}deg)`;
+    arrowRef.current.style.opacity = '1';
+  };
 
   useEffect(() => {
     onLocationUpdateRef.current = onLocationUpdate;
@@ -69,9 +77,8 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
             heading = 360 - event.alpha;
         }
 
-        if (heading !== null && arrowRef.current) {
-             arrowRef.current.style.transform = `rotate(${heading}deg)`;
-             arrowRef.current.style.opacity = '1';
+        if (heading !== null) {
+             applyHeading(heading);
         }
     };
 
@@ -178,6 +185,9 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
             const arrow = el.querySelector('.user-heading-arrow') as HTMLDivElement;
             if (arrow) {
                 arrowRef.current = arrow;
+                if (lastHeadingRef.current !== null) {
+                  applyHeading(lastHeadingRef.current);
+                }
             }
         }
 
@@ -260,7 +270,12 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
              const el = markerRef.current.getElement();
              if (el) {
                  const arrow = el.querySelector('.user-heading-arrow') as HTMLDivElement;
-                 if (arrow) arrowRef.current = arrow;
+                 if (arrow) {
+                   arrowRef.current = arrow;
+                   if (lastHeadingRef.current !== null) {
+                     applyHeading(lastHeadingRef.current);
+                   }
+                 }
              }
           } else {
             markerRef.current = setupMarker(displayPosition[0], displayPosition[1]);
