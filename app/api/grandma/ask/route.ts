@@ -184,7 +184,8 @@ export async function POST(request: Request) {
             .join(",")
         )
         .limit(1);
-      targetShop = (data?.[0] ?? null) as ShopRow | null;
+      const rows = Array.isArray(data) ? (data as unknown as ShopRow[]) : [];
+      targetShop = rows[0] ?? null;
     }
     const { data: matches } = await supabase
       .rpc("match_shop_embeddings", {
