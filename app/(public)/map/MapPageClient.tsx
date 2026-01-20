@@ -595,7 +595,7 @@ export default function MapPageClient({
                       onClick={handleOpenVendorBanner}
                       className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
                     >
-                      ショップバナーを開く
+                        お店の情報を開く
                     </button>
                     <button
                       type="button"

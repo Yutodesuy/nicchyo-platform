@@ -142,8 +142,8 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="users" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">ユーザー管理</p>
-                            <p className="text-xs text-gray-500">権限設定など</p>
+                            <p className="text-sm font-medium">権限設定</p>
+                            <p className="text-xs text-gray-500">ユーザーの管理</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
@@ -158,7 +158,7 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="shield" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">モデレーション</p>
+                            <p className="text-sm font-medium">投稿の管理</p>
                             <p className="text-xs text-gray-500">投稿の確認</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
@@ -245,8 +245,8 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="bag" className="h-5 w-5 text-gray-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">バッグ</p>
-                            <p className="text-xs text-gray-500">気になるものを保存</p>
+                            <p className="text-sm font-medium">お買い物リスト</p>
+                            <p className="text-xs text-gray-500">買うものをメモ</p>
                           </div>
                         </Link>
                       </li>
@@ -290,8 +290,8 @@ export default function HamburgerMenu() {
                     >
                       <MenuIcon name="bag" className="h-5 w-5 text-amber-700" />
                       <div className="flex-1">
-                        <p className="text-sm font-semibold">バッグ</p>
-                        <p className="text-xs text-amber-700/80">気になるものを保存</p>
+                        <p className="text-sm font-semibold">お買い物リスト</p>
+                        <p className="text-xs text-amber-700/80">買うものをメモ</p>
                       </div>
                     </Link>
                   </li>
@@ -331,7 +331,7 @@ export default function HamburgerMenu() {
                       className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-gray-50"
                     >
                       <MenuIcon name="user" className="h-5 w-5 text-gray-600" />
-                      <p className="text-sm font-medium">サインアップ</p>
+                      <p className="text-sm font-medium">アカウント登録</p>
                     </Link>
                   </li>
                 </>

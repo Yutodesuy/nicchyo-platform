@@ -158,7 +158,7 @@ export default function HomePage() {
                 <MapPin className="h-6 w-6" />
               </div>
               <div className="text-left md:text-center">
-                <h3 className="font-bold text-amber-900">GPS現在地マップ</h3>
+                <h3 className="font-bold text-amber-900">現在地マップ</h3>
                 <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
                   今いる場所の近くに何があるかすぐわかる。
                 </p>
