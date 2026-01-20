@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
@@ -20,13 +20,16 @@ const INITIAL_ZOOM_LEVEL = 19;
 
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
+  isTracking?: boolean;
 }
 
-export default function UserLocationMarker({ onLocationUpdate }: UserLocationMarkerProps) {
+export default function UserLocationMarker({ onLocationUpdate, isTracking }: UserLocationMarkerProps) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
+  const arrowRef = useRef<HTMLDivElement | null>(null);
   const lastUpdateRef = useRef(0);
   const onLocationUpdateRef = useRef(onLocationUpdate);
+  const isTrackingRef = useRef(isTracking);
   const animFrameRef = useRef<number | null>(null);
   const animFromRef = useRef<[number, number] | null>(null);
   const animToRef = useRef<[number, number] | null>(null);
@@ -42,6 +45,42 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
     onLocationUpdateRef.current = onLocationUpdate;
   }, [onLocationUpdate]);
 
+  useEffect(() => {
+    isTrackingRef.current = isTracking;
+    // If tracking is enabled and we have a valid position (implied by marker existence),
+    // center the map immediately.
+    if (isTracking && markerRef.current) {
+        const latlng = markerRef.current.getLatLng();
+        map.panTo(latlng, { animate: true, duration: 0.5 });
+    }
+  }, [isTracking, map]);
+
+  // Handle device orientation
+  useEffect(() => {
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+        if (!markerRef.current) return;
+
+        let heading: number | null = null;
+
+        // iOS WebKit
+        if ((event as any).webkitCompassHeading) {
+            heading = (event as any).webkitCompassHeading;
+        } else if (event.alpha !== null) {
+            heading = 360 - event.alpha;
+        }
+
+        if (heading !== null && arrowRef.current) {
+             arrowRef.current.style.transform = `rotate(${heading}deg)`;
+             arrowRef.current.style.opacity = '1';
+        }
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation);
+    return () => {
+        window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, []);
+
   const checkIfInMarket = (lat: number, lng: number): boolean => {
     return isInsideSundayMarket(lat, lng);
   };
@@ -49,31 +88,42 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
   useEffect(() => {
     if (!map) return;
 
-    const userIcon = L.divIcon({
-      html: `
-        <div style="
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: white;
-          border: 3px solid #3b82f6;
-          border-radius: 50%;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-          font-size: 24px;
-          animation: pulse 10s ease-in-out infinite;
-        ">
-          🚶
+    // Create marker with direction arrow structure
+    const createIconHtml = () => {
+        return `
+        <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+           <!-- The direction cone/arrow -->
+           <div class="user-heading-arrow" style="
+             position: absolute;
+             top: 0;
+             left: 0;
+             width: 100%;
+             height: 100%;
+             background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%233b82f6%22><path d=%22M12 2L2 22l10-3 10 3L12 2z%22/></svg>');
+             background-size: contain;
+             background-repeat: no-repeat;
+             background-position: center;
+             transform-origin: center center;
+             transition: transform 0.1s linear;
+             opacity: 0.3;
+           "></div>
+           <!-- The center dot -->
+           <div style="
+              width: 16px;
+              height: 16px;
+              background-color: #2563eb;
+              border: 3px solid white;
+              border-radius: 50%;
+              z-index: 10;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+           "></div>
         </div>
-        <style>
-          @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25); }
-            50% { transform: scale(1.03); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); }
-          }
-        </style>
-      `,
-      className: 'user-location-marker',
+        `;
+    };
+
+    const userIcon = L.divIcon({
+      html: createIconHtml(),
+      className: 'user-location-marker-container',
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });
@@ -105,6 +155,40 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
       };
 
       animFrameRef.current = requestAnimationFrame(step);
+    };
+
+    const setupMarker = (lat: number, lng: number) => {
+        const newMarker = L.marker([lat, lng], {
+            icon: userIcon,
+            zIndexOffset: 1000,
+        }).addTo(map);
+
+        // Store reference to the arrow element for rotation updates
+        // We need to wait for the marker to be added to DOM or use a mutation observer?
+        // Leaflet creates the icon immediately.
+        // We can try to access the element via the marker
+        // However, L.divIcon creates HTML string.
+        // We need to select the arrow element after it is added.
+
+        // A trick is to use a unique class or id, but multiple markers might exist? No, only one user marker.
+        // Let's rely on finding it inside the marker element.
+
+        const el = newMarker.getElement();
+        if (el) {
+            const arrow = el.querySelector('.user-heading-arrow') as HTMLDivElement;
+            if (arrow) {
+                arrowRef.current = arrow;
+            }
+        }
+
+        newMarker.bindPopup(`
+            <div style="text-align: center; font-family: sans-serif;">
+            <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
+            <strong style="font-size: 14px;">現在地</strong>
+            </div>
+        `);
+
+        return newMarker;
     };
 
     if ('geolocation' in navigator) {
@@ -165,24 +249,21 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
               animate: true,
               duration: 1.0,
             });
+          } else if (isTrackingRef.current) {
+            // Tracking enabled: Center map on user
+            map.panTo(displayPosition, { animate: true, duration: 0.5 });
           }
 
           if (markerRef.current) {
             animateMarkerTo(displayPosition);
+            // Re-bind arrow ref if lost (e.g. if leaflet re-renders icon)
+             const el = markerRef.current.getElement();
+             if (el) {
+                 const arrow = el.querySelector('.user-heading-arrow') as HTMLDivElement;
+                 if (arrow) arrowRef.current = arrow;
+             }
           } else {
-            const newMarker = L.marker(displayPosition, {
-              icon: userIcon,
-              zIndexOffset: 1000,
-            }).addTo(map);
-
-            newMarker.bindPopup(`
-              <div style="text-align: center; font-family: sans-serif;">
-                <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-                <strong style="font-size: 14px;">Current location</strong>
-              </div>
-            `);
-
-            markerRef.current = newMarker;
+            markerRef.current = setupMarker(displayPosition[0], displayPosition[1]);
           }
 
           onLocationUpdateRef.current?.(inMarket, displayPosition);
@@ -192,19 +273,7 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
           const defaultPosition = MARKET_CENTER;
 
           if (!markerRef.current) {
-            const newMarker = L.marker(defaultPosition, {
-              icon: userIcon,
-              zIndexOffset: 1000,
-            }).addTo(map);
-
-            newMarker.bindPopup(`
-              <div style="text-align: center; font-family: sans-serif;">
-                <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-                <strong style="font-size: 14px;">Current location</strong>
-              </div>
-            `);
-
-            markerRef.current = newMarker;
+            markerRef.current = setupMarker(defaultPosition[0], defaultPosition[1]);
           }
           onLocationUpdateRef.current?.(false, defaultPosition);
         },
@@ -230,20 +299,10 @@ export default function UserLocationMarker({ onLocationUpdate }: UserLocationMar
 
     console.warn('Geolocation is not supported by this browser');
     const defaultPosition = MARKET_CENTER;
-    const newMarker = L.marker(defaultPosition, {
-      icon: userIcon,
-      zIndexOffset: 1000,
-    }).addTo(map);
 
-    newMarker.bindPopup(`
-      <div style="text-align: center; font-family: sans-serif;">
-        <div style="font-size: 24px; margin-bottom: 8px;">📍</div>
-        <strong style="font-size: 14px;">Current location</strong>
-      </div>
-    `);
-
-    markerRef.current = newMarker;
+    markerRef.current = setupMarker(defaultPosition[0], defaultPosition[1]);
     onLocationUpdateRef.current?.(false, defaultPosition);
+
     return () => {
       if (markerRef.current) {
         map.removeLayer(markerRef.current);
