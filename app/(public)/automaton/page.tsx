@@ -1,17 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { problems } from "./data";
+import { problems, Problem } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen } from "lucide-react";
-import Link from "next/link";
+import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers } from "lucide-react";
+
+// Define sections map
+const SECTIONS: Record<string, string> = {
+  "3": "Section 3: Computability Theory (計算可能性の理論)",
+  "4": "Section 4: Complexity Theory (計算複雑性の理論)"
+};
 
 export default function AutomatonPage() {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openSectionId, setOpenSectionId] = useState<string | null>("3"); // Default open first section
+  const [openProblemId, setOpenProblemId] = useState<string | null>(null);
+
+  const toggleSection = (id: string) => {
+    setOpenSectionId(openSectionId === id ? null : id);
+  };
 
   const toggleProblem = (id: string) => {
-    setOpenId(openId === id ? null : id);
+    setOpenProblemId(openProblemId === id ? null : id);
   };
+
+  // Group problems by section (first char of ID)
+  const groupedProblems = problems.reduce((acc, problem) => {
+    const sectionKey = problem.id.split(".")[0];
+    if (!acc[sectionKey]) acc[sectionKey] = [];
+    acc[sectionKey].push(problem);
+    return acc;
+  }, {} as Record<string, Problem[]>);
+
+  const sortedSectionKeys = Object.keys(groupedProblems).sort();
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -43,81 +63,122 @@ export default function AutomatonPage() {
         </div>
       </div>
 
-      {/* Problem List */}
-      <main className="max-w-3xl mx-auto px-4 space-y-4">
-        {problems.map((problem, index) => (
-          <motion.div
-            key={problem.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={`bg-white rounded-xl shadow-sm border ${
-              openId === problem.id ? "border-indigo-300 ring-2 ring-indigo-100" : "border-gray-200"
-            } overflow-hidden`}
-          >
+      {/* Main Content */}
+      <main className="max-w-3xl mx-auto px-4 space-y-6">
+        {sortedSectionKeys.map((sectionKey) => (
+          <div key={sectionKey} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            {/* Section Header */}
             <button
-              onClick={() => toggleProblem(problem.id)}
-              className="w-full flex items-start gap-4 p-5 text-left hover:bg-gray-50 transition-colors"
+              onClick={() => toggleSection(sectionKey)}
+              className="w-full flex items-center justify-between p-6 bg-gray-50/50 hover:bg-gray-100/50 transition-colors"
             >
-              <div className="flex-shrink-0 w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold text-sm">
-                Q{problem.id}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  {SECTIONS[sectionKey] || `Section ${sectionKey}`}
+                </h2>
               </div>
-              <div className="flex-grow pt-1">
-                <h3 className="text-gray-900 font-medium leading-relaxed">
-                  {problem.question}
-                </h3>
-              </div>
-              <div className="flex-shrink-0 pt-1 text-gray-400">
-                {openId === problem.id ? <ChevronUp /> : <ChevronDown />}
+              <div className={`text-gray-400 transition-transform duration-300 ${openSectionId === sectionKey ? "rotate-180" : ""}`}>
+                <ChevronDown className="w-6 h-6" />
               </div>
             </button>
 
+            {/* Section Content (Problem List) */}
             <AnimatePresence>
-              {openId === problem.id && (
+              {openSectionId === sectionKey && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="border-t border-gray-100 bg-gray-50/50"
                 >
-                  <div className="p-5 pl-20 pr-8 space-y-6">
-                    {/* Short Answer */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm uppercase tracking-wider">
-                        <CheckCircle className="w-4 h-4" />
-                        Answer
-                      </div>
-                      <p className="text-gray-800 font-medium">{problem.answer}</p>
-                    </div>
+                  <div className="p-2 space-y-2 bg-gray-50/30">
+                    {groupedProblems[sectionKey].map((problem) => (
+                      <div
+                        key={problem.id}
+                        className={`bg-white rounded-xl border transition-all duration-200 ${
+                          openProblemId === problem.id
+                            ? "border-indigo-300 ring-2 ring-indigo-50 shadow-md my-4"
+                            : "border-gray-200 hover:border-indigo-200"
+                        }`}
+                      >
+                        <button
+                          onClick={() => toggleProblem(problem.id)}
+                          className="w-full flex items-start gap-4 p-4 text-left"
+                        >
+                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                            openProblemId === problem.id
+                              ? "bg-indigo-600 text-white"
+                              : "bg-gray-100 text-gray-500 group-hover:bg-indigo-50 group-hover:text-indigo-600"
+                          }`}>
+                            Q{problem.id}
+                          </div>
+                          <div className="flex-grow pt-2">
+                            <h3 className={`text-sm font-medium leading-relaxed transition-colors ${
+                               openProblemId === problem.id ? "text-gray-900" : "text-gray-600"
+                            }`}>
+                              {problem.question}
+                            </h3>
+                          </div>
+                          <div className="flex-shrink-0 pt-2 text-gray-400">
+                             {openProblemId === problem.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </div>
+                        </button>
 
-                    {/* Casual Explanation */}
-                    <div className="space-y-2 pt-2 border-t border-gray-200/60">
-                      <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
-                        Explanation
-                      </p>
-                      <p className="text-gray-600 leading-7 text-sm">
-                        {problem.explanation}
-                      </p>
-                    </div>
+                        <AnimatePresence>
+                          {openProblemId === problem.id && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="border-t border-gray-100 bg-gray-50/50"
+                            >
+                              <div className="p-5 pl-16 pr-6 space-y-6 text-sm">
+                                {/* Short Answer */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2 text-emerald-600 font-semibold uppercase tracking-wider text-xs">
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Answer
+                                  </div>
+                                  <p className="text-gray-800 font-medium">{problem.answer}</p>
+                                </div>
 
-                    {/* Formal Proof */}
-                    <div className="space-y-3 pt-2 border-t border-gray-200/60">
-                      <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm uppercase tracking-wider">
-                        <BookOpen className="w-4 h-4" />
-                        Formal Proof
+                                {/* Casual Explanation */}
+                                <div className="space-y-2 pt-2 border-t border-gray-200/60">
+                                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                                    Explanation
+                                  </p>
+                                  <p className="text-gray-600 leading-relaxed">
+                                    {problem.explanation}
+                                  </p>
+                                </div>
+
+                                {/* Formal Proof */}
+                                <div className="space-y-3 pt-2 border-t border-gray-200/60">
+                                  <div className="flex items-center gap-2 text-indigo-600 font-semibold uppercase tracking-wider text-xs">
+                                    <BookOpen className="w-3.5 h-3.5" />
+                                    Formal Proof
+                                  </div>
+                                  <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm overflow-x-auto">
+                                    <pre className="whitespace-pre-wrap text-xs text-gray-700 font-mono leading-relaxed">
+                                      {problem.formalProof}
+                                    </pre>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono leading-relaxed overflow-x-auto">
-                          {problem.formalProof}
-                        </pre>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         ))}
       </main>
 
