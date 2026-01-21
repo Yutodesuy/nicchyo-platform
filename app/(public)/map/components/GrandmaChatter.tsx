@@ -124,6 +124,10 @@ export default function GrandmaChatter({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
+  const [smartContext, setSmartContext] = useState({
+    placeholder: "おばあちゃんに質問してね",
+    chip: "おすすめは？"
+  });
   const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
@@ -152,6 +156,31 @@ export default function GrandmaChatter({
       active: false,
     }
   );
+
+  useEffect(() => {
+    // 時間帯に応じたスマートなデフォルト値の設定
+    const hour = new Date().getHours();
+    let placeholder = "おばあちゃんに質問してね";
+    let chip = "おすすめは？";
+
+    if (hour >= 5 && hour < 11) {
+      placeholder = "（例）朝ごはんのおすすめは？";
+      chip = "朝ごはんのおすすめ";
+    } else if (hour >= 11 && hour < 14) {
+      placeholder = "（例）お昼ご飯、どこがいい？";
+      chip = "ランチのおすすめ";
+    } else if (hour >= 14 && hour < 17) {
+      placeholder = "（例）ちょっと休憩したいな";
+      chip = "おやつの時間";
+    } else if (hour >= 17 && hour < 21) {
+      placeholder = "（例）晩ご飯のおかずある？";
+      chip = "晩ご飯の買い物";
+    } else {
+      placeholder = "（例）明日の日曜市は何時から？";
+      chip = "日曜市の開催時間";
+    }
+    setSmartContext({ placeholder, chip });
+  }, []);
 
   useEffect(() => {
     if (!pool.length) return;
@@ -651,7 +680,7 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
+  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -1226,7 +1255,7 @@ export default function GrandmaChatter({
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
                   }`}
-                  placeholder="おばあちゃんに質問してね"
+                  placeholder={smartContext.placeholder}
                 />
                 <button
                   type="button"
