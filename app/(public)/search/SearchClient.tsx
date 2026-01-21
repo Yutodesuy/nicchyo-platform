@@ -140,6 +140,16 @@ export default function SearchClient({ shops }: SearchClientProps) {
     setFilterMode('genre');
   }, []);
 
+  // 検索結果0件時のキーワード提案クリックハンドラ
+  const handleKeywordSuggestionClick = useCallback((keyword: string) => {
+    setTextQuery(keyword);
+    // カテゴリーなどの他のフィルターはクリアするか、維持するか。
+    // 「シンプルな単語で検索」という文脈なので、カテゴリーフィルターはクリアする方が自然かもしれません。
+    setCategory(null);
+    setSelectedChome(null);
+    setFilterMode('genre'); // デフォルトに戻す
+  }, []);
+
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     touchStartY.current = event.touches[0]?.clientY ?? null;
   }, []);
@@ -217,6 +227,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
                         hasQuery={hasQuery}
                         categories={categories}
                         onCategoryClick={handleSuggestionClick}
+                        onKeywordClick={handleKeywordSuggestionClick}
                         favoriteShopIds={favoriteShopIds}
                         hasMore={hasMore}
                         onLoadMore={handleLoadMore}
