@@ -169,7 +169,7 @@ export default function RecipesClient() {
   };
 
   const headingByFridge = (() => {
-    if (fridgeIngredients.length === 0) return "まずはbagに食材を入れてみよう";
+    if (fridgeIngredients.length === 0) return "まずはリストに食材を入れてみよう";
     if (fridgeIngredients.length === 1) return `${fridgeIngredients[0].name}を買ったあなたにおすすめ`;
     return `${fridgeIngredients.slice(0, 2).map((f) => f.name).join("と")}を買ったあなたにおすすめ`;
   })();
@@ -224,12 +224,12 @@ export default function RecipesClient() {
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">バッグからのおすすめ</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">リストからのおすすめ</p>
                 <h2 className="text-xl font-bold text-gray-900">{headingByFridge}</h2>
-                <p className="text-sm text-gray-700">冷蔵庫にある食材と一致するレシピだけを表示します。</p>
+                <p className="text-sm text-gray-700">リストにある食材と一致するレシピだけを表示します。</p>
               </div>
               <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 border border-amber-100">
-                優先度: 最上位
+                イチオシ！
               </span>
             </div>
 
@@ -317,7 +317,7 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                              {owned ? " / バッグにあり" : ""}
+                              {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}
@@ -456,7 +456,7 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                            {owned ? " / bagにあり" : ""}
+                            {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}

@@ -796,7 +796,7 @@ export default function GrandmaChatter({
               <div className="flex items-center gap-3">
                 {aiStatus !== "idle" && (
                   <span className="text-[11px] text-gray-500">
-                    {aiStatus === "thinking" ? "回答を作成中…" : "入力を続けてね"}
+                    {aiStatus === "thinking" ? "考え中…" : "続けて聞いてね"}
                   </span>
                 )}
                 {layout === "page" && chatMessages.length > 0 && (
@@ -814,7 +814,7 @@ export default function GrandmaChatter({
                     }}
                     className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
                   >
-                    履歴を削除
+                    会話をリセット
                   </button>
                 )}
               </div>
@@ -943,7 +943,7 @@ export default function GrandmaChatter({
                     <div className="flex items-center gap-2">
                       <span
                         className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
-                        aria-label="回答を作成中"
+                        aria-label="考え中"
                       />
                       <span className="text-xs text-gray-500">考え中…</span>
                     </div>
@@ -1071,7 +1071,7 @@ export default function GrandmaChatter({
                     }}
                     className="text-[11px] font-semibold text-amber-700 underline"
                   >
-                    解除する
+                    閉じる
                   </button>
                 )}
               </div>
