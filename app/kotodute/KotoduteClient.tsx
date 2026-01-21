@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -38,9 +38,27 @@ export default function KotoduteClient() {
   const [notes, setNotes] = useState<KotoduteNote[]>([]);
   const [text, setText] = useState("");
   const [targetTag, setTargetTag] = useState(prefillTarget ? `#${prefillTarget}` : "#all");
+  const [placeholder, setPlaceholder] = useState("おすすめや感想をひとこと書いてください");
 
   useEffect(() => {
     setNotes(loadKotodute());
+  }, []);
+
+  useEffect(() => {
+    // 時間帯に応じたスマートなプレースホルダーの設定
+    const hour = new Date().getHours();
+
+    if (hour >= 6 && hour < 11) {
+      setPlaceholder("（例）朝市に来ました！新鮮な野菜がたくさん…");
+    } else if (hour >= 11 && hour < 14) {
+      setPlaceholder("（例）お昼ご飯を食べました。美味しかったのは…");
+    } else if (hour >= 14 && hour < 17) {
+      setPlaceholder("（例）おやつの時間です。いも天が…");
+    } else if (hour >= 17) {
+      setPlaceholder("（例）今日の戦利品はこれ！晩ごはんに…");
+    } else {
+      setPlaceholder("（例）明日の日曜市が楽しみ！狙っているのは…");
+    }
   }, []);
 
   const target = extractTarget(targetTag);
@@ -98,7 +116,7 @@ export default function KotoduteClient() {
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="おすすめや感想をひとこと書いてください"
+                placeholder={placeholder}
               className="w-full rounded-lg border border-orange-100 px-3 py-2 text-base text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[80px]"
               />
             </div>
@@ -211,5 +229,3 @@ export default function KotoduteClient() {
     </main>
   );
 }
-
-
