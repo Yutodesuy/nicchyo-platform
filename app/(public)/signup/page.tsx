@@ -70,11 +70,11 @@ export default function SignupPage() {
       <div className="mx-auto w-full max-w-md px-4 pt-10">
         <div className="mb-6 rounded-3xl border border-orange-200 bg-white/90 p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-            signup
+            new account
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">サインアップ</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">アカウント登録</h1>
           <p className="mt-2 text-sm text-slate-600">
-            メールアドレスとパスワードでアカウントを作成します。
+            メールアドレスとパスワードで新しいアカウントを作ります。
           </p>
         </div>
 
@@ -138,7 +138,7 @@ export default function SignupPage() {
             disabled={isSubmitting}
             className="w-full rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-amber-300"
           >
-            {isSubmitting ? "送信中..." : "サインアップする"}
+            {isSubmitting ? "登録中..." : "アカウントを作成する"}
           </button>
         </form>
 

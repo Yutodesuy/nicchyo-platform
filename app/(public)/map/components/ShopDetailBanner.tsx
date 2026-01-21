@@ -415,7 +415,7 @@ export default function ShopDetailBanner({
                   disabled={!shopOpenStatus}
                   className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
                 >
-                  送信
+                  更新する
                 </button>
               </div>
             </div>
@@ -519,7 +519,7 @@ export default function ShopDetailBanner({
                 <span className="text-xl" aria-hidden>
                   {"\u{1F6CD}"}
                 </span>
-                リスト
+                買い物リスト
               </button>
             </div>
             <div className="flex flex-wrap gap-4">

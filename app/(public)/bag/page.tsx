@@ -377,8 +377,8 @@ export default function BagPage() {
       {/* --- Modals --- */}
       <ConfirmModal
         isOpen={!!pendingDeleteItem}
-        title="アイテムを削除"
-        message={`「${pendingDeleteItem?.name}」をリストから削除しますか？`}
+        title="リストから外す"
+        message={`「${pendingDeleteItem?.name}」をリストから外しますか？`}
         onConfirm={() => {
           if (pendingDeleteItem) {
             removeItem(pendingDeleteItem.id);
@@ -386,21 +386,21 @@ export default function BagPage() {
           }
         }}
         onCancel={() => setPendingDeleteItem(null)}
-        confirmLabel="削除する"
+        confirmLabel="外す"
         isDanger
       />
 
       <ConfirmModal
         isOpen={pendingReset}
-        title="リストのリセット"
-        message="すべてのアイテムを削除しますか？この操作は取り消せません。"
+        title="リストを空にする"
+        message="すべてのアイテムをリストから消去しますか？この操作は取り消せません。"
         onConfirm={() => {
           clearBag();
           resetChecks();
           setPendingReset(false);
         }}
         onCancel={() => setPendingReset(false)}
-        confirmLabel="全て削除"
+        confirmLabel="空にする"
         isDanger
       />
 

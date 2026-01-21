@@ -98,7 +98,7 @@ export default function HamburgerMenu() {
               </Link>
             ) : (
               <div className="text-sm text-gray-700">
-                ログインすると保存やバッグ・バッジが利用できます。
+                ログインすると保存やお買い物リスト・バッジが利用できます。
               </div>
             )}
           </div>
