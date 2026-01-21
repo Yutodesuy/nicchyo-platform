@@ -61,7 +61,7 @@ export default function LoginPage() {
           </p>
           <h1 className="mt-2 text-2xl font-bold text-slate-900">ログイン</h1>
           <p className="mt-2 text-sm text-slate-600">
-            メールアドレスとパスワードでログインしてください。
+            登録したメールアドレスとパスワードを入力してください。
           </p>
         </div>
 
