@@ -133,6 +133,23 @@ export default function SearchClient({ shops }: SearchClientProps) {
     router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
   }, [filteredShops, router, searchLabel]);
 
+  // 検索結果0件時の提案クリックハンドラ：テキスト検索をクリアしてカテゴリー検索のみにする
+  const handleSuggestionClick = useCallback((cat: string) => {
+    setCategory(cat);
+    setTextQuery('');
+    setFilterMode('genre');
+  }, []);
+
+  // 検索結果0件時のキーワード提案クリックハンドラ
+  const handleKeywordSuggestionClick = useCallback((keyword: string) => {
+    setTextQuery(keyword);
+    // カテゴリーなどの他のフィルターはクリアするか、維持するか。
+    // 「シンプルな単語で検索」という文脈なので、カテゴリーフィルターはクリアする方が自然かもしれません。
+    setCategory(null);
+    setSelectedChome(null);
+    setFilterMode('genre'); // デフォルトに戻す
+  }, []);
+
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     touchStartY.current = event.touches[0]?.clientY ?? null;
   }, []);
@@ -209,7 +226,8 @@ export default function SearchClient({ shops }: SearchClientProps) {
                         totalCount={filteredShops.length}
                         hasQuery={hasQuery}
                         categories={categories}
-                        onCategoryClick={setCategory}
+                        onCategoryClick={handleSuggestionClick}
+                        onKeywordClick={handleKeywordSuggestionClick}
                         favoriteShopIds={favoriteShopIds}
                         hasMore={hasMore}
                         onLoadMore={handleLoadMore}
