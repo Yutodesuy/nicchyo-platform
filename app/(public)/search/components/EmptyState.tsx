@@ -6,6 +6,7 @@ interface EmptyStateProps {
   hasQuery: boolean;
   categories: string[];
   onCategoryClick?: (category: string) => void;
+  onKeywordClick?: (keyword: string) => void;
 }
 
 /**
@@ -13,7 +14,7 @@ interface EmptyStateProps {
  * 結果なし時（0件）のメッセージを表示
  * ※ クエリ未入力時の表示は SearchDiscovery コンポーネントに委譲
  */
-export default function EmptyState({ hasQuery, categories, onCategoryClick }: EmptyStateProps) {
+export default function EmptyState({ hasQuery, categories, onCategoryClick, onKeywordClick }: EmptyStateProps) {
   // 注意: hasQueryがfalseの場合は親コンポーネントでSearchDiscoveryが表示されるため
   // ここでは理論上到達しないか、あるいは単純に何も表示しない
   if (!hasQuery) {
@@ -30,8 +31,31 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick }: Em
       <div className="mt-2 space-y-1 text-sm text-gray-600">
         <p>キーワードが具体的すぎるかもしれません。</p>
         <p>
-          <span className="font-semibold text-amber-700">「トマト」</span>や
-          <span className="font-semibold text-amber-700">「お茶」</span>のように、
+          {onKeywordClick ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onKeywordClick('トマト')}
+                className="font-semibold text-amber-700 hover:underline focus:outline-none"
+              >
+                「トマト」
+              </button>
+              や
+              <button
+                type="button"
+                onClick={() => onKeywordClick('包丁')}
+                className="font-semibold text-amber-700 hover:underline focus:outline-none"
+              >
+                「包丁」
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-amber-700">「トマト」</span>や
+              <span className="font-semibold text-amber-700">「包丁」</span>
+            </>
+          )}
+          のように、
           <br />
           シンプルな単語やひらがなで試してみてください。
         </p>
