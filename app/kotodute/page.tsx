@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import MapPageClient from "../(public)/map/MapPageClient";
+// import MapPageClient from "../(public)/map/MapPageClient"; // Removed MapPageClient import
+import KotoduteClient from "./KotoduteClient"; // Import KotoduteClient
 import { shops as staticShops } from "../(public)/map/data/shops";
 import type { Shop } from "../(public)/map/data/shops";
 
@@ -53,103 +54,22 @@ function normalizeChome(value: string | null): Shop["chome"] {
 export default async function KotodutePage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const { data: shopRows } = await supabase
-    .from("shops")
-    .select(
-      [
-        "id",
-        "legacy_id",
-        "name",
-        "owner_name",
-        "side",
-        "position",
-        "lat",
-        "lng",
-        "chome",
-        "category",
-        "products",
-        "description",
-        "specialty_dish",
-        "about_vendor",
-        "stall_style",
-        "icon",
-        "schedule",
-        "message",
-        "topic",
-      ].join(",")
-    )
-    .order("legacy_id", { ascending: true });
+  // We can keep data fetching if KotoduteClient needs it, or simplify if KotoduteClient handles it differently.
+  // KotoduteClient (from my read) uses "loadKotodute" from local storage or expects props?
+  // Let's check KotoduteClient again. It uses `loadKotodute` and `shops` (static import).
+  // It does NOT seem to take `shops` as props in the file I edited.
+  // So I can remove the complex data fetching here OR pass it if I update KotoduteClient to take it.
+  // For now, I will just render KotoduteClient. The previous page was rendering MapPageClient!
+  // This explains why my changes weren't showing up. The route /kotodute was serving the MAP page, not the Kotodute form page.
+  // I must replace MapPageClient with KotoduteClient.
 
-  const shops = (shopRows as unknown as ShopRow[] | null)
-    ? (shopRows as unknown as ShopRow[])
-        .filter((row) => row.legacy_id !== null)
-        .map((row) => ({
-          id: row.legacy_id ?? 0,
-          name: row.name ?? "",
-          ownerName: row.owner_name ?? "",
-          side: (row.side ?? "north") as "north" | "south",
-          position: row.position ?? 0,
-          lat: row.lat ?? 0,
-          lng: row.lng ?? 0,
-          chome: normalizeChome(row.chome),
-          category: row.category ?? "",
-          products: Array.isArray(row.products) ? row.products : [],
-          description: row.description ?? "",
-          specialtyDish: row.specialty_dish ?? undefined,
-          aboutVendor: row.about_vendor ?? undefined,
-          stallStyle: row.stall_style ?? undefined,
-          icon: row.icon ?? "",
-          schedule: row.schedule ?? "",
-          message: row.message ?? undefined,
-          topic: Array.isArray(row.topic) ? row.topic : undefined,
-        }))
-    : staticShops;
-
-  const uuidToLegacy = new Map<string, number>();
-  (shopRows as unknown as ShopRow[] | null)?.forEach((row) => {
-    if (row.id && row.legacy_id !== null) {
-      uuidToLegacy.set(row.id, row.legacy_id);
-    }
-  });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: estimates } = await supabase.rpc("get_shop_attendance_estimates", {
-    target_date: today,
-  });
-
-  const attendanceEstimates: Record<number, {
-    label: string;
-    p: number | null;
-    n_eff: number;
-    vendor_override: boolean;
-    evidence_summary: string;
-  }> = {};
-
-  if (Array.isArray(estimates)) {
-    estimates.forEach((row: any) => {
-      const legacyId = uuidToLegacy.get(String(row.shop_id));
-      if (!legacyId) return;
-      attendanceEstimates[legacyId] = {
-        label: row.label,
-        p: row.p,
-        n_eff: row.n_eff,
-        vendor_override: row.vendor_override,
-        evidence_summary: row.evidence_summary,
-      };
-    });
-  }
   return (
     <Suspense
       fallback={
         <div className="flex h-screen items-center justify-center">Loading...</div>
       }
     >
-      <MapPageClient
-        shops={shops}
-        showGrandma={false}
-        shopBannerVariant="kotodute"
-        attendanceEstimates={attendanceEstimates}
-      />
+      <KotoduteClient />
     </Suspense>
   );
 }
