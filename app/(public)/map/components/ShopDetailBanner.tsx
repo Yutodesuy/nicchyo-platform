@@ -501,7 +501,7 @@ export default function ShopDetailBanner({
           <section className="py-10 text-xl text-slate-700">
             <div className="mb-6 flex items-center justify-between gap-3">
               <span className="text-base font-semibold text-slate-500">
-                商品名
+                商品
               </span>
               <button
                 type="button"
@@ -519,7 +519,7 @@ export default function ShopDetailBanner({
                 <span className="text-xl" aria-hidden>
                   {"\u{1F6CD}"}
                 </span>
-                バッグ
+                リスト
               </button>
             </div>
             <div className="flex flex-wrap gap-4">
@@ -730,7 +730,7 @@ export default function ShopDetailBanner({
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
               <p className="text-xl font-semibold text-gray-900">
-                {`バッグに${pendingProduct}を入れますか？`}
+                {`「${pendingProduct}」をリストに追加しますか？`}
               </p>
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button
