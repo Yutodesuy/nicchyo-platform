@@ -1,9 +1,12 @@
 'use client';
 
+import Link from "next/link";
+
 interface EmptyStateProps {
   hasQuery: boolean;
   categories: string[];
   onCategoryClick?: (category: string) => void;
+  onKeywordClick?: (keyword: string) => void;
 }
 
 /**
@@ -11,7 +14,7 @@ interface EmptyStateProps {
  * 結果なし時（0件）のメッセージを表示
  * ※ クエリ未入力時の表示は SearchDiscovery コンポーネントに委譲
  */
-export default function EmptyState({ hasQuery, categories, onCategoryClick }: EmptyStateProps) {
+export default function EmptyState({ hasQuery, categories, onCategoryClick, onKeywordClick }: EmptyStateProps) {
   // 注意: hasQueryがfalseの場合は親コンポーネントでSearchDiscoveryが表示されるため
   // ここでは理論上到達しないか、あるいは単純に何も表示しない
   if (!hasQuery) {
@@ -21,23 +24,55 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick }: Em
   // 結果なし時
   return (
     <div className="rounded-2xl border border-dashed border-amber-200 bg-white/80 px-6 py-8 text-center animate-in fade-in duration-300">
-      <p className="text-4xl">😢</p>
-      <p className="mt-3 text-sm font-semibold text-gray-900">
-        条件に合うお店が見つかりません
-      </p>
-      <p className="mt-1 text-xs text-gray-600">
-        別のキーワードやカテゴリーでお試しください
-      </p>
+      <p className="text-4xl" role="img" aria-label="Thinking Face">🤔</p>
+      <h3 className="mt-3 text-base font-bold text-gray-900">
+        お探しの条件では見つかりませんでした
+      </h3>
+      <div className="mt-2 space-y-1 text-sm text-gray-600">
+        <p>キーワードが具体的すぎるかもしれません。</p>
+        <p>
+          {onKeywordClick ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onKeywordClick('トマト')}
+                className="font-semibold text-amber-700 hover:underline focus:outline-none"
+              >
+                「トマト」
+              </button>
+              や
+              <button
+                type="button"
+                onClick={() => onKeywordClick('包丁')}
+                className="font-semibold text-amber-700 hover:underline focus:outline-none"
+              >
+                「包丁」
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-amber-700">「トマト」</span>や
+              <span className="font-semibold text-amber-700">「包丁」</span>
+            </>
+          )}
+          のように、
+          <br />
+          シンプルな単語やひらがなで試してみてください。
+        </p>
+      </div>
+
       {onCategoryClick && (
-        <div className="mt-4">
-          <p className="mb-2 text-xs text-gray-600">人気のカテゴリー:</p>
+        <div className="mt-6">
+          <p className="mb-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            こちらもチェック
+          </p>
           <div className="flex flex-wrap justify-center gap-2">
             {categories.slice(0, 3).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => onCategoryClick(cat)}
-                className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-50"
+                className="rounded-full border border-amber-200 bg-white px-4 py-1.5 text-xs font-bold text-amber-800 shadow-sm transition hover:bg-amber-50 active:scale-95"
               >
                 {cat}
               </button>
@@ -45,6 +80,19 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick }: Em
           </div>
         </div>
       )}
+
+      <div className="mt-6 pt-4 border-t border-amber-100">
+         <p className="text-xs text-gray-500">
+           日曜市は毎週変化します。<br/>
+           どうしても見つからない場合は、全体のマップから探検してみましょう！
+         </p>
+         <Link
+           href="/map"
+           className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 hover:underline"
+         >
+           マップに戻る &rarr;
+         </Link>
+      </div>
     </div>
   );
 }
