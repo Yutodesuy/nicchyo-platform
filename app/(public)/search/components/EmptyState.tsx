@@ -52,7 +52,7 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
             <div className="pt-2">
                <p className="text-xs font-semibold text-gray-500 mb-2">よく使われるキーワード：</p>
                <div className="flex flex-wrap gap-2">
-                {onKeywordClick ? (
+                {onKeywordClick && (
                   <>
                     <button
                       type="button"
@@ -76,8 +76,6 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
                       コーヒー
                     </button>
                   </>
-                ) : (
-                  <span className="text-xs text-gray-500">（キーワードクリック機能なし）</span>
                 )}
                </div>
             </div>
