@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
+import NavigationBar from "../../components/NavigationBar";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -162,6 +163,7 @@ export default function SignupPage() {
           </Link>
         </div>
       </div>
+      <NavigationBar />
     </div>
   );
 }
