@@ -45,14 +45,20 @@ export const aboutSlides: AboutSlide[] = [
     },
   },
   {
-    id: "kotodute",
-    title: "ことづて",
-    description: "「おいしかった」「ありがとう」。みんなの声が市場をつなぎます。",
+    id: "consult",
+    title: "相談する",
+    description: "検索では拾いきれない曖昧な関心を、AI「にちよさん」との対話を通じて整理します。",
     iconName: "chat",
     action: {
-      label: "ことづてを見る",
-      href: "/kotodute",
+      label: "にちよさんに聞く",
+      href: "/consult",
     },
+  },
+  {
+    id: "conversation",
+    title: "お店の人と話す",
+    description: "AIで整理した情報をきっかけに、出店者との会話を楽しんでみてください。",
+    iconName: "store",
   },
   {
     id: "recipe",
@@ -65,16 +71,6 @@ export const aboutSlides: AboutSlide[] = [
     },
   },
   {
-    id: "event",
-    title: "午後のイベント",
-    description: "市場が終わった後も楽しめる地域イベントやワークショップを掲載。",
-    iconName: "event",
-    action: {
-      label: "イベントを見る",
-      href: "/events",
-    },
-  },
-  {
     id: "everyone",
     title: "みんなのために",
     description: "初めての方も、常連さんも、出店者さんも。それぞれの楽しみ方をサポート。",
@@ -84,7 +80,7 @@ export const aboutSlides: AboutSlide[] = [
     id: "team",
     title: "チームと活動",
     description: "高知高専の学生と教員によるプロジェクト。現地での聞き取りを大切にしています。",
-    iconName: "store",
+    iconName: "discover",
   },
   {
     id: "cta",
