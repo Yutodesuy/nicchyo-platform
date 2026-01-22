@@ -96,14 +96,6 @@ export default function AboutPage() {
     <h1 className="mt-1 text-4xl font-bold text-gray-900">高知高専発・日曜市の実験プロジェクト</h1>
     <p className="mt-1 text-xl text-gray-700">日曜市をもっと歩きやすく、もっと知りやすくするための小さなデジタル実験です。</p>
   </div>
-  <div className="flex justify-center">
-    <MapLink
-      href="/map"
-      className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-    >
-      マップを見る
-    </MapLink>
-  </div>
 </div>
 
         <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10">
