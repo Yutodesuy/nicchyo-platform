@@ -60,7 +60,7 @@ export default function SignupPage() {
     setIsSubmitting(false);
 
     if (signUpError || !data.user) {
-      setError(signUpError?.message ?? "登録に失敗しました。");
+      setError(signUpError?.message ?? "登録できませんでした。");
       return;
     }
 

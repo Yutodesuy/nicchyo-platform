@@ -76,16 +76,16 @@ export default function ContactForm() {
         <div className="rounded-full bg-green-100 p-3">
           <CheckCircle2 className="h-8 w-8 text-green-600" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900">送信完了しました</h3>
+        <h3 className="text-xl font-bold text-gray-900">お問い合わせを受け付けました</h3>
         <p className="max-w-xs text-sm text-gray-600">
           お問い合わせありがとうございます。<br />
-          内容を確認の上、担当者よりご連絡させていただきます。
+          内容を確認し、折り返しご連絡いたします。
         </p>
         <button
           onClick={() => setIsSubmitted(false)}
           className="mt-4 text-sm font-medium text-amber-600 hover:text-amber-700 underline underline-offset-4"
         >
-          新しい問い合わせを送る
+          続けて送る
         </button>
       </motion.div>
     );
@@ -198,7 +198,7 @@ export default function ContactForm() {
         ) : (
           <Send className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         )}
-        {isSubmitting ? "送信中..." : "送信する"}
+        {isSubmitting ? "送っています..." : "メッセージを送る"}
       </button>
 
       <p className="text-center text-xs text-gray-500">
