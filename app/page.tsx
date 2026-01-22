@@ -79,7 +79,7 @@ export default function HomePage() {
               className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
             >
               <div className="flex items-center justify-center gap-2 text-lg font-bold tracking-wide">
-                <span>地図を見る</span>
+                <span>マップを見る</span>
                 <ChevronRight className="h-5 w-5" />
               </div>
               <div className="absolute inset-0 -z-10 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
