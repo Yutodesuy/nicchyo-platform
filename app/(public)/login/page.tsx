@@ -26,7 +26,7 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     if (hasCaptcha && !captchaToken) {
-      setError("認証を完了してください。");
+      setError("チェックボックスを押して認証してください。");
       return;
     }
 
