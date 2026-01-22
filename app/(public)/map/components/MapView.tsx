@@ -326,6 +326,7 @@ type MapViewProps = {
   searchShopIds?: number[];
   searchLabel?: string;
   onMapReady?: () => void;
+  consultShopIds?: number[];
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
   onMapInstance?: (map: L.Map) => void;
@@ -388,6 +389,7 @@ const MapView = memo(function MapView({
   searchShopIds,
   searchLabel,
   onMapReady,
+  consultShopIds,
   eventTargets,
   highlightEventTargets = false,
   onMapInstance,
@@ -955,6 +957,7 @@ const MapView = memo(function MapView({
           selectedShopId={selectedShop?.id}
           favoriteShopIds={favoriteShopIds}
           searchShopIds={searchShopIds}
+          consultShopIds={consultShopIds}
           aiHighlightShopIds={aiShopIds}
           commentHighlightShopIds={commentShopId ? [commentShopId] : []}
           kotoduteShopIds={kotoduteShopIds}

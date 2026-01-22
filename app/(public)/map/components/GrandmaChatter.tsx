@@ -48,6 +48,7 @@ type GrandmaChatterProps = {
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
+  onOpenSuggestedMap?: () => void;
 };
 
 export default function GrandmaChatter({
@@ -74,6 +75,7 @@ export default function GrandmaChatter({
   autoAskText,
   autoAskContext,
   currentZoom,
+  onOpenSuggestedMap,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -902,12 +904,22 @@ export default function GrandmaChatter({
                                       isFavorite={false}
                                       onSelectShop={() => onSelectShop?.(shop.id)}
                                       compact
+                                      showMapLink={layout !== "page"}
                                     />
                                   </div>
                                 );
                               })
                               .filter(Boolean)}
                           </div>
+                          {layout === "page" && onOpenSuggestedMap && (
+                            <button
+                              type="button"
+                              onClick={onOpenSuggestedMap}
+                              className="mt-3 w-full rounded-xl border-2 border-amber-600 bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
+                            >
+                              マップで見る（{message.shopIds.filter((id) => shopLookup.has(id)).length}件）
+                            </button>
+                          )}
                         </div>
                       )}
                     {message.imageUrl && (
@@ -1191,10 +1203,20 @@ export default function GrandmaChatter({
                         isFavorite={false}
                         onSelectShop={() => onSelectShop?.(shop.id)}
                         compact={aiSuggestedShops.length > 1}
+                        showMapLink={layout !== "page"}
                       />
                     </div>
                   ))}
                 </div>
+              )}
+              {layout === "page" && onOpenSuggestedMap && aiSuggestedShops.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onOpenSuggestedMap}
+                  className="mt-3 w-full rounded-xl border-2 border-amber-600 bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
+                >
+                  マップで見る（{aiSuggestedShops.length}件）
+                </button>
               )}
             </div>
           )}

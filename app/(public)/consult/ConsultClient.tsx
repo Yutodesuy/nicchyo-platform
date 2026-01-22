@@ -1,19 +1,28 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import { grandmaComments } from "../map/data/grandmaComments";
 import type { Shop } from "../map/data/shops";
+import ShopDetailBanner from "../map/components/ShopDetailBanner";
+import { saveConsultMapPayload } from "../../../lib/consultMapStorage";
 
 type ConsultClientProps = {
   shops: Shop[];
 };
 
 export default function ConsultClient({ shops }: ConsultClientProps) {
+  const router = useRouter();
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const searchParams = useSearchParams();
+  const shopById = useMemo(() => {
+    const map = new Map<number, Shop>();
+    shops.forEach((shop) => map.set(shop.id, shop));
+    return map;
+  }, [shops]);
 
   const handleGrandmaAsk = useCallback(async (
     text: string,
@@ -74,6 +83,23 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
     }
   }, [shops]);
 
+  const handleSelectShop = useCallback((shopId: number) => {
+    const shop = shopById.get(shopId);
+    if (shop) {
+      setSelectedShop(shop);
+    }
+  }, [shopById]);
+
+  const handleOpenMap = useCallback(() => {
+    if (aiSuggestedShops.length === 0) return;
+    const label = "AIおすすめ";
+    saveConsultMapPayload({
+      ids: aiSuggestedShops.map((shop) => shop.id),
+      label,
+    });
+    router.push(`/map?consult=1&label=${encodeURIComponent(label)}`);
+  }, [aiSuggestedShops, router]);
+
   const autoAskText = searchParams?.get("q") || null;
   const autoAskShopIdRaw = searchParams?.get("shopId");
   const autoAskShopId = autoAskShopIdRaw ? Number(autoAskShopIdRaw) : undefined;
@@ -108,14 +134,22 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           onAsk={handleGrandmaAsk}
           allShops={shops}
           aiSuggestedShops={aiSuggestedShops}
+          onSelectShop={handleSelectShop}
           initialOpen
           layout="page"
           onClear={() => setAiSuggestedShops([])}
           autoAskText={autoAskText}
           autoAskContext={autoAskContext}
+          onOpenSuggestedMap={handleOpenMap}
         />
       </main>
-      <NavigationBar activeHref="/consult" position="absolute" />
+      {selectedShop && (
+        <ShopDetailBanner
+          shop={selectedShop}
+          onClose={() => setSelectedShop(null)}
+        />
+      )}
+      {!selectedShop && <NavigationBar activeHref="/consult" position="absolute" />}
     </div>
   );
 }

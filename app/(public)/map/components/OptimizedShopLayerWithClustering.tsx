@@ -23,6 +23,7 @@ interface OptimizedShopLayerWithClusteringProps {
   selectedShopId?: number;
   favoriteShopIds?: number[];
   searchShopIds?: number[];
+  consultShopIds?: number[];
   aiHighlightShopIds?: number[];
   commentHighlightShopIds?: number[];
   kotoduteShopIds?: number[];
@@ -58,6 +59,7 @@ export default function OptimizedShopLayerWithClustering({
   selectedShopId,
   favoriteShopIds,
   searchShopIds,
+  consultShopIds,
   aiHighlightShopIds,
   commentHighlightShopIds,
   kotoduteShopIds,
@@ -75,6 +77,8 @@ export default function OptimizedShopLayerWithClustering({
   const prevFavoriteSetRef = useRef<Set<number>>(new Set());
   const searchHighlightSetRef = useRef<Set<number>>(new Set());
   const prevSearchHighlightSetRef = useRef<Set<number>>(new Set());
+  const consultHighlightSetRef = useRef<Set<number>>(new Set());
+  const prevConsultHighlightSetRef = useRef<Set<number>>(new Set());
   const aiHighlightSetRef = useRef<Set<number>>(new Set());
   const prevAiHighlightSetRef = useRef<Set<number>>(new Set());
   const commentHighlightSetRef = useRef<Set<number>>(new Set());
@@ -126,6 +130,16 @@ export default function OptimizedShopLayerWithClustering({
       icon.classList.add('shop-marker-search');
     } else {
       icon.classList.remove('shop-marker-search');
+    }
+  };
+
+  const setMarkerConsultHighlight = (marker: L.Marker, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-consult');
+    } else {
+      icon.classList.remove('shop-marker-consult');
     }
   };
 
@@ -349,6 +363,7 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
         setMarkerHighlight(marker, shop.id, aiHighlightSetRef.current.has(shop.id));
         setMarkerSearchHighlight(marker, searchHighlightSetRef.current.has(shop.id));
+        setMarkerConsultHighlight(marker, consultHighlightSetRef.current.has(shop.id));
         setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
         setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
         setMarkerBag(marker, bagShopSetRef.current.has(shop.id));
@@ -457,6 +472,11 @@ export default function OptimizedShopLayerWithClustering({
             } else {
               markerElement.classList.remove('shop-marker-search');
             }
+            if (consultHighlightSetRef.current.has(shopId)) {
+              markerElement.classList.add('shop-marker-consult');
+            } else {
+              markerElement.classList.remove('shop-marker-consult');
+            }
             if (commentHighlightSetRef.current.has(shopId)) {
               markerElement.classList.add('shop-marker-comment');
             } else {
@@ -538,6 +558,29 @@ export default function OptimizedShopLayerWithClustering({
 
     prevSearchHighlightSetRef.current = nextHighlights;
   }, [searchShopIds]);
+
+  useEffect(() => {
+    consultHighlightSetRef.current = new Set(consultShopIds ?? []);
+    const nextHighlights = consultHighlightSetRef.current;
+    const prevHighlights = prevConsultHighlightSetRef.current;
+    const changed = new Set<number>();
+
+    prevHighlights.forEach((id) => {
+      if (!nextHighlights.has(id)) changed.add(id);
+    });
+    nextHighlights.forEach((id) => {
+      if (!prevHighlights.has(id)) changed.add(id);
+    });
+
+    changed.forEach((id) => {
+      const marker = markersRef.current.get(id);
+      if (marker) {
+        setMarkerConsultHighlight(marker, nextHighlights.has(id));
+      }
+    });
+
+    prevConsultHighlightSetRef.current = nextHighlights;
+  }, [consultShopIds]);
 
   useEffect(() => {
     aiHighlightSetRef.current = new Set(aiHighlightShopIds ?? []);

@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { loadConsultMapPayload } from "../../../lib/consultMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
@@ -125,6 +126,10 @@ export default function MapPageClient({
     ids: number[];
     label: string;
   } | null>(null);
+  const [consultMarkerPayload, setConsultMarkerPayload] = useState<{
+    ids: number[];
+    label: string;
+  } | null>(null);
   const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
     label: string;
@@ -223,6 +228,22 @@ export default function MapPageClient({
       setSearchMarkerPayload(payload);
     } else if (labelParam) {
       setSearchMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("consult");
+    if (!enabled) {
+      setConsultMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "";
+    const payload = loadConsultMapPayload();
+    if (payload) {
+      setConsultMarkerPayload(payload);
+    } else if (labelParam) {
+      setConsultMarkerPayload({ ids: [], label: labelParam });
     }
   }, [searchParams, searchParamsKey]);
 
@@ -620,6 +641,7 @@ export default function MapPageClient({
               searchShopIds={searchMarkerPayload?.ids}
               aiShopIds={aiMarkerPayload?.ids}
               searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
+              consultShopIds={consultMarkerPayload?.ids}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
               highlightEventTargets={showGrandma ? isHoldActive : false}

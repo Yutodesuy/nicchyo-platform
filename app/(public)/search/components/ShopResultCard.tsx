@@ -15,6 +15,7 @@ interface ShopResultCardProps {
   compact?: boolean;
   enableSearchMapHighlight?: boolean;
   mapLabel?: string;
+  showMapLink?: boolean;
 }
 
 /**
@@ -29,6 +30,7 @@ function ShopResultCard({
   compact = false,
   enableSearchMapHighlight = false,
   mapLabel: mapLabelProp,
+  showMapLink = true,
 }: ShopResultCardProps) {
   const previewImage =
     shop.images?.main ||
@@ -128,15 +130,17 @@ function ShopResultCard({
         </div>
       </div>
 
-      <Link
-        href={mapHref}
-        onClick={handleOpenMap}
-        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
-          compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
-        }`}
-      >
-        地図で見る →
-      </Link>
+      {showMapLink && (
+        <Link
+          href={mapHref}
+          onClick={handleOpenMap}
+          className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
+            compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
+          }`}
+        >
+          地図で見る →
+        </Link>
+      )}
     </div>
   );
 }
