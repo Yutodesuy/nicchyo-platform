@@ -5,12 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Send, CheckCircle2, AlertCircle, HelpCircle, Bug, MessageSquare, Mail } from "lucide-react";
+import { Loader2, Send, CheckCircle2, AlertCircle, HelpCircle, Bug, MessageSquare, Mail, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const contactSchema = z.object({
   name: z.string().optional(),
-  email: z.string().email("メールアドレスの形式が正しくありません").min(1, "メールアドレスは必須です"),
+  email: z.string()
+    .min(1, "メールアドレスは必須です")
+    .email("返信先として使用しますので、正確なメールアドレスを半角で入力してください（例: user@example.com）"),
   category: z.enum(["question", "feedback", "bug", "other"], {
     errorMap: () => ({ message: "カテゴリを選択してください" }),
   }),
@@ -43,6 +45,22 @@ export default function ContactForm() {
   });
 
   const selectedCategory = watch("category");
+  const emailValue = watch("email");
+
+  // 全角文字を検出するヘルパー
+  const hasFullWidthChars = (str?: string) => {
+    if (!str) return false;
+    return /[^\x01-\x7E]/.test(str);
+  };
+
+  // 全角→半角変換ハンドラー
+  const handleFixEmail = () => {
+    if (!emailValue) return;
+    const fixed = emailValue.replace(/[！-～]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xfee0);
+    });
+    setValue("email", fixed, { shouldValidate: true });
+  };
 
   const onSubmit = async (data: ContactFormData) => {
     // 実際の実装ではAPIルートなどを呼び出します。
@@ -92,7 +110,7 @@ export default function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {/* Category Selection */}
       <div className="space-y-3">
         <label className="text-sm font-semibold text-gray-700">お問い合わせの種類</label>
@@ -155,10 +173,26 @@ export default function ContactForm() {
             )}
           />
           {errors.email && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3 w-3" />
-              {errors.email.message}
-            </p>
+            <div className="space-y-2">
+              <p className="flex items-start gap-1 text-xs text-red-500">
+                <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                <span>{errors.email.message}</span>
+              </p>
+
+              {/* Smart Fix: 全角文字が含まれている場合の提案 */}
+              {hasFullWidthChars(emailValue) && (
+                <motion.button
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  type="button"
+                  onClick={handleFixEmail}
+                  className="flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 hover:bg-amber-100 transition-colors"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  全角文字が含まれています。半角に変換しますか？
+                </motion.button>
+              )}
+            </div>
           )}
         </div>
 
