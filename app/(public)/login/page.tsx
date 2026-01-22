@@ -1,11 +1,13 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import Image from "next/image";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
+import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -25,11 +28,15 @@ export default function LoginPage() {
       setError("認証を完了してください。");
       return;
     }
+
+    setIsSubmitting(true);
     const ok = await loginWithCredentials(
       identifier,
       password,
       hasCaptcha ? captchaToken : undefined
     );
+    setIsSubmitting(false);
+
     if (!ok) {
       setError("メールアドレスまたはパスワードが違います。");
       return;
@@ -53,76 +60,124 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pb-24">
-      <div className="mx-auto w-full max-w-md px-4 pt-10">
-        <div className="mb-6 rounded-3xl border border-orange-200 bg-white/90 p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-            login
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">ログイン</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            登録したメールアドレスとパスワードを入力してください。
+    <div className="min-h-screen bg-orange-50/50 pb-24 font-sans text-slate-800">
+      {/* Background decoration */}
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-100/50 via-transparent to-transparent pointer-events-none" />
+
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center px-4 pt-8 md:pt-16">
+
+        {/* Header Section with friendly greeting */}
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="mb-6 relative h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-md">
+             <Image
+              src="/images/obaasan.webp"
+              alt="Obaasan"
+              fill
+              className="object-cover"
+              sizes="96px"
+              priority
+            />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+            日曜市へ、おかえりなさい。
+          </h1>
+          <p className="mt-3 max-w-xs text-sm text-slate-600 leading-relaxed">
+            ログインすると、お買い物リストを共有したり、<br/>
+            あなただけのお気に入り機能が使えます。
           </p>
         </div>
 
-        <form
-          className="space-y-4 rounded-3xl border border-orange-300 bg-white p-5 shadow-sm"
-          onSubmit={handleSubmit}
-        >
-          <label className="block text-sm text-slate-700">
-            メールアドレス
-            <input
-              type="email"
-              required
-              placeholder="example@domain.com"
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-amber-400 focus:outline-none"
-            />
-          </label>
-          <label className="block text-sm text-slate-700">
-            パスワード
-            <div className="relative mt-1">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 pr-12 text-sm text-slate-900 shadow-sm focus:border-amber-400 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-50"
-              >
-                {showPassword ? "隠す" : "表示"}
-              </button>
+        {/* Login Card */}
+        <div className="w-full rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-xl shadow-orange-100/50 backdrop-blur-xl md:p-8">
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-4">
+              <div className="group">
+                <label className="mb-1.5 block text-xs font-bold text-slate-500 ml-1">
+                  メールアドレス
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-orange-400 group-focus-within:text-orange-500 transition-colors">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="example@domain.com"
+                    value={identifier}
+                    onChange={(event) => setIdentifier(event.target.value)}
+                    className="block w-full rounded-2xl border-0 bg-orange-50/50 py-3.5 pl-10 pr-4 text-slate-900 ring-1 ring-inset ring-orange-100 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-orange-400 transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              <div className="group">
+                <label className="mb-1.5 block text-xs font-bold text-slate-500 ml-1">
+                  パスワード
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-orange-400 group-focus-within:text-orange-500 transition-colors">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="block w-full rounded-2xl border-0 bg-orange-50/50 py-3.5 pl-10 pr-12 text-slate-900 ring-1 ring-inset ring-orange-100 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-orange-400 transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
             </div>
-          </label>
-          {error && (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
-              {error}
-            </p>
-          )}
 
-          <button
-            type="submit"
-            className="w-full rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
-          >
-            ログインする
-          </button>
-        </form>
+            {error && (
+              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <span className="mt-0.5 block h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                {error}
+              </div>
+            )}
 
-        <div className="mt-4 rounded-3xl border border-orange-200 bg-white/90 p-4 shadow-sm">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="flex w-full items-center justify-center gap-3 rounded-full border border-gray-200 bg-white px-6 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
-            aria-label="Googleでログイン"
-          >
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white">
-              <svg viewBox="0 0 48 48" className="h-4 w-4" aria-hidden="true">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="group relative flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-200 transition-all duration-200 hover:from-orange-600 hover:to-amber-600 hover:shadow-orange-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
+            >
+              {isSubmitting ? (
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : (
+                <>
+                  <span>ログインして始める</span>
+                  <LogIn size={18} className="transition-transform group-hover:translate-x-0.5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-100"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white/80 px-2 text-slate-400">または</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="mt-6 flex w-full items-center justify-center gap-3 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-300"
+            >
+              <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
                 <path
                   fill="#FFC107"
                   d="M43.611 20.083H42V20H24v8h11.303C33.62 32.91 29.168 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
@@ -140,30 +195,41 @@ export default function LoginPage() {
                   d="M43.611 20.083H42V20H24v8h11.303c-1.09 2.76-3.16 5.092-5.848 6.563l.003-.002 6.222 5.255C35.184 40.255 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"
                 />
               </svg>
-            </span>
-            Googleでログイン
-          </button>
+              Googleでログイン
+            </button>
+          </div>
+
+          {hasCaptcha && (
+            <div className="mt-4 flex items-center justify-center">
+              <TurnstileWidget
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken("")}
+                onError={() => setCaptchaToken("")}
+                className="flex items-center justify-center"
+              />
+            </div>
+          )}
         </div>
 
-        {hasCaptcha && (
-          <div className="mt-4 flex items-center justify-center">
-            <TurnstileWidget
-              onVerify={setCaptchaToken}
-              onExpire={() => setCaptchaToken("")}
-              onError={() => setCaptchaToken("")}
-              className="flex items-center justify-center"
-            />
-          </div>
-        )}
+        {/* Footer Links */}
+        <div className="mt-8 flex flex-col items-center space-y-4">
+          <Link
+            href="/signup"
+            className="group flex items-center gap-1 rounded-full bg-white/60 px-5 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-white hover:text-orange-600"
+          >
+            <UserPlus size={16} className="text-slate-400 group-hover:text-orange-500" />
+            <span>初めての方は アカウント登録</span>
+            <ChevronRight size={14} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
 
-        <div className="mt-4 flex items-center justify-center">
           <Link
             href="/"
-            className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+            className="text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
           >
             ホームに戻る
           </Link>
         </div>
+
       </div>
     </div>
   );
