@@ -1,6 +1,4 @@
-import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
-import MapLink from "../../components/MapLink";
 import FaqClient from "./FaqClient";
 
 export const metadata = {
@@ -18,12 +16,6 @@ export default function FAQPage() {
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">
               よくある質問
             </h1>
-            <MapLink
-              href="/map"
-              className="rounded-full bg-white/80 px-4 py-1.5 text-xs font-bold text-amber-700 shadow-sm backdrop-blur-sm transition hover:bg-white"
-            >
-              マップへ戻る
-            </MapLink>
           </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
