@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import { ShoppingBag, ArrowRight, Home, CheckCircle2 } from "lucide-react";
+import NavigationBar from "../../components/NavigationBar";
 
 export default function SignupPage() {
   const router = useRouter();

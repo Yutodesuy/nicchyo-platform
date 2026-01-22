@@ -7,11 +7,8 @@ import Image from "next/image";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
-<<<<<<< HEAD
 import NavigationBar from "../../components/NavigationBar";
-=======
 import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff } from "lucide-react";
->>>>>>> e525b0b25ffc9ade4156843793ee76c7db258901
 
 export default function LoginPage() {
   const router = useRouter();
