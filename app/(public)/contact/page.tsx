@@ -1,6 +1,8 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import NavigationBar from "../../components/NavigationBar";
 import MapLink from "../../components/MapLink";
+import ContactForm from "./ContactForm";
+import { HelpCircle } from "lucide-react";
 
 export const metadata = {
   title: "Contact | nicchyo",
@@ -9,56 +11,58 @@ export const metadata = {
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-16 pt-4">
-      <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
-  <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
-    <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Contact</p>
-    <h1 className="mt-1 text-4xl font-bold text-gray-900">お問い合わせ</h1>
-    <p className="mt-1 text-xl text-gray-700">ご意見や取材依頼などはこちらからお知らせください。</p>
-  </div>
-  <div className="flex justify-center">
-    <MapLink
-      href="/map"
-      className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
-    >
-      マップへ戻る
-    </MapLink>
-  </div>
-</div>
-
-      <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8">
-        <section className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">メールで連絡</h2>
-          <p className="mt-2 text-sm text-gray-700 leading-relaxed">
-            返信までに数日いただく場合があります。ご了承ください。
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-[calc(3rem+var(--safe-bottom))]">
+      {/* Header Section */}
+      <div className="relative pt-6 pb-12 px-4 text-center">
+        <div className="mx-auto max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600/80 mb-2">Support</p>
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">お問い合わせ</h1>
+          <p className="mt-4 text-sm font-medium text-gray-600 leading-relaxed max-w-lg mx-auto">
+            ご不明な点やご要望がございましたら、<br className="hidden sm:block"/>
+            お気軽にお問い合わせください。
           </p>
-          <div className="mt-3">
-            <Link
-              href="mailto:info@nicchyo.local"
-              className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 shadow-sm hover:bg-amber-100"
-            >
-              info@nicchyo.local
-            </Link>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-orange-100 bg-white/95 p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900">よくある質問</h2>
-          <p className="mt-2 text-sm text-gray-700 leading-relaxed">
-            まずは FAQ によくある質問をまとめています。
-          </p>
-          <div className="mt-3">
-            <Link
-              href="/faq"
-              className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm hover:bg-orange-50"
-            >
-              FAQ を見る
-            </Link>
-          </div>
-        </section>
+        </div>
       </div>
+
+      <div className="mx-auto max-w-xl px-4 flex flex-col gap-6 -mt-6">
+        {/* Pre-check / FAQ Link (Soft Suggestion) */}
+        <div className="group relative overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm transition hover:shadow-md">
+          <Link href="/faq" className="flex items-start gap-4">
+            <div className="rounded-full bg-blue-100 p-2.5 text-blue-600">
+              <HelpCircle className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-gray-900 group-hover:text-blue-700 transition-colors">
+                よくある質問はこちら
+              </h3>
+              <p className="mt-1 text-xs text-gray-600 leading-relaxed">
+                お問い合わせの前に、解決策が見つかるかもしれません。
+                配送やアカウントについてはFAQをご覧ください。
+              </p>
+            </div>
+            <div className="self-center">
+              <span className="text-xs font-bold text-blue-600 underline underline-offset-2">Check</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Main Form Card */}
+        <div className="rounded-2xl border border-orange-100 bg-white/90 p-5 shadow-xl shadow-orange-100/50 backdrop-blur-sm sm:p-8">
+          <ContactForm />
+        </div>
+
+        {/* Back to Map */}
+        <div className="text-center pb-8">
+          <MapLink
+            href="/map"
+            className="inline-flex items-center text-sm font-semibold text-gray-500 transition hover:text-amber-600"
+          >
+            ← マップに戻る
+          </MapLink>
+        </div>
+      </div>
+
       <NavigationBar />
     </main>
   );
 }
-
