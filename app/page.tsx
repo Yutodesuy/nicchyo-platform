@@ -36,7 +36,7 @@ export default function HomePage() {
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
            <img
-            src="/homepagebackground.png"
+            src="/images/home-hero.jpg"
             alt="Sunday Market Atmosphere"
             className="h-full w-full object-cover object-center scale-105 blur-[2px] opacity-90"
           />
