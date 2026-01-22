@@ -37,7 +37,7 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
         <div className="flex items-start gap-3">
           <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
           <div className="space-y-3 text-sm text-gray-700">
-            <p className="font-bold text-amber-900">検索のヒント</p>
+            <p className="font-bold text-amber-900">お店探しのヒント</p>
             <ul className="list-disc pl-4 space-y-1">
               <li>
                 ひらがなや、より短い単語で試してみてください。

@@ -142,12 +142,12 @@ export default function MyProfilePage() {
                     onClick={handleAvatarClear}
                     className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50"
                   >
-                    画像を削除
+                    写真を削除
                   </button>
                 )}
               </div>
               {avatarError && <p className="mt-2 text-xs text-rose-600">{avatarError}</p>}
-              <p className="mt-2 text-xs text-gray-500">2MB以下の画像をアップロードできます。</p>
+              <p className="mt-2 text-xs text-gray-500">2MB以下の写真をアップロードできます。</p>
             </div>
           </div>
         </section>
@@ -181,9 +181,9 @@ export default function MyProfilePage() {
               disabled={!canSave || !isDirty}
               className="rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-amber-300"
             >
-              変更を保存
+              プロフィールを更新
             </button>
-            {status === "saved" && <span className="text-xs text-amber-700">保存しました。</span>}
+            {status === "saved" && <span className="text-xs text-amber-700">更新しました。</span>}
           </div>
         </section>
 
