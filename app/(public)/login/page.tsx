@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
+import NavigationBar from "../../components/NavigationBar";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -165,6 +166,7 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+      <NavigationBar />
     </div>
   );
 }
