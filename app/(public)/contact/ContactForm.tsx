@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,8 +26,23 @@ const CATEGORIES = [
   { id: "other", label: "その他", icon: Mail, desc: "取材やその他のご連絡" },
 ] as const;
 
+const PLACEHOLDERS = {
+  question: "（例）アカウントの削除方法を教えてください。\n（例）営業時間は何時からですか？",
+  feedback: "（例）マップがとても見やすかったです！\n（例）〇〇という機能があると嬉しいです。",
+  bug: "（例）iPhoneでマップを開くと真っ白になります。\n（例）「エラーが発生しました」と表示されます。",
+  other: "（例）取材の申し込みについて。\n（例）店舗情報の掲載について。",
+};
+
 export default function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [greeting, setGreeting] = useState("");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) setGreeting("おはようございます。");
+    else if (hour >= 11 && hour < 18) setGreeting("こんにちは。");
+    else setGreeting("こんばんは。");
+  }, []);
 
   const {
     register,
@@ -170,7 +185,7 @@ export default function ContactForm() {
             {...register("message")}
             id="message"
             rows={5}
-            placeholder="できるだけ詳しくご記入いただけると助かります。"
+            placeholder={greeting ? `${greeting}\n\n${PLACEHOLDERS[selectedCategory]}` : PLACEHOLDERS[selectedCategory]}
             className={cn(
               "w-full resize-none rounded-lg border bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2",
               errors.message
