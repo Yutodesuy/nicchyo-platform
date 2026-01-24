@@ -7,6 +7,8 @@ import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MessageSquarePlus, MapPin, History } from "lucide-react";
+import KotoduteEmptyState from "./KotoduteEmptyState";
 import { Shop } from "../data/shops";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
@@ -620,9 +622,14 @@ export default function ShopDetailBanner({
               </div>
 
               {kotoduteNotes.length === 0 ? (
-                <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
-                  ことづてページで、お店の感想を共有できます。
-                </div>
+                <KotoduteEmptyState
+                  icon={MessageSquarePlus}
+                  title="一番乗りで投稿しよう！"
+                  description="お店の感想やおすすめをシェアしてください。"
+                  actionLabel="ことづてを投稿する"
+                  href={`/kotodute?shopId=${shop.id}`}
+                  className="bg-slate-50 border-slate-200 text-slate-600"
+                />
               ) : (
                 <div className="mt-6 space-y-4">
                   {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
@@ -700,14 +707,24 @@ export default function ShopDetailBanner({
                       </div>
                     ))}
                   {kotoduteFilter === "presence" && kotodutePresenceNotes.length === 0 && (
-                    <div className="border border-dashed border-pink-200 bg-pink-50 px-3 py-4 text-base text-pink-700">
-                      今日はまだ気配がありません。
-                    </div>
+                    <KotoduteEmptyState
+                      icon={MapPin}
+                      title="お店は開いていますか？"
+                      description="今日はまだ気配がありません。現地の様子を教えてください。"
+                      actionLabel="気配を伝える"
+                      href={`/kotodute?shopId=${shop.id}`}
+                      className="bg-pink-50 border-pink-200 text-pink-800"
+                    />
                   )}
                   {kotoduteFilter === "footprints" && kotoduteFootprintNotes.length === 0 && (
-                    <div className="border border-dashed border-sky-200 bg-sky-50 px-3 py-4 text-base text-sky-700">
-                      まだ足跡がありません。
-                    </div>
+                    <KotoduteEmptyState
+                      icon={History}
+                      title="まだ足跡がありません"
+                      description="過去の投稿はまだありません。あなたの思い出を残しませんか？"
+                      actionLabel="思い出を残す"
+                      href={`/kotodute?shopId=${shop.id}`}
+                      className="bg-sky-50 border-sky-200 text-sky-800"
+                    />
                   )}
                 </div>
               )}
