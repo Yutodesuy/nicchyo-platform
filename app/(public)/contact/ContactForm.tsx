@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils/cn";
 
 const contactSchema = z.object({
   name: z.string().optional(),
-  email: z.string().email("メールアドレスの形式が正しくありません").min(1, "メールアドレスは必須です"),
+  email: z.string().email("ご連絡が取れるよう、正しいメールアドレス（例: user@example.com）をご入力ください").min(1, "返信先としてメールアドレスが必要です"),
   category: z.enum(["question", "feedback", "bug", "other"], {
     errorMap: () => ({ message: "カテゴリを選択してください" }),
   }),
@@ -92,7 +92,7 @@ export default function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {/* Category Selection */}
       <div className="space-y-3">
         <label className="text-sm font-semibold text-gray-700">お問い合わせの種類</label>
@@ -154,12 +154,24 @@ export default function ContactForm() {
                 : "border-gray-200 focus:border-amber-400 focus:ring-amber-100"
             )}
           />
-          {errors.email && (
-            <p className="flex items-center gap-1 text-xs text-red-500">
-              <AlertCircle className="h-3 w-3" />
-              {errors.email.message}
-            </p>
-          )}
+          <AnimatePresence>
+            {errors.email && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                className="mt-2 rounded-md bg-red-50 p-3 text-xs text-red-600"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-bold">メールアドレスの確認</p>
+                    <p>{errors.email.message}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="space-y-1.5">
