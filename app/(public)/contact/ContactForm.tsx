@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Send, CheckCircle2, AlertCircle, HelpCircle, Bug, MessageSquare, Mail } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { getSmartPlaceholder } from "./contact-logic";
 
 const contactSchema = z.object({
   name: z.string().optional(),
@@ -43,6 +44,14 @@ export default function ContactForm() {
   });
 
   const selectedCategory = watch("category");
+  const [placeholder, setPlaceholder] = useState("できるだけ詳しくご記入いただけると助かります。");
+
+  // Smart Defaults: Update placeholder based on time and category
+  useEffect(() => {
+    const hour = new Date().getHours();
+    const newPlaceholder = getSmartPlaceholder(selectedCategory, hour);
+    setPlaceholder(newPlaceholder);
+  }, [selectedCategory]);
 
   const onSubmit = async (data: ContactFormData) => {
     // 実際の実装ではAPIルートなどを呼び出します。
@@ -170,7 +179,7 @@ export default function ContactForm() {
             {...register("message")}
             id="message"
             rows={5}
-            placeholder="できるだけ詳しくご記入いただけると助かります。"
+            placeholder={placeholder}
             className={cn(
               "w-full resize-none rounded-lg border bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2",
               errors.message
