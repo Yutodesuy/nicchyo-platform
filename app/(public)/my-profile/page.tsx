@@ -99,7 +99,7 @@ export default function MyProfilePage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
         <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
           <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
-            My profile
+            My Profile
           </p>
           <h1 className="mt-1 text-4xl font-bold text-gray-900">プロフィール</h1>
           <p className="mt-1 text-xl text-gray-700">
@@ -142,7 +142,7 @@ export default function MyProfilePage() {
                     onClick={handleAvatarClear}
                     className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50"
                   >
-                    写真を削除
+                    写真を削除する
                   </button>
                 )}
               </div>
@@ -156,7 +156,7 @@ export default function MyProfilePage() {
           <h3 className="text-sm font-semibold text-gray-900">基本情報</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm text-gray-700">
-              ユーザー名
+              お名前
               <input
                 type="text"
                 value={name}
@@ -181,9 +181,9 @@ export default function MyProfilePage() {
               disabled={!canSave || !isDirty}
               className="rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-amber-300"
             >
-              プロフィールを更新
+              変更を保存する
             </button>
-            {status === "saved" && <span className="text-xs text-amber-700">更新しました。</span>}
+            {status === "saved" && <span className="text-xs text-amber-700">変更を保存しました。</span>}
           </div>
         </section>
 
