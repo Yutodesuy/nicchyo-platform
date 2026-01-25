@@ -22,7 +22,7 @@ export default function MyProfilePage() {
   }, [user]);
 
   const roleLabel = useMemo(() => {
-    if (!user) return "ログインしていません";
+    if (!user) return "未ログイン";
     if (user.role === "super_admin") return "管理者";
     if (user.role === "vendor") return "出店者";
     return "一般ユーザー";
@@ -79,14 +79,14 @@ export default function MyProfilePage() {
             </p>
             <h1 className="mt-1 text-4xl font-bold text-gray-900">プロフィール</h1>
             <p className="mt-1 text-xl text-gray-700">
-              マイページの利用にはアカウント登録またはログインが必要です。
+              プロフィールの確認・編集にはログインが必要です。
             </p>
           </div>
           <Link
             href="/login"
             className="inline-flex items-center justify-center rounded-full bg-amber-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
           >
-            ログイン画面へ
+            ログインへ
           </Link>
         </div>
         <NavigationBar />
@@ -142,12 +142,12 @@ export default function MyProfilePage() {
                     onClick={handleAvatarClear}
                     className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50"
                   >
-                    写真を外す
+                    画像を削除
                   </button>
                 )}
               </div>
               {avatarError && <p className="mt-2 text-xs text-rose-600">{avatarError}</p>}
-              <p className="mt-2 text-xs text-gray-500">2MB以下の写真をアップロードできます。</p>
+              <p className="mt-2 text-xs text-gray-500">2MB以下の画像をアップロードできます。</p>
             </div>
           </div>
         </section>
@@ -181,7 +181,7 @@ export default function MyProfilePage() {
               disabled={!canSave || !isDirty}
               className="rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:bg-amber-300"
             >
-              変更を保存する
+              変更を保存
             </button>
             {status === "saved" && <span className="text-xs text-amber-700">保存しました。</span>}
           </div>
@@ -189,7 +189,7 @@ export default function MyProfilePage() {
 
         <section className="rounded-3xl border border-orange-100 bg-white/95 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-900">セキュリティ</h3>
-          <p className="mt-2 text-sm text-gray-700">パスワードは一度ログアウトしてから、ログイン画面で再設定できます。</p>
+          <p className="mt-2 text-sm text-gray-700">パスワード変更はログイン画面から行えます。</p>
           <div className="mt-3">
             <Link
               href="/login"

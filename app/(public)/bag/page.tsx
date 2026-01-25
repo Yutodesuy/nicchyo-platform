@@ -393,7 +393,7 @@ export default function BagPage() {
       <ConfirmModal
         isOpen={pendingReset}
         title="リストを空にする"
-        message="リストを空にしますか？この操作は元に戻せません。"
+        message="すべてのアイテムをリストから消去しますか？この操作は取り消せません。"
         onConfirm={() => {
           clearBag();
           resetChecks();
