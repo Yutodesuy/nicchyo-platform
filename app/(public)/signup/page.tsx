@@ -25,7 +25,7 @@ export default function SignupPage() {
     setError("");
 
     if (!name.trim()) {
-      setError("ユーザー名を入力してください。");
+      setError("お名前を入力してください。");
       return;
     }
     if (!email.trim()) {
@@ -37,11 +37,11 @@ export default function SignupPage() {
       return;
     }
     if (password !== passwordConfirm) {
-      setError("パスワードが一致しません。");
+      setError("確認用パスワードと一致しません。");
       return;
     }
     if (hasCaptcha && !captchaToken) {
-      setError("認証を完了してください。");
+      setError("「私はロボットではありません」にチェックを入れてください。");
       return;
     }
 
@@ -60,7 +60,7 @@ export default function SignupPage() {
     setIsSubmitting(false);
 
     if (signUpError || !data.user) {
-      setError(signUpError?.message ?? "登録できませんでした。");
+      setError(signUpError?.message ?? "アカウントを作成できませんでした。");
       return;
     }
 
@@ -169,10 +169,10 @@ export default function SignupPage() {
               className="group flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-600 hover:shadow-amber-600/30 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-amber-300 disabled:shadow-none disabled:translate-y-0"
             >
               {isSubmitting ? (
-                "登録中..."
+                "作成中..."
               ) : (
                 <>
-                  登録してはじめる
+                  アカウントを作成する
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </>
               )}
@@ -194,13 +194,13 @@ export default function SignupPage() {
         {/* Footer Link */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-600">
-            すでにアカウントをお持ちの方は
+            すでにアカウントをお持ちの方
           </p>
           <Link
             href="/login"
             className="mt-2 inline-flex items-center gap-1.5 text-base font-semibold text-amber-600 hover:text-amber-700 transition-colors"
           >
-            ログインはこちら
+            ログインする
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
