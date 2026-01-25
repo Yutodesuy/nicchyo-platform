@@ -318,6 +318,7 @@ export default function BagPage() {
                                 <button
                                   onClick={() => setPendingDeleteItem(item)}
                                   className="text-stone-400 hover:text-red-500 p-1 -mt-1 -mr-1 transition-colors"
+                                  aria-label="リストから外す"
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -393,7 +394,7 @@ export default function BagPage() {
       <ConfirmModal
         isOpen={pendingReset}
         title="リストを空にする"
-        message="すべてのアイテムをリストから消去しますか？この操作は取り消せません。"
+        message="リストを空にしますか？この操作は元に戻せません。"
         onConfirm={() => {
           clearBag();
           resetChecks();
