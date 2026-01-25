@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils/cn";
 
 const contactSchema = z.object({
   name: z.string().optional(),
-  email: z.string().email("メールアドレスの形式が正しくありません").min(1, "メールアドレスは必須です"),
+  email: z.string().email("メールアドレスの形式に誤りがあるようです。半角英数字で、@が含まれているかご確認ください").min(1, "メールアドレスは必須です"),
   category: z.enum(["question", "feedback", "bug", "other"], {
-    errorMap: () => ({ message: "カテゴリを選択してください" }),
+    errorMap: () => ({ message: "お問い合わせの種類をお選びください。適切な担当者が対応いたします" }),
   }),
-  message: z.string().min(10, "内容は10文字以上で入力してください").max(1000, "内容は1000文字以内で入力してください"),
+  message: z.string().min(10, "恐れ入りますが、的確なサポートのため、内容は10文字以上で具体的にご記入いただけますでしょうか").max(1000, "内容は1000文字以内で入力してください"),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -26,8 +26,23 @@ const CATEGORIES = [
   { id: "other", label: "その他", icon: Mail, desc: "取材やその他のご連絡" },
 ] as const;
 
+const PLACEHOLDERS = {
+  question: "（例）アカウントの削除方法を教えてください。\n（例）営業時間は何時からですか？",
+  feedback: "（例）マップがとても見やすかったです！\n（例）〇〇という機能があると嬉しいです。",
+  bug: "（例）iPhoneでマップを開くと真っ白になります。\n（例）「エラーが発生しました」と表示されます。",
+  other: "（例）取材の申し込みについて。\n（例）店舗情報の掲載について。",
+};
+
 export default function ContactForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [greeting, setGreeting] = useState("");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) setGreeting("おはようございます。");
+    else if (hour >= 11 && hour < 18) setGreeting("こんにちは。");
+    else setGreeting("こんばんは。");
+  }, []);
 
   const {
     register,
@@ -43,6 +58,8 @@ export default function ContactForm() {
   });
 
   const selectedCategory = watch("category");
+  const messageContent = watch("message", "");
+  const messageLength = messageContent?.length || 0;
 
   const onSubmit = async (data: ContactFormData) => {
     // 実際の実装ではAPIルートなどを呼び出します。
@@ -92,7 +109,7 @@ export default function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {/* Category Selection */}
       <div className="space-y-3">
         <label className="text-sm font-semibold text-gray-700">お問い合わせの種類</label>
@@ -170,7 +187,7 @@ export default function ContactForm() {
             {...register("message")}
             id="message"
             rows={5}
-            placeholder="できるだけ詳しくご記入いただけると助かります。"
+            placeholder={greeting ? `${greeting}\n\n${PLACEHOLDERS[selectedCategory]}` : PLACEHOLDERS[selectedCategory]}
             className={cn(
               "w-full resize-none rounded-lg border bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:ring-2",
               errors.message
@@ -178,6 +195,11 @@ export default function ContactForm() {
                 : "border-gray-200 focus:border-amber-400 focus:ring-amber-100"
             )}
           />
+          <div className="flex justify-end px-1">
+             <span className={cn("text-xs transition-colors", messageLength < 10 ? "text-gray-400" : "text-amber-600 font-medium")}>
+               現在 {messageLength} 文字 / 1000
+             </span>
+          </div>
           {errors.message && (
             <p className="flex items-center gap-1 text-xs text-red-500">
               <AlertCircle className="h-3 w-3" />
