@@ -103,7 +103,7 @@ export default function MyProfilePage() {
           </p>
           <h1 className="mt-1 text-4xl font-bold text-gray-900">プロフィール</h1>
           <p className="mt-1 text-xl text-gray-700">
-            ロールに関係なく、同じ項目でプロフィールを管理します。
+            アカウント情報の確認・変更ができます。
           </p>
         </div>
         <div className="flex justify-center">
@@ -202,7 +202,7 @@ export default function MyProfilePage() {
 
         <section className="rounded-3xl border border-orange-100 bg-white/95 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-900">ログアウト</h3>
-          <p className="mt-2 text-sm text-gray-700">共有端末の場合はログアウトしてください。</p>
+          <p className="mt-2 text-sm text-gray-700">使わないときはログアウトをおすすめします。</p>
           <div className="mt-3">
             <button
               type="button"

@@ -22,7 +22,7 @@ type ContactFormData = z.infer<typeof contactSchema>;
 const CATEGORIES = [
   { id: "question", label: "ご質問", icon: HelpCircle, desc: "使い方やサービスについて" },
   { id: "feedback", label: "ご意見", icon: MessageSquare, desc: "機能のご要望や感想" },
-  { id: "bug", label: "不具合", icon: Bug, desc: "エラーや動作不良の報告" },
+  { id: "bug", label: "不具合・トラブル", icon: Bug, desc: "アプリの調子が悪いとき" },
   { id: "other", label: "その他", icon: Mail, desc: "取材やその他のご連絡" },
 ] as const;
 

@@ -560,7 +560,7 @@ function ConfirmModal({
             onClick={onCancel}
             className="flex-1 py-2.5 rounded-xl font-bold text-sm text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors"
           >
-            キャンセル
+            やめる
           </button>
           <button
             onClick={onConfirm}
