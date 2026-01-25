@@ -175,7 +175,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
           <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
             <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
             <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
-            <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
+            <p className="mt-1 text-sm text-gray-700">キーワードやカテゴリーからお店を探せます</p>
           </div>
 
           {/* 検索フォーム */}
