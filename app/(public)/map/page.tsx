@@ -53,34 +53,83 @@ function normalizeChome(value: string | null): Shop["chome"] {
 
 export default async function MapPage() {
   const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const { data: shopRows } = await supabase
-    .from('shops')
-    .select(
-      [
-        'id',
-        'legacy_id',
-        'name',
-        'owner_name',
-        'side',
-        'position',
-        'lat',
-        'lng',
-        'chome',
-        'category',
-        'products',
-        'description',
-        'specialty_dish',
-        'about_vendor',
-        'stall_style',
-        'icon',
-        'schedule',
-        'message',
-        'topic',
-        'shop_strength',
-      ].join(',')
-    )
-    .order('legacy_id', { ascending: true });
+  let shopRows: ShopRow[] | null = null;
+  let attendanceEstimates: Record<number, {
+    label: string;
+    p: number | null;
+    n_eff: number;
+    vendor_override: boolean;
+    evidence_summary: string;
+  }> = {};
+
+  const hasSupabaseEnv =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+  if (hasSupabaseEnv) {
+    try {
+      const supabase = createClient(cookieStore);
+      const { data } = await supabase
+        .from('shops')
+        .select(
+          [
+            'id',
+            'legacy_id',
+            'name',
+            'owner_name',
+            'side',
+            'position',
+            'lat',
+            'lng',
+            'chome',
+            'category',
+            'products',
+            'description',
+            'specialty_dish',
+            'about_vendor',
+            'stall_style',
+            'icon',
+            'schedule',
+            'message',
+            'topic',
+            'shop_strength',
+          ].join(',')
+        )
+        .order('legacy_id', { ascending: true });
+      shopRows = Array.isArray(data) ? (data as ShopRow[]) : null;
+
+      if (shopRows && shopRows.length > 0) {
+        const uuidToLegacy = new Map<string, number>();
+        shopRows.forEach((row) => {
+          if (row.id && row.legacy_id !== null) {
+            uuidToLegacy.set(row.id, row.legacy_id);
+          }
+        });
+
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: estimates } = await supabase.rpc('get_shop_attendance_estimates', {
+          target_date: today,
+        });
+
+        if (Array.isArray(estimates)) {
+          estimates.forEach((row: any) => {
+            const legacyId = uuidToLegacy.get(String(row.shop_id));
+            if (!legacyId) return;
+            attendanceEstimates[legacyId] = {
+              label: row.label,
+              p: row.p,
+              n_eff: row.n_eff,
+              vendor_override: row.vendor_override,
+              evidence_summary: row.evidence_summary,
+            };
+          });
+        }
+      }
+    } catch {
+      shopRows = null;
+      attendanceEstimates = {};
+    }
+  }
 
   // Supabaseからデータを取得、取得できない場合は静的データにフォールバック
   const shops = (shopRows as unknown as ShopRow[] | null)
@@ -109,39 +158,6 @@ export default async function MapPage() {
         }))
     : staticShops;
 
-  const uuidToLegacy = new Map<string, number>();
-  (shopRows as unknown as ShopRow[] | null)?.forEach((row) => {
-    if (row.id && row.legacy_id !== null) {
-      uuidToLegacy.set(row.id, row.legacy_id);
-    }
-  });
-
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: estimates } = await supabase.rpc('get_shop_attendance_estimates', {
-    target_date: today,
-  });
-
-  const attendanceEstimates: Record<number, {
-    label: string;
-    p: number | null;
-    n_eff: number;
-    vendor_override: boolean;
-    evidence_summary: string;
-  }> = {};
-
-  if (Array.isArray(estimates)) {
-    estimates.forEach((row: any) => {
-      const legacyId = uuidToLegacy.get(String(row.shop_id));
-      if (!legacyId) return;
-      attendanceEstimates[legacyId] = {
-        label: row.label,
-        p: row.p,
-        n_eff: row.n_eff,
-        vendor_override: row.vendor_override,
-        evidence_summary: row.evidence_summary,
-      };
-    });
-  }
   return (
     <Suspense
       fallback={
