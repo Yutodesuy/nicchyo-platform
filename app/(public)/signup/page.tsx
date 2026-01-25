@@ -25,7 +25,7 @@ export default function SignupPage() {
     setError("");
 
     if (!name.trim()) {
-      setError("ユーザー名を入力してください。");
+      setError("お名前を入力してください。");
       return;
     }
     if (!email.trim()) {
@@ -37,11 +37,11 @@ export default function SignupPage() {
       return;
     }
     if (password !== passwordConfirm) {
-      setError("パスワードが一致しません。");
+      setError("確認用パスワードと一致しません。");
       return;
     }
     if (hasCaptcha && !captchaToken) {
-      setError("認証を完了してください。");
+      setError("「私はロボットではありません」にチェックを入れてください。");
       return;
     }
 
@@ -172,7 +172,7 @@ export default function SignupPage() {
                 "作成中..."
               ) : (
                 <>
-                  無料でアカウントを作成する
+                  アカウントを作成する
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </>
               )}
