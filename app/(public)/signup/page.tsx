@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
+import { getSmartNamePlaceholder } from "./signup-logic";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import { ShoppingBag, ArrowRight, Home, CheckCircle2 } from "lucide-react";
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
   const [name, setName] = useState("");
+  const [namePlaceholder, setNamePlaceholder] = useState("日曜 太郎");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -67,6 +69,11 @@ export default function SignupPage() {
     router.push("/map");
   };
 
+  useEffect(() => {
+    const locale = navigator.language;
+    setNamePlaceholder(getSmartNamePlaceholder(new Date(), locale));
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] pb-safe-bottom">
       {/* Navbar placeholder / Home Link */}
@@ -102,7 +109,7 @@ export default function SignupPage() {
                 type="text"
                 required
                 autoComplete="nickname"
-                placeholder="日曜 太郎"
+                placeholder={namePlaceholder}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all"
