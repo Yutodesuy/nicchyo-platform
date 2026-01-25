@@ -207,7 +207,7 @@ export default function HamburgerMenu() {
                           <MenuIcon name="chat" className="h-5 w-5 text-purple-600" />
                           <div className="flex-1">
                             <p className="text-sm font-medium">ことづて管理</p>
-                            <p className="text-xs text-gray-500">投稿の承認・削除</p>
+                            <p className="text-xs text-gray-500">投稿の管理</p>
                           </div>
                           <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
                             モデレーター
@@ -331,7 +331,7 @@ export default function HamburgerMenu() {
                       className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-gray-50"
                     >
                       <MenuIcon name="user" className="h-5 w-5 text-gray-600" />
-                      <p className="text-sm font-medium">アカウント登録</p>
+                      <p className="text-sm font-medium">アカウントを作成</p>
                     </Link>
                   </li>
                 </>
