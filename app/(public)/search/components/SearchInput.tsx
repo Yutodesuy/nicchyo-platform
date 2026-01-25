@@ -95,7 +95,7 @@ export default function SearchInput({ value, onChange, placeholder }: SearchInpu
           type="button"
           onClick={() => setLocalValue('')}
           className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-          aria-label="検索をクリア"
+          aria-label="検索キーワードを消す"
         >
           <span className="text-lg">×</span>
         </button>
