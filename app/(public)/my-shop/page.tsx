@@ -226,7 +226,7 @@ export default function MyShopPage() {
     };
 
     saveShopEdits(vendorId, edits);
-    setStatusMessage("お店の情報を更新しました。");
+    setStatusMessage("更新内容をマップに反映しました。");
   };
 
   const requiredMark = (
@@ -586,13 +586,13 @@ export default function MyShopPage() {
               type="button"
               className="rounded-full border border-orange-200 bg-white px-5 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
             >
-              下書きとして保存
+              下書き保存
             </button>
             <button
               type="submit"
               className="rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
             >
-              更新する
+              送信する
             </button>
           </div>
         </form>
