@@ -110,11 +110,11 @@ export default function KotoduteClient() {
 
         <section className="mx-auto w-full max-w-2xl rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-lg">
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">
-            投稿する
+            メッセージを書く
           </p>
           <div className="mt-3 flex flex-col gap-4">
             <div className="space-y-2">
-              <label className="text-sm text-gray-700">本文</label>
+              <label className="text-sm text-gray-700">メッセージ</label>
               <textarea
                 ref={textareaRef}
                 value={text}
@@ -124,7 +124,7 @@ export default function KotoduteClient() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-gray-700">投稿先</label>
+              <label className="text-sm text-gray-700">宛先</label>
               <select
                 value={targetTag}
                 onChange={(e) => setTargetTag(e.target.value)}
@@ -147,7 +147,7 @@ export default function KotoduteClient() {
               onClick={handleSubmit}
               className="w-full rounded-lg bg-amber-600 px-5 py-3.5 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
             >
-              投稿する
+              メッセージを送る
             </button>
           </div>
         </section>
@@ -156,7 +156,7 @@ export default function KotoduteClient() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">
-                ことづて一覧
+                みんなのことづて
               </p>
               <h2 className="text-xl font-bold text-gray-900">全体とお店あてのことづて</h2>
             </div>
@@ -187,7 +187,7 @@ export default function KotoduteClient() {
                 className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-100 px-6 py-2.5 text-sm font-bold text-amber-800 transition hover:bg-amber-200 active:scale-95"
               >
                 <PencilLine size={18} />
-                投稿を書く
+                メッセージを書く
               </button>
             </div>
           ) : (

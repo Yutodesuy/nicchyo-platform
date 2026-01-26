@@ -417,7 +417,7 @@ export default function ShopDetailBanner({
                   disabled={!shopOpenStatus}
                   className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
                 >
-                  状況を更新する
+                  みんなに知らせる
                 </button>
               </div>
             </div>
@@ -451,7 +451,7 @@ export default function ShopDetailBanner({
                   onClick={handleEditShop}
                   className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xl font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                 >
-                  情報を編集する
+                  お店の情報を変更する
                 </button>
               )}
             </div>
@@ -617,7 +617,7 @@ export default function ShopDetailBanner({
                   href={`/kotodute?shopId=${shop.id}`}
                   className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
                 >
-                  もっと見る・投稿する
+                  もっと見る・送る
                 </Link>
               </div>
 
@@ -633,7 +633,7 @@ export default function ShopDetailBanner({
                     href={`/kotodute?shopId=${shop.id}`}
                     className="rounded-full bg-amber-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95"
                   >
-                    投稿する
+                    メッセージを送る
                   </Link>
                 </div>
               ) : (
@@ -668,7 +668,7 @@ export default function ShopDetailBanner({
                   href={`/kotodute?shopId=${shop.id}`}
                   className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
                 >
-                  もっと見る・投稿する
+                  もっと見る・送る
                 </Link>
               </div>
 
@@ -780,7 +780,7 @@ export default function ShopDetailBanner({
                   onClick={handleConfirmAdd}
                   className="rounded-full bg-slate-800 px-3 py-2 text-lg font-semibold text-white shadow-sm hover:bg-slate-700"
                 >
-                  追加する
+                  リストに入れる
                 </button>
               </div>
             </div>

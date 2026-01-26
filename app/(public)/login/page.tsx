@@ -219,7 +219,7 @@ export default function LoginPage() {
             className="group flex items-center gap-1 rounded-full bg-white/60 px-5 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-white hover:text-orange-600"
           >
             <UserPlus size={16} className="text-slate-400 group-hover:text-orange-500" />
-            <span>初めての方は 新規登録</span>
+            <span>初めての方は アカウント作成</span>
             <ChevronRight size={14} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
           </Link>
 

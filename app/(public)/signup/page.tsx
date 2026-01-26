@@ -84,7 +84,7 @@ export default function SignupPage() {
             <ShoppingBag className="h-8 w-8" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            アカウント登録
+            アカウント作成
           </h1>
           <p className="mt-3 text-base text-slate-600 leading-relaxed">
             日曜市へようこそ。<br />
