@@ -6,6 +6,7 @@ export type KotoduteNote = {
 };
 
 const STORAGE_KEY = "nicchyo-kotodute-notes";
+export const KOTODUTE_UPDATED_EVENT = "nicchyo-kotodute-updated";
 
 const seed: KotoduteNote[] = [
   {
@@ -44,4 +45,5 @@ export function loadKotodute(): KotoduteNote[] {
 export function saveKotodute(notes: KotoduteNote[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  window.dispatchEvent(new Event(KOTODUTE_UPDATED_EVENT));
 }

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,6 +54,12 @@ html, body {
 body {
   height: 100dvh; /* モダンブラウザ */
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
+}
+
+body.grandma-chat-open .leaflet-container {
+  filter: blur(4px);
+  transition: filter 200ms ease;
+  will-change: filter;
 }
 
 /* スクロールバ�E */
@@ -184,6 +192,113 @@ body {
   z-index: 1000 !important;
 }
 
+.shop-marker-ai {
+  transform: scale(1.08);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
+    drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
+}
+
+.shop-marker-search {
+  transform: scale(1.08);
+  filter:
+    drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
+    drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
+}
+
+.shop-marker-comment {
+  transform: scale(1.06);
+  filter:
+    drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))
+    drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
+}
+
+.shop-marker-search .stall-roof {
+  background: linear-gradient(135deg, #93c5fd, #2563eb) !important;
+}
+
+.shop-marker-search .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #2563eb 0 10%,
+    #93c5fd 10% 20%
+  ) !important;
+}
+
+.shop-marker-search .shop-marker-compact {
+  background: linear-gradient(180deg, #60a5fa 0%, #1d4ed8 100%) !important;
+}
+
+.shop-recipe-icons {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+  pointer-events: none;
+}
+
+.shop-recipe-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.shop-marker-recipe .shop-recipe-icons {
+  display: inline-flex;
+}
+
+.compact-shop-marker .shop-recipe-icons {
+  top: -14px;
+  padding: 1px 4px;
+}
+
+.compact-shop-marker .shop-recipe-icon {
+  font-size: 10px;
+}
+
+.shop-marker-ai .stall-roof {
+  background: linear-gradient(135deg, #fca5a5, #ef4444) !important;
+}
+
+.shop-marker-ai .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #ef4444 0 10%,
+    #fca5a5 10% 20%
+  ) !important;
+}
+
+.shop-marker-ai .shop-marker-compact {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%) !important;
+}
+
+.shop-marker-selected.shop-marker-ai {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.shop-marker-selected.shop-marker-search {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.shop-marker-selected.shop-marker-comment {
+  transform: scale(1.15);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.ai-label-playful {
+  font-family: "Mochiy Pop One", "Comic Neue", cursive;
+  letter-spacing: 0.04em;
+}
+
 .shop-favorite-badge {
   position: absolute;
   top: -14px;
@@ -208,11 +323,230 @@ body {
   right: auto;
 }
 
+.shop-kotodute-badge {
+  position: absolute;
+  top: 0;
+  left: -36px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #1d4ed8;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  box-shadow: 0 2px 6px rgba(29, 78, 216, 0.35);
+  pointer-events: none;
+}
+
+.shop-product-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 86px;
+  height: 52px;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.95);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+}
+
+.shop-side-north .shop-product-icon {
+  left: calc(100% + 8px);
+  transform: translate(0, -50%);
+}
+
+.shop-side-south .shop-product-icon {
+  left: -8px;
+  transform: translate(-100%, -50%);
+}
+
+.shop-product-icon-visible .shop-product-icon {
+  display: block;
+}
+
+.shop-simple-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  display: none;
+  width: 220px;
+  padding: 8px 10px;
+  gap: 10px;
+  align-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
+}
+
+.shop-side-north .shop-simple-banner {
+  transform: translateX(calc(-50% + 10px));
+}
+
+.shop-side-south .shop-simple-banner {
+  transform: translateX(calc(-50% - 10px));
+  flex-direction: row-reverse;
+}
+
+.shop-simple-banner-image {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: #f1f5f9;
+  flex-shrink: 0;
+}
+
+.shop-simple-banner-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shop-simple-banner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.shop-simple-banner-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-simple-banner-product {
+  font-size: 11px;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-simple-banner-status {
+  font-size: 11px;
+  color: #0f172a;
+}
+
+.shop-simple-banner-visible .shop-simple-banner {
+  display: flex;
+}
+
+.shop-simple-banner-visible .shop-recipe-icons,
+.shop-simple-banner-visible .shop-kotodute-badge,
+.shop-simple-banner-visible .shop-favorite-badge,
+.shop-simple-banner-visible .shop-product-icon {
+  display: none !important;
+}
+
+.shop-side-south .shop-kotodute-badge {
+  left: auto;
+  right: -36px;
+}
+
+.grandma-title-label {
+  font-size: 14px;
+}
+
+.grandma-comment-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 72px;
+  max-height: 72px;
+}
+
+.shop-marker-kotodute .shop-kotodute-badge {
+  display: inline-flex;
+}
+
 .custom-shop-marker.is-favorite .shop-favorite-badge {
   display: inline-flex;
 }
 
+.shop-bag-badge {
+  position: absolute;
+  top: -14px;
+  right: -12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 2px solid #10b981;
+  background: #ffffff;
+  color: #10b981;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.shop-side-north .shop-bag-badge {
+  left: -12px;
+  right: auto;
+}
+
+.shop-marker-bag .shop-bag-badge {
+  display: inline-flex;
+}
+
+.shop-marker-bag .stall-roof {
+  background: linear-gradient(135deg, #ffffff, #f1f5f9) !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.25), inset -6px 0 0 rgba(209, 213, 219, 0.25) !important;
+}
+
+.shop-marker-bag .stall-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    #10b981 0 10%,
+    #34d399 10% 20%
+  ) !important;
+}
+
+.shop-marker-bag .shop-marker-compact {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%) !important;
+  border: 2px solid #ffffff;
+}
+
+.shop-simple-banner-visible .shop-bag-badge {
+  display: none !important;
+}
+
 body.shop-banner-open .hamburger-button {
+  display: none;
+}
+
+body.shop-banner-open .navigation-bar {
+  display: none;
+}
+
+body.home-poster-zoom-open .hamburger-button {
   display: none;
 }
 
@@ -228,6 +562,37 @@ body.shop-banner-open .hamburger-button {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.nav-map-arc {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-map-arc-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.nav-map-arc-ring {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 120px;
+  height: 68px;
+  border: 2px solid rgba(34, 197, 94, 0.9);
+  border-bottom: none;
+  border-top-left-radius: 9999px;
+  border-top-right-radius: 9999px;
+  background: rgba(220, 252, 231, 0.85);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
+  box-shadow: 0 -8px 18px rgba(34, 197, 94, 0.22);
 }
 
 .map-building-tilted {
@@ -300,6 +665,26 @@ body.shop-banner-open .hamburger-button {
     opacity: 0;
     transform: scale(1.4);
   }
+}
+
+@keyframes shop-banner-expand {
+  0% {
+    transform:
+      translate(var(--banner-translate-x, 0px), var(--banner-translate-y, 0px))
+      scale(var(--banner-scale-x, 0.3), var(--banner-scale-y, 0.3));
+    opacity: 0.4;
+    border-radius: 16px;
+  }
+  100% {
+    transform: translate(0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: 0;
+  }
+}
+
+.shop-banner-animate {
+  transform-origin: center;
+  animation: shop-banner-expand 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .shop-illustration-3d {

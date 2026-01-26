@@ -1,11 +1,18 @@
-﻿import React from 'react';
+import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { vi } from 'vitest';
 import GrandmaChatter from '../components/GrandmaChatter';
 
+// Mock useRouter
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}));
+
 describe('GrandmaChatter', () => {
   const getCommentText = () => {
-    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
+    const button = screen.getByRole('button', { name: 'おばあちゃんのつぶやきを見る' });
     const textNode = button.querySelector('p');
     return textNode?.textContent?.trim() ?? '';
   };
@@ -16,7 +23,7 @@ describe('GrandmaChatter', () => {
     const firstText = getCommentText();
     expect(firstText.length).toBeGreaterThan(0);
 
-    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
+    const button = screen.getByRole('button', { name: 'おばあちゃんのつぶやきを見る' });
     fireEvent.click(button);
 
     const nextText = getCommentText();
@@ -24,18 +31,18 @@ describe('GrandmaChatter', () => {
     expect(nextText).not.toBe(firstText);
   });
 
-  it('does not auto-rotate after interval', () => {
+  it('auto-rotates after interval', () => {
     vi.useFakeTimers();
     render(<GrandmaChatter />);
 
     const firstText = getCommentText();
 
     act(() => {
-      vi.advanceTimersByTime(60000);
+      vi.advanceTimersByTime(7000);
     });
 
     const afterText = getCommentText();
-    expect(afterText).toBe(firstText);
+    expect(afterText).not.toBe(firstText);
     vi.useRealTimers();
   });
 });

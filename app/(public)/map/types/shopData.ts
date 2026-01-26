@@ -50,6 +50,18 @@ export interface ShopEditableData {
   /** 取扱商品リスト */
   products: string[];
 
+  /** 季節をまたぐ取扱商品（春-夏） */
+  seasonalProductsSpringSummer?: string[];
+
+  /** 季節をまたぐ取扱商品（夏-秋） */
+  seasonalProductsSummerAutumn?: string[];
+
+  /** 季節をまたぐ取扱商品（秋-冬） */
+  seasonalProductsAutumnWinter?: string[];
+
+  /** 季節をまたぐ取扱商品（冬-春） */
+  seasonalProductsWinterSpring?: string[];
+
   /** 店舗の説明文 */
   description: string;
 
@@ -67,6 +79,12 @@ export interface ShopEditableData {
 
   /** 出店者からのメッセージ（任意） */
   message?: string;
+
+  /** おせっかいコメント（任意） */
+  shopStrength?: string;
+
+  /** 来訪者に聞いてほしいトピック */
+  topic?: string[];
 
   /** 店舗画像URL（将来の実装用） */
   images?: {
@@ -230,12 +248,17 @@ export const EDITABLE_FIELDS: (keyof ShopEditableData)[] = [
   'category',
   'icon',
   'products',
+  'seasonalProductsSpringSummer',
+  'seasonalProductsSummerAutumn',
+  'seasonalProductsAutumnWinter',
+  'seasonalProductsWinterSpring',
   'description',
   'specialtyDish',
   'aboutVendor',
   'stallStyle',
   'schedule',
   'message',
+  'topic',
   'images',
   'socialLinks',
 ];

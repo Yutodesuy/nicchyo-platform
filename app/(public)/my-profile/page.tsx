@@ -35,9 +35,9 @@ export default function MyProfilePage() {
       (avatarUrl ?? "") !== (user.avatarUrl ?? ""));
   const canSave = !!user && name.trim() && email.trim();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave || !user) return;
-    updateProfile({
+    await updateProfile({
       name: name.trim(),
       email: email.trim(),
       avatarUrl: avatarUrl ?? undefined,
@@ -99,11 +99,11 @@ export default function MyProfilePage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
         <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
           <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
-            My profile
+            My Profile
           </p>
           <h1 className="mt-1 text-4xl font-bold text-gray-900">プロフィール</h1>
           <p className="mt-1 text-xl text-gray-700">
-            ロールに関係なく、同じ項目でプロフィールを管理します。
+            アカウント情報の確認・変更ができます。
           </p>
         </div>
         <div className="flex justify-center">
@@ -156,7 +156,7 @@ export default function MyProfilePage() {
           <h3 className="text-sm font-semibold text-gray-900">基本情報</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm text-gray-700">
-              ユーザー名
+              お名前
               <input
                 type="text"
                 value={name}
@@ -202,7 +202,7 @@ export default function MyProfilePage() {
 
         <section className="rounded-3xl border border-orange-100 bg-white/95 p-6 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-900">ログアウト</h3>
-          <p className="mt-2 text-sm text-gray-700">共有端末の場合はログアウトしてください。</p>
+          <p className="mt-2 text-sm text-gray-700">使わないときはログアウトをおすすめします。</p>
           <div className="mt-3">
             <button
               type="button"

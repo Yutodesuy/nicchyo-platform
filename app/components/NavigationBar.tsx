@@ -12,17 +12,20 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
+  { name: "相談", href: "/consult", icon: "chat" },
   { name: "マップ", href: "/map", icon: "map" },
-  { name: "検索", href: "/search", icon: "search" },
-  { name: "レシピ", href: "/recipes", icon: "recipe" },
-  { name: "ことづて", href: "/kotodute", icon: "chat" },
+  { name: "お店を探す", href: "/search", icon: "search" },
 ];
 
 type NavigationBarProps = {
   activeHref?: string;
+  position?: "fixed" | "absolute";
 };
 
-export default function NavigationBar({ activeHref }: NavigationBarProps) {
+export default function NavigationBar({
+  activeHref,
+  position = "fixed",
+}: NavigationBarProps) {
   const pathname = usePathname();
   const { startMapLoading } = useMapLoading();
   const { permissions } = useAuth();
@@ -34,7 +37,7 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white/80 backdrop-blur-md shadow-lg"
+      className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white text-sm leading-none shadow-lg`}
       style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
     >
       <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
@@ -46,12 +49,23 @@ export default function NavigationBar({ activeHref }: NavigationBarProps) {
               key={item.name}
               href={item.href}
               onClick={handleClick}
+              prefetch={
+                item.href === "/search" ||
+                item.href === "/recipes" ||
+                item.href === "/kotodute" ||
+                item.href === "/consult"
+              }
               className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
                 isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
-              }`}
+              } ${item.href === "/map" ? "nav-map-arc" : ""}`}
             >
-              <NavIcon name={item.icon} className="h-5 w-5" />
-              <span className="text-[10px] font-medium">{item.name}</span>
+              {item.href === "/map" && (
+                <span className="nav-map-arc-ring" aria-hidden="true" />
+              )}
+              <span className="nav-map-arc-content">
+                <NavIcon name={item.icon} className="h-5 w-5" />
+                <span className="text-[10px] font-medium leading-none">{item.name}</span>
+              </span>
             </Link>
           );
         })}
