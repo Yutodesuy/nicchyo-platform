@@ -316,6 +316,10 @@ function AdminUsersContent() {
     }
   }, [filteredUsers]);
 
+  const handleCreateUser = useCallback(() => {
+    showToast.success("新規ユーザー追加 (未実装)");
+  }, []);
+
   // 権限変更
   const handleOpenRoleChange = useCallback((user: AdminUser) => {
     setRoleChangeUser(user);
@@ -414,6 +418,7 @@ function AdminUsersContent() {
                 JSON出力
               </LoadingButton>
               <button
+                onClick={handleCreateUser}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                 aria-label="新規ユーザーを追加"
               >
@@ -585,6 +590,10 @@ function AdminUsersContent() {
                 ? "検索条件に一致するユーザーがありません。別のキーワードで検索してください。"
                 : "現在、この条件に該当するユーザーはいません。"
             }
+            action={{
+              label: "新規ユーザーを追加",
+              onClick: handleCreateUser,
+            }}
           />
         ) : (
           <div className="rounded-lg bg-white shadow">
