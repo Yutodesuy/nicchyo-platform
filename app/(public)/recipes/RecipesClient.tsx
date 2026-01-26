@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
-import { Map as MapIcon, ShoppingBag, ArrowRight, SearchX, RotateCcw } from "lucide-react";
+import { Map as MapIcon, ShoppingBag, ArrowRight } from "lucide-react";
 import {
   ingredientCatalog,
   ingredientIcons,
@@ -13,6 +13,7 @@ import {
   type Recipe,
 } from "../../../lib/recipes";
 import { shops } from "../map/data/shops";
+import { getSmartRecipePlaceholder } from "./recipes-smart-defaults";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -59,9 +60,11 @@ export default function RecipesClient() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
+  const [placeholder, setPlaceholder] = useState("料理・食材名で検索");
 
   useEffect(() => {
     setFridge(loadFridge());
+    setPlaceholder(getSmartRecipePlaceholder());
   }, []);
 
   const shopCategoryById = useMemo(() => {
@@ -207,7 +210,7 @@ export default function RecipesClient() {
                     setSearchMode("dish");
                     setQuery(e.target.value);
                   }}
-                  placeholder="料理・食材名で検索"
+                  placeholder={placeholder}
                   className="w-full rounded-full border border-amber-200 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 />
                 <button
@@ -342,33 +345,6 @@ export default function RecipesClient() {
             )}
             </div>
           )}
-
-          {query.trim() !== "" && searchResults.length === 0 && (
-            <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-10 text-center shadow-sm">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <SearchX size={32} />
-              </div>
-              <h3 className="mb-2 text-lg font-bold text-gray-900">
-                「{query}」に一致するレシピはありませんでした
-              </h3>
-              <p className="mx-auto mb-6 max-w-sm text-sm text-gray-600 leading-relaxed">
-                キーワードを変えて検索するか、
-                <br />
-                季節のおすすめやリストから探してみてください。
-              </p>
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setSearchMode("ingredient");
-                }}
-                className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-200/50 transition hover:bg-amber-500 hover:shadow-xl active:scale-95"
-              >
-                <RotateCcw size={18} />
-                すべてのレシピを表示
-              </button>
-            </div>
-          )}
-
           {searchResults.length > 0 && (
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
               <div className="flex items-center justify-between">

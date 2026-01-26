@@ -3,8 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import { ingredientIcons, recipes, type Recipe } from "../../../../lib/recipes";
 import NavigationBar from "../../../components/NavigationBar";
+import EmptyState from "@/components/EmptyState";
 
 type Props = { id: string };
 
@@ -54,11 +56,28 @@ export default function RecipeDetailClient({ id }: Props) {
 
   if (!recipe) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-12 text-center text-gray-800">
-        <p className="text-lg font-semibold">レシピが見つかりませんでした。</p>
-        <Link href="/map" className="mt-4 inline-block text-amber-700 underline">
-          マップへもどる
-        </Link>
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <EmptyState
+          icon={SearchX}
+          title="レシピが見つかりませんでした"
+          description="指定されたレシピは存在しないか、削除された可能性があります。"
+          action={
+            <Link
+              href="/recipes"
+              className="rounded-full bg-amber-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-500"
+            >
+              レシピ一覧に戻る
+            </Link>
+          }
+          secondaryAction={
+            <Link
+              href="/map"
+              className="rounded-full border border-amber-200 bg-white px-6 py-2.5 text-sm font-bold text-amber-600 shadow-sm transition hover:bg-amber-50"
+            >
+              マップへ戻る
+            </Link>
+          }
+        />
       </div>
     );
   }

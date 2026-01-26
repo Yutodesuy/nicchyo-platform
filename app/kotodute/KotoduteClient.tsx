@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
 import { useSearchParams } from "next/navigation";
-import { MessageSquarePlus, Sparkles, PencilLine } from "lucide-react";
+import { MessageSquarePlus, Sparkles } from "lucide-react";
 
 const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
 
@@ -39,8 +39,6 @@ export default function KotoduteClient() {
   const [text, setText] = useState("");
   const [targetTag, setTargetTag] = useState(prefillTarget ? `#${prefillTarget}` : "#all");
   const [placeholder, setPlaceholder] = useState("おすすめや感想をひとこと書いてください");
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setNotes(loadKotodute());
@@ -116,7 +114,6 @@ export default function KotoduteClient() {
             <div className="space-y-2">
               <label className="text-sm text-gray-700">メッセージ</label>
               <textarea
-                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={placeholder}

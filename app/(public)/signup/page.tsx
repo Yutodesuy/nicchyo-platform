@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
+import { getSmartNamePlaceholder } from "./signup-logic";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import { ShoppingBag, ArrowRight, Home, CheckCircle2 } from "lucide-react";
@@ -12,6 +13,7 @@ export default function SignupPage() {
   const router = useRouter();
   const supabase = createClient();
   const [name, setName] = useState("");
+  const [namePlaceholder, setNamePlaceholder] = useState("日曜 太郎");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -25,7 +27,7 @@ export default function SignupPage() {
     setError("");
 
     if (!name.trim()) {
-      setError("お名前を入力してください。");
+      setError("ユーザー名を入力してください。");
       return;
     }
     if (!email.trim()) {
@@ -37,11 +39,11 @@ export default function SignupPage() {
       return;
     }
     if (password !== passwordConfirm) {
-      setError("確認用パスワードと一致しません。");
+      setError("パスワードが一致しません。");
       return;
     }
     if (hasCaptcha && !captchaToken) {
-      setError("「私はロボットではありません」にチェックを入れてください。");
+      setError("認証を完了してください。");
       return;
     }
 
@@ -60,12 +62,18 @@ export default function SignupPage() {
     setIsSubmitting(false);
 
     if (signUpError || !data.user) {
+      setError(signUpError?.message ?? "登録に失敗しました。");
       setError(signUpError?.message ?? "アカウントを作成できませんでした。");
       return;
     }
 
     router.push("/map");
   };
+
+  useEffect(() => {
+    const locale = navigator.language;
+    setNamePlaceholder(getSmartNamePlaceholder(new Date(), locale));
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] pb-safe-bottom">
@@ -102,7 +110,7 @@ export default function SignupPage() {
                 type="text"
                 required
                 autoComplete="nickname"
-                placeholder="日曜 太郎"
+                placeholder={namePlaceholder}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all"
@@ -169,10 +177,10 @@ export default function SignupPage() {
               className="group flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/30 transition-all hover:bg-amber-600 hover:shadow-amber-600/30 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-amber-300 disabled:shadow-none disabled:translate-y-0"
             >
               {isSubmitting ? (
-                "作成中..."
+                "登録中..."
               ) : (
                 <>
-                  アカウントを作成する
+                  登録してはじめる
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </>
               )}

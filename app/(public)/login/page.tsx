@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import NavigationBar from "../../components/NavigationBar";
-import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,13 +20,14 @@ export default function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     if (hasCaptcha && !captchaToken) {
-      setError("「私はロボットではありません」にチェックを入れてください。");
+      setError("認証を完了してください。");
       return;
     }
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
     setIsSubmitting(false);
 
     if (!ok) {
-      setError("メールアドレスかパスワードが間違っています。");
+      setError("ログインできませんでした。メールアドレスやパスワードにお間違いがないか確認してください。");
       return;
     }
     router.push("/map");
@@ -56,7 +57,7 @@ export default function LoginPage() {
       },
     });
     if (oauthError) {
-      setError("Googleアカウントでのログインに失敗しました。");
+      setError("Googleログインに失敗しました。");
     }
   };
 
@@ -102,6 +103,7 @@ export default function LoginPage() {
                     <Mail size={18} />
                   </div>
                   <input
+                    ref={emailInputRef}
                     type="email"
                     required
                     placeholder="example@domain.com"
@@ -141,9 +143,22 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                <span className="mt-0.5 block h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-                {error}
+              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+                {error.includes("ログインできません") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      emailInputRef.current?.focus();
+                    }}
+                    className="self-end text-xs font-bold text-rose-700 underline decoration-rose-300 underline-offset-4 hover:decoration-rose-700"
+                  >
+                    入力欄を確認する
+                  </button>
+                )}
               </div>
             )}
 
@@ -156,7 +171,7 @@ export default function LoginPage() {
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
                 <>
-                  <span>ログインする</span>
+                  <span>ログインして始める</span>
                   <LogIn size={18} className="transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
@@ -196,7 +211,7 @@ export default function LoginPage() {
                   d="M43.611 20.083H42V20H24v8h11.303c-1.09 2.76-3.16 5.092-5.848 6.563l.003-.002 6.222 5.255C35.184 40.255 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"
                 />
               </svg>
-              Googleアカウントでログイン
+              Googleでログイン
             </button>
           </div>
 

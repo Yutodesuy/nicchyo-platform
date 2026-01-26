@@ -8,8 +8,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquarePlus, MapPin, History } from "lucide-react";
-import KotoduteEmptyState from "./KotoduteEmptyState";
 import { Shop } from "../data/shops";
+import EmptyState from "@/components/EmptyState";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
@@ -713,36 +713,46 @@ export default function ShopDetailBanner({
                       </div>
                     ))}
                   {kotoduteFilter === "presence" && kotodutePresenceNotes.length === 0 && (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-pink-200 bg-pink-50/50 px-6 py-8 text-center">
-                      <MapPin className="mb-3 h-8 w-8 text-pink-400" />
-                      <p className="mb-2 font-bold text-pink-900">最初の訪問者になりませんか？</p>
-                      <p className="mb-4 text-sm text-pink-700">
-                        今日はまだ誰も「気配」を残していません。<br />
-                        お店に着いたら、みんなに知らせましょう！
-                      </p>
-                      <Link
-                        href={`/kotodute?shopId=${shop.id}`}
-                        className="rounded-full bg-pink-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-pink-600 active:scale-95"
-                      >
-                        気配を残す
-                      </Link>
-                    </div>
+                    <EmptyState
+                      icon={MapPin}
+                      title="最初の訪問者になりませんか？"
+                      description={
+                        <>
+                          今日はまだ誰も「気配」を残していません。<br />
+                          お店に着いたら、みんなに知らせましょう！
+                        </>
+                      }
+                      action={
+                        <Link
+                          href={`/kotodute?shopId=${shop.id}`}
+                          className="rounded-full bg-pink-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-pink-600 active:scale-95"
+                        >
+                          気配を残す
+                        </Link>
+                      }
+                      variant="pink"
+                    />
                   )}
                   {kotoduteFilter === "footprints" && kotoduteFootprintNotes.length === 0 && (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-sky-200 bg-sky-50/50 px-6 py-8 text-center">
-                      <History className="mb-3 h-8 w-8 text-sky-400" />
-                      <p className="mb-2 font-bold text-sky-900">思い出を共有しよう</p>
-                      <p className="mb-4 text-sm text-sky-700">
-                        過去の来店記録がまだありません。<br />
-                        このお店との思い出を書き残しませんか？
-                      </p>
-                      <Link
-                        href={`/kotodute?shopId=${shop.id}`}
-                        className="rounded-full bg-sky-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-sky-600 active:scale-95"
-                      >
-                        足跡を残す
-                      </Link>
-                    </div>
+                    <EmptyState
+                      icon={History}
+                      title="思い出を共有しよう"
+                      description={
+                        <>
+                          過去の来店記録がまだありません。<br />
+                          このお店との思い出を書き残しませんか？
+                        </>
+                      }
+                      action={
+                        <Link
+                          href={`/kotodute?shopId=${shop.id}`}
+                          className="rounded-full bg-sky-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-sky-600 active:scale-95"
+                        >
+                          足跡を残す
+                        </Link>
+                      }
+                      variant="sky"
+                    />
                   )}
                 </div>
               )}
@@ -773,7 +783,7 @@ export default function ShopDetailBanner({
                   onClick={handleCancelAdd}
                   className="rounded-full border border-gray-200 bg-white px-3 py-2 text-lg font-semibold text-gray-600 hover:bg-gray-50"
                 >
-                  キャンセル
+                  いいえ
                 </button>
                 <button
                   type="button"
