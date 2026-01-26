@@ -1,0 +1,13 @@
+﻿import { type NextRequest } from "next/server";
+import { createClient } from "./utils/supabase/middleware";
+
+export function proxy(request: NextRequest) {
+  const { response } = createClient(request);
+  return response;
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|images|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};

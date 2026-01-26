@@ -251,6 +251,10 @@ function AdminShopsContent() {
     }
   }, [filteredShops]);
 
+  const handleCreateShop = useCallback(() => {
+    showToast.success("新規店舗追加 (未実装)");
+  }, []);
+
   // キーボードショートカット
   useKeyboardShortcuts([
     {
@@ -316,7 +320,10 @@ function AdminShopsContent() {
               >
                 JSON出力
               </LoadingButton>
-              <button className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+              <button
+                onClick={handleCreateShop}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              >
                 + 新規店舗追加
               </button>
             </div>
@@ -495,6 +502,10 @@ function AdminShopsContent() {
             icon="🏪"
             title="店舗が見つかりません"
             description="検索条件に一致する店舗がありません。フィルターや検索キーワードを変更してください。"
+            action={{
+              label: "新規店舗を追加",
+              onClick: handleCreateShop,
+            }}
           />
         ) : (
           <div className="rounded-lg bg-white shadow">

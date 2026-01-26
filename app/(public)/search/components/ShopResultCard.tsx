@@ -2,29 +2,59 @@
 
 import Link from "next/link";
 import { memo } from "react";
+import type { MouseEvent } from "react";
 import { Shop } from "../../map/data/shops";
+import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 interface ShopResultCardProps {
   shop: Shop;
   isFavorite: boolean;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
+  compact?: boolean;
+  enableSearchMapHighlight?: boolean;
+  mapLabel?: string;
 }
 
 /**
  * 店舗検索結果カードコンポーネント
  * 店舗情報と「地図で見る」リンクを表示
  */
-function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: ShopResultCardProps) {
+function ShopResultCard({
+  shop,
+  isFavorite,
+  onToggleFavorite,
+  onSelectShop,
+  compact = false,
+  enableSearchMapHighlight = false,
+  mapLabel: mapLabelProp,
+}: ShopResultCardProps) {
   const previewImage =
     shop.images?.main ||
     shop.images?.thumbnail ||
     shop.images?.additional?.[0] ||
-    "/images/shops/tosahamono.webp";
+    getShopBannerImage(
+      shop.category,
+      (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0)
+    );
+  const mapLabel = mapLabelProp ?? shop.name;
+  const mapHref = enableSearchMapHighlight
+    ? `/map?search=1&label=${encodeURIComponent(mapLabel)}&shop=${shop.id}`
+    : `/map?shop=${shop.id}`;
+
+  const handleOpenMap = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+    if (enableSearchMapHighlight) {
+      saveSearchMapPayload({ ids: [shop.id], label: mapLabel });
+    }
+  };
 
   return (
     <div
-      className="cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 px-4 py-3 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50"
+      className={`cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50 ${
+        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-4 py-3"
+      }`}
       role="button"
       tabIndex={0}
       onClick={() => onSelectShop?.(shop)}
@@ -37,12 +67,16 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-xl" aria-hidden="true">
+          <span className={`${compact ? "text-lg" : "text-xl"}`} aria-hidden="true">
             {shop.icon}
           </span>
           <div>
-            <h3 className="font-semibold text-gray-900">{shop.name}</h3>
-            <p className="text-xs text-gray-600">{shop.ownerName}</p>
+            <h3 className={`${compact ? "text-sm" : "text-base"} font-semibold text-gray-900`}>
+              {shop.name}
+            </h3>
+            <p className={`${compact ? "text-[10px]" : "text-xs"} text-gray-600`}>
+              {shop.ownerName}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -61,27 +95,45 @@ function ShopResultCard({ shop, isFavorite, onToggleFavorite, onSelectShop }: Sh
           >
             {"\u2665"}
           </button>
-          <span className="rounded-full bg-amber-600 px-2 py-1 text-xs font-semibold text-white">
+          <span
+            className={`rounded-full bg-amber-600 px-2 py-1 font-semibold text-white ${
+              compact ? "text-[10px]" : "text-xs"
+            }`}
+          >
             #{shop.id}
           </span>
         </div>
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-lg border border-amber-100 bg-white">
-        <img src={previewImage} alt={`${shop.name}の画像`} className="h-28 w-full object-cover" />
+      <div className={`${compact ? "mt-1.5" : "mt-3"} flex gap-2`}>
+        <div className="flex-1 overflow-hidden rounded-lg border border-amber-100 bg-white">
+          <img
+            src={previewImage}
+            alt={`${shop.name}の画像`}
+            className={`${compact ? "h-20" : "h-28"} w-full object-contain bg-white`}
+          />
+        </div>
+        <div
+          className={`flex-1 rounded-lg border border-amber-100 bg-white ${
+            compact ? "h-20 p-2" : "p-3"
+          }`}
+        >
+          <p className={`${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
+            {shop.category}
+          </p>
+          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm"} text-gray-700`}>
+            取り扱い: {shop.products.slice(0, 4).join("・")}
+            {shop.products.length > 4 && "..."}
+          </p>
+        </div>
       </div>
 
-      <p className="mt-2 text-xs text-amber-700">{shop.category}</p>
-
-      <p className="mt-1 text-sm text-gray-700">
-        取り扱い: {shop.products.slice(0, 4).join("・")}
-        {shop.products.length > 4 && "..."}
-      </p>
-
       <Link
-        href={`/map?shop=${shop.id}`}
-        onClick={(event) => event.stopPropagation()}
-        className="mt-3 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+        href={mapHref}
+        onClick={handleOpenMap}
+        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
+          compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
+        }`}
       >
         地図で見る →
       </Link>

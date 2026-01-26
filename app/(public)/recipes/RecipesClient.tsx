@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
+import { Map as MapIcon, ShoppingBag, ArrowRight } from "lucide-react";
 import {
   ingredientCatalog,
   ingredientIcons,
@@ -12,6 +13,7 @@ import {
   type Recipe,
 } from "../../../lib/recipes";
 import { shops } from "../map/data/shops";
+import { getSmartRecipePlaceholder } from "./recipes-smart-defaults";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -58,9 +60,11 @@ export default function RecipesClient() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
+  const [placeholder, setPlaceholder] = useState("料理・食材名で検索");
 
   useEffect(() => {
     setFridge(loadFridge());
+    setPlaceholder(getSmartRecipePlaceholder());
   }, []);
 
   const shopCategoryById = useMemo(() => {
@@ -133,7 +137,8 @@ export default function RecipesClient() {
       (r) =>
         r.title.toLowerCase().includes(q) ||
         r.description.toLowerCase().includes(q) ||
-        r.steps.some((s) => s.toLowerCase().includes(q))
+        r.steps.some((s) => s.toLowerCase().includes(q)) ||
+        r.ingredients.some((ing) => ing.name.toLowerCase().includes(q))
     );
   }, [query, matchedIngredientIds, searchMode]);
 
@@ -167,7 +172,7 @@ export default function RecipesClient() {
   };
 
   const headingByFridge = (() => {
-    if (fridgeIngredients.length === 0) return "まずはbagに食材を入れてみよう";
+    if (fridgeIngredients.length === 0) return "まずはリストに食材を入れてみよう";
     if (fridgeIngredients.length === 1) return `${fridgeIngredients[0].name}を買ったあなたにおすすめ`;
     return `${fridgeIngredients.slice(0, 2).map((f) => f.name).join("と")}を買ったあなたにおすすめ`;
   })();
@@ -186,95 +191,92 @@ export default function RecipesClient() {
             </div>
           </header>
 
-          {/* 冷蔵庫リスト */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-gradient-to-br from-sky-50 via-white to-sky-100 p-5 shadow-sm">
-            <div className="flex items-center justify-between">
+          {/* 検索バナー */}
+          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">冷蔵庫リスト</p>
-                <h2 className="text-xl font-bold text-gray-900">登録済み {fridgeIngredients.length} 件</h2>
-                <p className="text-sm text-gray-700">レシピに使いたい食材を bag に入れておくと、おすすめレシピが見つけやすくなります。</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">Search</p>
+                <h2 className="text-xl font-bold text-gray-900">料理・食材名で検索</h2>
+                <p className="text-sm text-gray-700">キーワード入力ですぐレシピを探せます。</p>
               </div>
-            </div>
-            <div className="mt-3 flex flex-wrap items-start gap-3">
-              {addOpen ? (
-                <div className="flex flex-col gap-3 rounded-xl border-2 border-amber-300 bg-white px-3 py-3 text-base text-gray-900 shadow-sm min-w-[260px]">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-amber-800">食材を選ぶ</p>
-                    <button
-                      type="button"
-                      onClick={() => setAddOpen(false)}
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-300 bg-white text-sm font-bold text-amber-700 transition hover:bg-amber-50"
-                      aria-label="追加を閉じる"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {ingredientCatalog.map((ing) => (
-                      <button
-                        key={ing.id}
-                        type="button"
-                        onClick={() => handleAdd(ing.name)}
-                        className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-amber-50"
-                      >
-                        <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
-                        {ing.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
+              <form
+                className="flex w-full max-w-md items-center gap-2"
+                onSubmit={(e) => e.preventDefault()}
+              >
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => {
+                    setSearchMode("dish");
+                    setQuery(e.target.value);
+                  }}
+                  placeholder={placeholder}
+                  className="w-full rounded-full border border-amber-200 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                />
                 <button
-                  type="button"
-                  onClick={() => setAddOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-amber-300 bg-white px-4 py-2 text-base font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                  type="submit"
+                  className="rounded-full bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
                 >
-                  <span className="text-xl leading-none">＋</span>
-                  食材を追加
+                  検索
                 </button>
-              )}
-
-              {fridgeIngredients.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-4 py-6 text-center text-base text-gray-800">
-                  まだ登録がありません。マーケットで買った食材を bag に入れると、ここに表示されます。
-                </div>
-              ) : (
-                fridgeIngredients.map((item) => (
-                  <span
-                    key={item.id}
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-amber-300 bg-amber-50 px-4 py-2 text-base text-gray-900 shadow-sm"
-                    title={new Date(item.createdAt).toLocaleString()}
-                  >
-                    <span aria-hidden className="text-xl">🧺</span>
-                    <span className="font-semibold">{item.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(item.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-amber-300 bg-white/90 text-base font-bold text-amber-700 transition hover:bg-white"
-                      aria-label={`${item.name}を削除`}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              )}
+              </form>
             </div>
           </div>
 
-          {/* 冷蔵庫からのおすすめ */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+          {query.trim() === "" && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">冷蔵庫からのおすすめ</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">リストからのおすすめ</p>
                 <h2 className="text-xl font-bold text-gray-900">{headingByFridge}</h2>
-                <p className="text-sm text-gray-700">冷蔵庫にある食材と一致するレシピだけを表示します。</p>
+                <p className="text-sm text-gray-700">リストにある食材と一致するレシピだけを表示します。</p>
               </div>
               <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 border border-amber-100">
-                優先度: 最上位
+                イチオシ！
               </span>
             </div>
 
-            {fridgeIngredientIds.length > 0 && ranked.length > 0 ? (
+            {fridgeIngredientIds.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                  <ShoppingBag size={32} />
+                </div>
+                <h3 className="mb-2 text-lg font-bold text-gray-900">
+                  食材を集めよう
+                </h3>
+                <p className="mx-auto mb-6 max-w-sm text-sm text-gray-600 leading-relaxed">
+                  日曜市マップで気になる食材をタップして、レシピを見つけましょう。
+                  <br />
+                  あなたの冷蔵庫（バッグ）の中身に合わせて、おすすめのレシピを提案します。
+                </p>
+                <Link
+                  href="/map"
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-200/50 transition hover:bg-amber-500 hover:shadow-xl active:scale-95"
+                >
+                  <MapIcon size={18} />
+                  マップで食材を探す
+                  <ArrowRight size={16} className="opacity-60" />
+                </Link>
+              </div>
+            ) : ranked.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-8 text-center">
+                <p className="text-3xl mb-2">🤔</p>
+                <h3 className="mb-2 text-base font-bold text-gray-900">
+                  一致するレシピが見つかりません
+                </h3>
+                <p className="text-sm text-gray-600">
+                  現在の食材の組み合わせではレシピが見つかりませんでした。
+                  <br />
+                  他の食材も追加して、バリエーションを広げてみましょう！
+                </p>
+                <Link
+                  href="/map"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-amber-700 hover:text-amber-800 underline decoration-amber-300 underline-offset-4"
+                >
+                  マップに戻る
+                </Link>
+              </div>
+            ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {ranked.map(({ recipe }) => (
                   <article
@@ -318,7 +320,7 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                            {owned ? " / bagにあり" : ""}
+                              {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}
@@ -340,154 +342,72 @@ export default function RecipesClient() {
                   </article>
                 ))}
               </div>
-            ) : (
-              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-4 py-6 text-center text-base text-gray-800">
-                冷蔵庫に食材がないか、一致するレシピが見つかりません。食材を追加してください。
-              </div>
             )}
-          </div>
-
-          {/* 検索ボード */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">食材・料理名で検索</p>
-            <div className="mt-3 flex gap-2 text-lg">
-              <button
-                type="button"
-                onClick={() => setSearchMode("ingredient")}
-                className={`flex-1 rounded-lg px-3 py-2 font-semibold ${
-                  searchMode === "ingredient"
-                    ? "bg-amber-600 text-white shadow-sm shadow-amber-200/70"
-                    : "bg-white text-gray-800 border border-orange-100"
-                }`}
-              >
-                食材で探す
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchMode("dish")}
-                className={`flex-1 rounded-lg px-3 py-2 font-semibold ${
-                  searchMode === "dish"
-                    ? "bg-amber-600 text-white shadow-sm shadow-amber-200/70"
-                    : "bg-white text-gray-800 border border-orange-100"
-                }`}
-              >
-                料理名で探す
-              </button>
             </div>
-
-            <div className="mt-3 relative">
-              <form className="flex flex-col gap-2 md:flex-row md:items-center" onSubmit={(e) => e.preventDefault()}>
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={searchMode === "ingredient" ? "例：なす、にんじん、しめじ" : "例：なすのたたき、田舎寿司"}
-                  className="w-full rounded-lg border border-orange-100 px-3 py-2 text-base text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                />
-                <button
-                  type="submit"
-                  className="w-full rounded-lg bg-amber-600 px-4 py-2 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 md:w-auto"
-                >
-                  検索
-                </button>
-              </form>
-              {matchedIngredientIds.length > 0 && searchMode === "ingredient" && (
-                <p className="mt-2 text-sm text-gray-600">一致した食材ID: {matchedIngredientIds.join(", ")}</p>
-              )}
-            </div>
-
-            {searchResults.length > 0 && (
-              <div className="mt-4 rounded-xl border-2 border-orange-300 bg-amber-50/60 p-4 text-lg">
-                <div className="flex items-center justify-between">
-                  <p className="text-xl font-semibold text-gray-900">検索結果</p>
-                  <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-amber-800 border border-amber-100">{searchResults.length}件</span>
-                </div>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {searchResults.map((recipe) => (
-                    <div key={`${recipe.id}-search`} className="rounded-lg border-2 border-amber-200 bg-white px-4 py-3 shadow-sm">
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-800">
-                          <span className="rounded-full bg-white px-3 py-1 border border-amber-100">🕒 {recipe.cookTime}</span>
-                        <span className="rounded-full bg-white px-3 py-1 border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
-                      </div>
-                      {recipe.heroImage && (
-                        <div className="mt-2 mb-3 overflow-hidden rounded-lg border border-amber-100 bg-white/80">
-                          <Image
-                            src={recipe.heroImage}
-                            alt={`${recipe.title}の写真`}
-                            width={640}
-                            height={360}
-                            className="h-36 w-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="flex items-start gap-2">
-                        <p className="text-xl font-semibold text-gray-900">{recipe.title}</p>
-                        
-                      </div>
-                      <p className="mt-1 text-base text-gray-700">{recipe.description}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-base">
-                        {recipe.ingredients.slice(0, 6).map((ing) => {
-                          const owned = fridgeIngredientIds.includes(ing.id);
-                          return (
-                            <span
-                              key={`${recipe.id}-${ing.id}-search`}
-                              className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 ${
-                                owned
-                                  ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
-                                  : "border-amber-100 bg-white text-gray-800"
-                              }`}
-                            >
-                              <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
-                              {ing.name}
-                              {ing.seasonal ? " (旬)" : ""}
-                              {owned ? " / bagにあり" : ""}
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <Link
-                        href={`/recipes/${recipe.id}`}
-                        className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
-                      >
-                        レシピ詳細へ
-                      </Link>
+          )}
+          {searchResults.length > 0 && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-xl font-semibold text-gray-900">検索結果</p>
+                <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-amber-800 border border-amber-100">{searchResults.length}件</span>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {searchResults.map((recipe) => (
+                  <div key={`${recipe.id}-search`} className="rounded-lg border-2 border-amber-200 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-800">
+                        <span className="rounded-full bg-white px-3 py-1 border border-amber-100">?? {recipe.cookTime}</span>
+                      <span className="rounded-full bg-white px-3 py-1 border border-amber-100">難易度: {difficultyLabel(recipe.difficulty)}</span>
                     </div>
-                  ))}
-                </div>
+                    {recipe.heroImage && (
+                      <div className="mt-2 mb-3 overflow-hidden rounded-lg border border-amber-100 bg-white/80">
+                        <Image
+                          src={recipe.heroImage}
+                          alt={`${recipe.title}の写真`}
+                          width={640}
+                          height={360}
+                          className="h-36 w-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2">
+                      <p className="text-xl font-semibold text-gray-900">{recipe.title}</p>
+                      
+                    </div>
+                    <p className="mt-1 text-base text-gray-700">{recipe.description}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-base">
+                      {recipe.ingredients.slice(0, 6).map((ing) => {
+                        const owned = fridgeIngredientIds.includes(ing.id);
+                        return (
+                          <span
+                            key={`${recipe.id}-${ing.id}-search`}
+                            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 ${
+                              owned
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-800 font-semibold"
+                                : "border-amber-100 bg-white text-gray-800"
+                            }`}
+                          >
+                            <span aria-hidden>{ingredientIcons[ing.id] ?? "??"}</span>
+                            {ing.name}
+                            {ing.seasonal ? " (旬)" : ""}
+                              {owned ? " / バッグにあり" : ""}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <Link
+                      href={`/recipes/${recipe.id}`}
+                      className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                    >
+                      レシピ詳細へ
+                    </Link>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* 投稿した人たち */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">このレシピを教えてくれた人</p>
-                <h3 className="text-xl font-bold text-gray-900">土佐の台所の先生たち</h3>
-                <p className="text-base text-gray-700">冷蔵庫に合わせて代表レシピをピックアップしました。</p>
-              </div>
-              <Link
-                href="/recipes/contributors"
-                className="w-full rounded-lg bg-amber-600 px-4 py-2 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 md:w-auto text-center"
-              >
-                投稿者一覧へ
-              </Link>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {/* 簡易プレースホルダー */}
-              <div className="rounded-xl border-2 border-orange-200 bg-amber-50/60 px-4 py-3">
-                <p className="text-lg font-semibold">市場の台所 さゆりさん</p>
-                <p className="text-base text-gray-700 mt-1">旬野菜の食べ方に詳しい料理家。優しい味付けが得意。</p>
-              </div>
-              <div className="rounded-xl border-2 border-orange-200 bg-amber-50/60 px-4 py-3">
-                <p className="text-lg font-semibold">かつお屋さん</p>
-                <p className="text-base text-gray-700 mt-1">タタキの薬味合わせが得意な海の人。</p>
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* 季節セレクト */}
-          <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+          {query.trim() === "" && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">季節セレクト</p>
@@ -539,22 +459,60 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                            {owned ? " / bagにあり" : ""}
+                            {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}
                     </div>
-                    <Link
-                      href={`/recipes/${recipe.id}`}
-                      className="mt-3 inline-block w-full rounded-lg bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
-                    >
-                      レシピ詳細へ
-                    </Link>
+                    <div className="mt-3 flex gap-3">
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 text-center"
+                      >
+                        レシピ詳細へ
+                      </Link>
+                      <Link
+                        href={`/map?recipe=${recipe.id}`}
+                        className="w-full rounded-lg border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 text-center"
+                      >
+                        食材をマップで探す
+                      </Link>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+            </div>
+          )}
+
+          {query.trim() === "" && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">このレシピを教えてくれた人</p>
+                <h3 className="text-xl font-bold text-gray-900">土佐の台所の先生たち</h3>
+                <p className="text-base text-gray-700">冷蔵庫に合わせて代表レシピをピックアップしました。</p>
+              </div>
+              <Link
+                href="/recipes/contributors"
+                className="w-full rounded-lg bg-amber-600 px-4 py-2 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500 md:w-auto text-center"
+              >
+                投稿者一覧へ
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {/* 簡易プレースホルダー */}
+              <div className="rounded-xl border-2 border-orange-200 bg-amber-50/60 px-4 py-3">
+                <p className="text-lg font-semibold">市場の台所 さゆりさん</p>
+                <p className="text-base text-gray-700 mt-1">旬野菜の食べ方に詳しい料理家。優しい味付けが得意。</p>
+              </div>
+              <div className="rounded-xl border-2 border-orange-200 bg-amber-50/60 px-4 py-3">
+                <p className="text-lg font-semibold">かつお屋さん</p>
+                <p className="text-base text-gray-700 mt-1">タタキの薬味合わせが得意な海の人。</p>
+              </div>
+            </div>
+            </div>
+          )}
         </section>
       </main>
 

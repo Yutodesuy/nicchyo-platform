@@ -22,8 +22,8 @@ export interface RoadConfig {
 export const ROAD_CONFIG: RoadConfig = {
   type: 'placeholder',
   bounds: [
-    [33.56500, 133.53200],
-    [33.55330, 133.53000],
+    [33.56500, 133.53125],
+    [33.55330, 133.53075],
   ],
   centerLine: 133.53100,
   widthOffset: 0.0001,
@@ -85,8 +85,83 @@ export function getRoadBounds(): [[number, number], [number, number]] {
   return ROAD_CONFIG.bounds;
 }
 
+/**
+ * 日曜市エリア全体の範囲（位置判定用）
+ * - 高知城前（西端）からスタート地点（東端）までをカバー
+ * - UserLocationMarker と timeBadgeService で共通使用
+ */
+export const SUNDAY_MARKET_LOCATION_BOUNDS = {
+  north: 33.5625,   // 実測データに基づく北端
+  south: 33.5600,   // 実測データに基づく南端
+  west: 133.5335,   // 高知城前（西端）
+  east: 133.5430,   // スタート地点（東端）
+} as const;
+
+/**
+ * 座標が日曜市エリア内かどうかを判定
+ */
+export function isInsideSundayMarket(lat: number, lng: number): boolean {
+  return (
+    lat >= SUNDAY_MARKET_LOCATION_BOUNDS.south &&
+    lat <= SUNDAY_MARKET_LOCATION_BOUNDS.north &&
+    lng >= SUNDAY_MARKET_LOCATION_BOUNDS.west &&
+    lng <= SUNDAY_MARKET_LOCATION_BOUNDS.east
+  );
+}
+
+/**
+ * 実際のGPS座標を道路イラスト上の座標に変換
+ *
+ * 実際の日曜市は東西方向（経度方向）に伸びているが、
+ * 道路イラストは南北方向（緯度方向）に描画されている。
+ *
+ * 変換ルール：
+ * - 実際の経度（西→東）→ イラストの緯度（上→下）
+ * - 実際の緯度（南→北）→ イラストの経度（左→右）
+ */
+export function convertGpsToIllustration(
+  realLat: number,
+  realLng: number
+): { lat: number; lng: number } {
+  const real = SUNDAY_MARKET_LOCATION_BOUNDS;
+  const illust = ROAD_CONFIG.bounds;
+
+  // イラストの範囲を正規化
+  const illustNorth = Math.max(illust[0][0], illust[1][0]);
+  const illustSouth = Math.min(illust[0][0], illust[1][0]);
+  const illustEast = Math.max(illust[0][1], illust[1][1]);
+  const illustWest = Math.min(illust[0][1], illust[1][1]);
+
+  // 実際の経度（西→東）をイラストの緯度（上→下）に変換
+  // 西（経度小）= 上（緯度大）、東（経度大）= 下（緯度小）
+  const lngRatio = (realLng - real.west) / (real.east - real.west);
+  const illustLat = illustNorth - lngRatio * (illustNorth - illustSouth);
+
+  // 実際の緯度（南→北）をイラストの経度（左→右）に変換
+  // 南（緯度小）= 左（経度小）、北（緯度大）= 右（経度大）
+  const latRatio = (realLat - real.south) / (real.north - real.south);
+  const illustLng = illustWest + latRatio * (illustEast - illustWest);
+
+  return { lat: illustLat, lng: illustLng };
+}
+
 export function getRoadCenterLine(): number {
   return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
+}
+
+/**
+ * イラスト座標を道路中央にスナップ
+ * 緯度（縦位置）はそのまま、経度（横位置）を中央線に吸着
+ */
+export function snapToRoadCenter(
+  illustLat: number,
+  illustLng: number
+): { lat: number; lng: number } {
+  const centerLng = getRoadCenterLine();
+  return {
+    lat: illustLat,
+    lng: centerLng,
+  };
 }
 
 export function getRoadWidthOffset(useDynamic: boolean = false): number {
