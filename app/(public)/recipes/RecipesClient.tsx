@@ -13,6 +13,7 @@ import {
   type Recipe,
 } from "../../../lib/recipes";
 import { shops } from "../map/data/shops";
+import { getSmartRecipePlaceholder } from "./recipes-smart-defaults";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -59,9 +60,11 @@ export default function RecipesClient() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
+  const [placeholder, setPlaceholder] = useState("料理・食材名で検索");
 
   useEffect(() => {
     setFridge(loadFridge());
+    setPlaceholder(getSmartRecipePlaceholder());
   }, []);
 
   const shopCategoryById = useMemo(() => {
@@ -207,7 +210,7 @@ export default function RecipesClient() {
                     setSearchMode("dish");
                     setQuery(e.target.value);
                   }}
-                  placeholder="料理・食材名で検索"
+                  placeholder={placeholder}
                   className="w-full rounded-full border border-amber-200 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 />
                 <button
