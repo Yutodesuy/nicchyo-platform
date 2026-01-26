@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import { ShoppingBag, ArrowRight, Home, CheckCircle2 } from "lucide-react";
@@ -15,33 +15,38 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{ message: string; focusRef?: React.RefObject<HTMLInputElement> } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState("");
   const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const passwordConfirmRef = useRef<HTMLInputElement>(null);
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
+    setError(null);
 
     if (!name.trim()) {
-      setError("お名前を入力してください。");
+      setError({ message: "お名前を教えていただけますか？ニックネームでも大丈夫です。", focusRef: nameRef });
       return;
     }
     if (!email.trim()) {
-      setError("メールアドレスを入力してください。");
+      setError({ message: "メールアドレスが必要です。ログインやパスワード再設定で使用します。", focusRef: emailRef });
       return;
     }
     if (!password) {
-      setError("パスワードを入力してください。");
+      setError({ message: "パスワードを設定してください。8文字以上で、忘れないものをお願いします。", focusRef: passwordRef });
       return;
     }
     if (password !== passwordConfirm) {
-      setError("確認用パスワードと一致しません。");
+      setError({ message: "パスワードが一致しないようです。もう一度確認していただけますか？", focusRef: passwordConfirmRef });
       return;
     }
     if (hasCaptcha && !captchaToken) {
-      setError("「私はロボットではありません」にチェックを入れてください。");
+      setError({ message: "セキュリティのため、ロボットでないことの確認をお願いします。" });
       return;
     }
 
@@ -60,7 +65,7 @@ export default function SignupPage() {
     setIsSubmitting(false);
 
     if (signUpError || !data.user) {
-      setError(signUpError?.message ?? "アカウントを作成できませんでした。");
+      setError({ message: signUpError?.message ?? "アカウントを作成できませんでした。" });
       return;
     }
 
@@ -93,12 +98,13 @@ export default function SignupPage() {
         </div>
 
         <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 お名前（ニックネーム）
               </label>
               <input
+                ref={nameRef}
                 type="text"
                 required
                 autoComplete="nickname"
@@ -114,6 +120,7 @@ export default function SignupPage() {
                 メールアドレス
               </label>
               <input
+                ref={emailRef}
                 type="email"
                 required
                 autoComplete="email"
@@ -129,6 +136,7 @@ export default function SignupPage() {
                 パスワード
               </label>
               <input
+                ref={passwordRef}
                 type="password"
                 required
                 autoComplete="new-password"
@@ -144,6 +152,7 @@ export default function SignupPage() {
                 パスワード（確認）
               </label>
               <input
+                ref={passwordConfirmRef}
                 type="password"
                 required
                 autoComplete="new-password"
@@ -157,9 +166,20 @@ export default function SignupPage() {
             {error && (
               <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 flex items-start gap-2">
                 <div className="mt-0.5 min-w-[16px] text-rose-600">⚠️</div>
-                <p className="text-sm font-medium text-rose-700">
-                  {error}
-                </p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-rose-700 leading-snug">
+                    {error.message}
+                  </p>
+                  {error.focusRef && (
+                    <button
+                      type="button"
+                      onClick={() => error.focusRef?.current?.focus()}
+                      className="mt-1.5 inline-flex items-center justify-center rounded-md border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700 shadow-sm transition-all hover:bg-rose-50 hover:border-rose-300"
+                    >
+                      入力する
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
