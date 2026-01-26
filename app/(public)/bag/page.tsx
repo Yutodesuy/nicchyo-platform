@@ -318,6 +318,7 @@ export default function BagPage() {
                                 <button
                                   onClick={() => setPendingDeleteItem(item)}
                                   className="text-stone-400 hover:text-red-500 p-1 -mt-1 -mr-1 transition-colors"
+                                  aria-label="リストから外す"
                                 >
                                   <Trash2 size={16} />
                                 </button>
