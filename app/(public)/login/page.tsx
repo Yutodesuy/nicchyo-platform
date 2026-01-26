@@ -27,7 +27,7 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     if (hasCaptcha && !captchaToken) {
-      setError("「私はロボットではありません」にチェックを入れてください。");
+      setError("認証を完了してください。");
       return;
     }
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
       },
     });
     if (oauthError) {
-      setError("Googleアカウントでのログインに失敗しました。");
+      setError("Googleログインに失敗しました。");
     }
   };
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
               ) : (
                 <>
-                  <span>ログインする</span>
+                  <span>ログインして始める</span>
                   <LogIn size={18} className="transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
@@ -211,7 +211,7 @@ export default function LoginPage() {
                   d="M43.611 20.083H42V20H24v8h11.303c-1.09 2.76-3.16 5.092-5.848 6.563l.003-.002 6.222 5.255C35.184 40.255 44 36 44 24c0-1.341-.138-2.65-.389-3.917z"
                 />
               </svg>
-              Googleアカウントでログイン
+              Googleでログイン
             </button>
           </div>
 
@@ -234,7 +234,7 @@ export default function LoginPage() {
             className="group flex items-center gap-1 rounded-full bg-white/60 px-5 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-white hover:text-orange-600"
           >
             <UserPlus size={16} className="text-slate-400 group-hover:text-orange-500" />
-            <span>初めての方は 新規登録</span>
+            <span>初めての方は アカウント登録</span>
             <ChevronRight size={14} className="opacity-50 group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
