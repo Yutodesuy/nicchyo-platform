@@ -37,7 +37,7 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
         <div className="flex items-start gap-3">
           <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
           <div className="space-y-3 text-sm text-gray-700">
-            <p className="font-bold text-amber-900">お店探しのヒント</p>
+            <p className="font-bold text-amber-900">検索のヒント</p>
             <ul className="list-disc pl-4 space-y-1">
               <li>
                 ひらがなや、より短い単語で試してみてください。
@@ -52,7 +52,7 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
             <div className="pt-2">
                <p className="text-xs font-semibold text-gray-500 mb-2">よく使われるキーワード：</p>
                <div className="flex flex-wrap gap-2">
-                {onKeywordClick && (
+                {onKeywordClick ? (
                   <>
                     <button
                       type="button"
@@ -76,6 +76,8 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
                       コーヒー
                     </button>
                   </>
+                ) : (
+                  <span className="text-xs text-gray-500">（キーワードクリック機能なし）</span>
                 )}
                </div>
             </div>

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
 import { shops } from "../(public)/map/data/shops";
 import { useSearchParams } from "next/navigation";
-import { MessageSquarePlus, Sparkles, PencilLine } from "lucide-react";
+import { MessageSquarePlus, Sparkles } from "lucide-react";
 
 const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
 
@@ -39,8 +39,6 @@ export default function KotoduteClient() {
   const [text, setText] = useState("");
   const [targetTag, setTargetTag] = useState(prefillTarget ? `#${prefillTarget}` : "#all");
   const [placeholder, setPlaceholder] = useState("おすすめや感想をひとこと書いてください");
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setNotes(loadKotodute());
@@ -116,7 +114,6 @@ export default function KotoduteClient() {
             <div className="space-y-2">
               <label className="text-sm text-gray-700">本文</label>
               <textarea
-                ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={placeholder}
@@ -179,16 +176,6 @@ export default function KotoduteClient() {
                 <br />
                 あなたの日曜市体験や、お店への応援メッセージをシェアしてください。
               </p>
-              <button
-                onClick={() => {
-                   textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                   textareaRef.current?.focus();
-                }}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-100 px-6 py-2.5 text-sm font-bold text-amber-800 transition hover:bg-amber-200 active:scale-95"
-              >
-                <PencilLine size={18} />
-                投稿を書く
-              </button>
             </div>
           ) : (
             <div className="mt-3 space-y-2">
