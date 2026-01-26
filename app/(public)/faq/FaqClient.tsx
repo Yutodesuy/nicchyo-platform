@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FAQ_DATA, FAQ_CATEGORIES, type FaqCategory } from "./data";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 
 export default function FaqClient() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,22 +124,31 @@ export default function FaqClient() {
               </motion.div>
             ))
           ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-12 text-center text-gray-500"
-            >
-              <Search className="mb-2 h-8 w-8 text-gray-300" />
-              <p>条件に一致する質問が見つかりませんでした。</p>
-              <button
-                onClick={() => {
-                   setSearchQuery("");
-                   setSelectedCategory("all");
-                }}
-                className="mt-2 text-sm text-amber-600 underline"
-              >
-                すべての質問を表示する
-              </button>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <EmptyState
+                icon={Search}
+                title="条件に一致する質問が見つかりませんでした"
+                description="キーワードを変更するか、AIチャットボットにお気軽にご相談ください。"
+                action={
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("all");
+                    }}
+                    className="rounded-full bg-amber-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-500"
+                  >
+                    すべての質問を表示
+                  </button>
+                }
+                secondaryAction={
+                  <Link
+                    href="/consult"
+                    className="rounded-full border border-amber-200 bg-white px-6 py-2.5 text-sm font-bold text-amber-600 shadow-sm transition hover:bg-amber-50"
+                  >
+                    AIチャットで相談する
+                  </Link>
+                }
+              />
             </motion.div>
           )}
         </AnimatePresence>
