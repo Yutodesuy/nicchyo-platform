@@ -61,6 +61,7 @@ export default function SignupPage() {
 
     if (signUpError || !data.user) {
       setError(signUpError?.message ?? "登録に失敗しました。");
+      setError(signUpError?.message ?? "アカウントを作成できませんでした。");
       return;
     }
 
@@ -194,13 +195,13 @@ export default function SignupPage() {
         {/* Footer Link */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-600">
-            すでにアカウントをお持ちの方は
+            すでにアカウントをお持ちの方
           </p>
           <Link
             href="/login"
             className="mt-2 inline-flex items-center gap-1.5 text-base font-semibold text-amber-600 hover:text-amber-700 transition-colors"
           >
-            ログインはこちら
+            ログインする
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
