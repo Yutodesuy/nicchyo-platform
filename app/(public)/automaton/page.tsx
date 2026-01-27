@@ -27,6 +27,63 @@ const getProblemNumber = (id: string) => {
 
 const HIERARCHY: Section[] = [
   {
+    id: "1",
+    title: "Section 1: Basic Mathematics (基礎数理)",
+    subsections: [
+      {
+        id: "1.1",
+        title: "1.1 Sets & Functions (集合と関数)",
+        filter: (p) => {
+          if (!p.id.startsWith("1.")) return false;
+          const num = getProblemNumber(p.id);
+          return num <= 7;
+        }
+      },
+      {
+        id: "1.2",
+        title: "1.2 Graph Theory (グラフ理論)",
+        filter: (p) => {
+          if (!p.id.startsWith("1.")) return false;
+          const num = getProblemNumber(p.id);
+          return num >= 8 && num <= 21;
+        }
+      },
+      {
+        id: "1.3",
+        title: "1.3 Proofs (証明)",
+        filter: (p) => {
+          if (!p.id.startsWith("1.")) return false;
+          const num = getProblemNumber(p.id);
+          return num >= 22;
+        }
+      }
+    ]
+  },
+  {
+    id: "2",
+    title: "Section 2: Languages and Automata (言語とオートマトン)",
+    subsections: [
+      {
+        id: "2.1",
+        title: "2.1 Regular Languages (正規言語)",
+        filter: (p) => {
+          if (!p.id.startsWith("2.")) return false;
+          const num = getProblemNumber(p.id);
+          return num <= 11;
+        }
+      },
+      {
+        id: "2.2",
+        title: "2.2 Context-Free Languages (文脈自由言語)",
+        filter: (p) => {
+          if (!p.id.startsWith("2.")) return false;
+          const num = getProblemNumber(p.id);
+          return num >= 12;
+        }
+      }
+    ]
+  },
+  {
     id: "3",
     title: "Section 3: Computability Theory (計算可能性の理論)",
     filter: (p) => p.id.startsWith("3.")
@@ -63,7 +120,7 @@ const HIERARCHY: Section[] = [
 ];
 
 export default function AutomatonPage() {
-  const [openSectionId, setOpenSectionId] = useState<string | null>("3");
+  const [openSectionId, setOpenSectionId] = useState<string | null>("1");
   const [openSubsectionId, setOpenSubsectionId] = useState<string | null>(null);
   const [openProblemId, setOpenProblemId] = useState<string | null>(null);
 
