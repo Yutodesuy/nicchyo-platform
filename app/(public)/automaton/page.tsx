@@ -54,6 +54,11 @@ const HIERARCHY: Section[] = [
         }
       }
     ]
+  },
+  {
+    id: "5",
+    title: "Section 5: Comprehensive Problems (総合演習)",
+    filter: (p) => p.id.startsWith("5.")
   }
 ];
 
