@@ -37,10 +37,10 @@ export default function NavigationBar({
 
   return (
     <nav
-      className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/50 bg-white text-sm leading-none shadow-lg`}
+      className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/60 bg-white/90 backdrop-blur-md text-sm leading-none shadow-sm`}
       style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
     >
-      <div className="mx-auto flex h-12 max-w-lg items-center justify-around">
+      <div className="mx-auto flex h-14 max-w-lg items-center justify-around">
         {navItems.map((item) => {
           const isActive = (activeHref ?? pathname) === item.href;
           const handleClick = item.href === "/map" ? startMapLoading : undefined;
@@ -55,16 +55,20 @@ export default function NavigationBar({
                 item.href === "/kotodute" ||
                 item.href === "/consult"
               }
-              className={`flex h-full flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
-                isActive ? "text-amber-700" : "text-gray-600 hover:text-gray-900"
-              } ${item.href === "/map" ? "nav-map-arc" : ""}`}
+              className={`group flex h-full flex-1 flex-col items-center justify-center gap-1 transition-all duration-200 ${
+                isActive
+                  ? "text-amber-600"
+                  : "text-gray-400 hover:bg-gray-50/50 hover:text-gray-600"
+              }`}
             >
-              {item.href === "/map" && (
-                <span className="nav-map-arc-ring" aria-hidden="true" />
-              )}
-              <span className="nav-map-arc-content">
-                <NavIcon name={item.icon} className="h-5 w-5" />
-                <span className="text-[10px] font-medium leading-none">{item.name}</span>
+              <NavIcon
+                name={item.icon}
+                className={`h-6 w-6 transition-transform duration-200 ${
+                  isActive ? "scale-105" : "group-hover:scale-105"
+                }`}
+              />
+              <span className="text-[10px] font-medium leading-none tracking-tight">
+                {item.name}
               </span>
             </Link>
           );
