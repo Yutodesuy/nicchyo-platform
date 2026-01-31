@@ -96,7 +96,7 @@ export default async function MapPage() {
           ].join(',')
         )
         .order('legacy_id', { ascending: true });
-      shopRows = Array.isArray(data) ? (data as ShopRow[]) : null;
+      shopRows = Array.isArray(data) ? (data as unknown as ShopRow[]) : null;
 
       if (shopRows && shopRows.length > 0) {
         const uuidToLegacy = new Map<string, number>();
