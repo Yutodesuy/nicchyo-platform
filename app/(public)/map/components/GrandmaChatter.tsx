@@ -122,6 +122,7 @@ export default function GrandmaChatter({
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [shouldShowValidation, setShouldShowValidation] = useState(false);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -533,6 +534,8 @@ export default function GrandmaChatter({
     }
   };
 
+  const shouldValidateInput = layout === "page";
+
   const handleAskSubmit = async (
     text?: string,
     context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
@@ -540,7 +543,12 @@ export default function GrandmaChatter({
   ) => {
     if (aiStatus === "thinking") return;
     const value = (text ?? askText).trim();
-    if (!value && !selectedImageFile) return;
+    if (!value && !selectedImageFile) {
+      if (shouldValidateInput) {
+        setShouldShowValidation(true);
+      }
+      return;
+    }
     if (openChat && !isChatOpen) {
       setIsChatOpen(true);
     }
@@ -550,6 +558,7 @@ export default function GrandmaChatter({
     setSelectedImageName(null);
     setSelectedImageFile(null);
     setSelectedImagePreview(null);
+    setShouldShowValidation(false);
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
     }
@@ -609,11 +618,15 @@ export default function GrandmaChatter({
       setSelectedImageName(null);
       setSelectedImageFile(null);
       setSelectedImagePreview(null);
+      if (shouldValidateInput && !askText.trim()) {
+        setShouldShowValidation(true);
+      }
       return;
     }
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
     setSelectedImagePreview(URL.createObjectURL(file));
+    setShouldShowValidation(false);
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -1354,9 +1367,20 @@ export default function GrandmaChatter({
                   ref={inputRef}
                   type="text"
                   value={askText}
-                  onChange={(e) => setAskText(e.target.value)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setAskText(nextValue);
+                    if (shouldValidateInput && nextValue.trim()) {
+                      setShouldShowValidation(false);
+                    }
+                  }}
                   onFocus={() => setIsInputFocused(true)}
-                  onBlur={() => setIsInputFocused(false)}
+                  onBlur={() => {
+                    setIsInputFocused(false);
+                    if (shouldValidateInput && !askText.trim() && !selectedImageFile) {
+                      setShouldShowValidation(true);
+                    }
+                  }}
                   disabled={aiStatus === "thinking"}
                   className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
                     aiStatus === "thinking"
@@ -1439,6 +1463,9 @@ export default function GrandmaChatter({
               {isListening && (
                 <div className="text-[11px] text-amber-700">
                   音声を聞き取っています…もう一度タップで停止
+              {shouldShowValidation && (
+                <div className="text-[11px] font-semibold text-rose-500">
+                  質問内容を入力するか写真を選んでね。
                 </div>
               )}
             </div>
