@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ChevronLeft, Info, Layers, ArrowRight, CheckCircle2, HelpCircle } from "lucide-react";
+import { BrainCircuit, ChevronLeft, Info, Layers, ArrowRight, CheckCircle2, HelpCircle, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 // Hierarchy Definition
@@ -15,6 +15,13 @@ const LEVELS = [
     japanese: "帰納的可算言語",
     desc: "チューリングマシン(TM)で認識可能な言語のクラス。計算可能なすべての問題を含みます。",
     machine: "Turing Machine (TM)",
+    keyPoints: [
+      "対応文法: 0型文法 (Type-0 Grammar) / 句構造文法",
+      "閉包性: 和集合、積集合、連接、クリーネ閉包に対して閉じている。",
+      "補集合に対しては閉じていない（補集合がREなら、それは再帰的言語になる）。",
+      "停止性問題は決定不能である。",
+      "「認識可能 (Recognizable)」だが「決定可能 (Decidable)」とは限らない。"
+    ],
     color: "bg-rose-100 border-rose-300 text-rose-800",
     ringColor: "border-rose-400 bg-rose-50/50",
   },
@@ -24,6 +31,13 @@ const LEVELS = [
     japanese: "文脈依存言語",
     desc: "線形拘束オートマトン(LBA)で認識可能な言語。メモリが無制限ではなく、入力長に比例する範囲に制限されます。",
     machine: "Linear Bounded Automaton (LBA)",
+    keyPoints: [
+      "対応文法: 文脈依存文法 (Type-1 Grammar)",
+      "制約: 生成規則 αAβ → αγβ において、生成される文字列は短くならない (|αAβ| ≦ |αγβ|)。",
+      "閉包性: 和集合、積集合、補集合に対して閉じている (Immerman-Szelepcsényiの定理)。",
+      "例: { a^n b^n c^n | n ≧ 1 } はCSLだがCFLではない。",
+      "LBAの停止性問題は決定不能ではない（ただしPSPACE完全）。"
+    ],
     color: "bg-orange-100 border-orange-300 text-orange-800",
     ringColor: "border-orange-400 bg-orange-50/50",
   },
@@ -33,6 +47,14 @@ const LEVELS = [
     japanese: "文脈自由言語",
     desc: "プッシュダウンオートマトン(PDA)で認識可能。プログラミング言語の構文解析などで重要です。",
     machine: "Pushdown Automaton (PDA)",
+    keyPoints: [
+      "対応文法: 文脈自由文法 (Type-2 Grammar)",
+      "標準形: チョムスキー標準形、グライバッハ標準形が存在する。",
+      "決定性(DPDA)と非決定性(NPDA)で能力が異なる (DCFL ⊊ CFL)。",
+      "閉包性: 和集合、連接、クリーネ閉包に対して閉じている。",
+      "重要: 積集合、補集合に対しては閉じていない。",
+      "反復補題 (Pumping Lemma) を用いてCFLでないことを証明できる。"
+    ],
     color: "bg-emerald-100 border-emerald-300 text-emerald-800",
     ringColor: "border-emerald-400 bg-emerald-50/50",
     note: "注意: 非決定性PDA (PDA) と決定性PDA (DPDA) の能力は異なります (DCFL ⊊ CFL)。",
@@ -43,6 +65,14 @@ const LEVELS = [
     japanese: "正規言語",
     desc: "有限オートマトン(FA)で認識可能。最も基本的なクラスです。",
     machine: "Finite Automaton (DFA / NFA)",
+    keyPoints: [
+      "対応文法: 正規文法 (Type-3 Grammar)",
+      "表現: 正規表現 (Regular Expression) で記述可能。",
+      "決定性(DFA)と非決定性(NFA)は等価である (DFA = NFA)。",
+      "閉包性: 和集合、積集合、補集合、連接、クリーネ閉包すべてに閉じている。",
+      "例: パターンマッチング、字句解析。",
+      "Myhill-Nerodeの定理により、状態数の最小化が一意に定まる。"
+    ],
     color: "bg-indigo-100 border-indigo-300 text-indigo-800",
     ringColor: "border-indigo-500 bg-indigo-100/80",
     note: "重要: 決定性(DFA)と非決定性(NFA)の能力は等価です (DFA = NFA)。",
@@ -199,6 +229,22 @@ export default function AutomatonTextPage() {
                                 <p className="text-gray-700 leading-relaxed">
                                     {currentLevelInfo.desc}
                                 </p>
+
+                                {/* Key Points List */}
+                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                    <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                        <BookOpen className="w-4 h-4 text-indigo-500" />
+                                        Key Characteristics
+                                    </h4>
+                                    <ul className="space-y-2">
+                                        {currentLevelInfo.keyPoints.map((point, i) => (
+                                            <li key={i} className="text-sm text-gray-600 flex gap-2 items-start">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 mt-1.5 flex-shrink-0" />
+                                                <span>{point}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
 
                                 {currentLevelInfo.note && (
                                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3 text-sm text-amber-900">
