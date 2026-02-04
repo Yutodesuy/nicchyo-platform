@@ -48,6 +48,8 @@ type GrandmaChatterProps = {
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
+  onInputProgressChange?: (hasProgress: boolean) => void;
+  pageBottomOffset?: number;
 };
 
 export default function GrandmaChatter({
@@ -74,6 +76,8 @@ export default function GrandmaChatter({
   autoAskText,
   autoAskContext,
   currentZoom,
+  onInputProgressChange,
+  pageBottomOffset,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -181,6 +185,15 @@ export default function GrandmaChatter({
     }
     setSmartContext({ placeholder, chip });
   }, []);
+
+  useEffect(() => {
+    const hasProgress =
+      askText.trim().length > 0 ||
+      !!selectedImageFile ||
+      hasUserAsked ||
+      chatMessages.length > 0;
+    onInputProgressChange?.(hasProgress);
+  }, [askText, selectedImageFile, hasUserAsked, chatMessages.length, onInputProgressChange]);
 
   useEffect(() => {
     if (!pool.length) return;
@@ -705,7 +718,7 @@ export default function GrandmaChatter({
     layout === "page"
       ? isKeyboardOpen
         ? Math.max(8, keyboardOffset + 28)
-        : 50
+        : pageBottomOffset ?? 50
       : undefined;
   const bubbleText = isChatOpen
     ? aiBubbleText
@@ -1161,7 +1174,10 @@ export default function GrandmaChatter({
             </button>
           )}
           {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
-            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]">
+            <div
+              id="consult-suggestions"
+              className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm translate-y-[5px]"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="ai-label-playful text-lg text-pink-600">AIおすすめ</span>
@@ -1243,6 +1259,7 @@ export default function GrandmaChatter({
                   +
                 </button>
                 <input
+                  id="consult-input"
                   ref={inputRef}
                   type="text"
                   value={askText}

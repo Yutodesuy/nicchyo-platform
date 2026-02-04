@@ -13,6 +13,7 @@ type ConsultClientProps = {
 
 export default function ConsultClient({ shops }: ConsultClientProps) {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
+  const [hasInputProgress, setHasInputProgress] = useState(false);
   const searchParams = useSearchParams();
 
   const handleGrandmaAsk = useCallback(async (
@@ -82,6 +83,25 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
     autoAskShopId || autoAskShopName
       ? { shopId: Number.isFinite(autoAskShopId) ? autoAskShopId : undefined, shopName: autoAskShopName }
       : undefined;
+  const hasSuggestedShops = aiSuggestedShops.length > 0;
+  const showSecondaryCta = hasInputProgress || hasSuggestedShops;
+
+  const handlePrimaryCtaClick = useCallback(() => {
+    const input = document.getElementById("consult-input") as HTMLInputElement | null;
+    if (!input) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus();
+  }, []);
+
+  const handleSecondaryCtaClick = useCallback(() => {
+    const targetId = hasSuggestedShops ? "consult-suggestions" : "consult-input";
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (targetId === "consult-input" && target instanceof HTMLInputElement) {
+      target.focus();
+    }
+  }, [hasSuggestedShops]);
 
   return (
     <div
@@ -100,7 +120,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
         }}
         aria-hidden="true"
       />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
+      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-[calc(112px+env(safe-area-inset-bottom))] pt-20">
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
@@ -113,8 +133,30 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           onClear={() => setAiSuggestedShops([])}
           autoAskText={autoAskText}
           autoAskContext={autoAskContext}
+          onInputProgressChange={setHasInputProgress}
+          pageBottomOffset={96}
         />
       </main>
+      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-amber-100 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-xl items-center gap-3 px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+          <button
+            type="button"
+            onClick={handlePrimaryCtaClick}
+            className="flex-1 rounded-full bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
+          >
+            相談を入力する
+          </button>
+          {showSecondaryCta && (
+            <button
+              type="button"
+              onClick={handleSecondaryCtaClick}
+              className="rounded-full border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+            >
+              {hasSuggestedShops ? "提案を見る" : "入力を続ける"}
+            </button>
+          )}
+        </div>
+      </div>
       <NavigationBar activeHref="/consult" position="absolute" />
     </div>
   );
