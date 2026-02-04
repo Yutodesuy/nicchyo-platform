@@ -7,7 +7,9 @@ import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MessageSquarePlus, MapPin, History } from "lucide-react";
 import { Shop } from "../data/shops";
+import EmptyState from "@/components/EmptyState";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
@@ -415,7 +417,7 @@ export default function ShopDetailBanner({
                   disabled={!shopOpenStatus}
                   className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
                 >
-                  送信
+                  更新する
                 </button>
               </div>
             </div>
@@ -501,7 +503,7 @@ export default function ShopDetailBanner({
           <section className="py-10 text-xl text-slate-700">
             <div className="mb-6 flex items-center justify-between gap-3">
               <span className="text-base font-semibold text-slate-500">
-                商品名
+                商品
               </span>
               <button
                 type="button"
@@ -519,7 +521,7 @@ export default function ShopDetailBanner({
                 <span className="text-xl" aria-hidden>
                   {"\u{1F6CD}"}
                 </span>
-                バッグ
+                買い物リスト
               </button>
             </div>
             <div className="flex flex-wrap gap-4">
@@ -620,9 +622,26 @@ export default function ShopDetailBanner({
               </div>
 
               {kotoduteNotes.length === 0 ? (
-                <div className="mt-6 border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-base text-slate-600">
-                  ことづてページで、お店の感想を共有できます。
-                </div>
+                <EmptyState
+                  icon={MessageSquarePlus}
+                  title="一番乗りでコメントしよう！"
+                  description={
+                    <>
+                      まだ投稿がありません。<br />
+                      お店の感想やおすすめを教えてください。
+                    </>
+                  }
+                  action={
+                    <Link
+                      href={`/kotodute?shopId=${shop.id}`}
+                      className="rounded-full bg-amber-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95"
+                    >
+                      投稿する
+                    </Link>
+                  }
+                  className="mt-6"
+                  variant="amber"
+                />
               ) : (
                 <div className="mt-6 space-y-4">
                   {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
@@ -700,14 +719,46 @@ export default function ShopDetailBanner({
                       </div>
                     ))}
                   {kotoduteFilter === "presence" && kotodutePresenceNotes.length === 0 && (
-                    <div className="border border-dashed border-pink-200 bg-pink-50 px-3 py-4 text-base text-pink-700">
-                      今日はまだ気配がありません。
-                    </div>
+                    <EmptyState
+                      icon={MapPin}
+                      title="最初の訪問者になりませんか？"
+                      description={
+                        <>
+                          今日はまだ誰も「気配」を残していません。<br />
+                          お店に着いたら、みんなに知らせましょう！
+                        </>
+                      }
+                      action={
+                        <Link
+                          href={`/kotodute?shopId=${shop.id}`}
+                          className="rounded-full bg-pink-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-pink-600 active:scale-95"
+                        >
+                          気配を残す
+                        </Link>
+                      }
+                      variant="pink"
+                    />
                   )}
                   {kotoduteFilter === "footprints" && kotoduteFootprintNotes.length === 0 && (
-                    <div className="border border-dashed border-sky-200 bg-sky-50 px-3 py-4 text-base text-sky-700">
-                      まだ足跡がありません。
-                    </div>
+                    <EmptyState
+                      icon={History}
+                      title="思い出を共有しよう"
+                      description={
+                        <>
+                          過去の来店記録がまだありません。<br />
+                          このお店との思い出を書き残しませんか？
+                        </>
+                      }
+                      action={
+                        <Link
+                          href={`/kotodute?shopId=${shop.id}`}
+                          className="rounded-full bg-sky-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-sky-600 active:scale-95"
+                        >
+                          足跡を残す
+                        </Link>
+                      }
+                      variant="sky"
+                    />
                   )}
                 </div>
               )}
@@ -730,7 +781,7 @@ export default function ShopDetailBanner({
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
               <p className="text-xl font-semibold text-gray-900">
-                {`バッグに${pendingProduct}を入れますか？`}
+                {`「${pendingProduct}」をリストに追加しますか？`}
               </p>
               <div className="mt-4 flex items-center justify-end gap-2">
                 <button

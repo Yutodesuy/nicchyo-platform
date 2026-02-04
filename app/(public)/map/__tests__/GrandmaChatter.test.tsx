@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 
 describe('GrandmaChatter', () => {
   const getCommentText = () => {
-    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
+    const button = screen.getByRole('button', { name: 'おばあちゃんのつぶやきを見る' });
     const textNode = button.querySelector('p');
     return textNode?.textContent?.trim() ?? '';
   };
@@ -23,7 +23,7 @@ describe('GrandmaChatter', () => {
     const firstText = getCommentText();
     expect(firstText.length).toBeGreaterThan(0);
 
-    const button = screen.getByRole('button', { name: 'ばあちゃんのコメントを開く' });
+    const button = screen.getByRole('button', { name: 'おばあちゃんのつぶやきを見る' });
     fireEvent.click(button);
 
     const nextText = getCommentText();

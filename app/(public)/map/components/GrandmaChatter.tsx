@@ -124,6 +124,10 @@ export default function GrandmaChatter({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
+  const [smartContext, setSmartContext] = useState({
+    placeholder: "おばあちゃんに質問してね",
+    chip: "おすすめは？"
+  });
   const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
@@ -152,6 +156,31 @@ export default function GrandmaChatter({
       active: false,
     }
   );
+
+  useEffect(() => {
+    // 時間帯に応じたスマートなデフォルト値の設定
+    const hour = new Date().getHours();
+    let placeholder = "おばあちゃんに質問してね";
+    let chip = "おすすめは？";
+
+    if (hour >= 5 && hour < 11) {
+      placeholder = "（例）朝ごはんのおすすめは？";
+      chip = "朝ごはんのおすすめ";
+    } else if (hour >= 11 && hour < 14) {
+      placeholder = "（例）お昼ご飯、どこがいい？";
+      chip = "ランチのおすすめ";
+    } else if (hour >= 14 && hour < 17) {
+      placeholder = "（例）ちょっと休憩したいな";
+      chip = "おやつの時間";
+    } else if (hour >= 17 && hour < 21) {
+      placeholder = "（例）晩ご飯のおかずある？";
+      chip = "晩ご飯の買い物";
+    } else {
+      placeholder = "（例）明日の日曜市は何時から？";
+      chip = "日曜市の開催時間";
+    }
+    setSmartContext({ placeholder, chip });
+  }, []);
 
   useEffect(() => {
     if (!pool.length) return;
@@ -651,7 +680,7 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = ["おすすめは？", "おばあちゃん何者？", "近くのお店は？"];
+  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -712,7 +741,7 @@ export default function GrandmaChatter({
               onDragStart={handleAvatarDragStart}
               className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
               style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}
-              aria-label="おばあちゃんチャットを開く"
+              aria-label="おばあちゃんに相談する"
             >
               {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
               <div className="absolute inset-1 overflow-hidden rounded-xl bg-transparent">
@@ -760,21 +789,21 @@ export default function GrandmaChatter({
         {isChatOpen ? (
           <div
             className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
-            aria-label="ばあちゃんのチャット"
+            aria-label="おばあちゃんとの会話"
           >
             <div className="flex items-center justify-between gap-3 pb-3">
               <div className="text-sm font-semibold text-amber-800">にちよさんAI</div>
               <div className="flex items-center gap-3">
                 {aiStatus !== "idle" && (
                   <span className="text-[11px] text-gray-500">
-                    {aiStatus === "thinking" ? "回答を作成中…" : "入力を続けてね"}
+                    {aiStatus === "thinking" ? "考え中…" : "続けて聞いてね"}
                   </span>
                 )}
                 {layout === "page" && chatMessages.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (window.confirm("会話の履歴を削除しますか？")) {
+                      if (window.confirm("これまでの会話を消してもいいですか？")) {
                         setChatMessages([]);
                         setHasUserAsked(false);
                         onClear?.();
@@ -785,7 +814,7 @@ export default function GrandmaChatter({
                     }}
                     className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-200"
                   >
-                    履歴を削除
+                    最初から話す
                   </button>
                 )}
               </div>
@@ -886,7 +915,7 @@ export default function GrandmaChatter({
                         type="button"
                         onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
                         className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
-                        aria-label="案内画像を開く"
+                        aria-label="写真を拡大する"
                       >
                         <img
                           src={message.imageUrl}
@@ -914,7 +943,7 @@ export default function GrandmaChatter({
                     <div className="flex items-center gap-2">
                       <span
                         className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
-                        aria-label="回答を作成中"
+                        aria-label="考え中"
                       />
                       <span className="text-xs text-gray-500">考え中…</span>
                     </div>
@@ -970,7 +999,7 @@ export default function GrandmaChatter({
                   }
           }
             className={`${bubbleBaseClassName} ${bubbleBorderClass} ${bubbleStateClass}`}
-            aria-label="ばあちゃんのコメントを開く"
+            aria-label="おばあちゃんのつぶやきを見る"
           >
             {!fullWidth && (
               <>
@@ -1042,7 +1071,7 @@ export default function GrandmaChatter({
                     }}
                     className="text-[11px] font-semibold text-amber-700 underline"
                   >
-                    解除する
+                    閉じる
                   </button>
                 )}
               </div>
@@ -1122,7 +1151,7 @@ export default function GrandmaChatter({
               type="button"
               onClick={() => onAiImageClick?.(aiImageUrl)}
               className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
-              aria-label="案内画像を開く"
+              aria-label="写真を拡大する"
             >
               <img
                 src={aiImageUrl}
@@ -1209,7 +1238,7 @@ export default function GrandmaChatter({
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
-                  aria-label="画像を追加"
+                  aria-label="写真を選ぶ"
                 >
                   +
                 </button>
@@ -1226,7 +1255,7 @@ export default function GrandmaChatter({
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
                   }`}
-                  placeholder="おばあちゃんに質問してね"
+                  placeholder={smartContext.placeholder}
                 />
                 <button
                   type="button"
@@ -1237,7 +1266,7 @@ export default function GrandmaChatter({
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
                   }`}
-                  aria-label="送信"
+                  aria-label="メッセージを送る"
                 >
                   <svg
                     className="h-5 w-5"

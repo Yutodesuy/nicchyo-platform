@@ -15,6 +15,7 @@ interface SearchResultsProps {
   hasMore: boolean;
   onLoadMore?: () => void;
   onCategoryClick?: (category: string) => void;
+  onKeywordClick?: (keyword: string) => void;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   onOpenMap?: () => void;
@@ -35,6 +36,7 @@ export default function SearchResults({
   hasMore,
   onLoadMore,
   onCategoryClick,
+  onKeywordClick,
   onToggleFavorite,
   onSelectShop,
   onOpenMap,
@@ -61,7 +63,14 @@ export default function SearchResults({
 
   // 結果がない場合は空状態を表示
   if (shops.length === 0) {
-    return <EmptyState hasQuery={hasQuery} categories={categories} onCategoryClick={onCategoryClick} />;
+    return (
+      <EmptyState
+        hasQuery={hasQuery}
+        categories={categories}
+        onCategoryClick={onCategoryClick}
+        onKeywordClick={onKeywordClick}
+      />
+    );
   }
 
   return (

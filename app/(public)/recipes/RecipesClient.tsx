@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
+import { Map as MapIcon, ShoppingBag, ArrowRight } from "lucide-react";
 import {
   ingredientCatalog,
   ingredientIcons,
@@ -12,6 +13,7 @@ import {
   type Recipe,
 } from "../../../lib/recipes";
 import { shops } from "../map/data/shops";
+import { getSmartRecipePlaceholder } from "./recipes-smart-defaults";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -58,9 +60,11 @@ export default function RecipesClient() {
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
+  const [placeholder, setPlaceholder] = useState("料理・食材名で検索");
 
   useEffect(() => {
     setFridge(loadFridge());
+    setPlaceholder(getSmartRecipePlaceholder());
   }, []);
 
   const shopCategoryById = useMemo(() => {
@@ -168,7 +172,7 @@ export default function RecipesClient() {
   };
 
   const headingByFridge = (() => {
-    if (fridgeIngredients.length === 0) return "まずはbagに食材を入れてみよう";
+    if (fridgeIngredients.length === 0) return "まずはリストに食材を入れてみよう";
     if (fridgeIngredients.length === 1) return `${fridgeIngredients[0].name}を買ったあなたにおすすめ`;
     return `${fridgeIngredients.slice(0, 2).map((f) => f.name).join("と")}を買ったあなたにおすすめ`;
   })();
@@ -206,7 +210,7 @@ export default function RecipesClient() {
                     setSearchMode("dish");
                     setQuery(e.target.value);
                   }}
-                  placeholder="料理・食材名で検索"
+                  placeholder={placeholder}
                   className="w-full rounded-full border border-amber-200 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 />
                 <button
@@ -223,16 +227,56 @@ export default function RecipesClient() {
             <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">バッグからのおすすめ</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">リストからのおすすめ</p>
                 <h2 className="text-xl font-bold text-gray-900">{headingByFridge}</h2>
-                <p className="text-sm text-gray-700">冷蔵庫にある食材と一致するレシピだけを表示します。</p>
+                <p className="text-sm text-gray-700">リストにある食材と一致するレシピだけを表示します。</p>
               </div>
               <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-800 border border-amber-100">
-                優先度: 最上位
+                イチオシ！
               </span>
             </div>
 
-            {fridgeIngredientIds.length > 0 && ranked.length > 0 ? (
+            {fridgeIngredientIds.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 px-6 py-10 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                  <ShoppingBag size={32} />
+                </div>
+                <h3 className="mb-2 text-lg font-bold text-gray-900">
+                  食材を集めよう
+                </h3>
+                <p className="mx-auto mb-6 max-w-sm text-sm text-gray-600 leading-relaxed">
+                  日曜市マップで気になる食材をタップして、レシピを見つけましょう。
+                  <br />
+                  あなたの冷蔵庫（バッグ）の中身に合わせて、おすすめのレシピを提案します。
+                </p>
+                <Link
+                  href="/map"
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-200/50 transition hover:bg-amber-500 hover:shadow-xl active:scale-95"
+                >
+                  <MapIcon size={18} />
+                  マップで食材を探す
+                  <ArrowRight size={16} className="opacity-60" />
+                </Link>
+              </div>
+            ) : ranked.length === 0 ? (
+              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-8 text-center">
+                <p className="text-3xl mb-2">🤔</p>
+                <h3 className="mb-2 text-base font-bold text-gray-900">
+                  一致するレシピが見つかりません
+                </h3>
+                <p className="text-sm text-gray-600">
+                  現在の食材の組み合わせではレシピが見つかりませんでした。
+                  <br />
+                  他の食材も追加して、バリエーションを広げてみましょう！
+                </p>
+                <Link
+                  href="/map"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-amber-700 hover:text-amber-800 underline decoration-amber-300 underline-offset-4"
+                >
+                  マップに戻る
+                </Link>
+              </div>
+            ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {ranked.map(({ recipe }) => (
                   <article
@@ -276,7 +320,7 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                              {owned ? " / バッグにあり" : ""}
+                              {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}
@@ -297,10 +341,6 @@ export default function RecipesClient() {
                     </div>
                   </article>
                 ))}
-              </div>
-            ) : (
-              <div className="mt-4 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-4 py-6 text-center text-base text-gray-800">
-                冷蔵庫に食材がないか、一致するレシピが見つかりません。食材を追加してください。
               </div>
             )}
             </div>
@@ -419,7 +459,7 @@ export default function RecipesClient() {
                             <span aria-hidden>{ingredientIcons[ing.id] ?? "🧺"}</span>
                             {ing.name}
                             {ing.seasonal ? " (旬)" : ""}
-                            {owned ? " / bagにあり" : ""}
+                            {owned ? " / リストにあり" : ""}
                           </span>
                         );
                       })}
