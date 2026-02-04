@@ -13,6 +13,7 @@ import { getSmartSuggestions } from "../utils/suggestionGenerator";
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
+const EXAMPLE_ROTATE_MS = 7000;
 
 type PriorityMessage = {
   text: string;
@@ -117,6 +118,7 @@ export default function GrandmaChatter({
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -156,6 +158,16 @@ export default function GrandmaChatter({
     placeholder: "おばあちゃんに質問してね",
     chip: "おすすめは？"
   });
+  const consultExampleQuestions = useMemo(
+    () => [
+      "今の季節におすすめの食材はある？",
+      "子ども連れでも楽しめる場所は？",
+      "日曜市の回り方を教えて",
+      "今やってるイベントある？",
+      "お土産にぴったりのものは？",
+    ],
+    []
+  );
   const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
@@ -496,6 +508,23 @@ export default function GrandmaChatter({
     return () => window.clearInterval(timer);
   }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
+  const showConsultExamples =
+    layout === "page" &&
+    isChatOpen &&
+    !hasUserAsked &&
+    !isInputFocused &&
+    !askText.trim() &&
+    !selectedImageFile &&
+    aiStatus !== "thinking";
+
+  useEffect(() => {
+    if (!showConsultExamples || consultExampleQuestions.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setConsultExampleIndex((prev) => (prev + 1) % consultExampleQuestions.length);
+    }, EXAMPLE_ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [consultExampleQuestions.length, showConsultExamples]);
+
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
       dragStateRef.current.moved = false;
@@ -772,7 +801,6 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -807,6 +835,7 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1291,25 +1320,22 @@ export default function GrandmaChatter({
             </div>
           )}
           <div
-            className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
-              isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
+            className={`flex items-center justify-center transition-all duration-200 ${
+              showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
             }`}
+            aria-hidden={!showConsultExamples}
           >
-            {templateChips.map((label) => (
+            {layout === "page" && activeConsultExample && (
               <button
-                key={label}
                 type="button"
-                onClick={() => handleAskSubmit(label, { source: "input" })}
-                disabled={aiStatus === "thinking"}
-                className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white text-amber-800 hover:bg-amber-50"
-                }`}
+                onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                className="group inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                aria-label={`質問例: ${activeConsultExample}`}
               >
-                {label}
+                <span className="text-base">💡</span>
+                <span className="whitespace-nowrap">{activeConsultExample}</span>
               </button>
-            ))}
+            )}
           </div>
 
           <div
