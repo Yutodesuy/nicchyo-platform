@@ -48,6 +48,7 @@ type GrandmaChatterProps = {
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
+  enableConsultSteps?: boolean;
 };
 
 export default function GrandmaChatter({
@@ -74,6 +75,7 @@ export default function GrandmaChatter({
   autoAskText,
   autoAskContext,
   currentZoom,
+  enableConsultSteps = false,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -99,6 +101,8 @@ export default function GrandmaChatter({
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [consultStep, setConsultStep] = useState<1 | 2 | 3>(1);
+  const [selectedPurpose, setSelectedPurpose] = useState<string | null>(null);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -681,6 +685,15 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
+  const isConsultStepFlow = layout === "page" && enableConsultSteps;
+  const consultSteps = useMemo(
+    () => [
+      { id: 1, label: "目的/カテゴリ選択" },
+      { id: 2, label: "詳細入力" },
+      { id: 3, label: "確認/送信" },
+    ],
+    []
+  );
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -715,6 +728,14 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const canProceedToDetail = !!selectedPurpose;
+  const canProceedToReview = askText.trim().length > 0 || !!selectedImageFile;
+  const consultDetailText = [selectedPurpose, askText.trim()].filter(Boolean).join("\n");
+  const handleConsultSubmit = () => {
+    handleAskSubmit(consultDetailText, { source: "input" });
+    setConsultStep(1);
+    setSelectedPurpose(null);
+  };
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1198,98 +1219,324 @@ export default function GrandmaChatter({
               )}
             </div>
           )}
-          <div
-            className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
-              isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
-            }`}
-          >
-            {templateChips.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => handleAskSubmit(label, { source: "input" })}
-                disabled={aiStatus === "thinking"}
-                className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white text-amber-800 hover:bg-amber-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div
-            className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
-              isChatOpen ? "scale-100" : "scale-95"
-            }`}
-          >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImagePick}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
-                  aria-label="写真を選ぶ"
-                >
-                  +
-                </button>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={askText}
-                  onChange={(e) => setAskText(e.target.value)}
-                  onFocus={() => setIsInputFocused(true)}
-                  onBlur={() => setIsInputFocused(false)}
-                  disabled={aiStatus === "thinking"}
-                  className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
-                    aiStatus === "thinking"
-                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                      : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
-                  }`}
-                  placeholder={smartContext.placeholder}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleAskSubmit()}
-                  disabled={aiStatus === "thinking"}
-                  className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
-                    aiStatus === "thinking"
-                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                      : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
-                  }`}
-                  aria-label="メッセージを送る"
-                >
-                  <svg
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M22 2 11 13" />
-                    <path d="M22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
+          {isConsultStepFlow ? (
+            <div className="rounded-2xl border-2 border-amber-200 bg-white/95 p-4 shadow-sm">
+              <div className="mb-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                  Step
+                </div>
+                <ol className="mt-3 flex items-center justify-between gap-2">
+                  {consultSteps.map((step, index) => {
+                    const stepNumber = index + 1;
+                    const isActive = consultStep === stepNumber;
+                    const isComplete = consultStep > stepNumber;
+                    return (
+                      <li key={step.label} className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold ${
+                              isComplete
+                                ? "border-amber-500 bg-amber-500 text-white"
+                                : isActive
+                                ? "border-amber-500 bg-amber-100 text-amber-700"
+                                : "border-amber-200 bg-white text-slate-400"
+                            }`}
+                            aria-current={isActive ? "step" : undefined}
+                          >
+                            {stepNumber}
+                          </span>
+                          <span
+                            className={`text-xs font-semibold ${
+                              isActive ? "text-amber-700" : "text-slate-500"
+                            }`}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                        {index < consultSteps.length - 1 && (
+                          <div className="mt-2 h-0.5 w-full bg-amber-100" />
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
               </div>
-              {selectedImageName && (
-                <div className="text-[11px] text-slate-600">
-                  画像: {selectedImageName}
+
+              {consultStep === 1 && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-900">目的/カテゴリ選択</h3>
+                    {selectedPurpose && (
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+                        選択中
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    相談の目的やカテゴリを選んでください。
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {templateChips.map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setSelectedPurpose(label)}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
+                          selectedPurpose === label
+                            ? "border-amber-500 bg-amber-500 text-white"
+                            : "border-amber-200 bg-white text-amber-800 hover:bg-amber-50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setConsultStep(2)}
+                      disabled={!canProceedToDetail}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                        canProceedToDetail
+                          ? "bg-amber-600 text-white hover:bg-amber-500"
+                          : "cursor-not-allowed bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      次へ
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {consultStep === 2 && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-900">詳細入力</h3>
+                    <span className="text-xs text-slate-500">
+                      選択: {selectedPurpose ?? "未選択"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    具体的な希望や条件を入力してください。
+                  </p>
+                  <div
+                    className={`mt-4 rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
+                      isChatOpen ? "scale-100" : "scale-95"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImagePick}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => imageInputRef.current?.click()}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+                          aria-label="写真を選ぶ"
+                        >
+                          +
+                        </button>
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          value={askText}
+                          onChange={(e) => setAskText(e.target.value)}
+                          onFocus={() => setIsInputFocused(true)}
+                          onBlur={() => setIsInputFocused(false)}
+                          disabled={aiStatus === "thinking"}
+                          className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
+                            aiStatus === "thinking"
+                              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                              : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
+                          }`}
+                          placeholder={smartContext.placeholder}
+                        />
+                      </div>
+                      {selectedImageName && (
+                        <div className="text-[11px] text-slate-600">
+                          画像: {selectedImageName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setConsultStep(1)}
+                      className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+                    >
+                      戻る
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConsultStep(3)}
+                      disabled={!canProceedToReview}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                        canProceedToReview
+                          ? "bg-amber-600 text-white hover:bg-amber-500"
+                          : "cursor-not-allowed bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      確認へ
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {consultStep === 3 && (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-900">確認/送信</h3>
+                    <span className="text-xs text-slate-500">
+                      ステップ3/3
+                    </span>
+                  </div>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                      <div className="text-xs font-semibold text-amber-700">
+                        目的/カテゴリ
+                      </div>
+                      <div className="mt-1 text-slate-900">
+                        {selectedPurpose ?? "未選択"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-amber-100 bg-white p-3">
+                      <div className="text-xs font-semibold text-slate-600">詳細</div>
+                      <div className="mt-1 whitespace-pre-line text-slate-900">
+                        {askText.trim() || "（画像のみ）"}
+                      </div>
+                      {selectedImageName && (
+                        <div className="mt-2 text-[11px] text-slate-600">
+                          添付画像: {selectedImageName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setConsultStep(2)}
+                      className="rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+                    >
+                      戻る
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConsultSubmit}
+                      disabled={!canProceedToReview}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                        canProceedToReview
+                          ? "bg-amber-600 text-white hover:bg-amber-500"
+                          : "cursor-not-allowed bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      送信
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
+          ) : (
+            <>
+              <div
+                className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
+                  isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
+                }`}
+              >
+                {templateChips.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => handleAskSubmit(label, { source: "input" })}
+                    disabled={aiStatus === "thinking"}
+                    className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
+                      aiStatus === "thinking"
+                        ? "cursor-not-allowed bg-gray-100 text-gray-400"
+                        : "bg-white text-amber-800 hover:bg-amber-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
+                  isChatOpen ? "scale-100" : "scale-95"
+                }`}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImagePick}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
+                      aria-label="写真を選ぶ"
+                    >
+                      +
+                    </button>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={askText}
+                      onChange={(e) => setAskText(e.target.value)}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      disabled={aiStatus === "thinking"}
+                      className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
+                        aiStatus === "thinking"
+                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                          : "border-amber-200 bg-white text-gray-900 focus:ring-amber-400"
+                      }`}
+                      placeholder={smartContext.placeholder}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAskSubmit()}
+                      disabled={aiStatus === "thinking"}
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
+                        aiStatus === "thinking"
+                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                          : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
+                      }`}
+                      aria-label="メッセージを送る"
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M22 2 11 13" />
+                        <path d="M22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                    </button>
+                  </div>
+                  {selectedImageName && (
+                    <div className="text-[11px] text-slate-600">
+                      画像: {selectedImageName}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
