@@ -113,6 +113,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           onClear={() => setAiSuggestedShops([])}
           autoAskText={autoAskText}
           autoAskContext={autoAskContext}
+          enableSpeechInput
         />
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
