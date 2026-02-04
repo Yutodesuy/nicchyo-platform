@@ -48,6 +48,7 @@ type GrandmaChatterProps = {
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
+  enableSpeechInput?: boolean;
 };
 
 export default function GrandmaChatter({
@@ -74,6 +75,7 @@ export default function GrandmaChatter({
   autoAskText,
   autoAskContext,
   currentZoom,
+  enableSpeechInput = false,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -124,6 +126,31 @@ export default function GrandmaChatter({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const speechStartTextRef = useRef("");
+  const speechRecognitionRef = useRef<{
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  } | null>(null);
+  const speechConstructorRef = useRef<(new () => {
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  }) | null>(null);
   const [smartContext, setSmartContext] = useState({
     placeholder: "おばあちゃんに質問してね",
     chip: "おすすめは？"
@@ -181,6 +208,57 @@ export default function GrandmaChatter({
     }
     setSmartContext({ placeholder, chip });
   }, []);
+
+  useEffect(() => {
+    if (!enableSpeechInput) return;
+    if (typeof window === "undefined") return;
+    const speechConstructor =
+      (window as Window & { SpeechRecognition?: typeof speechConstructorRef.current }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: typeof speechConstructorRef.current })
+        .webkitSpeechRecognition;
+    if (speechConstructor) {
+      speechConstructorRef.current = speechConstructor;
+      setIsSpeechSupported(true);
+    } else {
+      setIsSpeechSupported(false);
+    }
+    return () => {
+      speechRecognitionRef.current?.abort();
+      speechRecognitionRef.current = null;
+    };
+  }, [enableSpeechInput]);
+
+  const stopSpeechRecognition = () => {
+    if (!isListening) return;
+    speechRecognitionRef.current?.stop();
+  };
+
+  const startSpeechRecognition = () => {
+    if (!speechConstructorRef.current) return;
+    if (isListening) {
+      stopSpeechRecognition();
+      return;
+    }
+    const recognition = speechRecognitionRef.current ?? new speechConstructorRef.current();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    speechStartTextRef.current = askText;
+    recognition.onresult = (event) => {
+      const results = Array.from(event.results ?? []);
+      const transcript = results.map((result) => result[0]?.transcript ?? "").join("");
+      setAskText(`${speechStartTextRef.current}${transcript}`);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  };
 
   useEffect(() => {
     if (!pool.length) return;
@@ -446,6 +524,7 @@ export default function GrandmaChatter({
     openChat?: boolean
   ) => {
     if (aiStatus === "thinking") return;
+    stopSpeechRecognition();
     const value = (text ?? askText).trim();
     if (!value && !selectedImageFile) return;
     if (openChat && !isChatOpen) {
@@ -1257,6 +1336,41 @@ export default function GrandmaChatter({
                   }`}
                   placeholder={smartContext.placeholder}
                 />
+                {enableSpeechInput && (
+                  <button
+                    type="button"
+                    onClick={startSpeechRecognition}
+                    disabled={!isSpeechSupported || aiStatus === "thinking"}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
+                      !isSpeechSupported || aiStatus === "thinking"
+                        ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                        : isListening
+                          ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
+                          : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                    }`}
+                    aria-label={isListening ? "音声入力を停止" : "音声入力を開始"}
+                  >
+                    {isListening ? (
+                      <span className="text-sm font-semibold">■</span>
+                    ) : (
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    )}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleAskSubmit()}
@@ -1283,6 +1397,17 @@ export default function GrandmaChatter({
                   </svg>
                 </button>
               </div>
+              {enableSpeechInput && !isSpeechSupported && (
+                <div className="text-[11px] text-slate-500">
+                  音声入力は対応ブラウザのみ
+                </div>
+              )}
+              {enableSpeechInput && isListening && (
+                <div className="flex items-center gap-2 text-[11px] text-red-600">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
+                  音声入力中
+                </div>
+              )}
               {selectedImageName && (
                 <div className="text-[11px] text-slate-600">
                   画像: {selectedImageName}
