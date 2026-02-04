@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
@@ -125,7 +125,7 @@ export default function GrandmaChatter({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
   const [smartContext, setSmartContext] = useState({
-    placeholder: "おばあちゃんに質問してね",
+    placeholder: "（例）日曜市で今日おすすめの食材を教えて",
     chip: "おすすめは？"
   });
   const router = useRouter();
@@ -160,23 +160,23 @@ export default function GrandmaChatter({
   useEffect(() => {
     // 時間帯に応じたスマートなデフォルト値の設定
     const hour = new Date().getHours();
-    let placeholder = "おばあちゃんに質問してね";
+    let placeholder = "（例）日曜市で今日おすすめの食材を教えて";
     let chip = "おすすめは？";
 
     if (hour >= 5 && hour < 11) {
-      placeholder = "（例）朝ごはんのおすすめは？";
+      placeholder = "（例）朝ごはんに合う惣菜を教えて";
       chip = "朝ごはんのおすすめ";
     } else if (hour >= 11 && hour < 14) {
-      placeholder = "（例）お昼ご飯、どこがいい？";
+      placeholder = "（例）ランチに合うテイクアウトはある？";
       chip = "ランチのおすすめ";
     } else if (hour >= 14 && hour < 17) {
-      placeholder = "（例）ちょっと休憩したいな";
+      placeholder = "（例）ひと休みできる甘いものある？";
       chip = "おやつの時間";
     } else if (hour >= 17 && hour < 21) {
-      placeholder = "（例）晩ご飯のおかずある？";
+      placeholder = "（例）晩ご飯に使える野菜とレシピを教えて";
       chip = "晩ご飯の買い物";
     } else {
-      placeholder = "（例）明日の日曜市は何時から？";
+      placeholder = "（例）明日の日曜市は何時から？混み具合は？";
       chip = "日曜市の開催時間";
     }
     setSmartContext({ placeholder, chip });
@@ -510,6 +510,17 @@ export default function GrandmaChatter({
     }
   };
 
+  const handleTemplateChipClick = useCallback((label: string) => {
+    setAskText(label);
+    if (inputRef.current) {
+      try {
+        inputRef.current.focus({ preventScroll: true });
+      } catch {
+        inputRef.current.focus();
+      }
+    }
+  }, []);
+
   const handleImagePick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -680,7 +691,17 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
+  const templateChips = useMemo(
+    () => [
+      smartContext.chip,
+      "旬の野菜を教えて",
+      "家族向けのお惣菜ある？",
+      "雨でも楽しめる？",
+      "おばあちゃん何者？",
+      "近くのお店は？"
+    ],
+    [smartContext.chip]
+  );
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -1207,7 +1228,7 @@ export default function GrandmaChatter({
               <button
                 key={label}
                 type="button"
-                onClick={() => handleAskSubmit(label, { source: "input" })}
+                onClick={() => handleTemplateChipClick(label)}
                 disabled={aiStatus === "thinking"}
                 className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
                   aiStatus === "thinking"
