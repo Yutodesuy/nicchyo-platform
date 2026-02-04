@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { problems, Problem } from "./data";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers, AlertTriangle, List, Network } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers, AlertTriangle, List } from "lucide-react";
 
 // Structure definition based on Automaton2 file
 interface Subsection {
@@ -243,23 +243,14 @@ export default function AutomatonPage() {
             <BrainCircuit className="text-indigo-600 w-6 h-6" />
             <h1 className="text-xl font-bold text-gray-800">Automaton Problems</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/automaton/text"
-              className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-full text-sm font-medium hover:bg-indigo-50 transition-colors shadow-sm"
-            >
-              <Network className="w-4 h-4" />
-              Visual Guide
-            </Link>
-            <a
-              href="/docs/AutomatonSolutions.md"
-              download
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              <FileText className="w-4 h-4" />
-              Download MD
-            </a>
-          </div>
+          <a
+            href="/docs/AutomatonSolutions.md"
+            download
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <FileText className="w-4 h-4" />
+            Download MD
+          </a>
         </div>
       </header>
 
@@ -270,6 +261,15 @@ export default function AutomatonPage() {
           <p className="text-indigo-100 text-lg">
             計算複雑性、NP完全性、およびオートマトン理論に関する問題集と解答です。
           </p>
+          <div className="mt-6 flex justify-center gap-4">
+             <Link
+               href="/automaton/np"
+               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-full font-bold shadow-lg hover:bg-indigo-50 transition-transform hover:scale-105"
+             >
+                <BrainCircuit className="w-5 h-5" />
+                複雑性の階層 (Visual Guide)
+             </Link>
+          </div>
         </div>
       </div>
 
