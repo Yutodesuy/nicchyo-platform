@@ -13,6 +13,29 @@ import { getSmartSuggestions } from "../utils/suggestionGenerator";
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
+const EXAMPLE_ROTATE_MS = 5200;
+
+type SpeechRecognitionResultLike = {
+  transcript: string;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>>;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructorLike = new () => SpeechRecognitionLike;
 
 type PriorityMessage = {
   text: string;
@@ -114,11 +137,15 @@ export default function GrandmaChatter({
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [exampleIndex, setExampleIndex] = useState(0);
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const askRequestRef = useRef(0);
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -180,6 +207,44 @@ export default function GrandmaChatter({
       chip = "日曜市の開催時間";
     }
     setSmartContext({ placeholder, chip });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognitionConstructor =
+      (window as Window & {
+        SpeechRecognition?: SpeechRecognitionConstructorLike;
+        webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
+      }).SpeechRecognition ||
+      (window as Window & {
+        SpeechRecognition?: SpeechRecognitionConstructorLike;
+        webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
+      }).webkitSpeechRecognition;
+    if (!SpeechRecognitionConstructor) {
+      setIsVoiceSupported(false);
+      return;
+    }
+    setIsVoiceSupported(true);
+    const recognition = new SpeechRecognitionConstructor();
+    recognition.lang = "ja-JP";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const currentResult = event.results[event.resultIndex]?.[0]?.transcript ?? "";
+      if (!currentResult) return;
+      setAskText((prev) => (prev ? `${prev} ${currentResult}` : currentResult));
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    recognitionRef.current = recognition;
+    return () => {
+      recognition.stop();
+      recognitionRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -356,6 +421,34 @@ export default function GrandmaChatter({
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, [chatMessages, isChatOpen, aiStatus]);
+
+  const examplePrompts = useMemo(
+    () => [
+      "日曜市のおすすめコースを教えて。",
+      "今の季節においしい食べ歩きは？",
+      "近くで休める場所ある？",
+      "お土産に人気のものは？",
+      "家族で楽しめるスポットを知りたい。",
+    ],
+    []
+  );
+  const currentExample = examplePrompts[exampleIndex] ?? examplePrompts[0];
+  const shouldShowExample =
+    layout === "page" &&
+    isChatOpen &&
+    !isInputFocused &&
+    !isListening &&
+    !askText.trim();
+
+  useEffect(() => {
+    if (layout !== "page") return;
+    if (!isChatOpen) return;
+    if (isInputFocused || isListening || askText.trim()) return;
+    const timer = window.setInterval(() => {
+      setExampleIndex((prev) => (prev + 1) % examplePrompts.length);
+    }, EXAMPLE_ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [askText, isChatOpen, isInputFocused, isListening, layout]);
 
   useEffect(() => {
     if (autoAskText && !hasProcessedAutoAsk) {
@@ -715,6 +808,7 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const isVoiceBusy = aiStatus === "thinking";
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1226,6 +1320,20 @@ export default function GrandmaChatter({
             }`}
           >
             <div className="flex flex-col gap-2">
+              {shouldShowExample && (
+                <button
+                  type="button"
+                  onClick={() => handleAskSubmit(currentExample, { source: "suggestion" })}
+                  className="flex items-center gap-2 rounded-full border border-amber-100 bg-amber-50/60 px-3 py-1 text-xs font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                  aria-label="入力例を送信"
+                >
+                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                    入力例
+                  </span>
+                  <span className="truncate">{currentExample}</span>
+                  <span className="text-[10px] text-amber-600">タップで送信</span>
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   ref={imageInputRef}
@@ -1257,6 +1365,46 @@ export default function GrandmaChatter({
                   }`}
                   placeholder={smartContext.placeholder}
                 />
+                {isVoiceSupported && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!recognitionRef.current) return;
+                      if (isListening) {
+                        recognitionRef.current.stop();
+                        setIsListening(false);
+                        return;
+                      }
+                      setIsListening(true);
+                      recognitionRef.current.start();
+                    }}
+                    disabled={isVoiceBusy}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
+                      isVoiceBusy
+                        ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                        : isListening
+                        ? "border-amber-300 bg-amber-100 text-amber-800"
+                        : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                    }`}
+                    aria-label="音声入力"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <path d="M12 19v4" />
+                      <path d="M8 23h8" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleAskSubmit()}
@@ -1286,6 +1434,11 @@ export default function GrandmaChatter({
               {selectedImageName && (
                 <div className="text-[11px] text-slate-600">
                   画像: {selectedImageName}
+                </div>
+              )}
+              {isListening && (
+                <div className="text-[11px] text-amber-700">
+                  音声を聞き取っています…もう一度タップで停止
                 </div>
               )}
             </div>
