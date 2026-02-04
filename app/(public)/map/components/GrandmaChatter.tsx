@@ -114,6 +114,10 @@ export default function GrandmaChatter({
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [hasInputInteraction, setHasInputInteraction] = useState(false);
+  const [activeHelpSection, setActiveHelpSection] = useState<"photo" | "text" | "send" | null>(
+    null
+  );
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -518,6 +522,7 @@ export default function GrandmaChatter({
       setSelectedImagePreview(null);
       return;
     }
+    setHasInputInteraction(true);
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
     setSelectedImagePreview(URL.createObjectURL(file));
@@ -681,6 +686,26 @@ export default function GrandmaChatter({
         : "translate-y-[-230px]"
       : "translate-y-0";
   const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
+  const helpItems = useMemo(
+    () => [
+      {
+        key: "photo" as const,
+        label: "写真",
+        description: "売り場や商品が写ると、近いお店を提案しやすくなるよ。",
+      },
+      {
+        key: "text" as const,
+        label: "質問",
+        description: "気になることを短く書いてOK。例も参考にしてね。",
+      },
+      {
+        key: "send" as const,
+        label: "送信",
+        description: "入力が終わったら紙飛行機ボタンで送信。",
+      },
+    ],
+    []
+  );
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -715,6 +740,9 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const hasInputStarted = hasInputInteraction || askText.length > 0 || !!selectedImageFile;
+  const showHelpIntro = layout === "page" && !hasInputStarted;
+  const activeHelpItem = helpItems.find((item) => item.key === activeHelpSection);
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1146,6 +1174,82 @@ export default function GrandmaChatter({
         aria-hidden={!isChatOpen}
       >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
+          {layout === "page" && (
+            <div className="space-y-2">
+              <div
+                className={`rounded-2xl border border-amber-100 bg-white/95 p-3 text-sm text-slate-700 shadow-sm transition-all duration-200 ${
+                  showHelpIntro ? "max-h-96 opacity-100" : "max-h-0 overflow-hidden opacity-0"
+                }`}
+              >
+                <p className="font-semibold text-amber-800">相談の使い方</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  日曜市やお店のことを自由に相談してね。入力前は説明を出しているので、必要なときに確認できるよ。
+                </p>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  個人情報は書かずに、場所や商品名など分かる範囲でOK。
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {helpItems.map((item) => (
+                    <div key={item.key} className="rounded-xl border border-amber-100 bg-amber-50/60 p-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-amber-800">{item.label}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveHelpSection((prev) => (prev === item.key ? null : item.key))
+                          }
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"
+                        >
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full border border-amber-300 text-[10px]">
+                            ?
+                          </span>
+                          詳細を見る
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div
+                className={`flex flex-wrap items-center justify-center gap-2 text-xs text-amber-800 transition-all duration-200 ${
+                  showHelpIntro ? "max-h-0 overflow-hidden opacity-0" : "max-h-24 opacity-100"
+                }`}
+              >
+                {helpItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() =>
+                      setActiveHelpSection((prev) => (prev === item.key ? null : item.key))
+                    }
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold shadow-sm"
+                  >
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-amber-300 text-[10px]">
+                      ?
+                    </span>
+                    {item.label}の詳細
+                  </button>
+                ))}
+              </div>
+              {activeHelpItem && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-sm">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold">{activeHelpItem.label}の詳細</div>
+                      <p className="mt-1">{activeHelpItem.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveHelpSection(null)}
+                      className="text-[11px] font-semibold text-amber-700 underline"
+                    >
+                      閉じる
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {aiImageUrl && !isChatOpen && (
             <button
               type="button"
@@ -1236,7 +1340,15 @@ export default function GrandmaChatter({
                 />
                 <button
                   type="button"
-                  onClick={() => imageInputRef.current?.click()}
+                  onClick={() => {
+                    setHasInputInteraction(true);
+                    setActiveHelpSection("photo");
+                    imageInputRef.current?.click();
+                  }}
+                  onFocus={() => {
+                    setHasInputInteraction(true);
+                    setActiveHelpSection("photo");
+                  }}
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-white text-lg font-semibold text-amber-700 shadow-sm transition hover:bg-amber-50"
                   aria-label="写真を選ぶ"
                 >
@@ -1247,7 +1359,11 @@ export default function GrandmaChatter({
                   type="text"
                   value={askText}
                   onChange={(e) => setAskText(e.target.value)}
-                  onFocus={() => setIsInputFocused(true)}
+                  onFocus={() => {
+                    setIsInputFocused(true);
+                    setHasInputInteraction(true);
+                    setActiveHelpSection("text");
+                  }}
                   onBlur={() => setIsInputFocused(false)}
                   disabled={aiStatus === "thinking"}
                   className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
@@ -1260,6 +1376,10 @@ export default function GrandmaChatter({
                 <button
                   type="button"
                   onClick={() => handleAskSubmit()}
+                  onFocus={() => {
+                    setHasInputInteraction(true);
+                    setActiveHelpSection("send");
+                  }}
                   disabled={aiStatus === "thinking"}
                   className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
                     aiStatus === "thinking"
