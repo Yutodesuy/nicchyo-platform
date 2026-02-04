@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapLoading } from "./components/MapLoadingProvider";
 import { motion } from "framer-motion";
-import { MapPin, Coffee, Utensils, HelpCircle, ChevronRight, User } from "lucide-react";
+import { MapPin, Coffee, ChevronRight, ShieldCheck, User } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -69,13 +69,16 @@ export default function HomePage() {
             </div>
 
             <p className="text-sm font-medium leading-relaxed text-amber-800/80 mb-8">
-              広くてにぎやかな日曜市。<br />
-              <span className="font-bold text-amber-900">「お守りマップ」</span>があれば、<br />
-              もう迷子も怖くありません。
+              初めてでも、ゆっくり歩ける。<br />
+              <span className="font-bold text-amber-900">「お守りマップ」</span>で<br />
+              迷いを安心に。
             </p>
 
-            <button
+            <motion.button
               onClick={handleMapClick}
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
             >
               <div className="flex items-center justify-center gap-2 text-lg font-bold tracking-wide">
@@ -83,12 +86,11 @@ export default function HomePage() {
                 <ChevronRight className="h-5 w-5" />
               </div>
               <div className="absolute inset-0 -z-10 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
+            </motion.button>
 
-            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">
-               <span>Smart Guide</span>
-               <span>•</span>
-               <span>Free</span>
+            <div className="mt-4 flex items-center justify-center gap-3 text-[10px] font-bold text-amber-500/80 uppercase tracking-widest">
+              <span className="rounded-full bg-amber-100 px-3 py-1">迷わない</span>
+              <span className="rounded-full bg-amber-100 px-3 py-1">やさしい</span>
             </div>
           </div>
         </motion.div>
@@ -99,21 +101,28 @@ export default function HomePage() {
         <div className="mx-auto max-w-2xl">
           <div className="text-center mb-10">
             <h2 className="text-lg font-bold text-amber-800 md:text-xl">
-              はじめてでも、大丈夫。
+              はじめてでも、安心。
             </h2>
             <p className="mt-4 text-amber-900/70 leading-relaxed">
-              「お店が多すぎてわからない」<br />
-              「トイレはどこにあるの？」<br />
-              そんな不安を解消します。
+              「どこに行けばいい？」<br />
+              そんな気持ちに寄り添います。
             </p>
           </div>
 
-            <div className="mt-8 bg-amber-50 rounded-2xl p-6 border border-amber-100">
-              <p className="text-center text-lg font-bold text-orange-700 leading-relaxed">
-                nicchyoは、<br />
-                あなたの「歩くパートナー」です。
-              </p>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <ShieldCheck className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">迷ったらすぐ戻れる</p>
             </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <MapPin className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">現在地がひと目でわかる</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <User className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">案内人がそっと提案</p>
+            </div>
+          </div>
         </div>
       </section>
 
