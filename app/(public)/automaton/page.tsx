@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { problems, Problem } from "./data";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { ChevronDown, ChevronUp, FileText, CheckCircle, BrainCircuit, BookOpen, Layers, AlertTriangle, List } from "lucide-react";
 
 // Structure definition based on Automaton2 file
@@ -260,6 +261,15 @@ export default function AutomatonPage() {
           <p className="text-indigo-100 text-lg">
             計算複雑性、NP完全性、およびオートマトン理論に関する問題集と解答です。
           </p>
+          <div className="mt-6 flex justify-center gap-4">
+             <Link
+               href="/automaton/np"
+               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-full font-bold shadow-lg hover:bg-indigo-50 transition-transform hover:scale-105"
+             >
+                <BrainCircuit className="w-5 h-5" />
+                複雑性の階層 (Visual Guide)
+             </Link>
+          </div>
         </div>
       </div>
 
