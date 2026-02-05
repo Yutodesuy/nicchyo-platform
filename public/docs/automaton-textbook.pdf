@@ -1,0 +1,99 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1643 >>
+stream
+BT
+/F1 12 Tf
+72 800 Td
+(Automaton Problem Textbook \(Printable Summary\)) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(This PDF is a compact, print-friendly summary of the /automaton material.) Tj
+0 -16 Td
+(For the full Japanese textbook, open /automaton/text and use print to PDF.) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Chapter 1: Basic Mathematics \(Sets, Functions, Graphs, Proofs\)) Tj
+0 -16 Td
+(- De Morgan's laws, injective/surjective/bijective definitions) Tj
+0 -16 Td
+(- Handshaking lemma, Euler circuits, odd-degree vertex parity) Tj
+0 -16 Td
+(- Proof techniques: contrapositive, contradiction, induction) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Chapter 2: Languages & Automata) Tj
+0 -16 Td
+(- DFA/NFA design: decide required memory as states) Tj
+0 -16 Td
+(- Regular language closure properties) Tj
+0 -16 Td
+(- Pushdown automata for counting \(e.g., 0^n1^n\)) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Chapter 3: Computability) Tj
+0 -16 Td
+(- Decidable vs recognizable languages) Tj
+0 -16 Td
+(- Halting problem and diagonalization) Tj
+0 -16 Td
+(- Reductions from known undecidable problems) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Chapter 4: Complexity) Tj
+0 -16 Td
+(- P, NP, NP-complete, polynomial-time reductions) Tj
+0 -16 Td
+(- SAT -> 3SAT -> CLIQUE as a typical chain) Tj
+0 -16 Td
+(- Space complexity classes \(L, NL, PSPACE\)) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Chapter 5: Integrated Practice) Tj
+0 -16 Td
+(- Identify whether the task is design or proof) Tj
+0 -16 Td
+(- Check if reductions or closure properties apply) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Notation:) Tj
+0 -16 Td
+(- Sigma* is the set of all finite strings over Sigma) Tj
+0 -16 Td
+(- O\(f\(n\)\) denotes an upper bound on growth) Tj
+0 -16 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001936 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2006
+%%EOF
