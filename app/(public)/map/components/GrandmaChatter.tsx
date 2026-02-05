@@ -1320,30 +1320,29 @@ export default function GrandmaChatter({
             </div>
           )}
           <div
-            className={`flex items-center justify-center transition-all duration-200 ${
-              showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
-            }`}
-            aria-hidden={!showConsultExamples}
-          >
-            {layout === "page" && activeConsultExample && (
-              <button
-                type="button"
-                onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                className="group inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/90 px-4 py-2 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-                aria-label={`質問例: ${activeConsultExample}`}
-              >
-                <span className="text-base">💡</span>
-                <span className="whitespace-nowrap">{activeConsultExample}</span>
-              </button>
-            )}
-          </div>
-
-          <div
             className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
               isChatOpen ? "scale-100" : "scale-95"
             }`}
           >
             <div className="flex flex-col gap-2">
+              <div
+                className={`flex items-center justify-center transition-all duration-200 ${
+                  showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                }`}
+                aria-hidden={!showConsultExamples}
+              >
+                {layout === "page" && activeConsultExample && (
+                  <button
+                    type="button"
+                    onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                    className="group inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/70 px-4 py-1.5 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                    aria-label={`質問例: ${activeConsultExample}`}
+                  >
+                    <span className="text-base">💡</span>
+                    <span className="whitespace-nowrap">{activeConsultExample}</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   ref={imageInputRef}
