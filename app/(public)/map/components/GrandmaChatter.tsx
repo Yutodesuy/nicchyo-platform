@@ -13,7 +13,7 @@ import { getSmartSuggestions } from "../utils/suggestionGenerator";
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
-const EXAMPLE_ROTATE_MS = 7000;
+const EXAMPLE_ROTATE_MS = 4500;
 
 type PriorityMessage = {
   text: string;
@@ -1325,7 +1325,7 @@ export default function GrandmaChatter({
           >
             <div className="flex flex-col gap-2">
               <div
-                className={`flex items-center justify-center transition-all duration-200 ${
+                className={`transition-all duration-200 ${
                   showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
                 }`}
                 aria-hidden={!showConsultExamples}
@@ -1334,11 +1334,14 @@ export default function GrandmaChatter({
                   <button
                     type="button"
                     onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                    className="group inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/70 px-4 py-1.5 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                    className="group inline-flex w-full items-center justify-between gap-2 rounded-xl border border-amber-100 bg-white/80 px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition hover:border-amber-200 hover:bg-amber-50/70"
                     aria-label={`質問例: ${activeConsultExample}`}
                   >
-                    <span className="text-base">💡</span>
-                    <span className="whitespace-nowrap">{activeConsultExample}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-amber-600">質問例</span>
+                      <span className="text-slate-600">{activeConsultExample}</span>
+                    </span>
+                    <span className="text-[11px] text-amber-500">送信</span>
                   </button>
                 )}
               </div>
