@@ -511,7 +511,6 @@ export default function GrandmaChatter({
   const showConsultExamples =
     layout === "page" &&
     isChatOpen &&
-    !hasUserAsked &&
     !isInputFocused &&
     !askText.trim() &&
     !selectedImageFile &&
