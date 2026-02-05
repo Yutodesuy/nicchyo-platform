@@ -13,6 +13,7 @@ import { getSmartSuggestions } from "../utils/suggestionGenerator";
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
+const EXAMPLE_ROTATE_MS = 4500;
 
 type PriorityMessage = {
   text: string;
@@ -117,6 +118,7 @@ export default function GrandmaChatter({
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -156,6 +158,21 @@ export default function GrandmaChatter({
     placeholder: "おばあちゃんに質問してね",
     chip: "おすすめは？"
   });
+  const consultExampleQuestions = useMemo(
+    () => [
+      "今の季節におすすめの食材はある？",
+      "子ども連れでも楽しめる場所は？",
+      "日曜市の回り方を教えて",
+      "今やってるイベントある？",
+      "お土産にぴったりのものは？",
+      "雨の日でも楽しめる場所ある？",
+      "近くで座って休める場所ある？",
+      "旬の果物が買えるお店は？",
+      "混雑を避けるコツってある？",
+      "写真映えするスポット教えて",
+    ],
+    []
+  );
   const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
@@ -496,6 +513,22 @@ export default function GrandmaChatter({
     return () => window.clearInterval(timer);
   }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
+  const showConsultExamples =
+    layout === "page" &&
+    isChatOpen &&
+    !isInputFocused &&
+    !askText.trim() &&
+    !selectedImageFile &&
+    aiStatus !== "thinking";
+
+  useEffect(() => {
+    if (!showConsultExamples || consultExampleQuestions.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setConsultExampleIndex((prev) => (prev + 1) % consultExampleQuestions.length);
+    }, EXAMPLE_ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [consultExampleQuestions.length, showConsultExamples]);
+
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
       dragStateRef.current.moved = false;
@@ -772,7 +805,6 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -807,6 +839,7 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1291,33 +1324,32 @@ export default function GrandmaChatter({
             </div>
           )}
           <div
-            className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
-              isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
-            }`}
-          >
-            {templateChips.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => handleAskSubmit(label, { source: "input" })}
-                disabled={aiStatus === "thinking"}
-                className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white text-amber-800 hover:bg-amber-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div
             className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
               isChatOpen ? "scale-100" : "scale-95"
             }`}
           >
             <div className="flex flex-col gap-2">
+              <div
+                className={`transition-all duration-200 ${
+                  showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                }`}
+                aria-hidden={!showConsultExamples}
+              >
+                {layout === "page" && activeConsultExample && (
+                  <button
+                    type="button"
+                    onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                    className="group inline-flex w-full items-center justify-between gap-2 rounded-xl border border-amber-100 bg-white/80 px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition hover:border-amber-200 hover:bg-amber-50/70"
+                    aria-label={`質問例: ${activeConsultExample}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-amber-600">質問例</span>
+                      <span className="text-slate-600">{activeConsultExample}</span>
+                    </span>
+                    <span className="text-[11px] text-amber-500">送信</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   ref={imageInputRef}
