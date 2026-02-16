@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useMapLoading } from "./components/MapLoadingProvider";
 import { motion } from "framer-motion";
 import { MapPin, Coffee, Utensils, HelpCircle, ChevronRight, User } from "lucide-react";
@@ -35,10 +36,13 @@ export default function HomePage() {
       <section className="relative h-[90vh] w-full overflow-hidden flex items-center justify-center">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-           <img
+           <Image
             src="/images/home-hero.jpg"
             alt="Sunday Market Atmosphere"
-            className="h-full w-full object-cover object-center scale-105 blur-[2px] opacity-90"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center scale-105 blur-[2px] opacity-90"
           />
           {/* Gentle overlay to harmonize */}
           <div className="absolute inset-0 bg-amber-900/10" />
