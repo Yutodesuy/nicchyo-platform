@@ -5,33 +5,11 @@ import { createClient } from '@/utils/supabase/server';
 import MapPageClient from './MapPageClient';
 import { shops as staticShops } from './data/shops';
 import type { Shop } from './data/shops';
+import { fetchMapData, ShopRow, AttendanceEstimate } from './fetch-map-data';
 
 export const metadata: Metadata = {
   title: 'nicchyo | Sunday Market Map',
   description: 'Explore the Sunday market map.',
-};
-
-type ShopRow = {
-  id: string | null;
-  legacy_id: number | null;
-  name: string | null;
-  owner_name: string | null;
-  side: 'north' | 'south' | null;
-  position: number | null;
-  lat: number | null;
-  lng: number | null;
-  chome: string | null;
-  category: string | null;
-  products: string[] | null;
-  description: string | null;
-  specialty_dish: string | null;
-  about_vendor: string | null;
-  stall_style: string | null;
-  icon: string | null;
-  schedule: string | null;
-  message: string | null;
-  topic: string[] | null;
-  shop_strength: string | null;
 };
 
 const CHOME_VALUES = new Set([
@@ -54,13 +32,7 @@ function normalizeChome(value: string | null): Shop["chome"] {
 export default async function MapPage() {
   const cookieStore = await cookies();
   let shopRows: ShopRow[] | null = null;
-  let attendanceEstimates: Record<number, {
-    label: string;
-    p: number | null;
-    n_eff: number;
-    vendor_override: boolean;
-    evidence_summary: string;
-  }> = {};
+  let attendanceEstimates: Record<number, AttendanceEstimate> = {};
 
   const hasSupabaseEnv =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -69,62 +41,9 @@ export default async function MapPage() {
   if (hasSupabaseEnv) {
     try {
       const supabase = createClient(cookieStore);
-      const { data } = await supabase
-        .from('shops')
-        .select(
-          [
-            'id',
-            'legacy_id',
-            'name',
-            'owner_name',
-            'side',
-            'position',
-            'lat',
-            'lng',
-            'chome',
-            'category',
-            'products',
-            'description',
-            'specialty_dish',
-            'about_vendor',
-            'stall_style',
-            'icon',
-            'schedule',
-            'message',
-            'topic',
-            'shop_strength',
-          ].join(',')
-        )
-        .order('legacy_id', { ascending: true });
-      shopRows = Array.isArray(data) ? (data as unknown as ShopRow[]) : null;
-
-      if (shopRows && shopRows.length > 0) {
-        const uuidToLegacy = new Map<string, number>();
-        shopRows.forEach((row) => {
-          if (row.id && row.legacy_id !== null) {
-            uuidToLegacy.set(row.id, row.legacy_id);
-          }
-        });
-
-        const today = new Date().toISOString().slice(0, 10);
-        const { data: estimates } = await supabase.rpc('get_shop_attendance_estimates', {
-          target_date: today,
-        });
-
-        if (Array.isArray(estimates)) {
-          estimates.forEach((row: any) => {
-            const legacyId = uuidToLegacy.get(String(row.shop_id));
-            if (!legacyId) return;
-            attendanceEstimates[legacyId] = {
-              label: row.label,
-              p: row.p,
-              n_eff: row.n_eff,
-              vendor_override: row.vendor_override,
-              evidence_summary: row.evidence_summary,
-            };
-          });
-        }
-      }
+      const result = await fetchMapData(supabase);
+      shopRows = result.shopRows;
+      attendanceEstimates = result.attendanceEstimates;
     } catch {
       shopRows = null;
       attendanceEstimates = {};
