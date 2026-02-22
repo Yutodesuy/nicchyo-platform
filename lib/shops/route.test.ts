@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { formatShopIdToCode, normalizeShopCodeToId } from "./route";
+import {
+  formatShopIdToCode,
+  normalizeShopCodeToId,
+  normalizeShopsPathSegmentToId,
+} from "./route";
 
 describe("normalizeShopCodeToId", () => {
   it("3桁コードを数値IDに変換する", () => {
@@ -14,6 +18,20 @@ describe("normalizeShopCodeToId", () => {
     expect(normalizeShopCodeToId("301")).toBeNull();
     expect(normalizeShopCodeToId("abc")).toBeNull();
     expect(normalizeShopCodeToId("1")).toBeNull();
+  });
+});
+
+describe("normalizeShopsPathSegmentToId", () => {
+  it("/shops001 形式のセグメントを数値IDに変換する", () => {
+    expect(normalizeShopsPathSegmentToId("shops001")).toBe(1);
+    expect(normalizeShopsPathSegmentToId("shops300")).toBe(300);
+  });
+
+  it("不正なセグメントは null を返す", () => {
+    expect(normalizeShopsPathSegmentToId("shops000")).toBeNull();
+    expect(normalizeShopsPathSegmentToId("shops301")).toBeNull();
+    expect(normalizeShopsPathSegmentToId("shopsabc")).toBeNull();
+    expect(normalizeShopsPathSegmentToId("001")).toBeNull();
   });
 });
 
