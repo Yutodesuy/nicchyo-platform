@@ -2,76 +2,72 @@ import { describe, it, expect, vi } from 'vitest';
 import { fetchMapData } from '../app/(public)/map/fetch-map-data';
 import { SupabaseClient } from '@supabase/supabase-js';
 
-const MOCK_SHOPS = Array.from({ length: 10 }, (_, i) => ({
-  id: `uuid-${i}`,
-  legacy_id: i + 1,
-  name: `Shop ${i}`,
-  owner_name: 'Test Owner',
-  side: 'north',
-  position: i,
-  lat: 0,
-  lng: 0,
-  chome: '一丁目',
-  category: 'Food',
-  products: ['Apple'],
-  description: 'Desc',
-  specialty_dish: 'Dish',
-  about_vendor: 'About',
-  stall_style: 'Style',
-  icon: 'icon',
-  schedule: 'Weekly',
-  message: 'Msg',
-  topic: ['Topic'],
-  shop_strength: 'Strong',
-}));
+// Minimal valid shape for the test logic (we only use id and legacy_id for mapping)
+const MOCK_SHOPS = [
+  {
+    id: 'uuid-1',
+    legacy_id: 1,
+    name: 'Shop 1',
+    // ... allow other fields to be missing for this specific test as we cast or just need the structure for the logic
+  }
+];
 
-const MOCK_ESTIMATES = MOCK_SHOPS.map(shop => ({
-  shop_id: shop.id,
-  label: 'Open',
-  p: 0.9,
-  n_eff: 10,
-  vendor_override: false,
-  evidence_summary: 'Test',
-}));
+const MOCK_ESTIMATES = [
+  {
+    shop_id: 'uuid-1',
+    label: 'Open',
+    p: 0.9,
+    n_eff: 10,
+    vendor_override: false,
+    evidence_summary: 'Test',
+  }
+];
 
-function createMockSupabase(shopsDelay = 100, estimatesDelay = 100) {
-  return {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        order: vi.fn().mockImplementation(async () => {
-          await new Promise(resolve => setTimeout(resolve, shopsDelay));
-          return { data: MOCK_SHOPS };
-        }),
-      }),
-    }),
-    rpc: vi.fn().mockImplementation(async () => {
-      await new Promise(resolve => setTimeout(resolve, estimatesDelay));
-      return { data: MOCK_ESTIMATES };
-    }),
-  } as unknown as SupabaseClient;
-}
+describe('fetchMapData Concurrency', () => {
+  it('initiates both requests in parallel', async () => {
+    // 1. Create controlled promises to pause execution
+    let resolveShops: (value: any) => void;
+    const shopsPromise = new Promise(resolve => {
+      resolveShops = resolve;
+    });
 
-describe('fetchMapData Benchmark', () => {
-  it('measures execution time', async () => {
-    const shopsDelay = 100;
-    const estimatesDelay = 100;
-    const supabase = createMockSupabase(shopsDelay, estimatesDelay);
+    let resolveEstimates: (value: any) => void;
+    const estimatesPromise = new Promise(resolve => {
+      resolveEstimates = resolve;
+    });
 
-    const start = performance.now();
-    await fetchMapData(supabase);
-    const end = performance.now();
+    // 2. Mock Supabase client
+    const mockOrder = vi.fn().mockReturnValue(shopsPromise);
+    const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockRpc = vi.fn().mockReturnValue(estimatesPromise);
 
-    const duration = end - start;
-    console.log(`Execution time: ${duration}ms`);
+    const supabase = {
+      from: mockFrom,
+      rpc: mockRpc,
+    } as unknown as SupabaseClient;
 
-    // Sequential: shopsDelay + estimatesDelay = 200ms (plus overhead)
-    // Parallel: max(shopsDelay, estimatesDelay) = 100ms (plus overhead)
+    // 3. Start the fetch
+    const fetchPromise = fetchMapData(supabase);
 
-    // Check if it behaves in parallel
-    // We expect it to be significantly less than the sum
-    expect(duration).toBeLessThan(shopsDelay + estimatesDelay);
+    // 4. Verification: Both chains should have been built/called *before* we resolve anything.
+    // This confirms they are not awaiting each other.
+    expect(mockFrom).toHaveBeenCalledWith('shops');
+    expect(mockSelect).toHaveBeenCalled(); // .select(...)
+    expect(mockOrder).toHaveBeenCalled();  // .order(...) - this is the "request" being built/sent
 
-    // It should be at least the max delay
-    expect(duration).toBeGreaterThanOrEqual(Math.max(shopsDelay, estimatesDelay));
+    expect(mockRpc).toHaveBeenCalledWith('get_shop_attendance_estimates', expect.any(Object));
+
+    // 5. Resolve the promises with data
+    if (resolveShops!) resolveShops({ data: MOCK_SHOPS });
+    if (resolveEstimates!) resolveEstimates({ data: MOCK_ESTIMATES });
+
+    // 6. Await the result
+    const result = await fetchPromise;
+
+    // 7. Assert correct data processing
+    expect(result.shopRows).toHaveLength(1);
+    expect(result.attendanceEstimates[1]).toBeDefined();
+    expect(result.attendanceEstimates[1].label).toBe('Open');
   });
 });
