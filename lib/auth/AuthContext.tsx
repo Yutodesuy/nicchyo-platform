@@ -1,9 +1,9 @@
 ﻿"use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
-import type { User, UserRole, PermissionCheck } from "./types";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import type { User, PermissionCheck } from "./types";
 import { createClient } from "@/utils/supabase/client";
+import { canAccessVendorShop, mapSupabaseUser } from "./authorization";
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -20,48 +20,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-function normalizeRole(value?: string | null): UserRole {
-  if (value === "super_admin") return "super_admin";
-  if (value === "moderator") return "moderator";
-  if (value === "vendor") return "vendor";
-  return "general_user";
-}
-
-function getVendorId(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-function mapSupabaseUser(user: SupabaseUser): User {
-  const appMeta = user.app_metadata as { role?: string } | undefined;
-  const userMeta = user.user_metadata as {
-    role?: string;
-    vendorId?: unknown;
-    name?: string;
-    full_name?: string;
-    avatarUrl?: string;
-    avatar_url?: string;
-  } | undefined;
-
-  const role = normalizeRole(appMeta?.role ?? userMeta?.role);
-  const vendorId = getVendorId(userMeta?.vendorId);
-  const name = userMeta?.name ?? userMeta?.full_name ?? (user.email ? user.email.split("@")[0] : "user");
-  const avatarUrl = userMeta?.avatarUrl ?? userMeta?.avatar_url;
-
-  return {
-    id: user.id,
-    name,
-    email: user.email ?? "",
-    avatarUrl,
-    role,
-    vendorId,
-  };
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -129,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     canEditShop: (shopId: number) => {
       if (user?.role === "super_admin") return true;
-      if (user?.role === "vendor" && user.vendorId === shopId) return true;
+      if (canAccessVendorShop(user, shopId)) return true;
       return false;
     },
 
