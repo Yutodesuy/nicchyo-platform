@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { formatShopIdToCode, normalizeShopsPathSegmentToId } from "@/lib/shops/route";
+import { formatShopIdToCode, normalizeShopCodeToId } from "@/lib/shops/route";
 
 type ShopPageProps = {
   params: Promise<{
@@ -10,7 +10,7 @@ type ShopPageProps = {
 
 export default async function ShopPage({ params }: ShopPageProps) {
   const { shopCode } = await params;
-  const shopId = normalizeShopsPathSegmentToId(shopCode);
+  const shopId = normalizeShopCodeToId(shopCode);
 
   if (shopId === null) {
     notFound();
