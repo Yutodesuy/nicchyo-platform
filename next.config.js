@@ -16,6 +16,16 @@ const nextConfig = {
   // パフォーマンス最適化
   poweredByHeader: false, // X-Powered-By ヘッダーを無効化（セキュリティ向上）
 
+  // /shops001 -> /shops/001 へ内部リライト
+  async rewrites() {
+    return [
+      {
+        source: '/shops:shopCode(\\d{3})',
+        destination: '/shops/:shopCode',
+      },
+    ];
+  },
+
   // セキュリティヘッダー
   async headers() {
     return [
