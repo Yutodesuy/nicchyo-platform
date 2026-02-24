@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Shop } from '../../map/data/shops';
+import type { Shop } from '../../map/data/shops';
 import ShopResultCard from './ShopResultCard';
 import EmptyState from './EmptyState';
 import { Map } from 'lucide-react';

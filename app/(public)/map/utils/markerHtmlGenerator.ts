@@ -97,7 +97,7 @@ export function generateShopMarkerHtml(
 
   return `
     <div
-      class="shop-marker-container shop-side-${shop.side}"
+      class="shop-marker-container"
       style="position: relative; cursor: pointer; transition: transform 0.2s ease;"
     >
       ${bannerHtml}

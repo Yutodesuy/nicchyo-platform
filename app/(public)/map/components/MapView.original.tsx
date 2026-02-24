@@ -25,7 +25,8 @@ const KOCHI_SUNDAY_MARKET: [number, number] = [
 ];
 
 // Zoom config by shop count
-const ZOOM_CONFIG = getZoomConfig(shops.length);
+const BASE_SHOP_COUNT = shops.length || 300;
+const ZOOM_CONFIG = getZoomConfig(BASE_SHOP_COUNT);
 const INITIAL_ZOOM = ZOOM_CONFIG.initial;
 const MIN_ZOOM = ZOOM_CONFIG.min;
 const MAX_ZOOM = ZOOM_CONFIG.max;
