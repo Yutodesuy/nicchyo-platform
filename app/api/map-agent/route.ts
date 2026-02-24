@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { shops } from "../../(public)/map/data/shops";
+import { createClient } from "@supabase/supabase-js";
+import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 
 type Answers = {
   purpose?: string;
@@ -23,13 +24,40 @@ type PlanResult = {
   shoppingList: string[];
 };
 
+type BaseShop = {
+  id: number;
+  name: string;
+  category: string;
+  products: string[];
+  lat: number;
+  lng: number;
+};
+
 type RequestBody = {
   answers?: Answers;
   location?: [number, number] | null;
 };
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 const MARKET_CENTER: [number, number] = [33.55915, 133.531];
+
+async function loadShops(): Promise<BaseShop[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false },
+  });
+  const shops = await fetchShopsFromDb(supabase);
+  return shops.map((shop) => ({
+    id: shop.id,
+    name: shop.name,
+    category: shop.category,
+    products: shop.products ?? [],
+    lat: shop.lat,
+    lng: shop.lng,
+  }));
+}
 
 function parseVisitCount(raw?: string) {
   if (!raw) return 3;
@@ -47,7 +75,7 @@ function keywordsFrom(answers: Answers) {
   ];
 }
 
-function rankShops(answers: Answers) {
+function rankShops(answers: Answers, shops: BaseShop[]) {
   const keywords = keywordsFrom(answers);
 
   const scored = shops.map((shop) => {
@@ -66,12 +94,14 @@ function rankShops(answers: Answers) {
   return scored.map(({ shop }) => shop);
 }
 
-function toPlanShop(selected: typeof shops[number]): PlanShop {
+const DEFAULT_ICON = "🛍️";
+
+function toPlanShop(selected: BaseShop): PlanShop {
   return {
     id: selected.id,
     name: selected.name,
     reason: `${selected.category}が得意。おすすめ: ${selected.products.slice(0, 3).join(" / ")}`,
-    icon: selected.icon,
+    icon: DEFAULT_ICON,
   };
 }
 
@@ -89,7 +119,8 @@ function haversine(a: [number, number], b: [number, number]) {
 
 function orderByDistance(
   start: [number, number],
-  list: PlanShop[]
+  list: PlanShop[],
+  shops: BaseShop[]
 ): PlanShop[] {
   const ordered: PlanShop[] = [];
   const remaining = [...list];
@@ -113,11 +144,11 @@ function orderByDistance(
   return ordered;
 }
 
-function pickShops(answers: Answers, location: [number, number]): PlanResult {
+function pickShops(answers: Answers, location: [number, number], shops: BaseShop[]): PlanResult {
   const desiredCount = parseVisitCount(answers.visitCount);
-  const ranked = rankShops(answers);
+  const ranked = rankShops(answers, shops);
   const selected = ranked.slice(0, desiredCount).map(toPlanShop);
-  const ordered = orderByDistance(location, selected);
+  const ordered = orderByDistance(location, selected, shops);
 
   const summaryParts = [
     answers.purpose && `目的: ${answers.purpose}`,
@@ -144,7 +175,7 @@ function pickShops(answers: Answers, location: [number, number]): PlanResult {
 
 function buildPrompt(
   answers: Answers,
-  candidates: typeof shops,
+  candidates: BaseShop[],
   start: [number, number]
 ) {
   const lines = candidates.map((shop) => {
@@ -179,7 +210,7 @@ ${lines.join("\n")}
 
 async function callOpenAI(
   answers: Answers,
-  ranked: typeof shops,
+  ranked: BaseShop[],
   start: [number, number]
 ): Promise<PlanResult | null> {
   if (!OPENAI_API_KEY) return null;
@@ -232,11 +263,11 @@ async function callOpenAI(
         id,
         name: s.name ?? source?.name ?? `おすすめ${idx + 1}`,
         reason: s.reason ?? source?.category ?? "おすすめのお店",
-        icon: s.icon ?? source?.icon ?? "🛍️",
+        icon: s.icon ?? DEFAULT_ICON,
       };
     });
 
-    const ordered = orderByDistance(start, normalized);
+    const ordered = orderByDistance(start, normalized, ranked);
 
     return {
       title: parsed.title || "市場さんぽおすすめルート",
@@ -259,13 +290,14 @@ export async function POST(request: Request) {
     const answers: Answers = body?.answers ?? {};
     const start = Array.isArray(body?.location) && body.location.length === 2 ? body.location : MARKET_CENTER;
 
-    const ranked = rankShops(answers);
+    const baseShops = await loadShops();
+    const ranked = rankShops(answers, baseShops);
     const aiPlan = await callOpenAI(answers, ranked, start);
     if (aiPlan) {
       return NextResponse.json(aiPlan, { status: 200 });
     }
 
-    const fallback = pickShops(answers, start);
+    const fallback = pickShops(answers, start, baseShops);
     return NextResponse.json(fallback, { status: 200 });
   } catch {
     return NextResponse.json({ message: "failed to build plan" }, { status: 500 });

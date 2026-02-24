@@ -1,5 +1,3 @@
-import { shops } from '../../map/data/shops';
-
 const STORAGE_KEY = 'nicchyo-fridge-items';
 
 type BagItem = {
@@ -25,14 +23,6 @@ export const SHOPPING_SEGMENTS: ShoppingSegment[] = [
   { id: 'drinks', label: '飲み物', color: '#6366f1', keywords: ['お茶', 'コーヒー', '飲み', 'ジュース', '酒', 'ビール', 'ワイン'] },
 ];
 
-const shopCategoryMap: Record<string, string> = {
-  vegetables: 'veggies',
-  fish: 'fish',
-  fruits: 'fruit',
-  flowers: 'flowers',
-  snacks: 'snacks',
-  drinks: 'drinks',
-};
 
 function loadBagItems(): BagItem[] {
   if (typeof window === 'undefined') return [];
@@ -54,24 +44,11 @@ function matchKeyword(name: string, segment: ShoppingSegment) {
   return segment.keywords.some((kw) => n.includes(normalize(kw)));
 }
 
-function mapShopCategory(shopId?: number): string | undefined {
-  if (!shopId) return undefined;
-  const shop = shops.find((s) => s.id === shopId);
-  if (!shop?.category) return undefined;
-  return shopCategoryMap[shop.category] ?? undefined;
-}
-
 export function getShoppingProgress() {
   const items = loadBagItems();
   const unlocked = new Set<string>();
 
   for (const item of items) {
-    const fromShopCategory = mapShopCategory(item.fromShopId);
-    if (fromShopCategory) {
-      unlocked.add(fromShopCategory);
-      continue;
-    }
-
     for (const seg of SHOPPING_SEGMENTS) {
       if (matchKeyword(item.name, seg)) {
         unlocked.add(seg.id);

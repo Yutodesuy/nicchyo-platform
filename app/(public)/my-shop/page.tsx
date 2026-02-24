@@ -4,14 +4,13 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 import { applyShopEdits, saveShopEdits, SHOP_EDITS_UPDATED_EVENT } from "@/lib/shopEdits";
-import { shops as baseShops } from "../map/data/shops";
 import type { ShopEditableData } from "../map/types/shopData";
+import { useShops } from "@/lib/hooks/useShops";
 
 type FormState = {
   name: string;
   ownerName: string;
   category: string;
-  icon: string;
   stallStyle: string;
   schedule: string;
   productsText: string;
@@ -20,8 +19,6 @@ type FormState = {
   seasonalProductsAutumnWinterText: string;
   seasonalProductsWinterSpringText: string;
   description: string;
-  specialtyDish: string;
-  aboutVendor: string;
   message: string;
   imageMain: string;
   imageThumb: string;
@@ -42,21 +39,10 @@ const CATEGORIES = [
   "手作り・工芸",
 ];
 
-const CATEGORY_ICONS: Record<string, string[]> = {
-  "食材": ["🥬", "🥕", "🍅"],
-  "食べ物": ["🍙", "🍡", "🍠"],
-  "道具・工具": ["🔪", "🧰", "🪚"],
-  "生活雑貨": ["🧺", "🧼", "🧻"],
-  "植物・苗": ["🪴", "🌱", "🌼"],
-  "アクセサリー": ["💍", "🧵", "🎀"],
-  "手作り・工芸": ["🧶", "🎨", "🧵"],
-};
-
 const REQUIRED_FIELDS: (keyof FormState)[] = [
   "name",
   "ownerName",
   "category",
-  "icon",
   "productsText",
   "description",
   "schedule",
@@ -66,7 +52,6 @@ const EMPTY_FORM: FormState = {
   name: "",
   ownerName: "",
   category: "",
-  icon: "",
   stallStyle: "",
   schedule: "",
   productsText: "",
@@ -75,8 +60,6 @@ const EMPTY_FORM: FormState = {
   seasonalProductsAutumnWinterText: "",
   seasonalProductsWinterSpringText: "",
   description: "",
-  specialtyDish: "",
-  aboutVendor: "",
   message: "",
   imageMain: "",
   imageThumb: "",
@@ -96,6 +79,7 @@ function splitCsv(value: string): string[] {
 
 export default function MyShopPage() {
   const { user, permissions } = useAuth();
+  const { shops } = useShops();
   const vendorId = user?.vendorId ?? null;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -103,16 +87,11 @@ export default function MyShopPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [editsVersion, setEditsVersion] = useState(0);
 
-  const iconOptions = useMemo(() => {
-    if (!form.category) return [];
-    return CATEGORY_ICONS[form.category] ?? [];
-  }, [form.category]);
-
   const vendorShop = useMemo(() => {
     if (!vendorId) return null;
-    const merged = applyShopEdits(baseShops);
+    const merged = applyShopEdits(shops);
     return merged.find((shop) => shop.id === vendorId) ?? null;
-  }, [vendorId, editsVersion]);
+  }, [vendorId, editsVersion, shops]);
 
   useEffect(() => {
     if (!vendorShop || initialized) return;
@@ -120,7 +99,6 @@ export default function MyShopPage() {
       name: vendorShop.name ?? "",
       ownerName: vendorShop.ownerName ?? "",
       category: vendorShop.category ?? "",
-      icon: vendorShop.icon ?? "",
       stallStyle: vendorShop.stallStyle ?? "",
       schedule: vendorShop.schedule ?? "",
       productsText: vendorShop.products?.join(", ") ?? "",
@@ -133,8 +111,6 @@ export default function MyShopPage() {
       seasonalProductsWinterSpringText:
         vendorShop.seasonalProductsWinterSpring?.join(", ") ?? "",
       description: vendorShop.description ?? "",
-      specialtyDish: vendorShop.specialtyDish ?? "",
-      aboutVendor: vendorShop.aboutVendor ?? "",
       message: vendorShop.message ?? "",
       imageMain: vendorShop.images?.main ?? "",
       imageThumb: vendorShop.images?.thumbnail ?? "",
@@ -154,16 +130,6 @@ export default function MyShopPage() {
     window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
     return () => window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
   }, []);
-
-  useEffect(() => {
-    if (!form.category) {
-      setForm((prev) => ({ ...prev, icon: "" }));
-      return;
-    }
-    if (form.icon && !iconOptions.includes(form.icon)) {
-      setForm((prev) => ({ ...prev, icon: "" }));
-    }
-  }, [form.category, form.icon, iconOptions]);
 
   const handleChange =
     (key: keyof FormState) =>
@@ -198,15 +164,12 @@ export default function MyShopPage() {
       name: form.name.trim(),
       ownerName: form.ownerName.trim(),
       category: form.category.trim(),
-      icon: form.icon.trim(),
       products: splitCsv(form.productsText),
       seasonalProductsSpringSummer: splitCsv(form.seasonalProductsSpringSummerText),
       seasonalProductsSummerAutumn: splitCsv(form.seasonalProductsSummerAutumnText),
       seasonalProductsAutumnWinter: splitCsv(form.seasonalProductsAutumnWinterText),
       seasonalProductsWinterSpring: splitCsv(form.seasonalProductsWinterSpringText),
       description: form.description.trim(),
-      specialtyDish: form.specialtyDish.trim() || undefined,
-      aboutVendor: form.aboutVendor.trim() || undefined,
       stallStyle: form.stallStyle.trim() || undefined,
       schedule: form.schedule.trim(),
       message: form.message.trim() || undefined,
@@ -312,31 +275,6 @@ export default function MyShopPage() {
                 {errors.category && (
                   <span className="mt-1 block text-[11px] text-rose-600">
                     {errors.category}
-                  </span>
-                )}
-              </label>
-              <label className="block text-sm text-slate-700">
-                アイコン{requiredMark}
-                <select
-                  value={form.icon}
-                  onChange={handleChange("icon")}
-                  className={fieldClass("icon")}
-                  aria-invalid={!!errors.icon}
-                  required
-                  disabled={!form.category}
-                >
-                  <option value="">
-                    {form.category ? "選択してください" : "カテゴリーを選択してください"}
-                  </option>
-                  {iconOptions.map((icon) => (
-                    <option key={icon} value={icon}>
-                      {icon}
-                    </option>
-                  ))}
-                </select>
-                {errors.icon && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.icon}
                   </span>
                 )}
               </label>
@@ -455,28 +393,6 @@ export default function MyShopPage() {
                   </span>
                 )}
               </label>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-sm text-slate-700">
-                  得意料理
-                  <input
-                    type="text"
-                    value={form.specialtyDish}
-                    onChange={handleChange("specialtyDish")}
-                    placeholder="例: かつおのたたき"
-                    className={fieldClass("specialtyDish")}
-                  />
-                </label>
-                <label className="block text-sm text-slate-700">
-                  出店者のこだわり
-                  <input
-                    type="text"
-                    value={form.aboutVendor}
-                    onChange={handleChange("aboutVendor")}
-                    placeholder="例: 無農薬にこだわっています"
-                    className={fieldClass("aboutVendor")}
-                  />
-                </label>
-              </div>
               <label className="block text-sm text-slate-700">
                 メッセージ
                 <textarea

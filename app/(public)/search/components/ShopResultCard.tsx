@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { memo } from "react";
 import type { MouseEvent } from "react";
-import { Shop } from "../../map/data/shops";
+import type { Shop } from "../../map/data/shops";
 import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 
@@ -34,10 +34,7 @@ function ShopResultCard({
     shop.images?.main ||
     shop.images?.thumbnail ||
     shop.images?.additional?.[0] ||
-    getShopBannerImage(
-      shop.category,
-      (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0)
-    );
+    getShopBannerImage(shop.category, shop.position ?? shop.id);
   const mapLabel = mapLabelProp ?? shop.name;
   const mapHref = enableSearchMapHighlight
     ? `/map?search=1&label=${encodeURIComponent(mapLabel)}&shop=${shop.id}`
@@ -67,9 +64,6 @@ function ShopResultCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className={`${compact ? "text-lg" : "text-xl"}`} aria-hidden="true">
-            {shop.icon}
-          </span>
           <div>
             <h3 className={`${compact ? "text-sm" : "text-base"} font-semibold text-gray-900`}>
               {shop.name}
