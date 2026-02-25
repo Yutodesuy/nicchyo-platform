@@ -47,6 +47,13 @@ export interface ShopEditableData {
   /** 取扱商品リスト */
   products: string[];
 
+  /** 商品ごとの詳細（任意） */
+  productDetails?: {
+    name: string;
+    imageUrl?: string;
+    seasons?: ("spring_summer" | "summer_autumn" | "autumn_winter" | "winter_spring")[];
+  }[];
+
   /** 季節をまたぐ取扱商品（春-夏） */
   seasonalProductsSpringSummer?: string[];
 
