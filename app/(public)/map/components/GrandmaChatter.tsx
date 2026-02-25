@@ -884,7 +884,7 @@ export default function GrandmaChatter({
         {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
         {!isChatOpen && !priorityMessage && smartSuggestionChips.length > 0 && layout === "floating" && (
            <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
-             {smartSuggestionChips.map((label, i) => (
+             {smartSuggestionChips.slice(0, 1).map((label, i) => (
                 <button
                   key={label}
                   type="button"
