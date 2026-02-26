@@ -16,11 +16,9 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  // const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
-  // const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -206,16 +204,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* {hasCaptcha && (
-            <div className="mt-4 flex items-center justify-center">
-              <TurnstileWidget
-                onVerify={setCaptchaToken}
-                onExpire={() => setCaptchaToken("")}
-                onError={() => setCaptchaToken("")}
-                className="flex items-center justify-center"
-              />
-            </div>
-          )} */}
         </div>
 
         {/* Footer Links */}
