@@ -126,7 +126,7 @@ export async function fetchShopsFromDb(
   });
 
   const shops = vendors
-    .map((vendor) => {
+    .map((vendor): Shop | null => {
       const assignment = latestAssignmentByVendor.get(vendor.id);
       if (!assignment?.location_id) return null;
       const location = locationById.get(assignment.location_id);
@@ -153,9 +153,9 @@ export async function fetchShopsFromDb(
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),
         chome: normalizeChome(location.district),
-      } satisfies Shop;
+      };
     })
-    .filter((row): row is Shop => Boolean(row))
+    .filter((row): row is Shop => row !== null)
     .sort((a, b) => a.id - b.id);
 
   return shops;
