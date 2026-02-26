@@ -3,8 +3,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
-import { saveShopEdits } from "@/lib/shopEdits";
-import type { ShopEditableData } from "../../map/types/shopData";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
@@ -56,6 +54,13 @@ const REQUIRED_FIELDS: (keyof FormState)[] = [
   "category",
   "highlight",
 ];
+
+const SEASON_ID_MAP: Record<SeasonKey, number> = {
+  spring_summer: 0,
+  summer_autumn: 1,
+  autumn_winter: 2,
+  winter_spring: 3,
+};
 
 const EMPTY_FORM: FormState = {
   name: "",
@@ -245,7 +250,7 @@ export default function MyShopDetailPage() {
     setShowProductOptions(false);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage("");
     const nextErrors: Partial<Record<keyof FormState, string>> = {};
@@ -267,35 +272,110 @@ export default function MyShopDetailPage() {
       return;
     }
 
-    const edits: Partial<ShopEditableData> = {
-      name: form.name.trim(),
-      ownerName: form.ownerName.trim(),
-      category: form.category.trim(),
-      products: products.map((product) => product.name),
-      seasonalProductsSpringSummer: mergeProductSeasons(products, "spring_summer"),
-      seasonalProductsSummerAutumn: mergeProductSeasons(products, "summer_autumn"),
-      seasonalProductsAutumnWinter: mergeProductSeasons(products, "autumn_winter"),
-      seasonalProductsWinterSpring: mergeProductSeasons(products, "winter_spring"),
-      productDetails: products,
-      shopStrength: form.highlight.trim() || undefined,
-      stallStyle: form.stallStyle.trim() || undefined,
-      images: {
-        main: form.imageMain.trim() || undefined,
-        thumbnail: form.imageThumb.trim() || undefined,
-        additional: splitCsv(form.imageAdditional),
-      },
-      socialLinks: {
-        instagram: form.instagram.trim() || undefined,
-        facebook: form.facebook.trim() || undefined,
-        twitter: form.twitter.trim() || undefined,
-        website: form.website.trim() || undefined,
-      },
-      lastUpdated: Date.now(),
-      updatedBy: user?.id,
-    };
+    const supabase = createClient();
+    try {
+      const categoryValue = form.category.trim();
+      let categoryId: string | null = null;
+      if (categoryValue) {
+        const { data: categoryRow, error: categoryError } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("name", categoryValue)
+          .maybeSingle();
+        if (categoryError) {
+          throw categoryError;
+        }
+        if (categoryRow) {
+          categoryId = categoryRow.id;
+        } else {
+          const { data: insertedCategory, error: insertCategoryError } = await supabase
+            .from("categories")
+            .insert({ name: categoryValue })
+            .select("id")
+            .maybeSingle();
+          if (insertCategoryError) {
+            throw insertCategoryError;
+          }
+          categoryId = insertedCategory?.id ?? null;
+        }
+      }
 
-    saveShopEdits(vendorId, edits);
-    setStatusMessage("更新内容をマップに反映しました。");
+      const vendorPayload = {
+        shop_name: form.name.trim(),
+        owner_name: form.ownerName.trim() || null,
+        strength: form.highlight.trim() || null,
+        style: form.stallStyle.trim() || null,
+        category_id: categoryId,
+        updated_at: new Date().toISOString(),
+      };
+      const { error: vendorError } = await supabase
+        .from("vendors")
+        .update(vendorPayload)
+        .eq("id", vendorId);
+      if (vendorError) {
+        throw vendorError;
+      }
+
+      const { error: deleteProductsError } = await supabase
+        .from("products")
+        .delete()
+        .eq("vendor_id", vendorId);
+      if (deleteProductsError) {
+        throw deleteProductsError;
+      }
+
+      if (products.length > 0) {
+        const payloads = products.map((product) => ({
+          vendor_id: vendorId,
+          name: product.name,
+          ...(product.imageUrl ? { image_url: product.imageUrl } : {}),
+        }));
+        const { data: insertedProducts, error: insertProductError } = await supabase
+          .from("products")
+          .insert(payloads)
+          .select("id,name");
+        if (insertProductError) {
+          throw insertProductError;
+        }
+
+        const productIdMap = new Map<string, string>();
+        (insertedProducts ?? []).forEach((entry) => {
+          if (entry.name && entry.id) {
+            productIdMap.set(entry.name, entry.id);
+          }
+        });
+
+        const seasonRows: { product_id: string; season_id: number }[] = [];
+        products.forEach((product) => {
+          const productId = productIdMap.get(product.name);
+          product.seasons.forEach((seasonKey) => {
+            const seasonId = SEASON_ID_MAP[seasonKey];
+            if (productId && seasonId !== undefined) {
+              seasonRows.push({
+                product_id: productId,
+                season_id: seasonId,
+              });
+            }
+          });
+        });
+
+        if (seasonRows.length > 0) {
+          const { error: seasonError } = await supabase
+            .from("product_seasons")
+            .insert(seasonRows);
+          if (seasonError) {
+            throw seasonError;
+          }
+        }
+      }
+
+      setStatusMessage("更新内容をSupabaseに保存しました。");
+    } catch (error) {
+      console.error(error);
+      setStatusMessage(
+        error instanceof Error ? `更新に失敗しました: ${error.message}` : "更新に失敗しました。"
+      );
+    }
   };
 
   const requiredMark = (
@@ -468,15 +548,15 @@ export default function MyShopDetailPage() {
                   <div className="mt-4">
                     <label className="block text-sm text-slate-700">
                       お店のイチ押しポイント{requiredMark}
-                      <input
-                        type="text"
-                        value={form.highlight}
-                        onChange={handleChange("highlight")}
-                        placeholder="例: 朝採れ野菜をその場で袋詰めします"
-                        className={fieldClass("highlight")}
-                        aria-invalid={!!errors.highlight}
-                        required
-                      />
+                    <textarea
+                      rows={4}
+                      value={form.highlight}
+                      onChange={handleChange("highlight")}
+                      placeholder="例: 朝採れ野菜をその場で袋詰めします"
+                      className={fieldClass("highlight")}
+                      aria-invalid={!!errors.highlight}
+                      required
+                    />
                       {errors.highlight && (
                         <span className="mt-1 block text-[11px] text-rose-600">
                           {errors.highlight}
@@ -643,13 +723,13 @@ export default function MyShopDetailPage() {
                   <div className="mt-3">
                     <label className="block text-sm text-slate-700">
                       出店スタイル
-                      <input
-                        type="text"
-                        value={form.stallStyle}
-                        onChange={handleChange("stallStyle")}
-                        placeholder="例: テント出店 / ワゴン"
-                        className={fieldClass("stallStyle")}
-                      />
+                    <textarea
+                      rows={4}
+                      value={form.stallStyle}
+                      onChange={handleChange("stallStyle")}
+                      placeholder="例: テント出店 / ワゴン"
+                      className={fieldClass("stallStyle")}
+                    />
                     </label>
                   </div>
                 )}
