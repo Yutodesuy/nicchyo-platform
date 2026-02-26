@@ -461,7 +461,7 @@ export default function ShopDetailBanner({
         {!isKotodute && (
           <div className="mt-6 divide-y divide-slate-200">
             <section className="py-8 text-xl text-slate-700">
-              <p className="text-base font-semibold text-slate-500">主な商品</p>
+              <p className="text-base font-semibold text-slate-500">商品ジャンル</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
               <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
               <div className="mt-3 flex items-start gap-4">

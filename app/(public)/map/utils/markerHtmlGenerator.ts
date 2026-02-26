@@ -82,7 +82,7 @@ export function generateShopMarkerHtml(
       </div>
       <div class="shop-simple-banner-body">
         <div class="shop-simple-banner-name">${escapeHtml(shop.name)}</div>
-        <div class="shop-simple-banner-product">主な商品: ${escapeHtml(mainProduct)}</div>
+        <div class="shop-simple-banner-product">商品ジャンル: ${escapeHtml(mainProduct)}</div>
         <div class="shop-simple-banner-status">今日: ${escapeHtml(attendanceLabel)}</div>
       </div>
     </div>
