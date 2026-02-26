@@ -1,24 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import { Megaphone, CalendarCheck2, Store } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS = [
   {
     title: "最新情報の発信",
-    description: "お知らせや近況を投稿します。",
+    description: "お知らせ・今日のおすすめ",
     href: "/my-shop/contents",
+    accent: "from-amber-500/40 via-amber-100/70 to-white",
+    icon: Megaphone,
+    badge: "お知らせ",
+    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
     title: "スケジュールの登録",
-    description: "出店予定や営業日を更新します。",
+    description: "出店日・営業時間",
     href: "/my-shop/schedule",
+    accent: "from-sky-400/40 via-sky-100/70 to-white",
+    icon: CalendarCheck2,
+    badge: "営業",
+    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "出店情報の更新",
-    description: "店舗情報・商品・紹介文を編集します。",
+    description: "商品・写真・紹介文",
     href: "/my-shop/detail",
+    accent: "from-emerald-400/40 via-emerald-100/70 to-white",
+    icon: Store,
+    badge: "基本情報",
+    image: "/images/home/posters/HomePagePoster2.png",
   },
 ];
 
@@ -27,18 +40,15 @@ export default function MyShopPage() {
   const canAccess = isLoggedIn;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pb-24">
-      <div className="mx-auto w-full max-w-3xl px-4 pt-6">
-        <div className="rounded-3xl border border-amber-100 bg-white/95 px-6 py-6 text-center shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
-            My shop
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.25),_rgba(255,255,255,0))] pb-24">
+      <div className="mx-auto w-full max-w-4xl px-4 pt-8">
+        <div className="rounded-[32px] border border-amber-100 bg-white/95 px-6 py-7 text-center shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-700">
+            Vendor Console
           </p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">
+          <h1 className="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
             出店者メニュー
           </h1>
-          <p className="mt-2 text-base text-slate-600">
-            更新したい内容を選んでください。
-          </p>
         </div>
 
         {!canAccess ? (
@@ -56,22 +66,37 @@ export default function MyShopPage() {
                 現在のアカウントに出店者ロールが設定されていません。表示はできますが、保存時に制限が出る場合があります。
               </div>
             )}
-            <div className="mt-4 grid gap-4">
-              {MENU_ITEMS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="group rounded-3xl border border-amber-100 bg-white px-6 py-5 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md"
-                >
-                  <h2 className="text-xl font-semibold text-slate-900">
-                    {item.title}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-                  <span className="mt-4 inline-flex items-center text-sm font-semibold text-amber-700">
-                    開く →
-                  </span>
-                </Link>
-              ))}
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                  >
+                    <div
+                      className="absolute inset-0 bg-cover bg-center opacity-70"
+                      style={{ backgroundImage: `url(${item.image})` }}
+                      aria-hidden="true"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
+                    <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" aria-hidden="true" />
+                    <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
+                      <div className="flex items-center justify-end">
+                        <span className="rounded-3xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-md">
+                          <Icon size={32} />
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-semibold text-slate-900 md:text-[32px]">
+                          {item.title}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </>
         )}
