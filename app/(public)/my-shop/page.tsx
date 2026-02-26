@@ -52,13 +52,13 @@ export default function MyShopPage() {
         </div>
 
         {!canAccess ? (
-          <div className="mt-6 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            出店者としてログインしてください。ログインは
-            <Link href="/shops" className="ml-1 font-semibold underline">
-              出店者ログイン
-            </Link>
-            から行えます。
-          </div>
+        <div className="mt-6 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          出店者としてログインしてください。ログインは
+          <Link href="/login" className="ml-1 font-semibold underline">
+            出店者ログイン
+          </Link>
+          から行えます。
+        </div>
         ) : (
           <>
             {!permissions.isVendor && (
