@@ -9,14 +9,22 @@ returns table (
   shop_id uuid,
   similarity float
 )
-language sql
+language plpgsql
 stable
 as $$
-  select
-    shop_id,
-    1 - (embedding <=> query_embedding) as similarity
-  from public.shop_embeddings
-  where 1 - (embedding <=> query_embedding) > match_threshold
-  order by embedding <=> query_embedding
-  limit match_count;
+begin
+  if to_regclass('public.shop_embeddings') is null then
+    return;
+  end if;
+
+  return query execute
+    'select
+      shop_id,
+      1 - (embedding <=> $1) as similarity
+    from public.shop_embeddings
+    where 1 - (embedding <=> $1) > $2
+    order by embedding <=> $1
+    limit $3'
+  using query_embedding, match_threshold, match_count;
+end;
 $$;
