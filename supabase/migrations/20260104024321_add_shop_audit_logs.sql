@@ -28,8 +28,15 @@ begin
 end;
 $$ language plpgsql;
 
-drop trigger if exists shops_audit_trigger on public.shops;
-
-create trigger shops_audit_trigger
-after insert or update or delete on public.shops
-for each row execute function public.log_shop_changes();
+do $$
+begin
+  if to_regclass('public.shops') is not null then
+    execute 'drop trigger if exists shops_audit_trigger on public.shops';
+    execute '
+      create trigger shops_audit_trigger
+      after insert or update or delete on public.shops
+      for each row execute function public.log_shop_changes()
+    ';
+  end if;
+end;
+$$;

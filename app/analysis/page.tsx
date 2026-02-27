@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import VisitorTrendSwitcher from "./VisitorTrendSwitcher";
 
 type CategoryCount = {
   name: string;
@@ -20,6 +21,13 @@ type CategoryRow = {
 type VisitorRow = {
   visit_date: string;
   visitor_count: number | null;
+};
+
+type VisitorChartPoint = {
+  key: string;
+  label: string;
+  value: number;
+  trend: number;
 };
 
 const PIE_COLORS = [
@@ -49,13 +57,11 @@ function getTokyoDateParts(baseDate: Date) {
   return { year, month, day };
 }
 
-function getLastSundayIsoInTokyo(baseDate = new Date()) {
+function getTokyoTodayIso(baseDate = new Date()) {
   const { year, month, day } = getTokyoDateParts(baseDate);
-  const tokyoDateUtc = new Date(Date.UTC(year, month - 1, day));
-  const weekday = tokyoDateUtc.getUTCDay();
-  const daysToSubtract = weekday === 0 ? 7 : weekday;
-  tokyoDateUtc.setUTCDate(tokyoDateUtc.getUTCDate() - daysToSubtract);
-  return tokyoDateUtc.toISOString().slice(0, 10);
+  return `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
 }
 
 function formatJapaneseDate(isoDate: string) {
@@ -67,6 +73,134 @@ function formatJapaneseDate(isoDate: string) {
     day: "numeric",
     weekday: "short",
   }).format(date);
+}
+
+function toUtcDate(isoDate: string) {
+  return new Date(`${isoDate}T00:00:00Z`);
+}
+
+function isoFromUtcDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function shiftIsoDays(isoDate: string, days: number) {
+  const date = toUtcDate(isoDate);
+  date.setUTCDate(date.getUTCDate() + days);
+  return isoFromUtcDate(date);
+}
+
+function formatMonthDayLabel(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00+09:00`);
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
+function getWeekStartIso(isoDate: string) {
+  const date = toUtcDate(isoDate);
+  const day = date.getUTCDay();
+  const shift = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + shift);
+  return isoFromUtcDate(date);
+}
+
+function shiftMonthKey(monthKey: string, delta: number) {
+  const [yearText, monthText] = monthKey.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + 1;
+  return `${y.toString().padStart(4, "0")}-${m.toString().padStart(2, "0")}`;
+}
+
+function formatMonthLabel(monthKey: string) {
+  const [yearText, monthText] = monthKey.split("-");
+  return `${yearText}/${monthText}`;
+}
+
+function addTrend(points: Omit<VisitorChartPoint, "trend">[]) {
+  return points.map((point, index) => {
+    const windowStart = Math.max(0, index - 2);
+    const values = points.slice(windowStart, index + 1).map((item) => item.value);
+    const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return { ...point, trend: avg };
+  });
+}
+
+function buildDailySeries(todayIso: string, byDate: Map<string, number>, days = 14) {
+  const points: Omit<VisitorChartPoint, "trend">[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const key = shiftIsoDays(todayIso, -i);
+    points.push({
+      key,
+      label: formatMonthDayLabel(key),
+      value: byDate.get(key) ?? 0,
+    });
+  }
+  return addTrend(points);
+}
+
+function buildWeeklySeries(todayIso: string, byDate: Map<string, number>, weeks = 12) {
+  const byWeekStart = new Map<string, number>();
+  byDate.forEach((value, dateKey) => {
+    const weekStart = getWeekStartIso(dateKey);
+    byWeekStart.set(weekStart, (byWeekStart.get(weekStart) ?? 0) + value);
+  });
+
+  const currentWeekStart = getWeekStartIso(todayIso);
+  const points: Omit<VisitorChartPoint, "trend">[] = [];
+  for (let i = weeks - 1; i >= 0; i -= 1) {
+    const key = shiftIsoDays(currentWeekStart, -7 * i);
+    points.push({
+      key,
+      label: `${formatMonthDayLabel(key)}週`,
+      value: byWeekStart.get(key) ?? 0,
+    });
+  }
+  return addTrend(points);
+}
+
+function buildMonthlySeries(todayIso: string, byDate: Map<string, number>, months = 12) {
+  const byMonth = new Map<string, number>();
+  byDate.forEach((value, dateKey) => {
+    const monthKey = dateKey.slice(0, 7);
+    byMonth.set(monthKey, (byMonth.get(monthKey) ?? 0) + value);
+  });
+
+  const currentMonthKey = todayIso.slice(0, 7);
+  const points: Omit<VisitorChartPoint, "trend">[] = [];
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const key = shiftMonthKey(currentMonthKey, -i);
+    points.push({
+      key,
+      label: formatMonthLabel(key),
+      value: byMonth.get(key) ?? 0,
+    });
+  }
+  return addTrend(points);
+}
+
+function buildYearlySeries(todayIso: string, byDate: Map<string, number>, years = 5) {
+  const byYear = new Map<string, number>();
+  byDate.forEach((value, dateKey) => {
+    const yearKey = dateKey.slice(0, 4);
+    byYear.set(yearKey, (byYear.get(yearKey) ?? 0) + value);
+  });
+
+  const currentYear = Number(todayIso.slice(0, 4));
+  const points: Omit<VisitorChartPoint, "trend">[] = [];
+  for (let i = years - 1; i >= 0; i -= 1) {
+    const key = String(currentYear - i);
+    points.push({
+      key,
+      label: `${key}年`,
+      value: byYear.get(key) ?? 0,
+    });
+  }
+  return addTrend(points);
 }
 
 function PieChart({ data }: { data: CategoryCount[] }) {
@@ -153,14 +287,19 @@ function PieChart({ data }: { data: CategoryCount[] }) {
 }
 
 export default async function AnalysisPage() {
-  const lastSundayIso = getLastSundayIsoInTokyo();
-  const lastSundayLabel = formatJapaneseDate(lastSundayIso);
+  const todayIso = getTokyoTodayIso();
+  const todayLabel = formatJapaneseDate(todayIso);
+  const historyStartIso = `${String(Number(todayIso.slice(0, 4)) - 4)}-01-01`;
   const hasSupabaseEnv =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
     !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
   let categoryCounts: CategoryCount[] = [];
   let webVisitorCount: number | null = null;
+  let dailyChart: VisitorChartPoint[] = [];
+  let weeklyChart: VisitorChartPoint[] = [];
+  let monthlyChart: VisitorChartPoint[] = [];
+  let yearlyChart: VisitorChartPoint[] = [];
   let dataFetchNote = "";
 
   if (hasSupabaseEnv) {
@@ -168,10 +307,19 @@ export default async function AnalysisPage() {
       const cookieStore = await cookies();
       const supabase = createClient(cookieStore);
 
-      const [{ data: categoriesData, error: categoriesError }, { data: vendorsData, error: vendorsError }] =
+      const [
+        { data: categoriesData, error: categoriesError },
+        { data: vendorsData, error: vendorsError },
+        { data: visitorRowsData, error: visitorRowsError },
+      ] =
         await Promise.all([
           supabase.from("categories").select("id, name"),
           supabase.from("vendors").select("category_id"),
+          supabase
+            .from("web_visitor_stats")
+            .select("visit_date, visitor_count")
+            .gte("visit_date", historyStartIso)
+            .order("visit_date", { ascending: true }),
         ]);
 
       if (categoriesError) {
@@ -207,18 +355,21 @@ export default async function AnalysisPage() {
         }))
         .sort((a, b) => b.count - a.count);
 
-      const { data: visitorData, error: visitorError } = await supabase
-        .from("web_visitor_stats")
-        .select("visit_date, visitor_count")
-        .eq("visit_date", lastSundayIso)
-        .maybeSingle();
-
-      if (visitorError) {
-        dataFetchNote =
-          "web_visitor_stats テーブルが未作成、または先週日曜のデータが未登録です。";
+      if (visitorRowsError) {
+        dataFetchNote = "web_visitor_stats の取得に失敗しました。";
       } else {
-        const row = visitorData as VisitorRow | null;
-        webVisitorCount = row?.visitor_count ?? null;
+        const visitorRows = Array.isArray(visitorRowsData) ? (visitorRowsData as VisitorRow[]) : [];
+        const visitorsByDate = new Map<string, number>();
+        visitorRows.forEach((row) => {
+          if (!row.visit_date) return;
+          visitorsByDate.set(row.visit_date, row.visitor_count ?? 0);
+        });
+
+        webVisitorCount = visitorsByDate.get(todayIso) ?? null;
+        dailyChart = buildDailySeries(todayIso, visitorsByDate, 14);
+        weeklyChart = buildWeeklySeries(todayIso, visitorsByDate, 12);
+        monthlyChart = buildMonthlySeries(todayIso, visitorsByDate, 12);
+        yearlyChart = buildYearlySeries(todayIso, visitorsByDate, 5);
       }
     } catch {
       dataFetchNote = "Supabaseからのデータ取得に失敗しました。";
@@ -234,7 +385,7 @@ export default async function AnalysisPage() {
           <p className="text-xs font-semibold tracking-[0.2em] text-amber-700/80">NICCHYO ANALYTICS</p>
           <h1 className="mt-3 text-3xl font-bold text-amber-900 md:text-4xl">日曜市をデータで見る</h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-amber-900/70">
-            Supabaseのデータを使って、カテゴリ別の出店比率と先週日曜のWeb来訪者数を表示しています。
+            Supabaseのデータを使って、カテゴリ別の出店比率と日次のWeb来訪者数を表示しています。
           </p>
         </header>
 
@@ -249,8 +400,8 @@ export default async function AnalysisPage() {
         </section>
 
         <section className="mt-6 rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-amber-900">先週日曜の来訪者数（Web）</h2>
-          <p className="mt-2 text-sm text-amber-900/70">{lastSundayLabel} のデータを表示しています。</p>
+          <h2 className="text-lg font-bold text-amber-900">本日の来訪者数（Web）</h2>
+          <p className="mt-2 text-sm text-amber-900/70">{todayLabel} のデータを表示しています。</p>
           <p className="mt-4 text-4xl font-extrabold text-orange-600">
             {webVisitorCount !== null ? `${webVisitorCount.toLocaleString()} 人` : "データ未登録"}
           </p>
@@ -260,6 +411,15 @@ export default async function AnalysisPage() {
           {dataFetchNote ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{dataFetchNote}</p>
           ) : null}
+
+          <div className="mt-6">
+            <VisitorTrendSwitcher
+              dailyChart={dailyChart}
+              weeklyChart={weeklyChart}
+              monthlyChart={monthlyChart}
+              yearlyChart={yearlyChart}
+            />
+          </div>
         </section>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
