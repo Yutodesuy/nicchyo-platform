@@ -20,7 +20,7 @@ import {
   ShoppingCart
 } from "lucide-react";
 import NavigationBar from "../../components/NavigationBar";
-import { shops } from "../map/data/shops";
+import { useShops } from "../../../lib/hooks/useShops";
 import { ingredientCatalog } from "../../../lib/recipes";
 import { useBag, type BagItem } from "../../../lib/storage/BagContext";
 
@@ -68,6 +68,7 @@ function useShoppingChecklist() {
 
 export default function BagPage() {
   const { items, removeItem, clearBag } = useBag();
+  const { shops } = useShops();
   const { checkedIds, toggleCheck, resetChecks, isLoaded } = useShoppingChecklist();
   const [mode, setMode] = useState<Mode>('plan');
   const [pendingDeleteItem, setPendingDeleteItem] = useState<BagItem | null>(null);

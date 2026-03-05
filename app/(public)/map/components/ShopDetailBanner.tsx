@@ -263,21 +263,6 @@ export default function ShopDetailBanner({
     if (shopStatusLabel === "出店していない") return "closed";
     return "neutral";
   }, [attendanceEstimate, shopStatusLabel]);
-  const askTopics = useMemo(() => {
-    if (Array.isArray(shop.topic) && shop.topic.length > 0) {
-      return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
-    }
-    const raw = (shop.message || shop.aboutVendor || shop.description || "").trim();
-    if (raw) {
-      const parsed = raw
-        .split(/[\n、,・]/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      if (parsed.length > 0) return parsed;
-    }
-    return ["おすすめの食べ方", "旬の話題", "市場のこと", "出店のこだわり"];
-  }, [shop.aboutVendor, shop.description, shop.message, shop.topic]);
   const shopNameSizeClass = useMemo(() => {
     const length = shop.name?.length ?? 0;
     if (length >= 18) return "text-2xl";
@@ -320,7 +305,7 @@ export default function ShopDetailBanner({
 
 
   const canEditShop = permissions.canEditShop(shop.id);
-  const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+  const bannerSeed = shop.position ?? shop.id;
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
   const handleEditShop = useCallback(() => {
@@ -476,7 +461,7 @@ export default function ShopDetailBanner({
         {!isKotodute && (
           <div className="mt-6 divide-y divide-slate-200">
             <section className="py-8 text-xl text-slate-700">
-              <p className="text-base font-semibold text-slate-500">主な商品</p>
+              <p className="text-base font-semibold text-slate-500">商品ジャンル</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
               <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
               <div className="mt-3 flex items-start gap-4">
@@ -585,18 +570,6 @@ export default function ShopDetailBanner({
                 <p className="text-base font-semibold text-slate-500">出店スタイル</p>
                 <p className="mt-2 text-2xl text-slate-700">
                   {shop.stallStyle ?? shop.schedule}
-                </p>
-              </div>
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">出店者の想い・こだわり</p>
-                <p className="mt-2 text-2xl leading-snug text-slate-800">
-                  {shop.aboutVendor || shop.message || shop.description}
-                </p>
-              </div>
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">得意料理</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">
-                  {shop.specialtyDish ?? "なし"}
                 </p>
               </div>
             </div>
@@ -763,16 +736,6 @@ export default function ShopDetailBanner({
                 </div>
               )}
 
-              <div className="mt-10 border-t border-slate-200 pt-8">
-                <p className="text-base font-semibold text-slate-500">聞いてほしいこと</p>
-                <ul className="mt-4 space-y-3 text-lg text-slate-800">
-                  {askTopics.map((topic) => (
-                    <li key={topic} className="border border-slate-200 bg-white px-3 py-3">
-                      {topic}
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </section>
           </div>
         )}

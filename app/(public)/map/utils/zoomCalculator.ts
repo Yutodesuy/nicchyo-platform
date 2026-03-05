@@ -99,14 +99,14 @@ export function getZoomConfig(shopCount: number): ZoomConfig {
  * 各丁目から代表店舗を1つずつ選択
  *
  * 【2段階表示 - 縮小時専用】
- * - 各丁目（一丁目～七丁目）から北側・南側それぞれ1店舗を選択
- * - 合計14店舗（7丁目 × 2サイド）を表示
+ * - 各丁目（一丁目～七丁目）から最大2店舗を選択
+ * - 合計最大14店舗（7丁目 × 2枠）を表示
  * - 論理的な7分割（視覚的に分割するわけではない）
  *
  * @param shops 全店舗データ（chomeフィールド必須）
  * @returns 各丁目から1店舗ずつ（計14店舗）
  */
-export function filterShopsByChome<T extends { id: number; position: number; chome?: string; side: 'north' | 'south' }>(
+export function filterShopsByChome<T extends { id: number; position: number; chome?: string }>(
   shops: T[]
 ): T[] {
   const chomeNames = ['六丁目', '五丁目', '四丁目', '三丁目', '二丁目', '一丁目', '七丁目'];
@@ -128,18 +128,21 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
 
   // 各丁目ごとに処理
   for (const chomeName of chomeNames) {
-    // 北側から1店舗選択（中央付近の店舗を選択）
-    const northShops = shops.filter(s => s.chome === chomeName && s.side === 'north');
-    if (northShops.length > 0) {
-      const middleIndex = Math.floor(northShops.length / 2);
-      result.push(northShops[middleIndex]);
+    const chomeShops = shops
+      .filter(s => s.chome === chomeName)
+      .sort((a, b) => a.position - b.position);
+    if (chomeShops.length === 0) continue;
+
+    if (chomeShops.length === 1) {
+      result.push(chomeShops[0]);
+      continue;
     }
 
-    // 南側から1店舗選択（中央付近の店舗を選択）
-    const southShops = shops.filter(s => s.chome === chomeName && s.side === 'south');
-    if (southShops.length > 0) {
-      const middleIndex = Math.floor(southShops.length / 2);
-      result.push(southShops[middleIndex]);
+    const firstIndex = Math.floor((chomeShops.length - 1) / 3);
+    const secondIndex = Math.floor(((chomeShops.length - 1) * 2) / 3);
+    result.push(chomeShops[firstIndex]);
+    if (secondIndex !== firstIndex) {
+      result.push(chomeShops[secondIndex]);
     }
   }
 
@@ -168,7 +171,7 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
  * @param isMobile スマホかどうか（オプション、デフォルト: false）
  * @returns 表示する店舗リスト
  */
-export function filterShopsByZoom<T extends { id: number; position: number; chome?: string; side: 'north' | 'south' }>(
+export function filterShopsByZoom<T extends { id: number; position: number; chome?: string }>(
   shops: T[],
   currentZoom: number,
   isMobile: boolean = false
