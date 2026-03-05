@@ -20,63 +20,105 @@ export interface RoadConfig {
 }
 
 export const ROAD_CONFIG: RoadConfig = {
-  type: 'placeholder',
+  type: 'curved',
   bounds: [
-    [33.56500, 133.53125],
-    [33.55330, 133.53075],
+    // 追手筋の実座標（指定2区間）に合わせた範囲
+    [33.56231, 133.5433256],
+    [33.56047, 133.5336783],
   ],
-  centerLine: 133.53100,
+  // 東西配置では中心緯度を基準線として扱う
+  centerLine: 33.5614118,
   widthOffset: 0.0001,
   opacity: 0.9,
   zIndex: 50,
   segments: [
     {
-      name: 'Sixth',
+      name: 'F0',
       bounds: [
-        [33.56500, 133.53150],
-        [33.56333, 133.53050],
+        [33.5622728, 133.5433256],
+        [33.5620328, 133.5429279],
       ],
-      centerLine: 133.53100,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Fifth',
+      name: 'F1',
       bounds: [
-        [33.56333, 133.53170],
-        [33.56166, 133.53070],
+        [33.5622728, 133.5429279],
+        [33.5620328, 133.5423485],
       ],
-      centerLine: 133.53120,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Fourth',
+      name: 'F2',
       bounds: [
-        [33.56166, 133.53180],
-        [33.55999, 133.53080],
+        [33.5622728, 133.5423485],
+        [33.5620328, 133.5417692],
       ],
-      centerLine: 133.53130,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Third',
+      name: 'F3',
       bounds: [
-        [33.55999, 133.53170],
-        [33.55832, 133.53070],
+        [33.5622728, 133.5417692],
+        [33.5620328, 133.5411898],
       ],
-      centerLine: 133.53120,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Second',
+      name: 'D1',
       bounds: [
-        [33.55832, 133.53150],
-        [33.55665, 133.53050],
+        [33.5622106, 133.5411898],
+        [33.5619706, 133.5401167],
       ],
-      centerLine: 133.53100,
+      centerLine: 33.5620906,
     },
     {
-      name: 'First',
+      name: 'D2',
       bounds: [
-        [33.55665, 133.53130],
-        [33.55500, 133.53030],
+        [33.5619843, 133.5401167],
+        [33.5617443, 133.5390437],
       ],
-      centerLine: 133.53080,
+      centerLine: 33.5618643,
+    },
+    {
+      name: 'D3',
+      bounds: [
+        [33.5617581, 133.5390437],
+        [33.5615181, 133.5379706],
+      ],
+      centerLine: 33.5616381,
+    },
+    {
+      name: 'D4',
+      bounds: [
+        [33.5615318, 133.5379706],
+        [33.5612918, 133.5368975],
+      ],
+      centerLine: 33.5614118,
+    },
+    {
+      name: 'D5',
+      bounds: [
+        [33.5613055, 133.5368975],
+        [33.5610655, 133.5358244],
+      ],
+      centerLine: 33.5611855,
+    },
+    {
+      name: 'D6',
+      bounds: [
+        [33.5610793, 133.5358244],
+        [33.5608393, 133.5347514],
+      ],
+      centerLine: 33.5609593,
+    },
+    {
+      name: 'D7',
+      bounds: [
+        [33.5608530, 133.5347514],
+        [33.5606130, 133.5336783],
+      ],
+      centerLine: 33.5607330,
     },
   ],
 };
@@ -132,21 +174,41 @@ export function convertGpsToIllustration(
   const illustEast = Math.max(illust[0][1], illust[1][1]);
   const illustWest = Math.min(illust[0][1], illust[1][1]);
 
-  // 実際の経度（西→東）をイラストの緯度（上→下）に変換
-  // 西（経度小）= 上（緯度大）、東（経度大）= 下（緯度小）
-  const lngRatio = (realLng - real.west) / (real.east - real.west);
-  const illustLat = illustNorth - lngRatio * (illustNorth - illustSouth);
+  const realLatSpan = real.north - real.south;
+  const realLngSpan = real.east - real.west;
+  const illustLatSpan = illustNorth - illustSouth;
+  const illustLngSpan = illustEast - illustWest;
+  const realIsEastWest = realLngSpan > realLatSpan;
+  const illustIsEastWest = illustLngSpan > illustLatSpan;
 
-  // 実際の緯度（南→北）をイラストの経度（左→右）に変換
-  // 南（緯度小）= 左（経度小）、北（緯度大）= 右（経度大）
-  const latRatio = (realLat - real.south) / (real.north - real.south);
-  const illustLng = illustWest + latRatio * (illustEast - illustWest);
+  let illustLat: number;
+  let illustLng: number;
+  if (realIsEastWest === illustIsEastWest) {
+    const latRatio = (realLat - real.south) / realLatSpan;
+    const lngRatio = (realLng - real.west) / realLngSpan;
+    illustLat = illustSouth + latRatio * illustLatSpan;
+    illustLng = illustWest + lngRatio * illustLngSpan;
+  } else {
+    // 実際の経度（西→東）をイラストの緯度（上→下）に変換
+    const lngRatio = (realLng - real.west) / realLngSpan;
+    illustLat = illustNorth - lngRatio * illustLatSpan;
+
+    // 実際の緯度（南→北）をイラストの経度（左→右）に変換
+    const latRatio = (realLat - real.south) / realLatSpan;
+    illustLng = illustWest + latRatio * illustLngSpan;
+  }
 
   return { lat: illustLat, lng: illustLng };
 }
 
 export function getRoadCenterLine(): number {
-  return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
+  const bounds = ROAD_CONFIG.bounds;
+  const latSpan = Math.abs(bounds[0][0] - bounds[1][0]);
+  const lngSpan = Math.abs(bounds[0][1] - bounds[1][1]);
+  if (lngSpan > latSpan) {
+    return (bounds[0][0] + bounds[1][0]) / 2;
+  }
+  return (bounds[0][1] + bounds[1][1]) / 2;
 }
 
 /**
@@ -157,10 +219,19 @@ export function snapToRoadCenter(
   illustLat: number,
   illustLng: number
 ): { lat: number; lng: number } {
-  const centerLng = getRoadCenterLine();
+  const bounds = ROAD_CONFIG.bounds;
+  const latSpan = Math.abs(bounds[0][0] - bounds[1][0]);
+  const lngSpan = Math.abs(bounds[0][1] - bounds[1][1]);
+  const center = getRoadCenterLine();
+  if (lngSpan > latSpan) {
+    return {
+      lat: center,
+      lng: illustLng,
+    };
+  }
   return {
     lat: illustLat,
-    lng: centerLng,
+    lng: center,
   };
 }
 
@@ -169,9 +240,9 @@ export function getRoadWidthOffset(useDynamic: boolean = false): number {
     return ROAD_CONFIG.widthOffset;
   }
 
-  const roadLengthDegrees = Math.abs(
-    ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]
-  );
+  const latDiff = Math.abs(ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]);
+  const lngDiff = Math.abs(ROAD_CONFIG.bounds[0][1] - ROAD_CONFIG.bounds[1][1]);
+  const roadLengthDegrees = Math.max(latDiff, lngDiff);
   const ratio = 0.038;
   return roadLengthDegrees * ratio;
 }
@@ -179,7 +250,8 @@ export function getRoadWidthOffset(useDynamic: boolean = false): number {
 export function getRoadLength(): number {
   const [start, end] = ROAD_CONFIG.bounds;
   const latDiff = Math.abs(start[0] - end[0]);
-  return latDiff * 111;
+  const lngDiff = Math.abs(start[1] - end[1]);
+  return Math.max(latDiff, lngDiff) * 111;
 }
 
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
