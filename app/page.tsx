@@ -6,10 +6,19 @@ import { useMapLoading } from "./components/MapLoadingProvider";
 import { motion } from "framer-motion";
 import { MapPin, ChevronRight, ShieldCheck, User } from "lucide-react";
 
+type HomeSummary = {
+  categoryCount: number | null;
+  weeklyVisitorTotal: number | null;
+};
+
 export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
   const [loaded, setLoaded] = useState(false);
+  const [summary, setSummary] = useState<HomeSummary>({
+    categoryCount: null,
+    weeklyVisitorTotal: null,
+  });
 
   useEffect(() => {
     setLoaded(true);
@@ -38,6 +47,37 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.classList.remove("home-poster-zoom-open");
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      try {
+        const response = await fetch("/api/analytics/home-summary", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as Partial<HomeSummary> & { ok?: boolean };
+        if (!payload.ok || cancelled) return;
+        setSummary({
+          categoryCount:
+            typeof payload.categoryCount === "number" ? payload.categoryCount : null,
+          weeklyVisitorTotal:
+            typeof payload.weeklyVisitorTotal === "number"
+              ? payload.weeklyVisitorTotal
+              : null,
+        });
+      } catch {
+        // keep fallback values
+      }
+    };
+
+    void loadSummary();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleMapClick = () => {
@@ -161,26 +201,25 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
               <p className="text-xs font-semibold tracking-wider text-amber-700/80">出店カテゴリ</p>
-              <p className="mt-2 text-3xl font-bold text-amber-900">12+</p>
-              <p className="mt-2 text-xs leading-relaxed text-amber-900/70">
-                野菜・果物・加工品などのカテゴリ分布を確認。
+              <p className="mt-2 text-3xl font-bold text-amber-900">
+                {summary.categoryCount !== null ? summary.categoryCount.toLocaleString() : "--"}
               </p>
-            </div>
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
-              <p className="text-xs font-semibold tracking-wider text-amber-700/80">注目エリア</p>
-              <p className="mt-2 text-3xl font-bold text-amber-900">5</p>
               <p className="mt-2 text-xs leading-relaxed text-amber-900/70">
-                時間帯ごとの混雑傾向をエリア別に表示。
+                出店者データからカテゴリ数を集計しています。
               </p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
               <p className="text-xs font-semibold tracking-wider text-amber-700/80">今週の動向</p>
-              <p className="mt-2 text-3xl font-bold text-amber-900">更新中</p>
+              <p className="mt-2 text-3xl font-bold text-amber-900">
+                {summary.weeklyVisitorTotal !== null
+                  ? `${summary.weeklyVisitorTotal.toLocaleString()}人`
+                  : "--"}
+              </p>
               <p className="mt-2 text-xs leading-relaxed text-amber-900/70">
-                新着の出店情報と人気の傾向をチェック。
+                月曜から本日までのWeb来訪者合計です。
               </p>
             </div>
           </div>

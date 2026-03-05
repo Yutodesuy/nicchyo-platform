@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 const GuardMessage = ({
@@ -33,7 +34,28 @@ const GuardMessage = ({
 );
 
 export default function MyShopLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const { user, permissions } = useAuth();
+
+  useEffect(() => {
+    if (pathname !== "/my-shop") return;
+
+    const endpoint = "/api/analytics/home-visit";
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([], { type: "application/json" });
+      navigator.sendBeacon(endpoint, blob);
+      return;
+    }
+
+    void fetch(endpoint, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }, [pathname]);
+
   if (!user) {
     return (
       <GuardMessage
