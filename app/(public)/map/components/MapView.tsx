@@ -16,10 +16,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
-import { Navigation, Plus, Minus } from "lucide-react";
+import { Navigation, Plus, Minus, RotateCcw } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
@@ -90,25 +90,33 @@ const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
 const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
 const LEFT_SIDE_SHIFT_LNG = 0.0009;
-const KOCHI_CASTLE_MUSEUM_WIDTH = 0.0036;
-const KOCHI_CASTLE_MUSEUM_HEIGHT =
-  KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
-const KOCHI_CASTLE_MUSEUM_TOP_LAT = 33.5647;
-const KOCHI_CASTLE_MUSEUM_EAST_LNG = 133.5304 + LEFT_SIDE_SHIFT_LNG;
+const KOCHI_CASTLE_MUSEUM_BASE_WIDTH = 0.0036;
+const KOCHI_CASTLE_MUSEUM_SCALE = 0.7;
+const KOCHI_CASTLE_MUSEUM_WIDTH = KOCHI_CASTLE_MUSEUM_BASE_WIDTH * KOCHI_CASTLE_MUSEUM_SCALE;
+const KOCHI_CASTLE_MUSEUM_HEIGHT = KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
+const KOCHI_CASTLE_MUSEUM_CENTER_LAT = 33.5599801;
+const KOCHI_CASTLE_MUSEUM_CENTER_LNG = 133.5340747;
+const KOCHI_CASTLE_MUSEUM_TOP_LAT =
+  KOCHI_CASTLE_MUSEUM_CENTER_LAT + KOCHI_CASTLE_MUSEUM_HEIGHT / 2;
+const KOCHI_CASTLE_MUSEUM_EAST_LNG =
+  KOCHI_CASTLE_MUSEUM_CENTER_LNG + KOCHI_CASTLE_MUSEUM_WIDTH / 2;
 const KOCHI_CASTLE_MUSEUM_BOUNDS: [[number, number], [number, number]] = [
   [KOCHI_CASTLE_MUSEUM_TOP_LAT, KOCHI_CASTLE_MUSEUM_EAST_LNG - KOCHI_CASTLE_MUSEUM_WIDTH],
   [KOCHI_CASTLE_MUSEUM_TOP_LAT - KOCHI_CASTLE_MUSEUM_HEIGHT, KOCHI_CASTLE_MUSEUM_EAST_LNG],
 ];
-const OTEPIA_OFFSET_LAT = 0.0036;
-const OTEPIA_SHIFT_LNG = -0.0005;
+const OTEPIA_CENTER_LAT = 33.5608832;
+const OTEPIA_CENTER_LNG = 133.5370493;
+const OTEPIA_SCALE = 1.3;
+const OTEPIA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * OTEPIA_SCALE;
+const OTEPIA_HEIGHT = KOCHI_CASTLE_MUSEUM_HEIGHT * OTEPIA_SCALE;
 const OTEPIA_BOUNDS: [[number, number], [number, number]] = [
   [
-    KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] - OTEPIA_OFFSET_LAT,
-    KOCHI_CASTLE_MUSEUM_BOUNDS[0][1] + OTEPIA_SHIFT_LNG,
+    OTEPIA_CENTER_LAT + OTEPIA_HEIGHT / 2,
+    OTEPIA_CENTER_LNG + OTEPIA_WIDTH / 2,
   ],
   [
-    KOCHI_CASTLE_MUSEUM_BOUNDS[1][0] - OTEPIA_OFFSET_LAT,
-    KOCHI_CASTLE_MUSEUM_BOUNDS[1][1] + OTEPIA_SHIFT_LNG,
+    OTEPIA_CENTER_LAT - OTEPIA_HEIGHT / 2,
+    OTEPIA_CENTER_LNG - OTEPIA_WIDTH / 2,
   ],
 ];
 const BUILDING_COLUMN_EAST_LNG = 133.5296 + LEFT_SIDE_SHIFT_LNG;
@@ -140,30 +148,52 @@ const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
 const ROAD_SEPARATOR_WIDTH_LNG = 0.00004;
 const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
 const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
-const RIGHT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
-const RIGHT_SIDE_LABEL_LNG = RIGHT_ROAD_EAST_LNG + 0.0012;
-const LEFT_SIDE_LABEL_LAT = RIGHT_SIDE_LABEL_LAT;
+const LEFT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
 const LEFT_SIDE_LABEL_LNG =
   Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0068 + LEFT_SIDE_SHIFT_LNG;
-const RIGHT_LABEL_HEIGHT_LAT = 0.12;
-const RIGHT_LABEL_WIDTH_LNG = 0.016;
 const LEFT_LABEL_HEIGHT_LAT = 0.076;
 const LEFT_LABEL_WIDTH_LNG = 0.012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
-const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_MUSEUM_BOUNDS[0][0] + 0.0042;
-const KOCHI_CASTLE_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0019;
+const KOCHI_CASTLE_CENTER_LAT = 33.5615208;
+const KOCHI_CASTLE_CENTER_LNG = 133.5311987;
+const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_CENTER_LAT + KOCHI_CASTLE_HEIGHT / 2;
+const KOCHI_CASTLE_EAST_LNG = KOCHI_CASTLE_CENTER_LNG + KOCHI_CASTLE_WIDTH / 2;
 const KOCHI_CASTLE_BOUNDS: [[number, number], [number, number]] = [
   [KOCHI_CASTLE_TOP_LAT, KOCHI_CASTLE_EAST_LNG],
   [KOCHI_CASTLE_TOP_LAT - KOCHI_CASTLE_HEIGHT, KOCHI_CASTLE_EAST_LNG - KOCHI_CASTLE_WIDTH],
 ];
 const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (1.6 / 1.5);
 const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
-const TINTIN_DENSHA_TOP_LAT = ROAD_BOUNDS[1][0] + 0.0003;
-const TINTIN_DENSHA_EAST_LNG = ROAD_BOUNDS[0][1] + 0.0016;
+const TINTIN_DENSHA_CENTER_LAT = 33.5613531;
+const TINTIN_DENSHA_CENTER_LNG = 133.543104;
+const TINTIN_DENSHA_TOP_LAT = TINTIN_DENSHA_CENTER_LAT + TINTIN_DENSHA_HEIGHT / 2;
+const TINTIN_DENSHA_EAST_LNG = TINTIN_DENSHA_CENTER_LNG + TINTIN_DENSHA_WIDTH / 2;
 const TINTIN_DENSHA_BOUNDS: [[number, number], [number, number]] = [
   [TINTIN_DENSHA_TOP_LAT, TINTIN_DENSHA_EAST_LNG],
   [TINTIN_DENSHA_TOP_LAT - TINTIN_DENSHA_HEIGHT, TINTIN_DENSHA_EAST_LNG - TINTIN_DENSHA_WIDTH],
+];
+const KOCHI_STATION_ASPECT = 1536 / 1024;
+const KOCHI_STATION_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.9;
+const KOCHI_STATION_HEIGHT = KOCHI_STATION_WIDTH / KOCHI_STATION_ASPECT;
+const KOCHI_STATION_CENTER_LAT = 33.5671869;
+const KOCHI_STATION_CENTER_LNG = 133.5436682;
+const KOCHI_STATION_BOUNDS: [[number, number], [number, number]] = [
+  [
+    KOCHI_STATION_CENTER_LAT + KOCHI_STATION_HEIGHT / 2,
+    KOCHI_STATION_CENTER_LNG + KOCHI_STATION_WIDTH / 2,
+  ],
+  [
+    KOCHI_STATION_CENTER_LAT - KOCHI_STATION_HEIGHT / 2,
+    KOCHI_STATION_CENTER_LNG - KOCHI_STATION_WIDTH / 2,
+  ],
+];
+const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
+  { name: "高知駅", lat: KOCHI_STATION_CENTER_LAT, lng: KOCHI_STATION_CENTER_LNG },
+  { name: "高知城", lat: KOCHI_CASTLE_CENTER_LAT, lng: KOCHI_CASTLE_CENTER_LNG },
+  { name: "オーテピア", lat: OTEPIA_CENTER_LAT, lng: OTEPIA_CENTER_LNG },
+  { name: "歴史博物館", lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT, lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG },
+  { name: "追手筋", lat: 33.56145, lng: 133.5383 },
 ];
 const BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.map((bounds) => [
   [bounds[0][0], bounds[0][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
@@ -213,6 +243,9 @@ const BUILDING_SVG_URLS = BUILDING_COLOR_THEMES.map(
 );
 
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
+const BASEMAP_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png";
+const BASEMAP_ATTRIBUTION =
+  '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 function isIngredientName(name: string) {
   const lower = name.trim().toLowerCase();
@@ -417,27 +450,6 @@ const MapView = memo(function MapView({
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
   );
-  const rightSideLabelSvg = useMemo(() => {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="260" height="860" viewBox="0 0 260 860">
-        <defs>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
-          </filter>
-        </defs>
-        <g filter="url(#shadow)">
-          <text x="200" y="150" writing-mode="vertical-rl" text-orientation="upright"
-            font-size="43" font-weight="800" letter-spacing="6" fill="#3b2b21">
-            <tspan dy="60" fill="#f2c94c">タ</tspan><tspan fill="#f2c94c">テ</tspan>
-            <tspan dy="-20">に</tspan>
-            <tspan dy="-55" dx="-45" fill="#3aa856">な</tspan><tspan fill="#3aa856">が</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">｜</tspan><tspan fill="#3aa856">い</tspan>
-          </text>
-        </g>
-      </svg>
-    `;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  }, []);
-
   const leftSideLabelSvg = useMemo(() => {
     const svg = `
       <svg xmlns="http://www.w3.org/2000/svg" width="200" height="520" viewBox="0 0 200 520">
@@ -465,6 +477,9 @@ const MapView = memo(function MapView({
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
+  const [mapRotation, setMapRotation] = useState(0);
+  const touchRotateRef = useRef<{ startAngle: number; startRotation: number } | null>(null);
+  const mouseRotateRef = useRef<{ startX: number; startRotation: number } | null>(null);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
@@ -756,53 +771,151 @@ const MapView = memo(function MapView({
     handleShopClick(nextShop);
   }, [canNavigate, selectedShopIndex, handleShopClick, shops]);
 
+  const rotateMap = useCallback((delta: number) => {
+    setMapRotation((prev) => {
+      const next = prev + delta;
+      const normalized = ((next % 360) + 360) % 360;
+      return normalized > 180 ? normalized - 360 : normalized;
+    });
+  }, []);
+
+  const resetMapRotation = useCallback(() => {
+    setMapRotation(0);
+  }, []);
+
+  const rotationScale = useMemo(() => {
+    const rad = (Math.abs(mapRotation) * Math.PI) / 180;
+    const c = Math.abs(Math.cos(rad));
+    const s = Math.abs(Math.sin(rad));
+    const aspect = 16 / 9;
+    const scaleX = c + (1 / aspect) * s;
+    const scaleY = c + aspect * s;
+    const coverScale = Math.max(scaleX, scaleY);
+    return Math.max(1.08, coverScale + 0.06);
+  }, [mapRotation]);
+
+  const handleTouchStartRotate = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length !== 2) return;
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      touchRotateRef.current = {
+        startAngle: angle,
+        startRotation: mapRotation,
+      };
+    },
+    [mapRotation]
+  );
+
+  const handleTouchMoveRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 2 || !touchRotateRef.current) return;
+    e.preventDefault();
+    const t0 = e.touches[0];
+    const t1 = e.touches[1];
+    const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+    const deltaDeg = ((angle - touchRotateRef.current.startAngle) * 180) / Math.PI;
+    const next = touchRotateRef.current.startRotation + deltaDeg;
+    const normalized = ((next % 360) + 360) % 360;
+    setMapRotation(normalized > 180 ? normalized - 360 : normalized);
+  }, []);
+
+  const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) {
+      touchRotateRef.current = null;
+    }
+  }, []);
+
+  const handleMouseDownRotate = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!e.shiftKey) return;
+      e.preventDefault();
+      mouseRotateRef.current = {
+        startX: e.clientX,
+        startRotation: mapRotation,
+      };
+    },
+    [mapRotation]
+  );
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!mouseRotateRef.current) return;
+      const delta = (e.clientX - mouseRotateRef.current.startX) * 0.35;
+      const next = mouseRotateRef.current.startRotation + delta;
+      const normalized = ((next % 360) + 360) % 360;
+      setMapRotation(normalized > 180 ? normalized - 360 : normalized);
+    };
+    const handleUp = () => {
+      mouseRotateRef.current = null;
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, []);
+
   return (
-    <div className="relative h-full w-full">
-      <MapContainer
-        center={KOCHI_SUNDAY_MARKET}
-        zoom={INITIAL_ZOOM}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-        scrollWheelZoom={!agentOpen && !isMobile}
-        dragging={!agentOpen}
-        touchZoom={agentOpen ? false : isMobile ? "center" : true}
-        doubleClickZoom={!agentOpen && !isMobile}
-        className={`h-full w-full z-0 ${agentOpen ? "pointer-events-none" : ""}`}
+    <div
+      className="relative h-full w-full"
+      onTouchStartCapture={handleTouchStartRotate}
+      onTouchMoveCapture={handleTouchMoveRotate}
+      onTouchEndCapture={handleTouchEndRotate}
+      onTouchCancelCapture={handleTouchEndRotate}
+      onMouseDownCapture={handleMouseDownRotate}
+    >
+      <div
+        className="absolute inset-0"
         style={{
-          height: "100%",
-          width: "100%",
-          backgroundColor: "#faf8f3",
-        }}
-        zoomControl={false}
-        attributionControl={false}
-        maxBounds={MAX_BOUNDS}
-        maxBoundsViscosity={1.0}
-        whenReady={() => {
-          onMapReady?.();
-        }}
-        ref={(map) => {
-          if (map) mapRef.current = map;
-          if (map) onMapInstance?.(map);
+          transform: `rotate(${mapRotation}deg) scale(${rotationScale})`,
+          transformOrigin: "center center",
+          transition: "transform 180ms ease-out",
         }}
       >
-        <MapZoomListener onZoomChange={onZoomChange} />
-        <MapDragListener onDragStart={() => setIsTracking(false)} />
-        {/* 背景 */}
-        <BackgroundOverlay />
+        <MapContainer
+          center={KOCHI_SUNDAY_MARKET}
+          zoom={INITIAL_ZOOM}
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          scrollWheelZoom={!agentOpen && !isMobile}
+          dragging={!agentOpen}
+          touchZoom={agentOpen ? false : isMobile ? "center" : true}
+          doubleClickZoom={!agentOpen && !isMobile}
+          className={`h-full w-full z-0 ${agentOpen ? "pointer-events-none" : ""}`}
+          style={{
+            height: "100%",
+            width: "100%",
+            backgroundColor: "#faf8f3",
+          }}
+          zoomControl={false}
+          attributionControl={false}
+          maxBounds={MAX_BOUNDS}
+          maxBoundsViscosity={1.0}
+          whenReady={() => {
+            onMapReady?.();
+          }}
+          ref={(map) => {
+            if (map) mapRef.current = map;
+            if (map) onMapInstance?.(map);
+          }}
+        >
+          <MapZoomListener onZoomChange={onZoomChange} />
+          <MapDragListener onDragStart={() => setIsTracking(false)} />
+          <TileLayer
+            url={BASEMAP_TILE_URL}
+            attribution={BASEMAP_ATTRIBUTION}
+            opacity={0.5}
+            zIndex={1}
+          />
+          {/* 背景 */}
+          <BackgroundOverlay />
 
         {/* 道路 */}
         <RoadOverlay />
         <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
         <Pane name="map-label" style={{ zIndex: 900 }}>
-          <ImageOverlay
-            url={rightSideLabelSvg}
-            bounds={[
-              [RIGHT_SIDE_LABEL_LAT + RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG - RIGHT_LABEL_WIDTH_LNG / 2],
-              [RIGHT_SIDE_LABEL_LAT - RIGHT_LABEL_HEIGHT_LAT / 2, RIGHT_SIDE_LABEL_LNG + RIGHT_LABEL_WIDTH_LNG / 2],
-            ]}
-            opacity={1}
-            zIndex={90}
-          />
           <ImageOverlay
             url={leftSideLabelSvg}
             bounds={[
@@ -812,6 +925,22 @@ const MapView = memo(function MapView({
             opacity={1}
             zIndex={90}
           />
+        </Pane>
+        <Pane name="major-place-label" style={{ zIndex: 950 }}>
+          {MAJOR_PLACE_LABELS.map((place) => (
+            <Marker
+              key={`major-place-${place.name}`}
+              position={[place.lat, place.lng]}
+              icon={L.divIcon({
+                className: "major-place-label-icon",
+                html: `<span style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
+                iconSize: [0, 0],
+              })}
+              interactive={false}
+              keyboard={false}
+              zIndexOffset={1200}
+            />
+          ))}
         </Pane>
 
         <EventDimOverlay active={highlightEventTargets} />
@@ -893,6 +1022,12 @@ const MapView = memo(function MapView({
               opacity={1}
               className="map-event-museum-highlight"
             />
+            <ImageOverlay
+              url="/images/maps/elements/buildings/kochistation.png"
+              bounds={KOCHI_STATION_BOUNDS}
+              opacity={1}
+              className="map-event-museum-highlight"
+            />
           </Pane>
         ) : (
           <>
@@ -919,6 +1054,12 @@ const MapView = memo(function MapView({
         <ImageOverlay
           url="/images/maps/elements/buildings/TinTinDensha2.png"
           bounds={TINTIN_DENSHA_BOUNDS}
+          opacity={1}
+          zIndex={70}
+        />
+        <ImageOverlay
+          url="/images/maps/elements/buildings/kochistation.png"
+          bounds={KOCHI_STATION_BOUNDS}
           opacity={1}
           zIndex={70}
         />
@@ -1026,12 +1167,47 @@ const MapView = memo(function MapView({
           onToggleTracking={() => setIsTracking((prev) => !prev)}
         />
 
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【削除】ZoomTracker を削除
             - currentZoom を state で管理しないため不要
             - ズーム操作で React が再レンダリングされない
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      </MapContainer>
+        </MapContainer>
+      </div>
+
+      <div className="absolute right-4 top-4 z-[1200] flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            rotateMap(-15);
+          }}
+          className="h-10 rounded-full bg-white/90 px-4 text-sm font-semibold text-slate-800 shadow-md transition hover:bg-white"
+        >
+          左回転
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            rotateMap(15);
+          }}
+          className="h-10 rounded-full bg-white/90 px-4 text-sm font-semibold text-slate-800 shadow-md transition hover:bg-white"
+        >
+          右回転
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            resetMapRotation();
+          }}
+          className="flex h-10 items-center justify-center gap-2 rounded-full bg-slate-900/90 px-4 text-sm font-semibold text-white shadow-md transition hover:bg-slate-900"
+        >
+          <RotateCcw size={14} />
+          リセット
+        </button>
+      </div>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離
