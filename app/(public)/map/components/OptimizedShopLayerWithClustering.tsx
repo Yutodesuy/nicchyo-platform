@@ -250,7 +250,7 @@ export default function OptimizedShopLayerWithClustering({
     const createCompactIcon = (shop: Shop) => {
       return L.divIcon({
         html: `
-          <div class="shop-marker-compact-wrapper shop-side-${shop.side}">
+          <div class="shop-marker-compact-wrapper">
             <div class="shop-recipe-icons" aria-hidden="true"></div>
             <div class="shop-kotodute-badge" aria-hidden="true">i</div>
             <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
@@ -268,7 +268,7 @@ export default function OptimizedShopLayerWithClustering({
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
       const mainProduct = shop.products?.[0] ?? shop.category ?? '-';
       const attendanceLabel = attendanceLabelsRef.current[shop.id] ?? 'わからない';
-      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const bannerSeed = shop.position ?? shop.id;
       const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
       const midIconMarkup = generateShopMarkerHtml(
@@ -293,7 +293,7 @@ export default function OptimizedShopLayerWithClustering({
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
       const mainProduct = shop.products?.[0] ?? shop.category ?? '-';
       const attendanceLabel = attendanceLabelsRef.current[shop.id] ?? 'わからない';
-      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const bannerSeed = shop.position ?? shop.id;
       const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
       const iconMarkup = generateShopMarkerHtml(

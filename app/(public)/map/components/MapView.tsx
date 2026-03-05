@@ -79,7 +79,8 @@ function findIngredientMatch(name: string) {
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
 // Zoom config by shop count
-const ZOOM_CONFIG = getZoomConfig(baseShops.length);
+const BASE_SHOP_COUNT = baseShops.length || 300;
+const ZOOM_CONFIG = getZoomConfig(BASE_SHOP_COUNT);
 const MIN_ZOOM = ZOOM_BOUNDS.min;
 const MAX_ZOOM = ZOOM_BOUNDS.max;
 const INITIAL_ZOOM = MAX_ZOOM;

@@ -1,4 +1,4 @@
-import { Shop } from '../../map/data/shops';
+import type { Shop } from '../../map/data/shops';
 
 /**
  * 検索インデックスの型定義

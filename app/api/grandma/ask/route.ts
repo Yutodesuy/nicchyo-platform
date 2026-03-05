@@ -1,26 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { grandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
+import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type MatchRow = {
-  shop_id: string;
-  similarity: number;
-};
-
 type ShopRow = {
-  id: string;
-  legacy_id: number | null;
+  id: number;
   name: string | null;
   owner_name: string | null;
   chome: string | null;
   category: string | null;
   products: string[] | null;
   description: string | null;
-  specialty_dish: string | null;
-  about_vendor: string | null;
   stall_style: string | null;
   schedule: string | null;
   message: string | null;
@@ -151,82 +144,36 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
+      id: shop.id,
+      name: shop.name ?? null,
+      owner_name: shop.ownerName ?? null,
+      chome: shop.chome ?? null,
+      category: shop.category ?? null,
+      products: shop.products ?? [],
+      description: shop.description ?? null,
+      stall_style: shop.stallStyle ?? null,
+      schedule: shop.schedule ?? null,
+      message: shop.message ?? null,
+      shop_strength: shop.shopStrength ?? null,
+      lat: shop.lat ?? null,
+      lng: shop.lng ?? null,
+    }));
+
     let targetShop: ShopRow | null = null;
     if (targetShopId || targetShopName) {
-      const { data } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(
-          [
-            targetShopId ? `legacy_id.eq.${targetShopId}` : null,
-            targetShopName ? `name.ilike.%${targetShopName}%` : null,
-          ]
-            .filter(Boolean)
-            .join(",")
-        )
-        .limit(1);
-      const rows = Array.isArray(data) ? (data as unknown as ShopRow[]) : [];
-      targetShop = rows[0] ?? null;
+      targetShop =
+        allShops.find((shop) => {
+          if (targetShopId && shop.id === targetShopId) return true;
+          if (targetShopName && shop.name) {
+            return shop.name.includes(targetShopName);
+          }
+          return false;
+        }) ?? null;
     }
-    const { data: matches } = await supabase
-      .rpc("match_shop_embeddings", {
-        query_embedding: embedding,
-        match_count: 3,
-        match_threshold: 0,
-      })
-      .returns<MatchRow[]>();
 
-    const safeMatches = Array.isArray(matches) ? matches : [];
-    const sortedMatches = [...safeMatches].sort(
-      (a, b) => b.similarity - a.similarity
-    );
-    let matchIds = sortedMatches.map((row) => row.shop_id).filter(Boolean);
     let shops: ShopRow[] = [];
-    if (matchIds.length > 0) {
-      const { data } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .in("id", matchIds);
-      shops = (data ?? []) as unknown as ShopRow[];
-    }
+    let matchIds: number[] = [];
 
     const shortQuery = normalized.length <= 6 && normalized.length > 0;
     const nameQuery = question
@@ -243,46 +190,15 @@ export async function POST(request: Request) {
           normalizedNameQuery.slice(2),
         ].filter(Boolean);
       }
-      const filters = [
-        `owner_name.ilike.%${nameQuery}%`,
-        `name.ilike.%${nameQuery}%`,
-        ...nameParts.flatMap((part) => [
-          `owner_name.ilike.%${part}%`,
-          `name.ilike.%${part}%`,
-        ]),
-      ];
-      const { data: directRows } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(filters.join(","));
-      const safeDirectRows = (Array.isArray(directRows)
-        ? directRows
-        : []) as unknown as ShopRow[];
-      const normalizedMatches = safeDirectRows.filter((row) => {
+      const safeDirectRows = allShops.filter((row) => {
         const owner = (row.owner_name ?? "").replace(/\s+/g, "");
-        return owner.includes(normalizedNameQuery);
+        const shopName = (row.name ?? "").replace(/\s+/g, "");
+        if (owner.includes(normalizedNameQuery) || shopName.includes(normalizedNameQuery)) {
+          return true;
+        }
+        return nameParts.some((part) => owner.includes(part) || shopName.includes(part));
       });
-      const useRows =
-        normalizedMatches.length > 0 ? normalizedMatches : safeDirectRows;
+      const useRows = safeDirectRows;
       if (useRows.length > 0) {
         shopIntent = true;
         shops = useRows;
@@ -291,36 +207,38 @@ export async function POST(request: Request) {
     }
 
     if (!shopIntent && shortQuery) {
-      const { data: directRows } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(`products.cs.{${normalized}},synonyms.cs.{${normalized}}`);
-      const safeDirectRows = (Array.isArray(directRows)
-        ? directRows
-        : []) as unknown as ShopRow[];
+      const safeDirectRows = allShops.filter((row) => {
+        const products = row.products ?? [];
+        return products.some((item) => item.includes(normalized));
+      });
       if (safeDirectRows.length > 0) {
         shopIntent = true;
         shops = safeDirectRows;
         matchIds = shops.map((row) => row.id);
+      }
+    }
+
+    if (shopIntent && shops.length === 0) {
+      const scored = allShops
+        .map((shop) => {
+          const name = shop.name ?? "";
+          const owner = shop.owner_name ?? "";
+          const category = shop.category ?? "";
+          const products = shop.products ?? [];
+          let score = 0;
+          if (name.includes(normalized)) score += 3;
+          if (owner.includes(normalized)) score += 2;
+          if (category.includes(normalized)) score += 2;
+          if (products.some((item) => item.includes(normalized))) score += 2;
+          return { shop, score };
+        })
+        .filter((row) => row.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6)
+        .map((row) => row.shop);
+      if (scored.length > 0) {
+        shops = scored;
+        matchIds = scored.map((row) => row.id);
       }
     }
 
@@ -367,15 +285,11 @@ export async function POST(request: Request) {
             .map((shop) => {
               const parts = [
                 `id:${shop.id}`,
-                shop.legacy_id
-                  ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}`
-                  : null,
                 shop.name ? `name:${shop.name}` : null,
                 shop.category ? `category:${shop.category}` : null,
                 shop.products?.length
                   ? `products:${shop.products.join(" / ")}`
                   : null,
-                shop.specialty_dish ? `specialty:${shop.specialty_dish}` : null,
                 shop.description ? `desc:${shop.description}` : null,
                 shop.shop_strength ? `strength:${shop.shop_strength}` : null,
                 shop.message ? `message:${shop.message}` : null,
@@ -387,9 +301,7 @@ export async function POST(request: Request) {
     if (targetShop) {
       shopIntent = true;
       const targetParts = [
-        targetShop.legacy_id
-          ? `legacy_id:${String(targetShop.legacy_id).padStart(3, "0")}`
-          : null,
+        `id:${targetShop.id}`,
         targetShop.name ? `name:${targetShop.name}` : null,
         targetShop.category ? `category:${targetShop.category}` : null,
         targetShop.products?.length
@@ -426,13 +338,13 @@ export async function POST(request: Request) {
       location && Number.isFinite(location.lat) && Number.isFinite(location.lng);
     const sortLegacyByDistance = (
       ids: number[],
-      rows: Array<{ legacy_id: number | null; lat: number | null; lng: number | null }>
+      rows: Array<{ id: number; lat: number | null; lng: number | null }>
     ) => {
       if (!hasLocation) return ids;
       const loc = { lat: location!.lat, lng: location!.lng };
       return [...ids]
         .map((id) => {
-          const row = rows.find((shop) => shop.legacy_id === id);
+          const row = rows.find((shop) => shop.id === id);
           if (!row || row.lat == null || row.lng == null) {
             return { id, dist: null };
           }
@@ -502,22 +414,10 @@ export async function POST(request: Request) {
 
     let recommendedIds = shopIds;
     if (recommendedIds.length > 0 && hasLocation && shopIntent) {
-      const { data: locationRows } = await supabase
-        .from("shops")
-        .select(["legacy_id", "lat", "lng"].join(","))
-        .in("legacy_id", recommendedIds);
-      const rows = (locationRows ?? []) as unknown as Array<{
-        legacy_id: number | null;
-        lat: number | null;
-        lng: number | null;
-      }>;
-      recommendedIds = sortLegacyByDistance(recommendedIds, rows);
+      recommendedIds = sortLegacyByDistance(recommendedIds, shops);
     }
     if (recommendedIds.length === 0 && shopIntent && matchIds.length > 0) {
-      const legacyIds = matchIds
-        .map((id) => shops.find((row) => row.id === id)?.legacy_id ?? null)
-        .filter((value): value is number => typeof value === "number");
-      recommendedIds = sortLegacyByDistance(legacyIds, shops);
+      recommendedIds = sortLegacyByDistance(matchIds, shops);
     }
 
     const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);

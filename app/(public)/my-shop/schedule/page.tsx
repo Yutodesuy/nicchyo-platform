@@ -1,0 +1,26 @@
+"use client";
+
+import Link from "next/link";
+import NavigationBar from "@/app/components/NavigationBar";
+
+export default function MyShopSchedulePage() {
+  return (
+    <div className="min-h-screen bg-slate-50 pb-24 text-slate-800">
+      <div className="mx-auto w-full max-w-2xl px-4 pt-8">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-2xl font-semibold text-slate-900">スケジュールの登録</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            ここに出店スケジュールの登録フォームを追加予定です。
+          </p>
+          <Link
+            href="/my-shop"
+            className="mt-6 inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700"
+          >
+            出店者メニューへ戻る
+          </Link>
+        </div>
+      </div>
+      <NavigationBar />
+    </div>
+  );
+}

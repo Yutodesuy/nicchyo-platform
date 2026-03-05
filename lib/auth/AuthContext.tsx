@@ -12,7 +12,7 @@ interface AuthContextType {
     identifier: string,
     password: string,
     captchaToken?: string
-  ) => Promise<boolean>;
+  ) => Promise<User | null>;
   updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -149,10 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: captchaToken ? { captchaToken } : undefined,
     });
-    if (error || !data.user) return false;
-    setUser(mapSupabaseUser(data.user));
+    if (error || !data.user) return null;
+    const mapped = mapSupabaseUser(data.user);
+    setUser(mapped);
     setIsLoggedIn(true);
-    return true;
+    return mapped;
   };
 
   const updateProfile = async (updates: Pick<User, "name" | "email" | "avatarUrl">) => {

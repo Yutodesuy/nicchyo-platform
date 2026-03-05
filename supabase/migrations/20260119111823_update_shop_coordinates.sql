@@ -8,20 +8,26 @@
 -- - 北側(right): lng = 133.53115
 -- - 南側(left): lng = 133.53085
 
--- 北側店舗 (legacy_id 1-150) の座標を更新
-UPDATE shops
-SET
-  lat = 33.56500 - ((legacy_id - 1) * 0.000078),
-  lng = 133.53115,
-  side = 'north',
-  position = legacy_id - 1
-WHERE legacy_id >= 1 AND legacy_id <= 150;
+do $$
+begin
+  if to_regclass('public.shops') is not null then
+    -- 北側店舗 (legacy_id 1-150) の座標を更新
+    update public.shops
+    set
+      lat = 33.56500 - ((legacy_id - 1) * 0.000078),
+      lng = 133.53115,
+      side = 'north',
+      position = legacy_id - 1
+    where legacy_id >= 1 and legacy_id <= 150;
 
--- 南側店舗 (legacy_id 151-300) の座標を更新
-UPDATE shops
-SET
-  lat = 33.56500 - ((legacy_id - 151) * 0.000078),
-  lng = 133.53085,
-  side = 'south',
-  position = legacy_id - 151
-WHERE legacy_id >= 151 AND legacy_id <= 300;
+    -- 南側店舗 (legacy_id 151-300) の座標を更新
+    update public.shops
+    set
+      lat = 33.56500 - ((legacy_id - 151) * 0.000078),
+      lng = 133.53085,
+      side = 'south',
+      position = legacy_id - 151
+    where legacy_id >= 151 and legacy_id <= 300;
+  end if;
+end;
+$$;
