@@ -188,12 +188,14 @@ body.grandma-chat-open .leaflet-container {
 /* 選択された店�Eマ�Eカー */
 .shop-marker-selected {
   transform: scale(1.15);
+  transform-origin: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
   z-index: 1000 !important;
 }
 
 .shop-marker-ai {
   transform: scale(1.08);
+  transform-origin: bottom center;
   filter:
     drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
     drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
@@ -201,6 +203,7 @@ body.grandma-chat-open .leaflet-container {
 
 .shop-marker-search {
   transform: scale(1.08);
+  transform-origin: bottom center;
   filter:
     drop-shadow(0 0 6px rgba(255, 169, 0, 0.7))
     drop-shadow(0 0 14px rgba(255, 169, 0, 0.55));
@@ -208,6 +211,7 @@ body.grandma-chat-open .leaflet-container {
 
 .shop-marker-comment {
   transform: scale(1.06);
+  transform-origin: bottom center;
   filter:
     drop-shadow(0 0 6px rgba(245, 158, 11, 0.7))
     drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
@@ -281,16 +285,19 @@ body.grandma-chat-open .leaflet-container {
 
 .shop-marker-selected.shop-marker-ai {
   transform: scale(1.15);
+  transform-origin: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .shop-marker-selected.shop-marker-search {
   transform: scale(1.15);
+  transform-origin: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
 .shop-marker-selected.shop-marker-comment {
   transform: scale(1.15);
+  transform-origin: bottom center;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
