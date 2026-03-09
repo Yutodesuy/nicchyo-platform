@@ -110,10 +110,10 @@ export default function VendorPostNewPage() {
           </p>
           <div className="mt-8 flex flex-col items-center gap-3">
             <Link
-              href="/vendor/dashboard"
+              href="/my-shop"
               className="rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-white shadow transition hover:bg-amber-400"
             >
-              ダッシュボードへ
+              出店者メニューへ
             </Link>
             <button
               onClick={() => {
@@ -140,7 +140,7 @@ export default function VendorPostNewPage() {
       <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Link
-            href="/vendor/dashboard"
+            href="/my-shop"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
           >
             <ArrowLeft size={18} />
