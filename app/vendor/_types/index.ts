@@ -21,6 +21,7 @@ export type Store = {
   vendor_id: string;
   name: string;
   style: string;
+  style_tags: string[];
   main_products: string[];
   payment_methods: PaymentMethod[];
   rain_policy: RainPolicy;

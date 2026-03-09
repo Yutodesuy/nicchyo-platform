@@ -72,6 +72,9 @@ export interface ShopEditableData {
   /** 出店スタイル（自由記述） */
   stallStyle?: string;
 
+  /** 出店スタイルタグ（プリセット選択） */
+  stallStyleTags?: string[];
+
   /** 出店予定・営業時間 */
   schedule: string;
 
