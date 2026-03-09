@@ -81,6 +81,19 @@ export interface ShopEditableData {
   /** おせっかいコメント（任意） */
   shopStrength?: string;
 
+  /** 決済方法 */
+  paymentMethods?: string[];
+
+  /** 雨天時対応 */
+  rainPolicy?: string;
+
+  /** 出店者の最新投稿（有効期限内のもの） */
+  activePost?: {
+    text: string;
+    imageUrl?: string;
+    expiresAt: string;
+  };
+
   /** 店舗画像URL（将来の実装用） */
   images?: {
     /** メイン画像 */

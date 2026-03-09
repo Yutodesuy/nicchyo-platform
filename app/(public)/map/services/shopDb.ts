@@ -8,6 +8,17 @@ type VendorRow = {
   strength: string | null;
   style: string | null;
   category_id: string | null;
+  main_products: string[] | null;
+  payment_methods: string[] | null;
+  rain_policy: string | null;
+  schedule: string[] | null;
+};
+
+type ActiveContentRow = {
+  vendor_id: string | null;
+  body: string | null;
+  image_url: string | null;
+  expires_at: string;
 };
 
 type CategoryRow = {
@@ -60,16 +71,22 @@ export async function fetchShopsFromDb(
     { data: productsData },
     { data: locationsData },
     { data: assignmentsData },
+    { data: activeContentsData },
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, category_id"),
+      .select("id, shop_name, owner_name, strength, style, category_id, main_products, payment_methods, rain_policy, schedule"),
     supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
       .from("market_locations")
       .select("id, store_number, latitude, longitude, district"),
     supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
+    supabase
+      .from("vendor_contents")
+      .select("vendor_id, body, image_url, expires_at")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false }),
   ]);
 
   const vendors = Array.isArray(vendorsData)
@@ -101,6 +118,17 @@ export async function fetchShopsFromDb(
     const list = productsByVendor.get(row.vendor_id) ?? [];
     list.push(row.name);
     productsByVendor.set(row.vendor_id, list);
+  });
+
+  // 有効期限内の最新投稿を vendor_id ごとに1件取得
+  const activeContents = Array.isArray(activeContentsData)
+    ? (activeContentsData as ActiveContentRow[])
+    : [];
+  const activeContentByVendor = new Map<string, ActiveContentRow>();
+  activeContents.forEach((row) => {
+    if (row.vendor_id && !activeContentByVendor.has(row.vendor_id)) {
+      activeContentByVendor.set(row.vendor_id, row);
+    }
   });
 
   const locationById = new Map<string, LocationRow>();
@@ -138,17 +166,39 @@ export async function fetchShopsFromDb(
       const categoryName =
         (vendor.category_id && categoryNameById.get(vendor.category_id)) || "";
 
+      // main_products が設定されていればそちらを優先、なければ products テーブルから
+      const displayProducts =
+        (vendor.main_products ?? []).length > 0
+          ? (vendor.main_products as string[])
+          : (productsByVendor.get(vendor.id) ?? []);
+
+      // 出店予定日: text[] を '、' で結合
+      const scheduleStr = (vendor.schedule ?? []).join("、");
+
+      // 有効期限内の最新投稿
+      const content = activeContentByVendor.get(vendor.id);
+      const activePost = content
+        ? {
+            text: content.body ?? "",
+            imageUrl: content.image_url ?? undefined,
+            expiresAt: content.expires_at,
+          }
+        : undefined;
+
       return {
         id: storeNumber,
         name: vendor.shop_name ?? "",
         ownerName: vendor.owner_name ?? "",
         category: categoryName,
-        products: productsByVendor.get(vendor.id) ?? [],
+        products: displayProducts,
         description: "",
         stallStyle: vendor.style ?? undefined,
-        schedule: "",
+        schedule: scheduleStr,
         message: undefined,
         shopStrength: vendor.strength ?? undefined,
+        paymentMethods: (vendor.payment_methods ?? []) as string[],
+        rainPolicy: vendor.rain_policy ?? undefined,
+        activePost,
         position: storeNumber,
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),
