@@ -9,6 +9,7 @@ type VendorRow = {
   style: string | null;
   style_tags: string[] | null;
   category_id: string | null;
+  categories: { name: string | null }[] | { name: string | null } | null;
   main_products: string[] | null;
   payment_methods: string[] | null;
   rain_policy: string | null;
@@ -76,7 +77,7 @@ export async function fetchShopsFromDb(
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, main_products, payment_methods, rain_policy, schedule"),
+      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, payment_methods, rain_policy, schedule"),
     supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
@@ -164,8 +165,15 @@ export async function fetchShopsFromDb(
       const storeNumber = Number(location.store_number ?? 0);
       if (!Number.isFinite(storeNumber) || storeNumber <= 0) return null;
 
+      // JOIN で取得したカテゴリー名を優先、なければ Map フォールバック
+      const catRaw = vendor.categories;
+      const joinedCategoryName = Array.isArray(catRaw)
+        ? (catRaw[0]?.name ?? null)
+        : ((catRaw as { name: string | null } | null)?.name ?? null);
       const categoryName =
-        (vendor.category_id && categoryNameById.get(vendor.category_id)) || "";
+        joinedCategoryName ||
+        (vendor.category_id && categoryNameById.get(vendor.category_id)) ||
+        "";
 
       // main_products が設定されていればそちらを優先、なければ products テーブルから
       const displayProducts =
