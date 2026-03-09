@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, FileText, LogOut } from "lucide-react";
+import { Megaphone, Store, FileText, LogOut, BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -32,6 +32,15 @@ const MENU_ITEMS = [
     icon: Store,
     badge: "基本情報",
     image: "/images/home/posters/HomePagePoster2.png",
+  },
+  {
+    title: "アナリティクス",
+    description: "閲覧数・人気商品・時間帯分析",
+    href: "/vendor/analytics",
+    accent: "from-violet-400/40 via-violet-100/70 to-white",
+    icon: BarChart2,
+    badge: "分析",
+    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
 ];
 

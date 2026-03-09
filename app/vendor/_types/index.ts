@@ -25,3 +25,30 @@ export type Store = {
   rain_policy: RainPolicy;
   schedule: string[];
 };
+
+export type VendorAnalytics = {
+  thisWeek: { views: number; clicks: number; searchImpressions: number };
+  lastWeek: { views: number; clicks: number; searchImpressions: number };
+  rank: number;
+  totalVendors: number;
+};
+
+export type ProductSale = {
+  id: string;
+  vendor_id: string;
+  product_name: string;
+  quantity: number;
+  date: string;
+};
+
+export type HourlyData = {
+  hour: string;
+  views: number;
+};
+
+export type MarketTrend = {
+  rank: number;
+  product_name: string;
+  total_quantity: number;
+  vendor_count: number;
+};
