@@ -169,7 +169,7 @@ export default function VendorPostsPage() {
       <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Link
-            href="/vendor/dashboard"
+            href="/my-shop"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
           >
             <ArrowLeft size={18} />
