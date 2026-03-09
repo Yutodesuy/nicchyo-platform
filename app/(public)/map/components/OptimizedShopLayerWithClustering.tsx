@@ -12,31 +12,8 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { Shop } from '../data/shops';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
-import { ROAD_CONFIG } from '../config/roadConfig';
 import { getShopBannerImage } from '../../../../lib/shopImages';
 import { generateShopMarkerHtml } from '../utils/markerHtmlGenerator';
-
-// 道路レイアウト定数
-const ROAD_CENTER_LINE = ROAD_CONFIG.centerLine; // 133.53100
-const ROAD_WIDTH_LNG = Math.abs(ROAD_CONFIG.bounds[0][1] - ROAD_CONFIG.bounds[1][1]); // 0.00050
-const ROAD_SEPARATOR_LNG = 0.00004;
-const ROAD_OFFSET_LNG = ROAD_WIDTH_LNG + ROAD_SEPARATOR_LNG; // 0.00054
-
-/**
- * 店舗の道路側を判定する
- * - lng >= centerLine → プライマリレーン（北側・西側）
- * - lng <  centerLine → セカンダリレーン（南側・東側）に描画オフセット
- */
-function getShopSide(shop: Shop): 'north' | 'south' {
-  return shop.lng >= ROAD_CENTER_LINE ? 'north' : 'south';
-}
-
-/**
- * 南側の店舗はセカンダリレーン（東方向にオフセット）に描画する
- */
-function getDisplayLng(shop: Shop): number {
-  return getShopSide(shop) === 'south' ? shop.lng + ROAD_OFFSET_LNG : shop.lng;
-}
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
@@ -55,9 +32,7 @@ interface OptimizedShopLayerWithClusteringProps {
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
-// アンカーをアイコン底部に設定。full/mid モード（anchor=[30,50] for 60px）と
-// 基準点を揃えることで、ズーム切替時にマーカーが跳ばないようにする。
-const COMPACT_ICON_ANCHOR: [number, number] = [12, 36];
+const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
 const COMPACT_ICON_MAX_ZOOM = 17.5;
 const MID_ICON_MAX_ZOOM = 18.0;
 
@@ -273,10 +248,6 @@ export default function OptimizedShopLayerWithClustering({
     clusterGroupRef.current = markers;
 
     const createCompactIcon = (shop: Shop) => {
-      const side = getShopSide(shop);
-      // 北側→右端アンカー（アイコンがプライマリ道路側へ伸びる）
-      // 南側→左端アンカー（アイコンがセカンダリ道路側へ伸びる）
-      const anchorX: number = side === 'north' ? COMPACT_ICON_SIZE[0] : 0;
       return L.divIcon({
         html: `
           <div class="shop-marker-compact-wrapper">
@@ -288,15 +259,13 @@ export default function OptimizedShopLayerWithClustering({
         `,
         className: 'custom-shop-marker compact-shop-marker',
         iconSize: COMPACT_ICON_SIZE,
-        iconAnchor: [anchorX, COMPACT_ICON_SIZE[1]],
+        iconAnchor: COMPACT_ICON_ANCHOR,
       });
     };
 
     const createMidIcon = (shop: Shop) => {
       const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
-      const side = getShopSide(shop);
-      const anchorX: number = side === 'north' ? sizeConfig.width : 0;
       const mainProduct = shop.products?.[0] ?? shop.category ?? '-';
       const attendanceLabel = attendanceLabelsRef.current[shop.id] ?? 'わからない';
       const bannerSeed = shop.position ?? shop.id;
@@ -315,15 +284,13 @@ export default function OptimizedShopLayerWithClustering({
         html: midIconMarkup,
         className: 'custom-shop-marker',
         iconSize: [sizeConfig.width, sizeConfig.height],
-        iconAnchor: [anchorX, sizeConfig.anchor[1]],
+        iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
       });
     };
 
     const createFullIcon = (shop: Shop) => {
       const sizeKey = shop.illustration?.size ?? DEFAULT_ILLUSTRATION_SIZE;
       const sizeConfig = ILLUSTRATION_SIZES[sizeKey];
-      const side = getShopSide(shop);
-      const anchorX: number = side === 'north' ? sizeConfig.width : 0;
       const mainProduct = shop.products?.[0] ?? shop.category ?? '-';
       const attendanceLabel = attendanceLabelsRef.current[shop.id] ?? 'わからない';
       const bannerSeed = shop.position ?? shop.id;
@@ -342,7 +309,7 @@ export default function OptimizedShopLayerWithClustering({
         html: iconMarkup,
         className: 'custom-shop-marker',
         iconSize: [sizeConfig.width, sizeConfig.height],
-        iconAnchor: [anchorX, sizeConfig.anchor[1]],
+        iconAnchor: [sizeConfig.anchor[0], sizeConfig.anchor[1]],
       });
     };
 
@@ -370,9 +337,7 @@ export default function OptimizedShopLayerWithClustering({
         fullIconsRef.current.set(shop.id, initialIcon);
       }
 
-      const displayLng = getDisplayLng(shop);
-      const shopSide = getShopSide(shop);
-      const marker = L.marker([shop.lat, displayLng], {
+      const marker = L.marker([shop.lat, shop.lng], {
         icon: initialIcon,
       });
 
@@ -381,10 +346,6 @@ export default function OptimizedShopLayerWithClustering({
         onShopClick(shop, origin);
       });
       marker.on('add', () => {
-        const el = marker.getElement();
-        if (el) {
-          el.classList.add(shopSide === 'north' ? 'shop-side-north' : 'shop-side-south');
-        }
         setMarkerFavorite(marker, favoriteSetRef.current.has(shop.id));
         setMarkerHighlight(marker, shop.id, aiHighlightSetRef.current.has(shop.id));
         setMarkerSearchHighlight(marker, searchHighlightSetRef.current.has(shop.id));
