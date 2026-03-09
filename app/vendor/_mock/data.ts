@@ -1,4 +1,4 @@
-import type { Post, Store } from "../_types";
+import type { Post, Store, VendorAnalytics, ProductSale, HourlyData, MarketTrend } from "../_types";
 
 const now = new Date();
 
@@ -73,3 +73,40 @@ export const MOCK_STATS = {
   todayViews: 42,
   totalPosts: MOCK_POSTS.length,
 };
+
+// ── アナリティクス ────────────────────────────────────────────
+
+export const MOCK_ANALYTICS: VendorAnalytics = {
+  thisWeek: { views: 312, clicks: 87, searchImpressions: 524 },
+  lastWeek: { views: 278, clicks: 71, searchImpressions: 441 },
+  rank: 3,
+  totalVendors: 18,
+};
+
+export const MOCK_HOURLY: HourlyData[] = [
+  { hour: "6時", views: 8 },
+  { hour: "7時", views: 24 },
+  { hour: "8時", views: 67 },
+  { hour: "9時", views: 98 },
+  { hour: "10時", views: 72 },
+  { hour: "11時", views: 55 },
+  { hour: "12時", views: 41 },
+  { hour: "13時", views: 28 },
+  { hour: "14時", views: 18 },
+];
+
+export const MOCK_PRODUCT_SALES: ProductSale[] = [
+  { id: "ps-1", vendor_id: "vendor-1", product_name: "芋天", quantity: 40, date: new Date().toISOString() },
+  { id: "ps-2", vendor_id: "vendor-1", product_name: "文旦", quantity: 25, date: new Date().toISOString() },
+  { id: "ps-3", vendor_id: "vendor-1", product_name: "しょうが", quantity: 15, date: new Date().toISOString() },
+  { id: "ps-4", vendor_id: "vendor-1", product_name: "手作りジャム", quantity: 12, date: new Date().toISOString() },
+  { id: "ps-5", vendor_id: "vendor-1", product_name: "トマト", quantity: 8, date: new Date().toISOString() },
+];
+
+export const MOCK_MARKET_TRENDS: MarketTrend[] = [
+  { rank: 1, product_name: "芋天", total_quantity: 210, vendor_count: 3 },
+  { rank: 2, product_name: "文旦", total_quantity: 185, vendor_count: 5 },
+  { rank: 3, product_name: "しょうが", total_quantity: 142, vendor_count: 4 },
+  { rank: 4, product_name: "手作りジャム", total_quantity: 98, vendor_count: 6 },
+  { rank: 5, product_name: "トマト", total_quantity: 76, vendor_count: 7 },
+];
