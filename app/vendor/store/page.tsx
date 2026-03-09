@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
-import { MOCK_STORE } from "../_mock/data";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { fetchVendorStore, saveVendorStore } from "../_services/storeService";
 import type { PaymentMethod, RainPolicy, Store } from "../_types";
 import {
   ArrowLeft,
@@ -15,32 +16,34 @@ import {
   CreditCard,
   CloudRain,
   CalendarDays,
+  Loader2,
 } from "lucide-react";
 
 const PAYMENT_OPTIONS: { key: PaymentMethod; label: string; emoji: string }[] = [
-  { key: "cash", label: "現金", emoji: "💴" },
-  { key: "card", label: "カード", emoji: "💳" },
-  { key: "paypay", label: "PayPay", emoji: "📱" },
-  { key: "ic", label: "交通系IC", emoji: "🚃" },
+  { key: "cash",   label: "現金",      emoji: "💴" },
+  { key: "card",   label: "カード",    emoji: "💳" },
+  { key: "paypay", label: "PayPay",   emoji: "📱" },
+  { key: "ic",     label: "交通系IC", emoji: "🚃" },
 ];
 
 const RAIN_OPTIONS: { key: RainPolicy; label: string; desc: string }[] = [
-  { key: "outdoor", label: "屋外（雨天決行）", desc: "雨でも通常通り出店" },
-  { key: "tent", label: "テント設置", desc: "テントで対応" },
-  { key: "cancel", label: "雨天中止", desc: "雨天時は出店しない" },
-  { key: "undecided", label: "当日判断", desc: "SNSで告知" },
+  { key: "outdoor",  label: "屋外（雨天決行）", desc: "雨でも通常通り出店" },
+  { key: "tent",     label: "テント設置",       desc: "テントで対応" },
+  { key: "cancel",   label: "雨天中止",         desc: "雨天時は出店しない" },
+  { key: "undecided",label: "当日判断",          desc: "SNSで告知" },
 ];
 
 const WEEKDAY_OPTIONS = [
-  "毎週日曜日",
-  "毎週土曜日",
-  "第1日曜日",
-  "第2日曜日",
-  "第3日曜日",
-  "第4日曜日",
-  "第2・第4土曜日",
-  "不定期",
+  "毎週日曜日", "毎週土曜日",
+  "第1日曜日", "第2日曜日", "第3日曜日", "第4日曜日",
+  "第2・第4土曜日", "不定期",
 ];
+
+const EMPTY_STORE: Store = {
+  id: "", vendor_id: "",
+  name: "", main_products: [],
+  payment_methods: [], rain_policy: "undecided", schedule: [],
+};
 
 function SectionHeader({ icon: Icon, title }: { icon: typeof StoreIcon; title: string }) {
   return (
@@ -54,22 +57,46 @@ function SectionHeader({ icon: Icon, title }: { icon: typeof StoreIcon; title: s
 }
 
 export default function VendorStorePage() {
-  const [form, setForm] = useState<Store>({ ...MOCK_STORE });
+  const { user } = useAuth();
+  const [form, setForm]           = useState<Store>(EMPTY_STORE);
   const [newProduct, setNewProduct] = useState("");
   const [newSchedule, setNewSchedule] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving]   = useState(false);
+  const [isSaved, setIsSaved]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
 
-  function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    if (!user) return;
+    fetchVendorStore(user.id)
+      .then((store) => {
+        if (store) setForm(store);
+        else setForm({ ...EMPTY_STORE, id: user.id, vendor_id: user.id });
+      })
+      .catch(() => setError("データの読み込みに失敗しました"))
+      .finally(() => setIsLoading(false));
+  }, [user]);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (isSaving) return;
+    if (isSaving || !user) return;
     setIsSaving(true);
-    // モック: 1秒後に完了
-    setTimeout(() => {
-      setIsSaving(false);
+    setError(null);
+    try {
+      await saveVendorStore(user.id, {
+        name: form.name,
+        main_products: form.main_products,
+        payment_methods: form.payment_methods,
+        rain_policy: form.rain_policy,
+        schedule: form.schedule,
+      });
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
-    }, 1000);
+    } catch {
+      setError("保存に失敗しました。もう一度お試しください。");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function togglePayment(method: PaymentMethod) {
@@ -89,10 +116,7 @@ export default function VendorStorePage() {
   }
 
   function removeProduct(name: string) {
-    setForm((prev) => ({
-      ...prev,
-      main_products: prev.main_products.filter((p) => p !== name),
-    }));
+    setForm((prev) => ({ ...prev, main_products: prev.main_products.filter((p) => p !== name) }));
   }
 
   function addSchedule(value: string) {
@@ -105,9 +129,16 @@ export default function VendorStorePage() {
     setForm((prev) => ({ ...prev, schedule: prev.schedule.filter((x) => x !== s) }));
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#FFFAF0]">
+        <Loader2 size={28} className="animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FFFAF0] pb-24">
-      {/* ヘッダー */}
       <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
           <Link
@@ -117,15 +148,19 @@ export default function VendorStorePage() {
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">
-              Store Info
-            </p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Store Info</p>
             <h1 className="text-xl font-bold text-slate-900">店舗情報の編集</h1>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+
+        {error && (
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
 
         {/* 店舗名 */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -144,16 +179,9 @@ export default function VendorStorePage() {
           <SectionHeader icon={StoreIcon} title="主な商品" />
           <div className="mb-3 flex flex-wrap gap-2">
             {form.main_products.map((p) => (
-              <span
-                key={p}
-                className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800"
-              >
+              <span key={p} className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
                 {p}
-                <button
-                  type="button"
-                  onClick={() => removeProduct(p)}
-                  className="text-amber-400 hover:text-amber-700"
-                >
+                <button type="button" onClick={() => removeProduct(p)} className="text-amber-400 hover:text-amber-700">
                   <X size={12} />
                 </button>
               </span>
@@ -164,25 +192,14 @@ export default function VendorStorePage() {
           </div>
           <div className="flex gap-2">
             <input
-              type="text"
-              value={newProduct}
+              type="text" value={newProduct}
               onChange={(e) => setNewProduct(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addProduct();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProduct(); } }}
               placeholder="商品名を入力..."
               className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300"
             />
-            <button
-              type="button"
-              onClick={addProduct}
-              className="flex items-center gap-1 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200"
-            >
-              <Plus size={14} />
-              追加
+            <button type="button" onClick={addProduct} className="flex items-center gap-1 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200">
+              <Plus size={14} />追加
             </button>
           </div>
         </div>
@@ -194,15 +211,8 @@ export default function VendorStorePage() {
             {PAYMENT_OPTIONS.map((opt) => {
               const isSelected = form.payment_methods.includes(opt.key);
               return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => togglePayment(opt.key)}
-                  className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-sm font-medium transition ${
-                    isSelected
-                      ? "border-amber-400 bg-amber-50 text-amber-800"
-                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-200"
-                  }`}
+                <button key={opt.key} type="button" onClick={() => togglePayment(opt.key)}
+                  className={`flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-sm font-medium transition ${isSelected ? "border-amber-400 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-200"}`}
                 >
                   <span className="text-base">{opt.emoji}</span>
                   {opt.label}
@@ -220,20 +230,12 @@ export default function VendorStorePage() {
             {RAIN_OPTIONS.map((opt) => {
               const isSelected = form.rain_policy === opt.key;
               return (
-                <button
-                  key={opt.key}
-                  type="button"
+                <button key={opt.key} type="button"
                   onClick={() => setForm((prev) => ({ ...prev, rain_policy: opt.key }))}
-                  className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${
-                    isSelected
-                      ? "border-amber-400 bg-amber-50"
-                      : "border-slate-200 bg-slate-50 hover:border-amber-200"
-                  }`}
+                  className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${isSelected ? "border-amber-400 bg-amber-50" : "border-slate-200 bg-slate-50 hover:border-amber-200"}`}
                 >
                   <div>
-                    <p className={`text-sm font-semibold ${isSelected ? "text-amber-800" : "text-slate-700"}`}>
-                      {opt.label}
-                    </p>
+                    <p className={`text-sm font-semibold ${isSelected ? "text-amber-800" : "text-slate-700"}`}>{opt.label}</p>
                     <p className="text-xs text-slate-400">{opt.desc}</p>
                   </div>
                   {isSelected && <CheckCircle2 size={16} className="flex-shrink-0 text-amber-500" />}
@@ -248,92 +250,54 @@ export default function VendorStorePage() {
           <SectionHeader icon={CalendarDays} title="出店予定日" />
           <div className="mb-3 flex flex-wrap gap-2">
             {form.schedule.map((s) => (
-              <span
-                key={s}
-                className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-800"
-              >
+              <span key={s} className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-800">
                 {s}
-                <button
-                  type="button"
-                  onClick={() => removeSchedule(s)}
-                  className="text-sky-400 hover:text-sky-700"
-                >
+                <button type="button" onClick={() => removeSchedule(s)} className="text-sky-400 hover:text-sky-700">
                   <X size={12} />
                 </button>
               </span>
             ))}
-            {form.schedule.length === 0 && (
-              <span className="text-xs text-slate-400">出店日を追加してください</span>
-            )}
+            {form.schedule.length === 0 && <span className="text-xs text-slate-400">出店日を追加してください</span>}
           </div>
-          {/* プリセット選択 */}
           <div className="mb-2 flex flex-wrap gap-1.5">
             {WEEKDAY_OPTIONS.filter((w) => !form.schedule.includes(w)).map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => addSchedule(w)}
+              <button key={w} type="button" onClick={() => addSchedule(w)}
                 className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700"
               >
                 + {w}
               </button>
             ))}
           </div>
-          {/* カスタム入力 */}
           <div className="flex gap-2">
             <input
-              type="text"
-              value={newSchedule}
+              type="text" value={newSchedule}
               onChange={(e) => setNewSchedule(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addSchedule(newSchedule.trim());
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSchedule(newSchedule.trim()); } }}
               placeholder="その他の日程を入力..."
               className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300"
             />
-            <button
-              type="button"
-              onClick={() => addSchedule(newSchedule.trim())}
+            <button type="button" onClick={() => addSchedule(newSchedule.trim())}
               className="flex items-center gap-1 rounded-xl bg-sky-100 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-200"
             >
-              <Plus size={14} />
-              追加
+              <Plus size={14} />追加
             </button>
           </div>
         </div>
 
         {/* 保存ボタン */}
-        <button
-          type="submit"
-          disabled={isSaving}
+        <button type="submit" disabled={isSaving}
           className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-            isSaving
-              ? "cursor-not-allowed bg-slate-200 text-slate-400"
-              : isSaved
-              ? "bg-emerald-500 text-white"
-              : "bg-amber-500 text-white hover:bg-amber-400"
+            isSaving ? "cursor-not-allowed bg-slate-200 text-slate-400"
+            : isSaved  ? "bg-emerald-500 text-white"
+            : "bg-amber-500 text-white hover:bg-amber-400"
           }`}
         >
-          {isSaving ? (
-            <span className="animate-pulse">保存中...</span>
-          ) : isSaved ? (
-            <>
-              <CheckCircle2 size={18} />
-              保存しました！
-            </>
-          ) : (
-            <>
-              <Save size={18} />
-              変更を保存する
-            </>
-          )}
+          {isSaving ? <><Loader2 size={18} className="animate-spin" />保存中...</>
+          : isSaved  ? <><CheckCircle2 size={18} />保存しました！</>
+          : <><Save size={18} />変更を保存する</>}
         </button>
 
       </form>
-
       <NavigationBar />
     </div>
   );
