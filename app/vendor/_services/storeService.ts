@@ -1,11 +1,19 @@
 import { createClient } from "@/utils/supabase/client";
 import type { Store, PaymentMethod, RainPolicy } from "../_types";
 
+export type Category = { id: string; name: string };
+
+export async function fetchCategories(): Promise<Category[]> {
+  const supabase = createClient();
+  const { data } = await supabase.from("categories").select("id, name").order("name");
+  return (data as Category[]) ?? [];
+}
+
 export async function fetchVendorStore(vendorId: string): Promise<Store | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("vendors")
-    .select("id, shop_name, style, style_tags, main_products, payment_methods, rain_policy, schedule")
+    .select("id, shop_name, category_id, style, style_tags, main_products, payment_methods, rain_policy, schedule")
     .eq("id", vendorId)
     .single();
 
@@ -28,6 +36,7 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
     id: data.id,
     vendor_id: data.id,
     name: data.shop_name ?? "",
+    category_id: (data.category_id as string) ?? "",
     style: (data.style as string) ?? "",
     style_tags: (data.style_tags as string[]) ?? [],
     main_products: mainProducts,
@@ -46,6 +55,7 @@ export async function saveVendorStore(
     .from("vendors")
     .update({
       shop_name: store.name,
+      category_id: store.category_id || null,
       style: store.style,
       style_tags: store.style_tags,
       main_products: store.main_products,

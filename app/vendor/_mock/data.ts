@@ -62,6 +62,7 @@ export const MOCK_STORE: Store = {
   id: "store-1",
   vendor_id: "vendor-1",
   name: "山田農園",
+  category_id: "",
   style: "",
   style_tags: ["午前中心に出店"],
   main_products: ["野菜", "果物", "手作りジャム"],
