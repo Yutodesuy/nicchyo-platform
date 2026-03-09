@@ -1,33 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, CalendarCheck2, Store } from "lucide-react";
+import { Megaphone, CalendarCheck2, Store, FileText } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS = [
   {
     title: "最新情報の発信",
-    description: "お知らせ・今日のおすすめ",
-    href: "/my-shop/contents",
+    description: "今日のおすすめ・残り数量など",
+    href: "/vendor/post/new",
     accent: "from-amber-500/40 via-amber-100/70 to-white",
     icon: Megaphone,
     badge: "お知らせ",
     image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
-    title: "スケジュールの登録",
-    description: "出店日・営業時間",
-    href: "/my-shop/schedule",
+    title: "投稿履歴",
+    description: "過去の投稿を確認・再投稿",
+    href: "/vendor/posts",
     accent: "from-sky-400/40 via-sky-100/70 to-white",
-    icon: CalendarCheck2,
-    badge: "営業",
+    icon: FileText,
+    badge: "履歴",
     image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "出店情報の更新",
-    description: "商品・写真・紹介文",
-    href: "/my-shop/detail",
+    description: "商品・決済方法・出店日",
+    href: "/vendor/store",
     accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
     badge: "基本情報",
