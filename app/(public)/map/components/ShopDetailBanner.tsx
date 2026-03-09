@@ -617,8 +617,8 @@ export default function ShopDetailBanner({
                   )}
                   {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
                     <p className="mt-2 text-xl text-slate-700">
-                      {shop.rainPolicy === "outdoor" && "🌧 屋外（雨天決行）"}
-                      {shop.rainPolicy === "tent" && "⛺ テント設置"}
+                      {shop.rainPolicy === "outdoor" && "🌧 雨でも出店"}
+                      {shop.rainPolicy === "tent" && "⛺ 雨でも出店（テント）"}
                       {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
                     </p>
                   )}
