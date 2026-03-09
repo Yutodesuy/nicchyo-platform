@@ -32,7 +32,9 @@ interface OptimizedShopLayerWithClusteringProps {
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
-const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
+// アンカーをアイコン底部に設定。full/mid モード（anchor=[30,50] for 60px）と
+// 基準点を揃えることで、ズーム切替時にマーカーが跳ばないようにする。
+const COMPACT_ICON_ANCHOR: [number, number] = [12, 36];
 const COMPACT_ICON_MAX_ZOOM = 17.5;
 const MID_ICON_MAX_ZOOM = 18.0;
 
