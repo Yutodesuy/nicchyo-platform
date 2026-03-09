@@ -20,6 +20,7 @@ export type Store = {
   id: string;
   vendor_id: string;
   name: string;
+  category_id: string;
   style: string;
   style_tags: string[];
   main_products: string[];

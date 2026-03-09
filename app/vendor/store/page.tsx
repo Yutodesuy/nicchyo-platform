@@ -4,7 +4,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fetchVendorStore, saveVendorStore } from "../_services/storeService";
+import { fetchVendorStore, saveVendorStore, fetchCategories } from "../_services/storeService";
+import type { Category } from "../_services/storeService";
 import type { PaymentMethod, RainPolicy, Store } from "../_types";
 import {
   ArrowLeft,
@@ -18,6 +19,7 @@ import {
   CalendarDays,
   Loader2,
   Tent,
+  Tag,
 } from "lucide-react";
 
 const PAYMENT_OPTIONS: { key: PaymentMethod; label: string; emoji: string }[] = [
@@ -50,7 +52,7 @@ const STYLE_PRESETS = [
 
 const EMPTY_STORE: Store = {
   id: "", vendor_id: "",
-  name: "", style: "", style_tags: [], main_products: [],
+  name: "", category_id: "", style: "", style_tags: [], main_products: [],
   payment_methods: [], rain_policy: "undecided", schedule: [],
 };
 
@@ -68,6 +70,7 @@ function SectionHeader({ icon: Icon, title }: { icon: typeof StoreIcon; title: s
 export default function VendorStorePage() {
   const { user } = useAuth();
   const [form, setForm]           = useState<Store>(EMPTY_STORE);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [newProduct, setNewProduct] = useState("");
   const [newStyleTag, setNewStyleTag] = useState("");
   const [newSchedule, setNewSchedule] = useState("");
@@ -75,6 +78,10 @@ export default function VendorStorePage() {
   const [isSaving, setIsSaving]   = useState(false);
   const [isSaved, setIsSaved]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCategories().then(setCategories);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -95,6 +102,7 @@ export default function VendorStorePage() {
     try {
       await saveVendorStore(user.id, {
         name: form.name,
+        category_id: form.category_id,
         style: form.style,
         style_tags: form.style_tags,
         main_products: form.main_products,
@@ -195,6 +203,34 @@ export default function VendorStorePage() {
             placeholder="例：山田農園"
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
           />
+        </div>
+
+        {/* 商品ジャンル */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={Tag} title="商品ジャンル" />
+          <div className="grid grid-cols-2 gap-2">
+            {categories.map((cat) => {
+              const isSelected = form.category_id === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, category_id: isSelected ? "" : cat.id }))}
+                  className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition ${
+                    isSelected
+                      ? "border-amber-400 bg-amber-50 text-amber-800"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-200"
+                  }`}
+                >
+                  {cat.name}
+                  {isSelected && <CheckCircle2 size={14} className="flex-shrink-0 text-amber-500" />}
+                </button>
+              );
+            })}
+          </div>
+          {categories.length === 0 && (
+            <p className="text-xs text-slate-400">カテゴリーを読み込み中...</p>
+          )}
         </div>
 
         {/* 出店スタイル */}
