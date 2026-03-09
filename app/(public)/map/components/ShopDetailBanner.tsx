@@ -458,6 +458,36 @@ export default function ShopDetailBanner({
           </div>
         </div>
 
+        {/* 今日のお知らせ（出店者投稿） */}
+        {!isKotodute && shop.activePost && (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+            <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-2.5">
+              <span className="text-base">📢</span>
+              <span className="text-sm font-semibold text-amber-700">今日のお知らせ</span>
+              <span className="ml-auto text-xs text-amber-500">
+                {(() => {
+                  const diff = new Date(shop.activePost.expiresAt).getTime() - Date.now();
+                  if (diff <= 0) return "期限切れ";
+                  const h = Math.floor(diff / 3600000);
+                  const m = Math.floor((diff % 3600000) / 60000);
+                  return h > 0 ? `あと${h}時間` : `あと${m}分`;
+                })()}
+              </span>
+            </div>
+            {shop.activePost.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={shop.activePost.imageUrl}
+                alt="お知らせ画像"
+                className="h-40 w-full object-cover"
+              />
+            )}
+            <p className="whitespace-pre-wrap px-4 py-3 text-lg leading-relaxed text-slate-800">
+              {shop.activePost.text}
+            </p>
+          </div>
+        )}
+
         {!isKotodute && (
           <div className="mt-6 divide-y divide-slate-200">
             <section className="py-8 text-xl text-slate-700">
@@ -565,13 +595,64 @@ export default function ShopDetailBanner({
           </section>
 
           <section className="py-10 text-slate-800">
-            <div className="space-y-10 text-2xl">
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">出店スタイル</p>
-                <p className="mt-2 text-2xl text-slate-700">
-                  {shop.stallStyle ?? shop.schedule}
-                </p>
-              </div>
+            <div className="space-y-8">
+              {/* 出店スタイル */}
+              {(shop.stallStyle || shop.schedule) && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル・出店予定日</p>
+                  {shop.stallStyle && (
+                    <p className="mt-2 text-2xl text-slate-700">{shop.stallStyle}</p>
+                  )}
+                  {shop.schedule && (
+                    <p className="mt-1 text-xl text-slate-600">{shop.schedule}</p>
+                  )}
+                </div>
+              )}
+
+              {/* 雨天時対応 */}
+              {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">雨天時対応</p>
+                  <p className="mt-2 text-xl text-slate-700">
+                    {shop.rainPolicy === "outdoor" && "🌧 屋外（雨天決行）"}
+                    {shop.rainPolicy === "tent" && "⛺ テント設置"}
+                    {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
+                  </p>
+                </div>
+              )}
+
+              {/* 決済方法 */}
+              {(shop.paymentMethods ?? []).length > 0 && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">決済方法</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(shop.paymentMethods ?? []).map((method) => {
+                      const labels: Record<string, string> = {
+                        cash: "💴 現金",
+                        card: "💳 カード",
+                        paypay: "📱 PayPay",
+                        ic: "🚃 交通系IC",
+                      };
+                      return (
+                        <span
+                          key={method}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700"
+                        >
+                          {labels[method] ?? method}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 何も設定されていない場合のフォールバック */}
+              {!shop.stallStyle && !shop.schedule && !shop.rainPolicy && (shop.paymentMethods ?? []).length === 0 && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                  <p className="mt-2 text-2xl text-slate-400">—</p>
+                </div>
+              )}
             </div>
           </section>
 
