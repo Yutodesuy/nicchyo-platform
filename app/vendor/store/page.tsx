@@ -28,10 +28,9 @@ const PAYMENT_OPTIONS: { key: PaymentMethod; label: string; emoji: string }[] = 
 ];
 
 const RAIN_OPTIONS: { key: RainPolicy; label: string; desc: string }[] = [
-  { key: "outdoor",  label: "屋外（雨天決行）", desc: "雨でも通常通り出店" },
-  { key: "tent",     label: "テント設置",       desc: "テントで対応" },
-  { key: "cancel",   label: "雨天中止",         desc: "雨天時は出店しない" },
-  { key: "undecided",label: "当日判断",          desc: "SNSで告知" },
+  { key: "outdoor",  label: "雨でも出店",              desc: "雨天でも通常通り出店" },
+  { key: "cancel",   label: "雨天中止",                desc: "雨天時は出店しない" },
+  { key: "undecided",label: "当日判断（SNSで告知）",   desc: "当日SNSで告知" },
 ];
 
 const WEEKDAY_OPTIONS = [
@@ -70,6 +69,7 @@ export default function VendorStorePage() {
   const { user } = useAuth();
   const [form, setForm]           = useState<Store>(EMPTY_STORE);
   const [newProduct, setNewProduct] = useState("");
+  const [newStyleTag, setNewStyleTag] = useState("");
   const [newSchedule, setNewSchedule] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving]   = useState(false);
@@ -118,6 +118,17 @@ export default function VendorStorePage() {
         ? prev.payment_methods.filter((m) => m !== method)
         : [...prev.payment_methods, method],
     }));
+  }
+
+  function addStyleTag(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed || form.style_tags.includes(trimmed)) return;
+    setForm((prev) => ({ ...prev, style_tags: [...prev.style_tags, trimmed] }));
+    setNewStyleTag("");
+  }
+
+  function removeStyleTag(tag: string) {
+    setForm((prev) => ({ ...prev, style_tags: prev.style_tags.filter((t) => t !== tag) }));
   }
 
   function addProduct() {
@@ -194,39 +205,47 @@ export default function VendorStorePage() {
             {form.style_tags.map((tag) => (
               <span key={tag} className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
                 {tag}
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, style_tags: prev.style_tags.filter((t) => t !== tag) }))}
-                  className="text-amber-400 hover:text-amber-700"
-                >
+                <button type="button" onClick={() => removeStyleTag(tag)} className="text-amber-400 hover:text-amber-700">
                   <X size={12} />
                 </button>
               </span>
             ))}
             {form.style_tags.length === 0 && (
-              <span className="text-xs text-slate-400">タグを選択してください</span>
+              <span className="text-xs text-slate-400">スタイルを追加してください</span>
             )}
           </div>
-          {/* プリセット選択肢 */}
-          <div className="mb-4 flex flex-wrap gap-1.5">
+          {/* クイック選択 */}
+          <div className="mb-2 flex flex-wrap gap-1.5">
             {STYLE_PRESETS.filter((p) => !form.style_tags.includes(p)).map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setForm((prev) => ({ ...prev, style_tags: [...prev.style_tags, preset] }))}
-                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+              <button key={preset} type="button" onClick={() => addStyleTag(preset)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
               >
                 + {preset}
               </button>
             ))}
           </div>
+          {/* カスタム入力 */}
+          <div className="flex gap-2">
+            <input
+              type="text" value={newStyleTag}
+              onChange={(e) => setNewStyleTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStyleTag(newStyleTag); } }}
+              placeholder="その他のスタイルを入力..."
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300"
+            />
+            <button type="button" onClick={() => addStyleTag(newStyleTag)}
+              className="flex items-center gap-1 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200"
+            >
+              <Plus size={14} />追加
+            </button>
+          </div>
           {/* 自由記述 */}
           <textarea
             value={form.style}
             onChange={(e) => setForm((prev) => ({ ...prev, style: e.target.value }))}
-            placeholder="例：午前中心に出店。試食もご用意しています。（自由記述）"
-            rows={3}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 resize-none"
+            placeholder="一言コメント（例：試食あり・数量限定など）"
+            rows={2}
+            className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 resize-none"
           />
         </div>
 
