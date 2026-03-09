@@ -17,6 +17,7 @@ import {
   CloudRain,
   CalendarDays,
   Loader2,
+  Tent,
 } from "lucide-react";
 
 const PAYMENT_OPTIONS: { key: PaymentMethod; label: string; emoji: string }[] = [
@@ -39,9 +40,18 @@ const WEEKDAY_OPTIONS = [
   "第2・第4土曜日", "不定期",
 ];
 
+const STYLE_PRESETS = [
+  "午前中心に出店",
+  "午後中心に出店",
+  "終日出店",
+  "雑談歓迎",
+  "試食あり",
+  "常設ブース",
+];
+
 const EMPTY_STORE: Store = {
   id: "", vendor_id: "",
-  name: "", main_products: [],
+  name: "", style: "", main_products: [],
   payment_methods: [], rain_policy: "undecided", schedule: [],
 };
 
@@ -85,6 +95,7 @@ export default function VendorStorePage() {
     try {
       await saveVendorStore(user.id, {
         name: form.name,
+        style: form.style,
         main_products: form.main_products,
         payment_methods: form.payment_methods,
         rain_policy: form.rain_policy,
@@ -172,6 +183,47 @@ export default function VendorStorePage() {
             placeholder="例：山田農園"
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
           />
+        </div>
+
+        {/* 出店スタイル */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={Tent} title="出店スタイル" />
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {STYLE_PRESETS.map((preset) => {
+              const isActive = form.style.includes(preset);
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    setForm((prev) => {
+                      if (isActive) {
+                        const next = prev.style.replace(preset, "").replace(/。{2,}/g, "。").replace(/^。|。$/g, "").trim();
+                        return { ...prev, style: next };
+                      }
+                      const sep = prev.style && !prev.style.endsWith("。") ? "。" : "";
+                      return { ...prev, style: (prev.style + sep + preset).trim() };
+                    });
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    isActive
+                      ? "border-amber-400 bg-amber-50 text-amber-800"
+                      : "border-slate-200 bg-slate-50 text-slate-600 hover:border-amber-200 hover:bg-amber-50"
+                  }`}
+                >
+                  {isActive ? "✓ " : "+ "}{preset}
+                </button>
+              );
+            })}
+          </div>
+          <textarea
+            value={form.style}
+            onChange={(e) => setForm((prev) => ({ ...prev, style: e.target.value }))}
+            placeholder="例：午前中心に出店。試食もご用意しています。"
+            rows={3}
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 resize-none"
+          />
+          <p className="mt-1.5 text-xs text-slate-400">プリセットを選んで編集したり、自由に入力できます</p>
         </div>
 
         {/* 主な商品 */}
