@@ -596,28 +596,28 @@ export default function ShopDetailBanner({
 
           <section className="py-10 text-slate-800">
             <div className="space-y-8">
-              {/* 出店スタイル */}
-              {(shop.stallStyle || shop.schedule) && (
+              {/* 出店スタイル・出店予定日・雨天時対応 */}
+              {(shop.stallStyle || shop.schedule || (shop.rainPolicy && shop.rainPolicy !== "undecided")) ? (
                 <div>
-                  <p className="text-base font-semibold text-slate-500">出店スタイル・出店予定日</p>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
                   {shop.stallStyle && (
                     <p className="mt-2 text-2xl text-slate-700">{shop.stallStyle}</p>
                   )}
                   {shop.schedule && (
                     <p className="mt-1 text-xl text-slate-600">{shop.schedule}</p>
                   )}
+                  {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
+                    <p className="mt-2 text-xl text-slate-700">
+                      {shop.rainPolicy === "outdoor" && "🌧 屋外（雨天決行）"}
+                      {shop.rainPolicy === "tent" && "⛺ テント設置"}
+                      {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
+                    </p>
+                  )}
                 </div>
-              )}
-
-              {/* 雨天時対応 */}
-              {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
+              ) : (
                 <div>
-                  <p className="text-base font-semibold text-slate-500">雨天時対応</p>
-                  <p className="mt-2 text-xl text-slate-700">
-                    {shop.rainPolicy === "outdoor" && "🌧 屋外（雨天決行）"}
-                    {shop.rainPolicy === "tent" && "⛺ テント設置"}
-                    {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
-                  </p>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                  <p className="mt-2 text-2xl text-slate-400">—</p>
                 </div>
               )}
 
@@ -643,14 +643,6 @@ export default function ShopDetailBanner({
                       );
                     })}
                   </div>
-                </div>
-              )}
-
-              {/* 何も設定されていない場合のフォールバック */}
-              {!shop.stallStyle && !shop.schedule && !shop.rainPolicy && (shop.paymentMethods ?? []).length === 0 && (
-                <div>
-                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
-                  <p className="mt-2 text-2xl text-slate-400">—</p>
                 </div>
               )}
             </div>

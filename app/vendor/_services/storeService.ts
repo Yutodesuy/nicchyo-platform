@@ -11,11 +11,24 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
 
   if (error || !data) return null;
 
+  let mainProducts = (data.main_products as string[]) ?? [];
+
+  // main_products が未設定の場合は products テーブルからフォールバック取得
+  if (mainProducts.length === 0) {
+    const { data: productsData } = await supabase
+      .from("products")
+      .select("name")
+      .eq("vendor_id", vendorId);
+    if (productsData && productsData.length > 0) {
+      mainProducts = productsData.map((p: { name: string }) => p.name).filter(Boolean);
+    }
+  }
+
   return {
     id: data.id,
     vendor_id: data.id,
     name: data.shop_name ?? "",
-    main_products: (data.main_products as string[]) ?? [],
+    main_products: mainProducts,
     payment_methods: ((data.payment_methods as string[]) ?? []) as PaymentMethod[],
     rain_policy: ((data.rain_policy as string) ?? "undecided") as RainPolicy,
     schedule: (data.schedule as string[]) ?? [],
