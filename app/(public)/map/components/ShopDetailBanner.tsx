@@ -597,11 +597,20 @@ export default function ShopDetailBanner({
           <section className="py-10 text-slate-800">
             <div className="space-y-8">
               {/* 出店スタイル・出店予定日・雨天時対応 */}
-              {(shop.stallStyle || shop.schedule || (shop.rainPolicy && shop.rainPolicy !== "undecided")) ? (
+              {(shop.stallStyleTags?.length || shop.stallStyle || shop.schedule || (shop.rainPolicy && shop.rainPolicy !== "undecided")) ? (
                 <div>
                   <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                  {(shop.stallStyleTags ?? []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(shop.stallStyleTags ?? []).map((tag) => (
+                        <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {shop.stallStyle && (
-                    <p className="mt-2 text-2xl text-slate-700">{shop.stallStyle}</p>
+                    <p className="mt-2 text-xl text-slate-700">{shop.stallStyle}</p>
                   )}
                   {shop.schedule && (
                     <p className="mt-1 text-xl text-slate-600">{shop.schedule}</p>
