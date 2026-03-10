@@ -3,9 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { isInsideSundayMarket, convertGpsToIllustration, snapToRoadCenter } from '../config/roadConfig';
+import { isInsideSundayMarket } from '../config/roadConfig';
 
-const MARKET_CENTER: [number, number] = [33.55915, 133.53100];
+const MARKET_CENTER: [number, number] = [33.5614118, 133.5379706];
 
 const UPDATE_INTERVAL_IN_MARKET_MS = 1000;
 const UPDATE_INTERVAL_OUTSIDE_MS = 15000;
@@ -242,12 +242,10 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
           lastUpdateRef.current = now;
           lastAccuracyRef.current = accuracy;
 
-          // 実際のGPS座標を道路イラスト上の座標に変換し、道路中央にスナップ
+          // 実GPS座標をそのまま使用（DB座標系と一致させる）
           let displayPosition: [number, number];
           if (inMarket) {
-            const converted = convertGpsToIllustration(latitude, longitude);
-            const snapped = snapToRoadCenter(converted.lat, converted.lng);
-            displayPosition = [snapped.lat, snapped.lng];
+            displayPosition = [latitude, longitude];
           } else {
             displayPosition = MARKET_CENTER;
           }
