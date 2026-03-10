@@ -321,6 +321,8 @@ type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 12;
 const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 18;
 const PAN_START_THRESHOLD_PX = 3;
+const SKIPPED_ZOOM_LEVELS = [18];
+const SKIPPED_ZOOM_TOLERANCE = 0.01;
 
 function getTouchDistance(
   t0: { clientX: number; clientY: number },
@@ -402,6 +404,36 @@ function MapAutoRotationController({
     onAutoRotationChange,
     onResumeFromManualPause,
   ]);
+
+  return null;
+}
+
+function MapZoomConstraint() {
+  const map = useMap();
+
+  useEffect(() => {
+    let lastAcceptedZoom = map.getZoom();
+
+    const handleZoomEnd = () => {
+      const zoom = map.getZoom();
+      const skippedZoom = SKIPPED_ZOOM_LEVELS.find(
+        (level) => Math.abs(zoom - level) <= SKIPPED_ZOOM_TOLERANCE
+      );
+      if (skippedZoom !== undefined) {
+        const targetZoom =
+          lastAcceptedZoom > zoom ? skippedZoom - 1 : skippedZoom + 1;
+        map.setZoom(targetZoom, { animate: false });
+        lastAcceptedZoom = targetZoom;
+        return;
+      }
+      lastAcceptedZoom = zoom;
+    };
+
+    map.on("zoomend", handleZoomEnd);
+    return () => {
+      map.off("zoomend", handleZoomEnd);
+    };
+  }, [map]);
 
   return null;
 }
@@ -1080,6 +1112,7 @@ const MapView = memo(function MapView({
             onAutoRotationChange={handleAutoRotationChange}
             onResumeFromManualPause={handleResumeFromManualPause}
           />
+          <MapZoomConstraint />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
           <TileLayer
             url={BASEMAP_TILE_URL}

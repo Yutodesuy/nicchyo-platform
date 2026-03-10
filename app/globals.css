@@ -349,8 +349,8 @@ body.grandma-chat-open .leaflet-container {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 86px;
-  height: 52px;
+  width: 43px;
+  height: 26px;
   padding: 0;
   box-sizing: border-box;
   border-radius: 9999px;
@@ -363,16 +363,17 @@ body.grandma-chat-open .leaflet-container {
   pointer-events: none;
   overflow: hidden;
   display: none;
+  z-index: 30;
 }
 
-.shop-product-icon-left {
-  left: -10px;
-  transform: translate(-100%, -50%);
+.shop-side-north .shop-product-icon {
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-.shop-product-icon-right {
-  left: calc(100% + 10px);
-  transform: translate(0, -50%);
+.shop-side-south .shop-product-icon {
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .shop-product-icon-visible .shop-product-icon {
