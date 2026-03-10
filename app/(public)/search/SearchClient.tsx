@@ -13,6 +13,7 @@ import SearchDiscovery from './components/SearchDiscovery';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
 import ShopDetailBanner from '../map/components/ShopDetailBanner';
 import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
+import { recordProductSearch } from '@/app/vendor/_services/analyticsService';
 
 /**
  * 店舗検索メインコンポーネント
@@ -83,6 +84,16 @@ export default function SearchClient({ shops }: SearchClientProps) {
       setCategory(null);
     }
   }, []);
+
+  // 検索キーワードをDBにログ（1秒デバウンス、2文字以上かつ結果あり）
+  useEffect(() => {
+    const kw = textQuery.trim();
+    if (kw.length < 2 || filteredShops.length === 0) return;
+    const timer = setTimeout(() => {
+      recordProductSearch(kw, filteredShops.length).catch(() => {/* ignore */});
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [textQuery, filteredShops.length]);
 
   // 検索クエリが入力されているか
   const hasQuery = textQuery.trim() !== '' || category !== null || selectedChome !== null;

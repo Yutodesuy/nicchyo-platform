@@ -61,3 +61,9 @@ export type SearchSourceRatio = {
   onSite: number;    // source = "map"（現地）
   other: number;     // source = "direct" など
 };
+
+export type SearchKeywordTrend = {
+  keyword: string;
+  count: number;
+  matchesMyProducts: boolean;
+};
