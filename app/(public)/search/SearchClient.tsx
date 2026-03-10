@@ -85,10 +85,10 @@ export default function SearchClient({ shops }: SearchClientProps) {
     }
   }, []);
 
-  // 検索キーワードをDBにログ（1秒デバウンス、2文字以上かつ結果あり）
+  // 検索キーワードをDBにログ（1秒デバウンス、2文字以上）
   useEffect(() => {
     const kw = textQuery.trim();
-    if (kw.length < 2 || filteredShops.length === 0) return;
+    if (kw.length < 2) return;
     const timer = setTimeout(() => {
       recordProductSearch(kw, filteredShops.length).catch(() => {/* ignore */});
     }, 1000);

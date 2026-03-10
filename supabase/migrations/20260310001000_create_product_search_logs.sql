@@ -14,6 +14,12 @@ on public.product_search_logs
 for insert
 with check (true);
 
+-- 認証済みユーザー（出店者）はトレンド集計のために全件読み取り可能
+create policy "authenticated users can read search logs"
+on public.product_search_logs
+for select
+using (auth.role() = 'authenticated');
+
 -- インデックス（集計クエリの高速化）
 create index if not exists idx_product_search_logs_keyword on public.product_search_logs (keyword);
 create index if not exists idx_product_search_logs_searched_at on public.product_search_logs (searched_at);
