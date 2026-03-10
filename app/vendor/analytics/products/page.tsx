@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fetchAllProductSales } from "../../_services/analyticsService";
-import type { ProductSale } from "../../_types";
-import { ArrowLeft, Medal, Loader2 } from "lucide-react";
+import { fetchAllProductSales, fetchProductSearchTrends } from "../../_services/analyticsService";
+import type { ProductSale, SearchKeywordTrend } from "../../_types";
+import { ArrowLeft, Medal, Loader2, TrendingUp, Flame } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -27,12 +27,16 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 export default function ProductAnalyticsPage() {
   const { user } = useAuth();
   const [sales, setSales] = useState<ProductSale[]>([]);
+  const [searchTrends, setSearchTrends] = useState<SearchKeywordTrend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    fetchAllProductSales(user.id)
-      .then(setSales)
+    fetchAllProductSales(user.id).then((s) => {
+      setSales(s);
+      const myNames = [...new Set(s.map((item) => item.product_name))];
+      return fetchProductSearchTrends(myNames);
+    }).then(setSearchTrends)
       .finally(() => setIsLoading(false));
   }, [user]);
 
@@ -114,6 +118,51 @@ export default function ProductAnalyticsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </>
+              )}
+            </div>
+
+            {/* 商品需要分析（検索ベース） */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-500">
+                  <TrendingUp size={14} />
+                </div>
+                <h2 className="text-sm font-semibold text-slate-700">商品需要分析（検索ベース）</h2>
+              </div>
+              <p className="mb-3 text-[10px] text-slate-400">過去7日間にユーザーが検索したキーワード上位</p>
+              {searchTrends.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">検索データがまだ蓄積されていません</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {searchTrends.map((item, i) => {
+                    const maxCount = searchTrends[0].count;
+                    const pct = Math.round((item.count / maxCount) * 100);
+                    return (
+                      <div key={item.keyword} className="flex items-center gap-3">
+                        <span className="w-4 flex-shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium text-slate-700">{item.keyword}</span>
+                              {item.matchesMyProducts && (
+                                <span className="flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[9px] font-semibold text-rose-500">
+                                  <Flame size={9} />自店と一致
+                                </span>
+                              )}
+                            </div>
+                            <span className="flex-shrink-0 text-xs text-slate-500">{item.count}回</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={`h-full rounded-full transition-all ${item.matchesMyProducts ? "bg-rose-400" : "bg-slate-300"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 

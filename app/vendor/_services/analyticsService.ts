@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend, SearchSourceRatio } from "../_types";
+import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend, SearchSourceRatio, SearchKeywordTrend } from "../_types";
 
 // ─── ページビュー ───────────────────────────────────────────
 
@@ -177,5 +177,45 @@ export async function fetchMarketTrends(): Promise<MarketTrend[]> {
       product_name: name,
       total_quantity: total,
       vendor_count: vendors.size,
+    }));
+}
+
+// ─── 商品検索ログ ────────────────────────────────────────────
+
+export async function recordProductSearch(keyword: string, resultCount: number): Promise<void> {
+  const supabase = createClient();
+  await supabase.from("product_search_logs").insert({ keyword, result_count: resultCount });
+}
+
+export async function fetchProductSearchTrends(
+  myProductNames: string[]
+): Promise<SearchKeywordTrend[]> {
+  const supabase = createClient();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("product_search_logs")
+    .select("keyword")
+    .gte("searched_at", weekAgo);
+
+  if (!data) return [];
+
+  const countMap = new Map<string, number>();
+  for (const row of data) {
+    const kw = row.keyword.trim().toLowerCase();
+    if (kw.length < 2) continue;
+    countMap.set(kw, (countMap.get(kw) ?? 0) + 1);
+  }
+
+  const lowerProductNames = myProductNames.map((n) => n.toLowerCase());
+
+  return [...countMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([keyword, count]) => ({
+      keyword,
+      count,
+      matchesMyProducts: lowerProductNames.some(
+        (p) => p.includes(keyword) || keyword.includes(p)
+      ),
     }));
 }
