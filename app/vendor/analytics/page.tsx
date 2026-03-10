@@ -9,7 +9,7 @@ import type { VendorAnalytics, SearchSourceRatio } from "../_types";
 import {
   ArrowLeft, Eye, MousePointerClick, Search,
   BarChart2, Clock, ShoppingBag, TrendingUp,
-  ChevronRight, ArrowUp, ArrowDown, Loader2, MapPin, Navigation,
+  ChevronRight, ArrowUp, ArrowDown, Loader2, MapPin, Navigation, MessageCircle,
 } from "lucide-react";
 
 function DeltaBadge({ current, prev }: { current: number; prev: number }) {
@@ -25,9 +25,10 @@ function DeltaBadge({ current, prev }: { current: number; prev: number }) {
 }
 
 const SUB_PAGES = [
-  { href: "/vendor/analytics/time",     icon: Clock,       label: "時間帯分析",     desc: "来訪ピーク時間を確認",    color: "bg-sky-50 text-sky-600 border-sky-100" },
-  { href: "/vendor/analytics/products", icon: ShoppingBag, label: "商品分析",       desc: "自店の人気商品ランキング", color: "bg-amber-50 text-amber-600 border-amber-100" },
-  { href: "/vendor/analytics/input",    icon: TrendingUp,  label: "販売数量を入力", desc: "今日の売上データを記録",   color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+  { href: "/vendor/analytics/time",     icon: Clock,          label: "時間帯分析",           desc: "来訪ピーク時間を確認",            color: "bg-sky-50 text-sky-600 border-sky-100" },
+  { href: "/vendor/analytics/products", icon: ShoppingBag,    label: "商品分析",             desc: "自店の人気商品ランキング",          color: "bg-amber-50 text-amber-600 border-amber-100" },
+  { href: "/vendor/analytics/ai",       icon: MessageCircle,  label: "AIばあちゃん分析",     desc: "相談トピック・キーワード・紹介回数", color: "bg-rose-50 text-rose-500 border-rose-100" },
+  { href: "/vendor/analytics/input",    icon: TrendingUp,     label: "販売数量を入力",       desc: "今日の売上データを記録",            color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
 ];
 
 const EMPTY_ANALYTICS: VendorAnalytics = {
