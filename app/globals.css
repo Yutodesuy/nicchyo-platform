@@ -365,14 +365,14 @@ body.grandma-chat-open .leaflet-container {
   display: none;
 }
 
-.shop-side-north .shop-product-icon {
-  left: calc(100% + 8px);
-  transform: translate(0, -50%);
+.shop-product-icon-left {
+  left: -10px;
+  transform: translate(-100%, -50%);
 }
 
-.shop-side-south .shop-product-icon {
-  left: -8px;
-  transform: translate(-100%, -50%);
+.shop-product-icon-right {
+  left: calc(100% + 10px);
+  transform: translate(0, -50%);
 }
 
 .shop-product-icon-visible .shop-product-icon {
