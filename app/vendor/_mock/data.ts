@@ -66,6 +66,7 @@ export const MOCK_STORE: Store = {
   style: "",
   style_tags: ["午前中心に出店"],
   main_products: ["野菜", "果物", "手作りジャム"],
+  main_product_prices: { "野菜": 200, "果物": 300, "手作りジャム": 500 },
   payment_methods: ["cash", "paypay"],
   rain_policy: "tent",
   schedule: ["毎週日曜日", "第2・第4土曜日"],
