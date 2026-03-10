@@ -331,6 +331,27 @@ export async function POST(request: Request) {
         storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
       }
     }
+    // store_knowledge 未登録の場合、店舗登録情報をフォールバックとして使用
+    if (!storeKnowledgeContext) {
+      const fallbackShops = targetShop
+        ? [targetShop]
+        : matchIds.slice(0, 3).map((id) => allShops.find((s) => s.id === id)).filter((s): s is ShopRow => s != null);
+      const fallbackSnippets = fallbackShops
+        .map((shop) => {
+          const parts = [
+            shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
+            shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
+            shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
+            shop.schedule ? `出店予定: ${shop.schedule}` : null,
+            shop.message ? `メッセージ: ${shop.message}` : null,
+          ].filter(Boolean);
+          return parts.length > 0 ? parts.join("\n") : null;
+        })
+        .filter(Boolean);
+      if (fallbackSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${fallbackSnippets.join("\n---\n")}`;
+      }
+    }
     // ──────────────────────────────────────────────────────────
 
     if (targetShop) {
