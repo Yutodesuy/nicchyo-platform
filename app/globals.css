@@ -609,6 +609,19 @@ body.home-poster-zoom-open .hamburger-button {
   transform-origin: center center;
 }
 
+.major-place-label-pill.is-sunday-market {
+  padding: 5px 14px !important;
+  background: rgba(22, 163, 74, 0.96) !important;
+  border-color: rgba(21, 128, 61, 0.5) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 10px 24px rgba(21, 128, 61, 0.28),
+    0 2px 8px rgba(15, 23, 42, 0.16);
+}
+
 .map-building-tilted {
   transform: rotate(90deg);
   transform-origin: center;
