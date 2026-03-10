@@ -68,3 +68,21 @@ export type SearchKeywordTrend = {
   count: number;
   matchesMyProducts: boolean;
 };
+
+export type AiConsultTopic = {
+  category: string;
+  count: number;
+};
+
+export type AiKeyword = {
+  keyword: string;
+  count: number;
+};
+
+export type AiConsultAnalytics = {
+  topics: AiConsultTopic[];
+  keywords: AiKeyword[];
+  recommendationCount: number;
+  locationRatio: { preVisit: number; onSite: number };
+  totalCount: number;
+};

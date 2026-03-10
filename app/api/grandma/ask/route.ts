@@ -6,8 +6,45 @@ import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// ─── 日曜市エリア判定 ────────────────────────────────────────
+const MARKET_CENTER = { lat: 33.5650, lng: 133.5310 };
+const ON_SITE_RADIUS_KM = 0.5;
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+function classifyLocationType(location: { lat: number; lng: number } | null | undefined): "pre_visit" | "on_site" | "unknown" {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return "unknown";
+  return haversineKm(location, MARKET_CENTER) <= ON_SITE_RADIUS_KM ? "on_site" : "pre_visit";
+}
+
+function classifyIntent(question: string): string {
+  if (/人気|売れ|ランキング|売れ筋/.test(question)) return "人気商品";
+  if (/味|美味|うまい|おいし|甘|辛|酸っ|塩/.test(question)) return "味";
+  if (/行列|混|待ち|並ぶ|並び/.test(question)) return "行列";
+  if (/何時|営業|開店|閉店|時間|朝|終わ/.test(question)) return "営業時間";
+  if (/おすすめ|オススメ|いい|良い/.test(question)) return "おすすめ";
+  return "その他";
+}
+
+function extractKeywords(question: string): string[] {
+  const stopwords = /^(は|が|を|に|で|と|も|の|て|だ|な|や|か|から|まで|より|けど|ので|って|ね|よ|し|ている|てる|です|ます|ない|ある|いる|する|した|して|できる|ください|教え|知り|たい|たい|って)$/;
+  const tokens = question
+    .replace(/[、。！？\s]/g, " ")
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stopwords.test(t));
+  return [...new Set(tokens)].slice(0, 10);
+}
+
 type ShopRow = {
   id: number;
+  vendorId?: string;
   name: string | null;
   owner_name: string | null;
   chome: string | null;
@@ -146,6 +183,7 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
       id: shop.id,
+      vendorId: shop.vendorId,
       name: shop.name ?? null,
       owner_name: shop.ownerName ?? null,
       chome: shop.chome ?? null,
@@ -424,6 +462,37 @@ export async function POST(request: Request) {
     if (shopMatch) {
       reply = reply.replace(shopMatch[0], "").trim();
     }
+
+    // ─── AI相談ログを記録（fire-and-forget） ────────────────
+    const locationType = classifyLocationType(location);
+    const intentCategory = classifyIntent(rawQuestion);
+    const keywords = extractKeywords(rawQuestion);
+
+    const logTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) logTargetVendorIds.push(targetShop.vendorId);
+    if (logTargetVendorIds.length === 0 && uniqueRecommended.length > 0) {
+      uniqueRecommended.forEach((storeNum) => {
+        const shop = allShops.find((s) => s.id === storeNum);
+        if (shop?.vendorId) logTargetVendorIds.push(shop.vendorId);
+      });
+    }
+
+    if (logTargetVendorIds.length > 0) {
+      const logs = logTargetVendorIds.map((vendorId) => ({
+        store_id: vendorId,
+        question_text: rawQuestion || "(画像のみ)",
+        intent_category: intentCategory,
+        keywords,
+        location_type: locationType,
+        is_recommendation: uniqueRecommended.some((storeNum) => {
+          const s = allShops.find((sh) => sh.id === storeNum);
+          return s?.vendorId === vendorId;
+        }),
+      }));
+      supabase.from("ai_consult_logs").insert(logs).then(() => {});
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (!shopIntent || uniqueRecommended.length === 0) {
       return NextResponse.json({ reply, imageUrl });
     }
