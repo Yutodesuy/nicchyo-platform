@@ -20,6 +20,7 @@ type ShopRow = {
   shop_strength: string | null;
   lat: number | null;
   lng: number | null;
+  vendorId?: string | null;
 };
 
 type KnowledgeRow = {
@@ -158,6 +159,7 @@ export async function POST(request: Request) {
       shop_strength: shop.shopStrength ?? null,
       lat: shop.lat ?? null,
       lng: shop.lng ?? null,
+      vendorId: shop.vendorId ?? null,
     }));
 
     let targetShop: ShopRow | null = null;
@@ -298,6 +300,39 @@ export async function POST(request: Request) {
             })
             .join("\n")
         : "該当なし";
+    // ─── 出店者RAG知識を検索 ──────────────────────────────────
+    let storeKnowledgeContext = "";
+    const ragTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) ragTargetVendorIds.push(targetShop.vendorId);
+    if (ragTargetVendorIds.length === 0 && matchIds.length > 0) {
+      matchIds.slice(0, 3).forEach((storeNum) => {
+        const s = allShops.find((sh) => sh.id === storeNum);
+        if (s?.vendorId) ragTargetVendorIds.push(s.vendorId);
+      });
+    }
+    if (ragTargetVendorIds.length > 0 && embedding) {
+      const knowledgeResults = await Promise.all(
+        ragTargetVendorIds.map(async (vendorId) => {
+          const res = await supabase.rpc("match_store_knowledge", {
+            query_embedding: embedding,
+            target_store_id: vendorId,
+            match_count: 2,
+            match_threshold: 0.45,
+          });
+          return res as { data: { content: string; similarity: number }[] | null };
+        })
+      );
+      const knowledgeSnippets = knowledgeResults
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => b.similarity - a.similarity)
+        .map((r) => r.content)
+        .filter(Boolean);
+      if (knowledgeSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
+      }
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (targetShop) {
       shopIntent = true;
       const targetParts = [
@@ -361,7 +396,7 @@ export async function POST(request: Request) {
 
     const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
       location ? `${location.lat}, ${location.lng}` : "不明"
-    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`;
+    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}${storeKnowledgeContext}`;
     const userContent = imageDataUrl
       ? [
           { type: "text", text: `${userContextText}\n画像が添付されています。` },
