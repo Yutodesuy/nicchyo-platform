@@ -47,6 +47,9 @@ export interface ShopEditableData {
   /** 取扱商品リスト */
   products: string[];
 
+  /** 商品ごとの価格（任意） */
+  productPrices?: Record<string, number | null>;
+
   /** 商品ごとの詳細（任意） */
   productDetails?: {
     name: string;
