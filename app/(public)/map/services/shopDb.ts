@@ -7,7 +7,20 @@ type VendorRow = {
   owner_name: string | null;
   strength: string | null;
   style: string | null;
+  style_tags: string[] | null;
   category_id: string | null;
+  categories: { name: string | null }[] | { name: string | null } | null;
+  main_products: string[] | null;
+  payment_methods: string[] | null;
+  rain_policy: string | null;
+  schedule: string[] | null;
+};
+
+type ActiveContentRow = {
+  vendor_id: string | null;
+  body: string | null;
+  image_url: string | null;
+  expires_at: string;
 };
 
 type CategoryRow = {
@@ -34,34 +47,6 @@ type AssignmentRow = {
   market_date: string | null;
 };
 
-async function fetchAssignments(
-  supabase: SupabaseClient
-): Promise<AssignmentRow[]> {
-  const { data: marketAssignmentsData, error: marketAssignmentsError } =
-    await supabase
-      .from("market_assignments")
-      .select("vendor_id, location_id, market_date");
-
-  if (!marketAssignmentsError) {
-    return Array.isArray(marketAssignmentsData)
-      ? (marketAssignmentsData as AssignmentRow[])
-      : [];
-  }
-
-  const { data: locationAssignmentsData, error: locationAssignmentsError } =
-    await supabase
-      .from("location_assignments")
-      .select("vendor_id, location_id, market_date");
-
-  if (locationAssignmentsError) {
-    throw locationAssignmentsError;
-  }
-
-  return Array.isArray(locationAssignmentsData)
-    ? (locationAssignmentsData as AssignmentRow[])
-    : [];
-}
-
 const CHOME_VALUES = new Set([
   "一丁目",
   "二丁目",
@@ -87,17 +72,23 @@ export async function fetchShopsFromDb(
     { data: categoriesData },
     { data: productsData },
     { data: locationsData },
-    assignmentsData,
+    { data: assignmentsData },
+    { data: activeContentsData },
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, category_id"),
+      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, payment_methods, rain_policy, schedule"),
     supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
       .from("market_locations")
       .select("id, store_number, latitude, longitude, district"),
-    fetchAssignments(supabase),
+    supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
+    supabase
+      .from("vendor_contents")
+      .select("vendor_id, body, image_url, expires_at")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false }),
   ]);
 
   const vendors = Array.isArray(vendorsData)
@@ -112,7 +103,9 @@ export async function fetchShopsFromDb(
   const locations = Array.isArray(locationsData)
     ? (locationsData as LocationRow[])
     : [];
-  const assignments = assignmentsData;
+  const assignments = Array.isArray(assignmentsData)
+    ? (assignmentsData as AssignmentRow[])
+    : [];
 
   const categoryNameById = new Map<string, string>();
   categories.forEach((row) => {
@@ -127,6 +120,17 @@ export async function fetchShopsFromDb(
     const list = productsByVendor.get(row.vendor_id) ?? [];
     list.push(row.name);
     productsByVendor.set(row.vendor_id, list);
+  });
+
+  // 有効期限内の最新投稿を vendor_id ごとに1件取得
+  const activeContents = Array.isArray(activeContentsData)
+    ? (activeContentsData as ActiveContentRow[])
+    : [];
+  const activeContentByVendor = new Map<string, ActiveContentRow>();
+  activeContents.forEach((row) => {
+    if (row.vendor_id && !activeContentByVendor.has(row.vendor_id)) {
+      activeContentByVendor.set(row.vendor_id, row);
+    }
   });
 
   const locationById = new Map<string, LocationRow>();
@@ -161,20 +165,50 @@ export async function fetchShopsFromDb(
       const storeNumber = Number(location.store_number ?? 0);
       if (!Number.isFinite(storeNumber) || storeNumber <= 0) return null;
 
+      // JOIN で取得したカテゴリー名を優先、なければ Map フォールバック
+      const catRaw = vendor.categories;
+      const joinedCategoryName = Array.isArray(catRaw)
+        ? (catRaw[0]?.name ?? null)
+        : ((catRaw as { name: string | null } | null)?.name ?? null);
       const categoryName =
-        (vendor.category_id && categoryNameById.get(vendor.category_id)) || "";
+        joinedCategoryName ||
+        (vendor.category_id && categoryNameById.get(vendor.category_id)) ||
+        "";
+
+      // main_products が設定されていればそちらを優先、なければ products テーブルから
+      const displayProducts =
+        (vendor.main_products ?? []).length > 0
+          ? (vendor.main_products as string[])
+          : (productsByVendor.get(vendor.id) ?? []);
+
+      // 出店予定日: text[] を '、' で結合
+      const scheduleStr = (vendor.schedule ?? []).join("、");
+
+      // 有効期限内の最新投稿
+      const content = activeContentByVendor.get(vendor.id);
+      const activePost = content
+        ? {
+            text: content.body ?? "",
+            imageUrl: content.image_url ?? undefined,
+            expiresAt: content.expires_at,
+          }
+        : undefined;
 
       return {
         id: storeNumber,
         name: vendor.shop_name ?? "",
         ownerName: vendor.owner_name ?? "",
         category: categoryName,
-        products: productsByVendor.get(vendor.id) ?? [],
+        products: displayProducts,
         description: "",
         stallStyle: vendor.style ?? undefined,
-        schedule: "",
+        stallStyleTags: (vendor.style_tags ?? []).length > 0 ? (vendor.style_tags as string[]) : undefined,
+        schedule: scheduleStr,
         message: undefined,
         shopStrength: vendor.strength ?? undefined,
+        paymentMethods: (vendor.payment_methods ?? []) as string[],
+        rainPolicy: vendor.rain_policy ?? undefined,
+        activePost,
         position: storeNumber,
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),
