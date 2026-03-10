@@ -1,42 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, CalendarCheck2, Store } from "lucide-react";
+import { Megaphone, Store, FileText, LogOut, BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS = [
   {
     title: "最新情報の発信",
-    description: "お知らせ・今日のおすすめ",
-    href: "/my-shop/contents",
+    description: "今日のおすすめ・残り数量など",
+    href: "/vendor/post/new",
     accent: "from-amber-500/40 via-amber-100/70 to-white",
     icon: Megaphone,
     badge: "お知らせ",
     image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
-    title: "スケジュールの登録",
-    description: "出店日・営業時間",
-    href: "/my-shop/schedule",
+    title: "投稿履歴",
+    description: "過去の投稿を確認・再投稿",
+    href: "/vendor/posts",
     accent: "from-sky-400/40 via-sky-100/70 to-white",
-    icon: CalendarCheck2,
-    badge: "営業",
+    icon: FileText,
+    badge: "履歴",
     image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "出店情報の更新",
-    description: "商品・写真・紹介文",
-    href: "/my-shop/detail",
+    description: "商品・決済方法・出店日",
+    href: "/vendor/store",
     accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
     badge: "基本情報",
     image: "/images/home/posters/HomePagePoster2.png",
   },
+  {
+    title: "アナリティクス",
+    description: "閲覧数・人気商品・時間帯分析",
+    href: "/vendor/analytics",
+    accent: "from-violet-400/40 via-violet-100/70 to-white",
+    icon: BarChart2,
+    badge: "分析",
+    image: "/images/home/posters/HomePagePoster6.jpeg",
+  },
 ];
 
 export default function MyShopPage() {
-  const { isLoggedIn, permissions } = useAuth();
+  const { isLoggedIn, permissions, logout } = useAuth();
   const canAccess = isLoggedIn;
 
   return (
@@ -49,6 +58,17 @@ export default function MyShopPage() {
           <h1 className="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
             出店者メニュー
           </h1>
+          {isLoggedIn && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={logout}
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+              >
+                <LogOut size={12} />
+                ログアウト
+              </button>
+            </div>
+          )}
         </div>
 
         {!canAccess ? (
