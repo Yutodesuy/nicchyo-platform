@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend } from "../_types";
+import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend, SearchSourceRatio } from "../_types";
 
 // ─── ページビュー ───────────────────────────────────────────
 
@@ -134,6 +134,23 @@ export async function saveTodayProductSales(
     }))
   );
   if (error) throw error;
+}
+
+export async function fetchSearchSourceRatio(vendorId: string): Promise<SearchSourceRatio> {
+  const supabase = createClient();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("shop_page_views")
+    .select("source")
+    .eq("vendor_id", vendorId)
+    .gte("viewed_at", weekAgo);
+  const counts: SearchSourceRatio = { preVisit: 0, onSite: 0, other: 0 };
+  for (const row of data ?? []) {
+    if (row.source === "search") counts.preVisit++;
+    else if (row.source === "map") counts.onSite++;
+    else counts.other++;
+  }
+  return counts;
 }
 
 export async function fetchMarketTrends(): Promise<MarketTrend[]> {

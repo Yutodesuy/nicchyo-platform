@@ -4,12 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fetchVendorAnalytics } from "../_services/analyticsService";
-import type { VendorAnalytics } from "../_types";
+import { fetchVendorAnalytics, fetchSearchSourceRatio } from "../_services/analyticsService";
+import type { VendorAnalytics, SearchSourceRatio } from "../_types";
 import {
   ArrowLeft, Eye, MousePointerClick, Search,
   BarChart2, Clock, ShoppingBag, TrendingUp,
-  ChevronRight, ArrowUp, ArrowDown, Loader2,
+  ChevronRight, ArrowUp, ArrowDown, Loader2, MapPin, Navigation,
 } from "lucide-react";
 
 function DeltaBadge({ current, prev }: { current: number; prev: number }) {
@@ -25,9 +25,9 @@ function DeltaBadge({ current, prev }: { current: number; prev: number }) {
 }
 
 const SUB_PAGES = [
-  { href: "/vendor/analytics/time",     icon: Clock,       label: "時間帯分析",     desc: "来訪ピーク時間を確認",        color: "bg-sky-50 text-sky-600 border-sky-100" },
-  { href: "/vendor/analytics/products", icon: ShoppingBag, label: "商品分析",       desc: "人気商品ランキング・市場トレンド", color: "bg-amber-50 text-amber-600 border-amber-100" },
-  { href: "/vendor/analytics/input",    icon: TrendingUp,  label: "販売数量を入力", desc: "今日の売上データを記録",       color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+  { href: "/vendor/analytics/time",     icon: Clock,       label: "時間帯分析",     desc: "来訪ピーク時間を確認",    color: "bg-sky-50 text-sky-600 border-sky-100" },
+  { href: "/vendor/analytics/products", icon: ShoppingBag, label: "商品分析",       desc: "自店の人気商品ランキング", color: "bg-amber-50 text-amber-600 border-amber-100" },
+  { href: "/vendor/analytics/input",    icon: TrendingUp,  label: "販売数量を入力", desc: "今日の売上データを記録",   color: "bg-emerald-50 text-emerald-600 border-emerald-100" },
 ];
 
 const EMPTY_ANALYTICS: VendorAnalytics = {
@@ -39,12 +39,13 @@ const EMPTY_ANALYTICS: VendorAnalytics = {
 export default function VendorAnalyticsPage() {
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<VendorAnalytics>(EMPTY_ANALYTICS);
+  const [sourceRatio, setSourceRatio] = useState<SearchSourceRatio>({ preVisit: 0, onSite: 0, other: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    fetchVendorAnalytics(user.id)
-      .then(setAnalytics)
+    Promise.all([fetchVendorAnalytics(user.id), fetchSearchSourceRatio(user.id)])
+      .then(([a, s]) => { setAnalytics(a); setSourceRatio(s); })
       .finally(() => setIsLoading(false));
   }, [user]);
 
@@ -123,6 +124,44 @@ export default function VendorAnalyticsPage() {
               </div>
               <p className="mt-1.5 text-[10px] text-slate-400">閲覧数をもとに算出</p>
             </div>
+
+            {/* 来訪前 / 現地の検索割合 */}
+            {(() => {
+              const total = sourceRatio.preVisit + sourceRatio.onSite + sourceRatio.other;
+              const preVisitPct  = total > 0 ? Math.round((sourceRatio.preVisit / total) * 100) : 0;
+              const onSitePct    = total > 0 ? Math.round((sourceRatio.onSite   / total) * 100) : 0;
+              return (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="mb-3 text-xs font-semibold text-slate-500">来訪前 / 現地の検索割合（過去7日）</p>
+                  {total === 0 ? (
+                    <p className="py-4 text-center text-sm text-slate-400">データがまだありません</p>
+                  ) : (
+                    <>
+                      <div className="mb-3 flex h-3 overflow-hidden rounded-full">
+                        <div className="bg-violet-400 transition-all" style={{ width: `${preVisitPct}%` }} />
+                        <div className="bg-sky-400 transition-all"    style={{ width: `${onSitePct}%` }} />
+                        <div className="flex-1 bg-slate-200" />
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex items-center gap-1.5">
+                          <Navigation size={12} className="text-violet-500" />
+                          <span className="text-xs text-slate-600">来訪前</span>
+                          <span className="text-sm font-bold text-slate-800">{preVisitPct}%</span>
+                          <span className="text-[10px] text-slate-400">({sourceRatio.preVisit})</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={12} className="text-sky-500" />
+                          <span className="text-xs text-slate-600">現地</span>
+                          <span className="text-sm font-bold text-slate-800">{onSitePct}%</span>
+                          <span className="text-[10px] text-slate-400">({sourceRatio.onSite})</span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-[10px] text-slate-400">来訪前：マップ外の検索 / 現地：マップから直接</p>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* サブページ */}
             <div className="space-y-2.5">
