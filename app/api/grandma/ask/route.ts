@@ -305,6 +305,7 @@ export async function POST(request: Request) {
               const parts = [
                 `id:${shop.id}`,
                 shop.name ? `name:${shop.name}` : null,
+                shop.owner_name ? `owner:${shop.owner_name}` : null,
                 shop.category ? `category:${shop.category}` : null,
                 shop.products?.length
                   ? `products:${shop.products.join(" / ")}`
@@ -356,6 +357,7 @@ export async function POST(request: Request) {
       const fallbackSnippets = fallbackShops
         .map((shop) => {
           const parts = [
+            shop.owner_name ? `店主: ${shop.owner_name}` : null,
             shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
             shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
             shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
@@ -376,6 +378,7 @@ export async function POST(request: Request) {
       const targetParts = [
         `id:${targetShop.id}`,
         targetShop.name ? `name:${targetShop.name}` : null,
+        targetShop.owner_name ? `owner:${targetShop.owner_name}` : null,
         targetShop.category ? `category:${targetShop.category}` : null,
         targetShop.products?.length
           ? `products:${targetShop.products.join(" / ")}`
