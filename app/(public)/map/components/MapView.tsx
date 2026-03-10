@@ -1223,7 +1223,9 @@ const MapView = memo(function MapView({
               position={[place.lat, place.lng]}
               icon={L.divIcon({
                 className: "major-place-label-icon",
-                html: `<span class="major-place-label-pill" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
+                html: `<span class="major-place-label-pill${
+                  place.name === "日曜市" ? " is-sunday-market" : ""
+                }" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
                 iconSize: [0, 0],
               })}
               interactive={false}
