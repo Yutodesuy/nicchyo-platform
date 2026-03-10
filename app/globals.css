@@ -149,6 +149,7 @@ body.grandma-chat-open .leaflet-container {
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
+  rotate: var(--map-rotation-inverse, 0deg);
 }
 
 .cluster-icon:hover {
@@ -562,6 +563,37 @@ body.home-poster-zoom-open .hamburger-button {
   position: relative;
   width: 100%;
   height: 100%;
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.shop-marker-container {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-landmark-visual {
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 1 !important;
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-visual.is-highlight {
+  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+}
+
+.major-place-label-pill {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
 }
 
 .map-building-tilted {

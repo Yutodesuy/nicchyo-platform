@@ -4,14 +4,13 @@
 
 'use client';
 
-import { ImageOverlay } from 'react-leaflet';
-import { Polygon, Polyline } from 'react-leaflet';
+import { ImageOverlay, Polygon, Polyline, Rectangle } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
 import { LatLngBoundsExpression } from 'leaflet';
 
 const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 
-export default function RoadOverlay() {
+export default function RoadOverlay({ overviewTint = false }: { overviewTint?: boolean }) {
   const config = ROAD_CONFIG;
   const latSpan = Math.abs(config.bounds[0][0] - config.bounds[1][0]);
   const lngSpan = Math.abs(config.bounds[0][1] - config.bounds[1][1]);
@@ -25,6 +24,7 @@ export default function RoadOverlay() {
       <CurvedRoad
         config={config}
         isEastWest={isEastWest}
+        overviewTint={overviewTint}
       />
     );
   }
@@ -36,6 +36,7 @@ export default function RoadOverlay() {
         roadThickness={roadThickness}
         roadOffset={roadOffset}
         isEastWest={isEastWest}
+        overviewTint={overviewTint}
       />
     );
   }
@@ -49,6 +50,16 @@ export default function RoadOverlay() {
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
+        {overviewTint && (
+          <Rectangle
+            bounds={config.bounds as LatLngBoundsExpression}
+            pathOptions={{
+              stroke: false,
+              fillColor: '#22c55e',
+              fillOpacity: 0.34,
+            }}
+          />
+        )}
       </>
     );
   }
@@ -62,6 +73,16 @@ export default function RoadOverlay() {
           opacity={config.opacity}
           zIndex={config.zIndex}
         />
+        {overviewTint && (
+          <Rectangle
+            bounds={config.bounds as LatLngBoundsExpression}
+            pathOptions={{
+              stroke: false,
+              fillColor: '#22c55e',
+              fillOpacity: 0.34,
+            }}
+          />
+        )}
       </>
     );
   }
@@ -74,11 +95,13 @@ function PlaceholderRoad({
   roadThickness,
   roadOffset,
   isEastWest,
+  overviewTint = false,
 }: {
   config: RoadConfig;
   roadThickness: number;
   roadOffset: number;
   isEastWest: boolean;
+  overviewTint?: boolean;
 }) {
   const svgContent = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1000" preserveAspectRatio="none">
@@ -106,6 +129,16 @@ function PlaceholderRoad({
         opacity={config.opacity}
         zIndex={config.zIndex}
       />
+      {overviewTint && (
+        <Rectangle
+          bounds={config.bounds as LatLngBoundsExpression}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#22c55e',
+            fillOpacity: 0.34,
+          }}
+        />
+      )}
     </>
   );
 }
@@ -113,9 +146,11 @@ function PlaceholderRoad({
 function CurvedRoad({
   config,
   isEastWest,
+  overviewTint = false,
 }: {
   config: RoadConfig;
   isEastWest: boolean;
+  overviewTint?: boolean;
 }) {
   if (!config.segments) {
     return null;
@@ -160,6 +195,16 @@ function CurvedRoad({
           fillOpacity: config.opacity ?? 0.9,
         }}
       />
+      {overviewTint && (
+        <Polygon
+          positions={roadPolygon}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#22c55e',
+            fillOpacity: 0.36,
+          }}
+        />
+      )}
       <Polyline
         positions={smoothedCenterline}
         pathOptions={{

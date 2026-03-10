@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, ImageOverlay, Pane, Rectangle, Marker, TileLayer } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { Navigation, Plus, Minus, RotateCcw } from "lucide-react";
@@ -31,7 +31,6 @@ import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
   getRoadBounds,
-  getRoadWidthOffset,
   getSundayMarketBounds,
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
@@ -89,104 +88,81 @@ const INITIAL_ZOOM = MAX_ZOOM;
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
 const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
-const LEFT_SIDE_SHIFT_LNG = 0.0009;
 const KOCHI_CASTLE_MUSEUM_BASE_WIDTH = 0.0036;
 const KOCHI_CASTLE_MUSEUM_SCALE = 0.7;
 const KOCHI_CASTLE_MUSEUM_WIDTH = KOCHI_CASTLE_MUSEUM_BASE_WIDTH * KOCHI_CASTLE_MUSEUM_SCALE;
 const KOCHI_CASTLE_MUSEUM_HEIGHT = KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
 const KOCHI_CASTLE_MUSEUM_CENTER_LAT = 33.5599801;
 const KOCHI_CASTLE_MUSEUM_CENTER_LNG = 133.5340747;
-const KOCHI_CASTLE_MUSEUM_TOP_LAT =
-  KOCHI_CASTLE_MUSEUM_CENTER_LAT + KOCHI_CASTLE_MUSEUM_HEIGHT / 2;
-const KOCHI_CASTLE_MUSEUM_EAST_LNG =
-  KOCHI_CASTLE_MUSEUM_CENTER_LNG + KOCHI_CASTLE_MUSEUM_WIDTH / 2;
-const KOCHI_CASTLE_MUSEUM_BOUNDS: [[number, number], [number, number]] = [
-  [KOCHI_CASTLE_MUSEUM_TOP_LAT, KOCHI_CASTLE_MUSEUM_EAST_LNG - KOCHI_CASTLE_MUSEUM_WIDTH],
-  [KOCHI_CASTLE_MUSEUM_TOP_LAT - KOCHI_CASTLE_MUSEUM_HEIGHT, KOCHI_CASTLE_MUSEUM_EAST_LNG],
-];
 const OTEPIA_CENTER_LAT = 33.5608832;
 const OTEPIA_CENTER_LNG = 133.5370493;
 const OTEPIA_SCALE = 1.3;
 const OTEPIA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * OTEPIA_SCALE;
 const OTEPIA_HEIGHT = KOCHI_CASTLE_MUSEUM_HEIGHT * OTEPIA_SCALE;
-const OTEPIA_BOUNDS: [[number, number], [number, number]] = [
-  [
-    OTEPIA_CENTER_LAT + OTEPIA_HEIGHT / 2,
-    OTEPIA_CENTER_LNG + OTEPIA_WIDTH / 2,
-  ],
-  [
-    OTEPIA_CENTER_LAT - OTEPIA_HEIGHT / 2,
-    OTEPIA_CENTER_LNG - OTEPIA_WIDTH / 2,
-  ],
-];
-const BUILDING_COLUMN_EAST_LNG = 133.5296 + LEFT_SIDE_SHIFT_LNG;
-const BUILDING_COLUMN_WIDTH = 0.0010;
-const BUILDING_COLUMN_HEIGHT = 0.0014;
-const BUILDING_COLUMN_GAP = 0;
-const BUILDING_COLUMN_EXTRA_GAP = getRoadWidthOffset(true);
-const BUILDING_COLUMN_EXTRA_GAP_EVERY = 0;
-const BUILDING_COLUMN_TOP_LATS: number[] = [];
-{
-  let currentTopLat = ROAD_BOUNDS[0][0] - BUILDING_COLUMN_GAP * 0.5;
-  const minLat = ROAD_BOUNDS[1][0];
-  let index = 0;
-  while (currentTopLat - BUILDING_COLUMN_HEIGHT > minLat) {
-    BUILDING_COLUMN_TOP_LATS.push(currentTopLat);
-    currentTopLat -= BUILDING_COLUMN_HEIGHT + BUILDING_COLUMN_GAP;
-    index += 1;
-    if (index === 4 || index === 8) {
-      currentTopLat -= BUILDING_COLUMN_EXTRA_GAP;
-    }
-  }
-}
-const BUILDING_COLUMN_BOUNDS = BUILDING_COLUMN_TOP_LATS.map((topLat) => [
-  [topLat, BUILDING_COLUMN_EAST_LNG - BUILDING_COLUMN_WIDTH],
-  [topLat - BUILDING_COLUMN_HEIGHT, BUILDING_COLUMN_EAST_LNG],
-]) as [[number, number], [number, number]][];
-const BUILDING_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.slice(2);
-const ROAD_WIDTH_LNG = Math.abs(ROAD_BOUNDS[0][1] - ROAD_BOUNDS[1][1]);
-const ROAD_SEPARATOR_WIDTH_LNG = 0.00004;
-const RIGHT_ROAD_EAST_LNG = Math.max(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) + ROAD_WIDTH_LNG + ROAD_SEPARATOR_WIDTH_LNG;
-const BUILDING_RIGHT_COLUMN_EAST_LNG = RIGHT_ROAD_EAST_LNG + 0.0004;
-const LEFT_SIDE_LABEL_LAT = (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2;
-const LEFT_SIDE_LABEL_LNG =
-  Math.min(ROAD_BOUNDS[0][1], ROAD_BOUNDS[1][1]) - 0.0068 + LEFT_SIDE_SHIFT_LNG;
-const LEFT_LABEL_HEIGHT_LAT = 0.076;
-const LEFT_LABEL_WIDTH_LNG = 0.012;
 const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_CENTER_LAT = 33.5615208;
 const KOCHI_CASTLE_CENTER_LNG = 133.5311987;
-const KOCHI_CASTLE_TOP_LAT = KOCHI_CASTLE_CENTER_LAT + KOCHI_CASTLE_HEIGHT / 2;
-const KOCHI_CASTLE_EAST_LNG = KOCHI_CASTLE_CENTER_LNG + KOCHI_CASTLE_WIDTH / 2;
-const KOCHI_CASTLE_BOUNDS: [[number, number], [number, number]] = [
-  [KOCHI_CASTLE_TOP_LAT, KOCHI_CASTLE_EAST_LNG],
-  [KOCHI_CASTLE_TOP_LAT - KOCHI_CASTLE_HEIGHT, KOCHI_CASTLE_EAST_LNG - KOCHI_CASTLE_WIDTH],
-];
 const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (1.6 / 1.5);
 const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
 const TINTIN_DENSHA_CENTER_LAT = 33.5613531;
 const TINTIN_DENSHA_CENTER_LNG = 133.543104;
-const TINTIN_DENSHA_TOP_LAT = TINTIN_DENSHA_CENTER_LAT + TINTIN_DENSHA_HEIGHT / 2;
-const TINTIN_DENSHA_EAST_LNG = TINTIN_DENSHA_CENTER_LNG + TINTIN_DENSHA_WIDTH / 2;
-const TINTIN_DENSHA_BOUNDS: [[number, number], [number, number]] = [
-  [TINTIN_DENSHA_TOP_LAT, TINTIN_DENSHA_EAST_LNG],
-  [TINTIN_DENSHA_TOP_LAT - TINTIN_DENSHA_HEIGHT, TINTIN_DENSHA_EAST_LNG - TINTIN_DENSHA_WIDTH],
-];
 const KOCHI_STATION_ASPECT = 1536 / 1024;
 const KOCHI_STATION_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.9;
 const KOCHI_STATION_HEIGHT = KOCHI_STATION_WIDTH / KOCHI_STATION_ASPECT;
 const KOCHI_STATION_CENTER_LAT = 33.5671869;
 const KOCHI_STATION_CENTER_LNG = 133.5436682;
-const KOCHI_STATION_BOUNDS: [[number, number], [number, number]] = [
-  [
-    KOCHI_STATION_CENTER_LAT + KOCHI_STATION_HEIGHT / 2,
-    KOCHI_STATION_CENTER_LNG + KOCHI_STATION_WIDTH / 2,
-  ],
-  [
-    KOCHI_STATION_CENTER_LAT - KOCHI_STATION_HEIGHT / 2,
-    KOCHI_STATION_CENTER_LNG - KOCHI_STATION_WIDTH / 2,
-  ],
+const LANDMARK_PIXEL_BASE = 192;
+const LANDMARK_SPECS: Array<{
+  key: string;
+  url: string;
+  lat: number;
+  lng: number;
+  widthPx: number;
+  heightPx: number;
+}> = [
+  {
+    key: "museum",
+    url: "/images/maps/elements/buildings/KochiCastleMusium2.png",
+    lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT,
+    lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE,
+    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE) / KOCHI_CASTLE_MUSEUM_ASPECT,
+  },
+  {
+    key: "otepia",
+    url: "/images/maps/elements/buildings/Otepia2.png",
+    lat: OTEPIA_CENTER_LAT,
+    lng: OTEPIA_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE,
+    heightPx:
+      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE) /
+      KOCHI_CASTLE_MUSEUM_ASPECT,
+  },
+  {
+    key: "castle",
+    url: "/images/maps/elements/buildings/KochiCastle.png",
+    lat: KOCHI_CASTLE_CENTER_LAT,
+    lng: KOCHI_CASTLE_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (2 / 1.5),
+    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (2 / 1.5)) / 1.5,
+  },
+  {
+    key: "densha",
+    url: "/images/maps/elements/buildings/TinTinDensha2.png",
+    lat: TINTIN_DENSHA_CENTER_LAT,
+    lng: TINTIN_DENSHA_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5),
+    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5)) / 2,
+  },
+  {
+    key: "station",
+    url: "/images/maps/elements/buildings/kochistation.png",
+    lat: KOCHI_STATION_CENTER_LAT,
+    lng: KOCHI_STATION_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9,
+    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9) / KOCHI_STATION_ASPECT,
+  },
 ];
 const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
   { name: "高知駅", lat: KOCHI_STATION_CENTER_LAT, lng: KOCHI_STATION_CENTER_LNG },
@@ -195,55 +171,9 @@ const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
   { name: "歴史博物館", lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT, lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG },
   { name: "追手筋", lat: 33.56145, lng: 133.5383 },
 ];
-const BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE = BUILDING_COLUMN_BOUNDS.map((bounds) => [
-  [bounds[0][0], bounds[0][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
-  [bounds[1][0], bounds[1][1] + (BUILDING_RIGHT_COLUMN_EAST_LNG - BUILDING_COLUMN_EAST_LNG)],
-]) as [[number, number], [number, number]][];
-const BUILDING_COLOR_THEMES = [
-  { front: '#9fb4c8', frontBottom: '#7d93a8', side: '#6c8196', sideDark: '#5b6f83', roof: '#b7c9d8', roofDark: '#93a8bc' },
-  { front: '#c7b59b', frontBottom: '#a7927a', side: '#8f7b63', sideDark: '#7a6854', roof: '#d7c6a8', roofDark: '#bba889' },
-  { front: '#b6c9b2', frontBottom: '#8fa78a', side: '#7c8f77', sideDark: '#6a7d66', roof: '#cfe0ca', roofDark: '#a9bea4' },
-];
-
-const buildBuildingSvg = (theme: typeof BUILDING_COLOR_THEMES[number]) => `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 180">
-  <defs>
-    <linearGradient id="frontFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${theme.front}"/>
-      <stop offset="1" stop-color="${theme.frontBottom}"/>
-    </linearGradient>
-    <linearGradient id="frontLip" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="${theme.frontBottom}"/>
-      <stop offset="1" stop-color="${theme.side}"/>
-    </linearGradient>
-    <linearGradient id="sideFace" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="${theme.side}"/>
-      <stop offset="1" stop-color="${theme.sideDark}"/>
-    </linearGradient>
-    <linearGradient id="roofFace" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="${theme.roof}"/>
-      <stop offset="1" stop-color="${theme.roofDark}"/>
-    </linearGradient>
-  </defs>
-  <polygon points="26,0 88,0 128,20 66,20" fill="url(#roofFace)"/>
-  <polygon points="88,0 128,20 128,180 88,160" fill="url(#sideFace)"/>
-  <polygon points="26,160 88,160 128,180 66,180" fill="url(#frontLip)"/>
-  <rect x="26" y="0" width="62" height="160" rx="6" fill="url(#frontFace)"/>
-  <rect x="34" y="12" width="44" height="128" rx="4" fill="${theme.side}" opacity="0.35"/>
-  <g fill="#dfe7f2" opacity="0.7">
-    <polygon points="104,50 116,50 124,54 112,54"/>
-    <polygon points="104,80 116,80 124,84 112,84"/>
-    <polygon points="104,110 116,110 124,114 112,114"/>
-  </g>
-</svg>
-`;
-
-const BUILDING_SVG_URLS = BUILDING_COLOR_THEMES.map(
-  (theme) => `data:image/svg+xml,${encodeURIComponent(buildBuildingSvg(theme))}`
-);
 
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
-const BASEMAP_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png";
+const BASEMAP_TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png";
 const BASEMAP_ATTRIBUTION =
   '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
@@ -450,25 +380,6 @@ const MapView = memo(function MapView({
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
   );
-  const leftSideLabelSvg = useMemo(() => {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="200" height="520" viewBox="0 0 200 520">
-        <defs>
-          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="2" dy="2" stdDeviation="0.5" flood-color="rgba(255,255,255,0.7)" />
-          </filter>
-        </defs>
-        <g filter="url(#shadow)">
-          <text x="110" y="230" writing-mode="vertical-rl" text-orientation="upright"
-            font-size="48" font-weight="800" letter-spacing="6" fill="#d2b48c">
-            日曜市
-          </text>
-        </g>
-      </svg>
-    `;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  }, []);
-
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
   // - currentZoom は state で管理しない（Leaflet に任せる）
@@ -478,6 +389,7 @@ const MapView = memo(function MapView({
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
   const [mapRotation, setMapRotation] = useState(0);
+  const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const touchRotateRef = useRef<{ startAngle: number; startRotation: number } | null>(null);
   const mouseRotateRef = useRef<{ startX: number; startRotation: number } | null>(null);
 
@@ -782,17 +694,39 @@ const MapView = memo(function MapView({
   const resetMapRotation = useCallback(() => {
     setMapRotation(0);
   }, []);
+  const handleMapZoomChange = useCallback(
+    (zoom: number) => {
+      setMapUiZoom(zoom);
+      onZoomChange?.(zoom);
+    },
+    [onZoomChange]
+  );
 
-  const rotationScale = useMemo(() => {
-    const rad = (Math.abs(mapRotation) * Math.PI) / 180;
-    const c = Math.abs(Math.cos(rad));
-    const s = Math.abs(Math.sin(rad));
-    const aspect = 16 / 9;
-    const scaleX = c + (1 / aspect) * s;
-    const scaleY = c + aspect * s;
-    const coverScale = Math.max(scaleX, scaleY);
-    return Math.max(1.08, coverScale + 0.06);
-  }, [mapRotation]);
+  const landmarkScale = useMemo(() => {
+    const factor = Math.pow(1.22, mapUiZoom - 18);
+    return Math.min(2.8, Math.max(0.55, factor));
+  }, [mapUiZoom]);
+  const isMinimumZoomMode = mapUiZoom <= MIN_ZOOM + 0.05;
+  const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
+
+  const landmarkIcons = useMemo(() => {
+    const icons = new Map<string, L.DivIcon>();
+    LANDMARK_SPECS.forEach((spec) => {
+      const width = Math.max(1, Math.round(spec.widthPx * landmarkScale));
+      const height = Math.max(1, Math.round(spec.heightPx * landmarkScale));
+      const highlightClass = highlightEventTargets ? " is-highlight" : "";
+      icons.set(
+        spec.key,
+        L.divIcon({
+          className: "map-landmark-icon",
+          html: `<img class="map-landmark-visual${highlightClass}" src="${spec.url}" alt="" draggable="false" style="width:${width}px;height:${height}px;opacity:1;" />`,
+          iconSize: [width, height],
+          iconAnchor: [width / 2, height / 2],
+        })
+      );
+    });
+    return icons;
+  }, [highlightEventTargets, landmarkScale]);
 
   const handleTouchStartRotate = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
@@ -865,67 +799,53 @@ const MapView = memo(function MapView({
       onTouchEndCapture={handleTouchEndRotate}
       onTouchCancelCapture={handleTouchEndRotate}
       onMouseDownCapture={handleMouseDownRotate}
+      style={{
+        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      }}
     >
-      <div
-        className="absolute inset-0"
+      <MapContainer
+        center={KOCHI_SUNDAY_MARKET}
+        zoom={INITIAL_ZOOM}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        scrollWheelZoom={!agentOpen && !isMobile}
+        dragging={!agentOpen}
+        touchZoom={agentOpen ? false : isMobile ? "center" : true}
+        doubleClickZoom={!agentOpen && !isMobile}
+        className={`h-full w-full z-0 ${agentOpen ? "pointer-events-none" : ""}`}
         style={{
-          transform: `rotate(${mapRotation}deg) scale(${rotationScale})`,
-          transformOrigin: "center center",
-          transition: "transform 180ms ease-out",
+          height: "100%",
+          width: "100%",
+          backgroundColor: "#faf8f3",
+        }}
+        zoomControl={false}
+        attributionControl={false}
+        maxBounds={MAX_BOUNDS}
+        maxBoundsViscosity={1.0}
+        whenReady={() => {
+          onMapReady?.();
+        }}
+        ref={(map) => {
+          if (map) mapRef.current = map;
+          if (map) onMapInstance?.(map);
         }}
       >
-        <MapContainer
-          center={KOCHI_SUNDAY_MARKET}
-          zoom={INITIAL_ZOOM}
-          minZoom={MIN_ZOOM}
-          maxZoom={MAX_ZOOM}
-          scrollWheelZoom={!agentOpen && !isMobile}
-          dragging={!agentOpen}
-          touchZoom={agentOpen ? false : isMobile ? "center" : true}
-          doubleClickZoom={!agentOpen && !isMobile}
-          className={`h-full w-full z-0 ${agentOpen ? "pointer-events-none" : ""}`}
-          style={{
-            height: "100%",
-            width: "100%",
-            backgroundColor: "#faf8f3",
-          }}
-          zoomControl={false}
-          attributionControl={false}
-          maxBounds={MAX_BOUNDS}
-          maxBoundsViscosity={1.0}
-          whenReady={() => {
-            onMapReady?.();
-          }}
-          ref={(map) => {
-            if (map) mapRef.current = map;
-            if (map) onMapInstance?.(map);
-          }}
-        >
-          <MapZoomListener onZoomChange={onZoomChange} />
+          <MapRotationSync rotationDeg={mapRotation} />
+          <MapZoomListener onZoomChange={handleMapZoomChange} />
           <MapDragListener onDragStart={() => setIsTracking(false)} />
           <TileLayer
             url={BASEMAP_TILE_URL}
             attribution={BASEMAP_ATTRIBUTION}
             opacity={0.5}
             zIndex={1}
+            keepBuffer={16}
           />
           {/* 背景 */}
           <BackgroundOverlay />
 
         {/* 道路 */}
-        <RoadOverlay />
+        <RoadOverlay overviewTint={isLowZoomTintMode} />
         <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
-        <Pane name="map-label" style={{ zIndex: 900 }}>
-          <ImageOverlay
-            url={leftSideLabelSvg}
-            bounds={[
-              [LEFT_SIDE_LABEL_LAT + LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG - LEFT_LABEL_WIDTH_LNG / 2],
-              [LEFT_SIDE_LABEL_LAT - LEFT_LABEL_HEIGHT_LAT / 2, LEFT_SIDE_LABEL_LNG + LEFT_LABEL_WIDTH_LNG / 2],
-            ]}
-            opacity={1}
-            zIndex={90}
-          />
-        </Pane>
         <Pane name="major-place-label" style={{ zIndex: 950 }}>
           {MAJOR_PLACE_LABELS.map((place) => (
             <Marker
@@ -933,7 +853,7 @@ const MapView = memo(function MapView({
               position={[place.lat, place.lng]}
               icon={L.divIcon({
                 className: "major-place-label-icon",
-                html: `<span style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
+                html: `<span class="major-place-label-pill" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
                 iconSize: [0, 0],
               })}
               interactive={false}
@@ -996,94 +916,22 @@ const MapView = memo(function MapView({
           </Pane>
         )}
 
-        {highlightEventTargets ? (
-          <Pane name="event-focus" style={{ zIndex: 3000 }}>
-            <ImageOverlay
-              url="/images/maps/elements/buildings/KochiCastleMusium2.png"
-              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
+        <Pane
+          name="landmarks"
+          style={{ zIndex: highlightEventTargets ? 3000 : 70 }}
+        >
+          {LANDMARK_SPECS.map((spec) => (
+            <Marker
+              key={`landmark-${spec.key}`}
+              position={[spec.lat, spec.lng]}
+              icon={landmarkIcons.get(spec.key) ?? L.divIcon({ className: "map-landmark-icon" })}
+              interactive={false}
+              keyboard={false}
               opacity={1}
-              className="map-event-museum-highlight"
+              zIndexOffset={highlightEventTargets ? 1800 : 0}
             />
-            <ImageOverlay
-              url="/images/maps/elements/buildings/Otepia2.png"
-              bounds={OTEPIA_BOUNDS}
-              opacity={1}
-              className="map-event-museum-highlight"
-            />
-            <ImageOverlay
-              url="/images/maps/elements/buildings/KochiCastle.png"
-              bounds={KOCHI_CASTLE_BOUNDS}
-              opacity={1}
-              className="map-event-museum-highlight"
-            />
-            <ImageOverlay
-              url="/images/maps/elements/buildings/TinTinDensha2.png"
-              bounds={TINTIN_DENSHA_BOUNDS}
-              opacity={1}
-              className="map-event-museum-highlight"
-            />
-            <ImageOverlay
-              url="/images/maps/elements/buildings/kochistation.png"
-              bounds={KOCHI_STATION_BOUNDS}
-              opacity={1}
-              className="map-event-museum-highlight"
-            />
-          </Pane>
-        ) : (
-          <>
-            <ImageOverlay
-              url="/images/maps/elements/buildings/KochiCastleMusium2.png"
-              bounds={KOCHI_CASTLE_MUSEUM_BOUNDS}
-              opacity={1}
-              zIndex={60}
-            />
-            <ImageOverlay
-              url="/images/maps/elements/buildings/Otepia2.png"
-              bounds={OTEPIA_BOUNDS}
-              opacity={1}
-              zIndex={60}
-            />
-          </>
-        )}
-        <ImageOverlay
-          url="/images/maps/elements/buildings/KochiCastle.png"
-          bounds={KOCHI_CASTLE_BOUNDS}
-          opacity={1}
-          zIndex={70}
-        />
-        <ImageOverlay
-          url="/images/maps/elements/buildings/TinTinDensha2.png"
-          bounds={TINTIN_DENSHA_BOUNDS}
-          opacity={1}
-          zIndex={70}
-        />
-        <ImageOverlay
-          url="/images/maps/elements/buildings/kochistation.png"
-          bounds={KOCHI_STATION_BOUNDS}
-          opacity={1}
-          zIndex={70}
-        />
-        {BUILDING_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
-          <ImageOverlay
-            key={`building-column-${index}`}
-            url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
-            bounds={bounds}
-            opacity={1}
-            zIndex={55}
-            className="map-building-tilted"
-          />
-        ))}
-        {BUILDING_RIGHT_COLUMN_BOUNDS_VISIBLE.map((bounds, index) => (
-          <ImageOverlay
-            key={`building-right-column-${index}`}
-            url={BUILDING_SVG_URLS[index % BUILDING_SVG_URLS.length]}
-            bounds={bounds}
-            opacity={1}
-            zIndex={55}
-            className="map-building-tilted"
-          />
-        ))}
-
+          ))}
+        </Pane>
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【ポイント8】最適化された店舗レイヤー
             - 300個の ShopMarker コンポーネントではなく、
@@ -1091,22 +939,24 @@ const MapView = memo(function MapView({
             - shops は初期ロード時のみ渡され、以降変更されない
             - ズーム操作で再レンダリングされない
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <OptimizedShopLayerWithClustering
-          shops={shops}
-          onShopClick={handleShopClick}
-          selectedShopId={selectedShop?.id}
-          favoriteShopIds={favoriteShopIds}
-          searchShopIds={searchShopIds}
-          aiHighlightShopIds={aiShopIds}
-          commentHighlightShopIds={commentShopId ? [commentShopId] : []}
-          kotoduteShopIds={kotoduteShopIds}
-          recipeIngredientIconsByShop={recipeIngredientIconsByShop}
-          attendanceLabelsByShop={attendanceLabelsByShop}
-          bagShopIds={bagShopIds}
-        />
+        {!isMinimumZoomMode && (
+          <OptimizedShopLayerWithClustering
+            shops={shops}
+            onShopClick={handleShopClick}
+            selectedShopId={selectedShop?.id}
+            favoriteShopIds={favoriteShopIds}
+            searchShopIds={searchShopIds}
+            aiHighlightShopIds={aiShopIds}
+            commentHighlightShopIds={commentShopId ? [commentShopId] : []}
+            kotoduteShopIds={kotoduteShopIds}
+            recipeIngredientIconsByShop={recipeIngredientIconsByShop}
+            attendanceLabelsByShop={attendanceLabelsByShop}
+            bagShopIds={bagShopIds}
+          />
+        )}
 
         {/* レシピオーバーレイ */}
-        {showRecipeOverlay && shopsWithIngredients.map((shop) => {
+        {!isMinimumZoomMode && showRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
               product.toLowerCase().includes(ing.name.toLowerCase()) ||
@@ -1172,8 +1022,7 @@ const MapView = memo(function MapView({
             - currentZoom を state で管理しないため不要
             - ズーム操作で React が再レンダリングされない
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        </MapContainer>
-      </div>
+      </MapContainer>
 
       <div className="absolute right-4 top-4 z-[1200] flex flex-col gap-2">
         <button
@@ -1246,6 +1095,31 @@ const MapView = memo(function MapView({
 
 export default MapView;
 
+function MapRotationSync({ rotationDeg }: { rotationDeg: number }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const mapPane = map.getPane("mapPane");
+    if (!mapPane) return;
+    mapPane.style.transformOrigin = "50% 50%";
+    mapPane.style.transition = "rotate 180ms ease-out";
+    mapPane.style.rotate = `${rotationDeg}deg`;
+    map.invalidateSize();
+  }, [map, rotationDeg]);
+
+  useEffect(() => {
+    return () => {
+      const mapPane = map.getPane("mapPane");
+      if (!mapPane) return;
+      mapPane.style.rotate = "0deg";
+      mapPane.style.transition = "";
+      mapPane.style.transformOrigin = "";
+    };
+  }, [map]);
+
+  return null;
+}
+
 function DynamicMaxBounds({
   baseBounds,
   paddingPx,
@@ -1260,10 +1134,13 @@ function DynamicMaxBounds({
 
     const updateBounds = () => {
       const zoom = map.getZoom();
+      const size = map.getSize();
+      const viewportDiagonal = Math.sqrt(size.x * size.x + size.y * size.y);
+      const dynamicPaddingPx = Math.max(paddingPx, viewportDiagonal);
       const sw = map.project(baseLatLngBounds.getSouthWest(), zoom);
       const ne = map.project(baseLatLngBounds.getNorthEast(), zoom);
-      const paddedSw = L.point(sw.x - paddingPx, sw.y + paddingPx);
-      const paddedNe = L.point(ne.x + paddingPx, ne.y - paddingPx);
+      const paddedSw = L.point(sw.x - dynamicPaddingPx, sw.y + dynamicPaddingPx);
+      const paddedNe = L.point(ne.x + dynamicPaddingPx, ne.y - dynamicPaddingPx);
       const paddedBounds = L.latLngBounds(
         map.unproject(paddedSw, zoom),
         map.unproject(paddedNe, zoom)
