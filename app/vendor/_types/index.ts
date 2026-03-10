@@ -24,6 +24,7 @@ export type Store = {
   style: string;
   style_tags: string[];
   main_products: string[];
+  main_product_prices: Record<string, number | null>;
   payment_methods: PaymentMethod[];
   rain_policy: RainPolicy;
   schedule: string[];
