@@ -55,3 +55,9 @@ export type MarketTrend = {
   total_quantity: number;
   vendor_count: number;
 };
+
+export type SearchSourceRatio = {
+  preVisit: number;  // source = "search"（来訪前）
+  onSite: number;    // source = "map"（現地）
+  other: number;     // source = "direct" など
+};
