@@ -34,6 +34,34 @@ type AssignmentRow = {
   market_date: string | null;
 };
 
+async function fetchAssignments(
+  supabase: SupabaseClient
+): Promise<AssignmentRow[]> {
+  const { data: marketAssignmentsData, error: marketAssignmentsError } =
+    await supabase
+      .from("market_assignments")
+      .select("vendor_id, location_id, market_date");
+
+  if (!marketAssignmentsError) {
+    return Array.isArray(marketAssignmentsData)
+      ? (marketAssignmentsData as AssignmentRow[])
+      : [];
+  }
+
+  const { data: locationAssignmentsData, error: locationAssignmentsError } =
+    await supabase
+      .from("location_assignments")
+      .select("vendor_id, location_id, market_date");
+
+  if (locationAssignmentsError) {
+    throw locationAssignmentsError;
+  }
+
+  return Array.isArray(locationAssignmentsData)
+    ? (locationAssignmentsData as AssignmentRow[])
+    : [];
+}
+
 const CHOME_VALUES = new Set([
   "一丁目",
   "二丁目",
@@ -59,7 +87,7 @@ export async function fetchShopsFromDb(
     { data: categoriesData },
     { data: productsData },
     { data: locationsData },
-    { data: assignmentsData },
+    assignmentsData,
   ] = await Promise.all([
     supabase
       .from("vendors")
@@ -69,7 +97,7 @@ export async function fetchShopsFromDb(
     supabase
       .from("market_locations")
       .select("id, store_number, latitude, longitude, district"),
-    supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
+    fetchAssignments(supabase),
   ]);
 
   const vendors = Array.isArray(vendorsData)
@@ -84,9 +112,7 @@ export async function fetchShopsFromDb(
   const locations = Array.isArray(locationsData)
     ? (locationsData as LocationRow[])
     : [];
-  const assignments = Array.isArray(assignmentsData)
-    ? (assignmentsData as AssignmentRow[])
-    : [];
+  const assignments = assignmentsData;
 
   const categoryNameById = new Map<string, string>();
   categories.forEach((row) => {
