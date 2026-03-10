@@ -585,12 +585,23 @@ body.home-poster-zoom-open .hamburger-button {
   user-select: none;
   -webkit-user-drag: none;
   opacity: 1 !important;
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.06)
+    saturate(1.08);
   rotate: var(--map-rotation-inverse, 0deg);
   transform-origin: center center;
 }
 
 .map-landmark-visual.is-highlight {
-  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.12)
+    saturate(1.6)
+    brightness(1.15)
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
 }
 
 .major-place-label-pill {
