@@ -74,11 +74,8 @@ export function generateShopMarkerHtml(
   illustrationSize: ShopIllustrationSize,
   mainProduct: string
 ): string {
-  const productIconSideClass = (shop.position ?? shop.id) % 2 === 0
-    ? 'shop-product-icon-left'
-    : 'shop-product-icon-right';
   const bannerHtml = mode === 'full' ? `
-    ${bannerImage ? `<span class="shop-product-icon ${productIconSideClass}" style="background-image: url(${escapeHtml(bannerImage)})" aria-hidden="true"></span>` : ''}
+    ${bannerImage ? `<span class="shop-product-icon" style="background-image: url(${escapeHtml(bannerImage)})" aria-hidden="true"></span>` : ''}
     <div class="shop-simple-banner" aria-hidden="true">
       <div class="shop-simple-banner-image">
         <img src="${escapeHtml(bannerImage || '')}" alt="" />
