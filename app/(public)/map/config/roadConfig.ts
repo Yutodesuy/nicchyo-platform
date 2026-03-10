@@ -235,3 +235,86 @@ export function getExpandedRoadBounds({
     [southLat, westLng],
   ];
 }
+
+type RoadPoint = { lat: number; lng: number };
+
+export function getRoadCenterlinePoints(): RoadPoint[] {
+  if (!ROAD_CONFIG.segments || ROAD_CONFIG.segments.length === 0) {
+    const centerLat = (ROAD_CONFIG.bounds[0][0] + ROAD_CONFIG.bounds[1][0]) / 2;
+    const centerLng = (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
+    return [{ lat: centerLat, lng: centerLng }];
+  }
+
+  const latSpan = Math.abs(ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]);
+  const lngSpan = Math.abs(ROAD_CONFIG.bounds[0][1] - ROAD_CONFIG.bounds[1][1]);
+  const isEastWest = lngSpan > latSpan;
+
+  return ROAD_CONFIG.segments
+    .map((segment) => {
+      const northLat = Math.max(segment.bounds[0][0], segment.bounds[1][0]);
+      const southLat = Math.min(segment.bounds[0][0], segment.bounds[1][0]);
+      const eastLng = Math.max(segment.bounds[0][1], segment.bounds[1][1]);
+      const westLng = Math.min(segment.bounds[0][1], segment.bounds[1][1]);
+
+      if (isEastWest) {
+        return {
+          lat: segment.centerLine ?? (northLat + southLat) / 2,
+          lng: (eastLng + westLng) / 2,
+        };
+      }
+
+      return {
+        lat: (northLat + southLat) / 2,
+        lng: segment.centerLine ?? (eastLng + westLng) / 2,
+      };
+    })
+    .sort((a, b) => (isEastWest ? a.lng - b.lng : b.lat - a.lat));
+}
+
+export function getNearestPointOnRoad(lat: number, lng: number): RoadPoint {
+  const points = getRoadCenterlinePoints();
+  if (points.length === 0) {
+    return { lat, lng };
+  }
+  if (points.length === 1) {
+    return points[0];
+  }
+
+  const target = { lat, lng };
+  let bestPoint = points[0];
+  let bestDistanceSq = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const candidate = projectPointOntoSegment(target, points[i], points[i + 1]);
+    const distanceSq =
+      (candidate.lat - target.lat) * (candidate.lat - target.lat) +
+      (candidate.lng - target.lng) * (candidate.lng - target.lng);
+
+    if (distanceSq < bestDistanceSq) {
+      bestDistanceSq = distanceSq;
+      bestPoint = candidate;
+    }
+  }
+
+  return bestPoint;
+}
+
+function projectPointOntoSegment(point: RoadPoint, a: RoadPoint, b: RoadPoint): RoadPoint {
+  const abLat = b.lat - a.lat;
+  const abLng = b.lng - a.lng;
+  const abLenSq = abLat * abLat + abLng * abLng;
+
+  if (abLenSq === 0) {
+    return a;
+  }
+
+  const apLat = point.lat - a.lat;
+  const apLng = point.lng - a.lng;
+  const rawT = (apLat * abLat + apLng * abLng) / abLenSq;
+  const t = Math.max(0, Math.min(1, rawT));
+
+  return {
+    lat: a.lat + abLat * t,
+    lng: a.lng + abLng * t,
+  };
+}

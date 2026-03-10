@@ -31,6 +31,7 @@ import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
   getRoadBounds,
+  getNearestPointOnRoad,
   getSundayMarketBounds,
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
@@ -463,6 +464,39 @@ function MapZoomConstraint() {
         return;
       }
       lastAcceptedZoom = zoom;
+    };
+
+    map.on("zoomend", handleZoomEnd);
+    return () => {
+      map.off("zoomend", handleZoomEnd);
+    };
+  }, [map]);
+
+  return null;
+}
+
+function MapZoomRoadSnapController() {
+  const map = useMap();
+
+  useEffect(() => {
+    let lastZoom = map.getZoom();
+
+    const handleZoomEnd = () => {
+      const nextZoom = map.getZoom();
+      const isZoomingIn = nextZoom > lastZoom + 0.01;
+      lastZoom = nextZoom;
+
+      if (!isZoomingIn) {
+        return;
+      }
+
+      const center = map.getCenter();
+      const nearestRoadPoint = getNearestPointOnRoad(center.lat, center.lng);
+      map.panTo([nearestRoadPoint.lat, nearestRoadPoint.lng], {
+        animate: true,
+        duration: 0.7,
+        easeLinearity: 0.25,
+      });
     };
 
     map.on("zoomend", handleZoomEnd);
@@ -1167,6 +1201,7 @@ const MapView = memo(function MapView({
             onResumeFromManualPause={handleResumeFromManualPause}
           />
           <MapZoomConstraint />
+          <MapZoomRoadSnapController />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
           <TileLayer
             url={BASEMAP_TILE_URL}
