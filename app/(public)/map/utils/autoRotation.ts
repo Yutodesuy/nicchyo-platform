@@ -3,6 +3,7 @@ import { ROAD_CONFIG } from "../config/roadConfig";
 
 const MIN_VARIANCE = 1e-10;
 const VISIBLE_PADDING_RATIO = 0.2;
+const ROAD_ROTATION_BREAK_LNG = 133.5414795;
 
 type RotationPoint = {
   x: number;
@@ -145,9 +146,10 @@ export function getAutoRotationForVisibleRoad({
   const axisAngle = getPrincipalAxisAngleDeg(visiblePoints);
   if (axisAngle === null) return null;
 
+  const rotationBaseDeg = center.lng >= ROAD_ROTATION_BREAK_LNG ? 100 : 120;
   const verticalCandidates = [
-    normalizeRotationDeg(90 - axisAngle),
-    normalizeRotationDeg(-90 - axisAngle),
+    normalizeRotationDeg(rotationBaseDeg - axisAngle),
+    normalizeRotationDeg(-rotationBaseDeg - axisAngle),
   ];
 
   return verticalCandidates.reduce((best, candidate) => {

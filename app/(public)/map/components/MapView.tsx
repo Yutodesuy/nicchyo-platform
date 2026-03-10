@@ -1031,12 +1031,15 @@ const MapView = memo(function MapView({
 
   return (
     <div
-      className="relative h-full w-full"
+      className="relative h-full w-full overflow-hidden"
       onTouchStartCapture={handleTouchStartRotate}
       onTouchMoveCapture={handleTouchMoveRotate}
       onTouchEndCapture={handleTouchEndRotate}
       onTouchCancelCapture={handleTouchEndRotate}
       onMouseDownCapture={handleMouseDownPan}
+      style={{
+        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      }}
     >
       <div
         className="absolute left-1/2 top-1/2 z-0"
