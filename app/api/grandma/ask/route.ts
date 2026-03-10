@@ -220,6 +220,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // 店舗名・オーナー名が質問に含まれていればshopIntentを設定（「〇〇について教えて」対応）
+    if (shops.length === 0) {
+      const nameMatches = allShops.filter((shop) => {
+        const shopName = (shop.name ?? "").replace(/\s+/g, "");
+        const ownerName = (shop.owner_name ?? "").replace(/\s+/g, "");
+        return (
+          (shopName.length >= 2 && normalized.includes(shopName)) ||
+          (ownerName.length >= 2 && normalized.includes(ownerName))
+        );
+      });
+      if (nameMatches.length > 0) {
+        shopIntent = true;
+        shops = nameMatches;
+        matchIds = nameMatches.map((s) => s.id);
+      }
+    }
+
     if (shopIntent && shops.length === 0) {
       const scored = allShops
         .map((shop) => {
