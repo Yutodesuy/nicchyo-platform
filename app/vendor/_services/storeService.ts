@@ -13,7 +13,7 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
   const supabase = createClient();
   const { data, error } = await supabase
     .from("vendors")
-    .select("id, shop_name, category_id, style, style_tags, main_products, main_product_prices, payment_methods, rain_policy, schedule")
+    .select("id, shop_name, owner_name, category_id, style, style_tags, main_products, main_product_prices, payment_methods, rain_policy, schedule")
     .eq("id", vendorId)
     .single();
 
@@ -36,6 +36,7 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
     id: data.id,
     vendor_id: data.id,
     name: data.shop_name ?? "",
+    owner_name: (data.owner_name as string) ?? "",
     category_id: (data.category_id as string) ?? "",
     style: (data.style as string) ?? "",
     style_tags: (data.style_tags as string[]) ?? [],
@@ -56,6 +57,7 @@ export async function saveVendorStore(
     .from("vendors")
     .update({
       shop_name: store.name,
+      owner_name: store.owner_name ?? null,
       category_id: store.category_id || null,
       style: store.style,
       style_tags: store.style_tags,
