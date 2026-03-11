@@ -656,6 +656,32 @@ body.home-poster-zoom-open .hamburger-button {
     drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
 }
 
+.map-landmark-popup .leaflet-popup-content-wrapper,
+.map-landmark-popup .leaflet-popup-tip {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.leaflet-pane.leaflet-popup-pane {
+  z-index: 4000;
+}
+
+.map-landmark-popup {
+  z-index: 4000;
+}
+
+.map-landmark-popup .leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+.map-landmark-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px;
+}
+
 .major-place-label-pill {
   rotate: var(--map-rotation-inverse, 0deg);
   transform-origin: center center;
