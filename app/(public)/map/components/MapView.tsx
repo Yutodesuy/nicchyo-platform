@@ -48,11 +48,7 @@ import {
   canShowShopDetailBanner,
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
-import {
-  getAutoRotationForVisibleRoad,
-  getShortestAngleDelta,
-  normalizeRotationDeg,
-} from "../utils/autoRotation";
+import { normalizeRotationDeg } from "../utils/autoRotation";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -411,51 +407,6 @@ function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => vo
   return null;
 }
 
-function MapAutoRotationController({
-  enabled,
-  onAutoRotationChange,
-}: {
-  enabled: boolean;
-  onAutoRotationChange: (rotation: number | null) => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    const updateAutoRotation = () => {
-      if (!enabled) {
-        onAutoRotationChange(null);
-        return;
-      }
-      onAutoRotationChange(
-        getAutoRotationForVisibleRoad({
-          center: map.getCenter(),
-        })
-      );
-    };
-
-    const handleMoveEnd = () => {
-      updateAutoRotation();
-    };
-    const handleZoomEnd = () => {
-      updateAutoRotation();
-    };
-
-    updateAutoRotation();
-    map.on("moveend", handleMoveEnd);
-    map.on("zoomend", handleZoomEnd);
-    return () => {
-      map.off("moveend", handleMoveEnd);
-      map.off("zoomend", handleZoomEnd);
-    };
-  }, [
-    enabled,
-    map,
-    onAutoRotationChange,
-  ]);
-
-  return null;
-}
-
 function MapZoomConstraint() {
   const map = useMap();
 
@@ -566,9 +517,7 @@ const MapView = memo(function MapView({
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
-  const [autoRotation, setAutoRotation] = useState(0);
   const [manualRotationOffset, setManualRotationOffset] = useState(0);
-  const [isAutoRotationPaused, setIsAutoRotationPaused] = useState(false);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const [isTouchRotating, setIsTouchRotating] = useState(false);
   const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
@@ -593,8 +542,6 @@ const MapView = memo(function MapView({
     lastY: number;
     isPanning: boolean;
   } | null>(null);
-  const autoRotationRef = useRef(0);
-  const isAutoRotationPausedRef = useRef(false);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
@@ -888,9 +835,7 @@ const MapView = memo(function MapView({
   const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
   const interactionDisabled = agentOpen;
-  const mapRotation = isMinimumZoomMode
-    ? 0
-    : normalizeRotationDeg(autoRotation + manualRotationOffset);
+  const mapRotation = normalizeRotationDeg(manualRotationOffset);
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -902,11 +847,7 @@ const MapView = memo(function MapView({
 
   const applyManualRotation = useCallback(
     (nextRotation: number) => {
-      isAutoRotationPausedRef.current = true;
-      setIsAutoRotationPaused(true);
-      setManualRotationOffset(
-        normalizeRotationDeg(nextRotation - autoRotationRef.current)
-      );
+      setManualRotationOffset(normalizeRotationDeg(nextRotation));
     },
     []
   );
@@ -934,36 +875,6 @@ const MapView = memo(function MapView({
     const factor = Math.pow(1.22, mapUiZoom - 18);
     return Math.min(2.8, Math.max(0.5, factor));
   }, [mapUiZoom]);
-
-  useEffect(() => {
-    autoRotationRef.current = autoRotation;
-  }, [autoRotation]);
-
-  useEffect(() => {
-    isAutoRotationPausedRef.current = isAutoRotationPaused;
-  }, [isAutoRotationPaused]);
-
-  useEffect(() => {
-    if (!isMinimumZoomMode) return;
-    setAutoRotation(0);
-    setManualRotationOffset(0);
-    setIsAutoRotationPaused(false);
-    autoRotationRef.current = 0;
-    isAutoRotationPausedRef.current = false;
-  }, [isMinimumZoomMode]);
-
-  const handleAutoRotationChange = useCallback(
-    (nextRotation: number | null) => {
-      if (nextRotation === null) return;
-      if (isMinimumZoomMode || isAutoRotationPausedRef.current) return;
-      setAutoRotation((prev) => {
-        const delta = getShortestAngleDelta(prev, nextRotation);
-        return normalizeRotationDeg(prev + delta);
-      });
-      setManualRotationOffset(0);
-    },
-    [isMinimumZoomMode]
-  );
 
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
@@ -1200,10 +1111,6 @@ const MapView = memo(function MapView({
             }
           }}
         >
-          <MapAutoRotationController
-            enabled={!isMinimumZoomMode}
-            onAutoRotationChange={handleAutoRotationChange}
-          />
           <MapZoomConstraint />
           <MapZoomRoadSnapController />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
