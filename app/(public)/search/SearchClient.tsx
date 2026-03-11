@@ -121,7 +121,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
   const [category, setCategory] = useState<string | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
-  const [visibleCount, setVisibleCount] = useState(itemsPerPage);
+  const [currentPage, setCurrentPage] = useState(1);
   const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
@@ -144,11 +144,11 @@ export default function SearchClient({ shops }: SearchClientProps) {
     category,
     chome: null,
   });
-  const visibleShops = useMemo(
-    () => filteredShops.slice(0, visibleCount),
-    [filteredShops, visibleCount]
-  );
-  const hasMore = visibleCount < filteredShops.length;
+  const totalPages = Math.max(1, Math.ceil(filteredShops.length / itemsPerPage));
+  const pagedShops = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredShops.slice(startIndex, startIndex + itemsPerPage);
+  }, [currentPage, filteredShops, itemsPerPage]);
 
   // カテゴリー一覧
   const categories = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
@@ -198,16 +198,16 @@ export default function SearchClient({ shops }: SearchClientProps) {
   const shouldShowMapButton = category !== null || hasNameResults;
 
   useEffect(() => {
-    setVisibleCount(itemsPerPage);
+    setCurrentPage(1);
   }, [itemsPerPage, textQuery, category]);
 
   useEffect(() => {
-    setVisibleCount((prev) => Math.min(prev, filteredShops.length || itemsPerPage));
-  }, [filteredShops.length, itemsPerPage]);
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
 
-  const handleLoadMore = useCallback(() => {
-    setVisibleCount((prev) => Math.min(prev + itemsPerPage, filteredShops.length));
-  }, [itemsPerPage, filteredShops.length]);
+  const handlePageSelect = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -290,14 +290,15 @@ export default function SearchClient({ shops }: SearchClientProps) {
                 <div className="mt-6">
                     {/* 検索結果 */}
                     <SearchResults
-                        shops={visibleShops}
+                        shops={pagedShops}
                         totalCount={filteredShops.length}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
                         hasQuery={hasQuery}
                         categories={categories}
                         onCategoryClick={handleSuggestionClick}
                         favoriteShopIds={favoriteShopIds}
-                        hasMore={hasMore}
-                        onLoadMore={handleLoadMore}
+                        onPageSelect={handlePageSelect}
                         onToggleFavorite={handleToggleFavorite}
                         onSelectShop={setSelectedShop}
                         onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
