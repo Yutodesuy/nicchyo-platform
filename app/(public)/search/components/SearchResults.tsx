@@ -15,7 +15,6 @@ interface SearchResultsProps {
   hasMore: boolean;
   onLoadMore?: () => void;
   onCategoryClick?: (category: string) => void;
-  onKeywordClick?: (keyword: string) => void;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   onOpenMap?: () => void;
@@ -36,7 +35,6 @@ export default function SearchResults({
   hasMore,
   onLoadMore,
   onCategoryClick,
-  onKeywordClick,
   onToggleFavorite,
   onSelectShop,
   onOpenMap,
@@ -68,7 +66,6 @@ export default function SearchResults({
         hasQuery={hasQuery}
         categories={categories}
         onCategoryClick={onCategoryClick}
-        onKeywordClick={onKeywordClick}
       />
     );
   }
