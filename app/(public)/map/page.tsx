@@ -31,6 +31,7 @@ function normalizeChome(value: string | null): Shop["chome"] {
 export default async function MapPage() {
   const cookieStore = await cookies();
   let shopRows: ShopRow[] | null = null;
+  let shops: Shop[] = [];
   let attendanceEstimates: Record<number, AttendanceEstimate> = {};
 
   const hasSupabaseEnv =
@@ -46,6 +47,39 @@ export default async function MapPage() {
     } catch {
       shops = [];
     }
+  }
+
+  if (shopRows && shopRows.length > 0) {
+    shops = shopRows
+      .map((row): Shop | null => {
+        const id = row.legacy_id ?? row.position;
+        const lat = row.lat ?? 0;
+        const lng = row.lng ?? 0;
+
+        if (!id || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+
+        return {
+          id,
+          vendorId: row.id ?? undefined,
+          name: row.name ?? "",
+          ownerName: row.owner_name ?? "",
+          category: row.category ?? "",
+          products: row.products ?? [],
+          description: row.description ?? "",
+          stallStyle: row.stall_style ?? undefined,
+          schedule: row.schedule ?? "",
+          message: row.message ?? undefined,
+          shopStrength: row.shop_strength ?? undefined,
+          lat,
+          lng,
+          position: row.position ?? id,
+          chome: normalizeChome(row.chome),
+        };
+      })
+      .filter((row): row is Shop => row !== null)
+      .sort((a, b) => a.id - b.id);
   }
 
   return (
