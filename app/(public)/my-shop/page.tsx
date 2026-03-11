@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, LogOut, BarChart2, Sparkles, ChevronRight } from "lucide-react";
+import { Megaphone, Store, LogOut, BarChart2, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -10,33 +10,33 @@ const MENU_ITEMS = [
     title: "最新情報の発信",
     description: "今日のおすすめ・残り数量など",
     href: "/vendor/post/new",
-    iconBg: "bg-amber-100",
-    iconColor: "text-amber-600",
+    accent: "from-amber-500/40 via-amber-100/70 to-white",
     icon: Megaphone,
+    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
     title: "出店情報の更新",
     description: "商品・決済方法・出店日",
     href: "/vendor/store",
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
+    accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
+    image: "/images/home/posters/HomePagePoster2.png",
   },
   {
     title: "アナリティクス",
     description: "閲覧数・人気商品・時間帯分析",
     href: "/vendor/analytics",
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-600",
+    accent: "from-violet-400/40 via-violet-100/70 to-white",
     icon: BarChart2,
+    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "AIばあちゃんに教える",
     description: "お店の情報をAIに学習させる",
     href: "/vendor/ai-knowledge",
-    iconBg: "bg-rose-100",
-    iconColor: "text-rose-500",
+    accent: "from-rose-400/40 via-rose-100/70 to-white",
     icon: Sparkles,
+    image: "/images/home/posters/HomePagePoster2.png",
   },
 ];
 
@@ -83,25 +83,34 @@ export default function MyShopPage() {
                 現在のアカウントに出店者ロールが設定されていません。表示はできますが、保存時に制限が出る場合があります。
               </div>
             )}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {MENU_ITEMS.map((item, index) => {
+            <div className="grid gap-5 md:grid-cols-3">
+              {MENU_ITEMS.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-4 px-4 py-4 transition active:bg-slate-50 ${
-                      index !== MENU_ITEMS.length - 1 ? "border-b border-slate-100" : ""
-                    }`}
+                    className="group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                   >
-                    <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${item.iconBg}`}>
-                      <Icon size={22} className={item.iconColor} />
+                    <div
+                      className="absolute inset-0 bg-cover bg-center opacity-70"
+                      style={{ backgroundImage: `url(${item.image})` }}
+                      aria-hidden="true"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
+                    <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" aria-hidden="true" />
+                    <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
+                      <div className="flex items-center justify-end">
+                        <span className="rounded-3xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-md">
+                          <Icon size={32} />
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-semibold text-slate-900 md:text-[32px]">
+                          {item.title}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                      <p className="text-xs text-slate-500">{item.description}</p>
-                    </div>
-                    <ChevronRight size={18} className="flex-shrink-0 text-slate-300" />
                   </Link>
                 );
               })}
