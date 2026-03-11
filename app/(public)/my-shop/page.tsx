@@ -67,7 +67,7 @@ export default function MyShopPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl px-4 pt-5">
+      <div className="mx-auto w-full max-w-2xl px-4 pt-5 md:max-w-4xl">
         {!canAccess ? (
           <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             出店者としてログインしてください。ログインは
