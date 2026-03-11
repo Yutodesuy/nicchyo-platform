@@ -52,7 +52,8 @@ const STYLE_PRESETS = [
 
 const EMPTY_STORE: Store = {
   id: "", vendor_id: "",
-  name: "", category_id: "", style: "", style_tags: [], main_products: [],
+  name: "", owner_name: "", category_id: "", style: "", style_tags: [], main_products: [],
+  main_product_prices: {},
   payment_methods: [], rain_policy: "undecided", schedule: [],
 };
 
@@ -72,6 +73,7 @@ export default function VendorStorePage() {
   const [form, setForm]           = useState<Store>(EMPTY_STORE);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newProduct, setNewProduct] = useState("");
+  const [newProductPrice, setNewProductPrice] = useState("");
   const [newStyleTag, setNewStyleTag] = useState("");
   const [newSchedule, setNewSchedule] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -102,10 +104,12 @@ export default function VendorStorePage() {
     try {
       await saveVendorStore(user.id, {
         name: form.name,
+        owner_name: form.owner_name,
         category_id: form.category_id,
         style: form.style,
         style_tags: form.style_tags,
         main_products: form.main_products,
+        main_product_prices: form.main_product_prices,
         payment_methods: form.payment_methods,
         rain_policy: form.rain_policy,
         schedule: form.schedule,
@@ -142,12 +146,30 @@ export default function VendorStorePage() {
   function addProduct() {
     const trimmed = newProduct.trim();
     if (!trimmed || form.main_products.includes(trimmed)) return;
-    setForm((prev) => ({ ...prev, main_products: [...prev.main_products, trimmed] }));
+    const price = newProductPrice.trim() !== "" ? parseInt(newProductPrice, 10) : null;
+    setForm((prev) => ({
+      ...prev,
+      main_products: [...prev.main_products, trimmed],
+      main_product_prices: { ...prev.main_product_prices, [trimmed]: isNaN(price as number) ? null : price },
+    }));
     setNewProduct("");
+    setNewProductPrice("");
   }
 
   function removeProduct(name: string) {
-    setForm((prev) => ({ ...prev, main_products: prev.main_products.filter((p) => p !== name) }));
+    setForm((prev) => {
+      const prices = { ...prev.main_product_prices };
+      delete prices[name];
+      return { ...prev, main_products: prev.main_products.filter((p) => p !== name), main_product_prices: prices };
+    });
+  }
+
+  function updateProductPrice(name: string, value: string) {
+    const price = value.trim() === "" ? null : parseInt(value, 10);
+    setForm((prev) => ({
+      ...prev,
+      main_product_prices: { ...prev.main_product_prices, [name]: isNaN(price as number) ? null : price },
+    }));
   }
 
   function addSchedule(value: string) {
@@ -203,6 +225,19 @@ export default function VendorStorePage() {
             placeholder="例：山田農園"
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
           />
+        </div>
+
+        {/* 店主名（任意） */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={StoreIcon} title="店主名（任意）" />
+          <input
+            type="text"
+            value={form.owner_name ?? ""}
+            onChange={(e) => setForm((prev) => ({ ...prev, owner_name: e.target.value }))}
+            placeholder="例：山田 太郎"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+          />
+          <p className="mt-1.5 text-[10px] text-slate-400">AIばあちゃんが店主名を案内するときに使用します</p>
         </div>
 
         {/* 商品ジャンル */}
@@ -288,14 +323,27 @@ export default function VendorStorePage() {
         {/* 主な商品 */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={StoreIcon} title="主な商品" />
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-3 space-y-2">
             {form.main_products.map((p) => (
-              <span key={p} className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
-                {p}
-                <button type="button" onClick={() => removeProduct(p)} className="text-amber-400 hover:text-amber-700">
-                  <X size={12} />
+              <div key={p} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                  {p}
+                </span>
+                <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2">
+                  <span className="text-xs text-slate-400">¥</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.main_product_prices[p] ?? ""}
+                    onChange={(e) => updateProductPrice(p, e.target.value)}
+                    placeholder="未設定"
+                    className="w-20 bg-transparent text-right text-sm text-slate-700 outline-none"
+                  />
+                </div>
+                <button type="button" onClick={() => removeProduct(p)} className="flex-shrink-0 text-slate-300 hover:text-rose-400">
+                  <X size={16} />
                 </button>
-              </span>
+              </div>
             ))}
             {form.main_products.length === 0 && (
               <span className="text-xs text-slate-400">商品を追加してください</span>
@@ -306,13 +354,26 @@ export default function VendorStorePage() {
               type="text" value={newProduct}
               onChange={(e) => setNewProduct(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProduct(); } }}
-              placeholder="商品名を入力..."
+              placeholder="商品名..."
               className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300"
             />
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-2">
+              <span className="text-xs text-slate-400">¥</span>
+              <input
+                type="number"
+                min={0}
+                value={newProductPrice}
+                onChange={(e) => setNewProductPrice(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addProduct(); } }}
+                placeholder="金額"
+                className="w-20 bg-transparent py-2 text-right text-sm text-slate-700 outline-none"
+              />
+            </div>
             <button type="button" onClick={addProduct} className="flex items-center gap-1 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-200">
               <Plus size={14} />追加
             </button>
           </div>
+          <p className="mt-2 text-[10px] text-slate-400">金額は任意です。未入力でも追加できます。</p>
         </div>
 
         {/* 決済方法 */}

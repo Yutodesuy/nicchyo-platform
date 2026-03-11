@@ -604,6 +604,7 @@ export default function ShopDetailBanner({
                 const specificKey = buildBagKey(product, shop.id);
                 const anyKey = buildBagKey(product, undefined);
                 const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
+                const price = shop.productPrices?.[product] ?? null;
                 return (
                   <button
                     key={product}
@@ -620,6 +621,11 @@ export default function ShopDetailBanner({
                     aria-label={`${product}`}
                   >
                     {product}
+                    {price != null && (
+                      <span className="ml-1.5 text-base font-normal text-slate-500">
+                        ¥{price.toLocaleString()}
+                      </span>
+                    )}
                   </button>
                 );
               })}

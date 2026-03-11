@@ -47,6 +47,9 @@ export interface ShopEditableData {
   /** 取扱商品リスト */
   products: string[];
 
+  /** 商品ごとの価格（任意） */
+  productPrices?: Record<string, number | null>;
+
   /** 商品ごとの詳細（任意） */
   productDetails?: {
     name: string;
@@ -138,6 +141,9 @@ export interface ShopEditableData {
 export interface ShopSystemData {
   /** 店舗ID（一意、変更不可） */
   id: number;
+
+  /** 出店者UUID（内部用） */
+  vendorId?: string;
 
   /** 道路上の位置（0-149、変更不可） */
   position: number;

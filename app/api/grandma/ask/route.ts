@@ -6,8 +6,45 @@ import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// ─── 日曜市エリア判定 ────────────────────────────────────────
+const MARKET_CENTER = { lat: 33.5650, lng: 133.5310 };
+const ON_SITE_RADIUS_KM = 0.5;
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+function classifyLocationType(location: { lat: number; lng: number } | null | undefined): "pre_visit" | "on_site" | "unknown" {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return "unknown";
+  return haversineKm(location, MARKET_CENTER) <= ON_SITE_RADIUS_KM ? "on_site" : "pre_visit";
+}
+
+function classifyIntent(question: string): string {
+  if (/人気|売れ|ランキング|売れ筋/.test(question)) return "人気商品";
+  if (/味|美味|うまい|おいし|甘|辛|酸っ|塩/.test(question)) return "味";
+  if (/行列|混|待ち|並ぶ|並び/.test(question)) return "行列";
+  if (/何時|営業|開店|閉店|時間|朝|終わ/.test(question)) return "営業時間";
+  if (/おすすめ|オススメ|いい|良い/.test(question)) return "おすすめ";
+  return "その他";
+}
+
+function extractKeywords(question: string): string[] {
+  const stopwords = /^(は|が|を|に|で|と|も|の|て|だ|な|や|か|から|まで|より|けど|ので|って|ね|よ|し|ている|てる|です|ます|ない|ある|いる|する|した|して|できる|ください|教え|知り|たい|たい|って)$/;
+  const tokens = question
+    .replace(/[、。！？\s]/g, " ")
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stopwords.test(t));
+  return [...new Set(tokens)].slice(0, 10);
+}
+
 type ShopRow = {
   id: number;
+  vendorId?: string | null;
   name: string | null;
   owner_name: string | null;
   chome: string | null;
@@ -146,6 +183,7 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
       id: shop.id,
+      vendorId: shop.vendorId ?? null,
       name: shop.name ?? null,
       owner_name: shop.ownerName ?? null,
       chome: shop.chome ?? null,
@@ -218,6 +256,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // 店舗名・オーナー名が質問に含まれていればshopIntentを設定（「〇〇について教えて」対応）
+    if (shops.length === 0) {
+      const nameMatches = allShops.filter((shop) => {
+        const shopName = (shop.name ?? "").replace(/\s+/g, "");
+        const ownerName = (shop.owner_name ?? "").replace(/\s+/g, "");
+        return (
+          (shopName.length >= 2 && normalized.includes(shopName)) ||
+          (ownerName.length >= 2 && normalized.includes(ownerName))
+        );
+      });
+      if (nameMatches.length > 0) {
+        shopIntent = true;
+        shops = nameMatches;
+        matchIds = nameMatches.map((s) => s.id);
+      }
+    }
+
     if (shopIntent && shops.length === 0) {
       const scored = allShops
         .map((shop) => {
@@ -286,6 +341,7 @@ export async function POST(request: Request) {
               const parts = [
                 `id:${shop.id}`,
                 shop.name ? `name:${shop.name}` : null,
+                shop.owner_name ? `owner:${shop.owner_name}` : null,
                 shop.category ? `category:${shop.category}` : null,
                 shop.products?.length
                   ? `products:${shop.products.join(" / ")}`
@@ -298,11 +354,67 @@ export async function POST(request: Request) {
             })
             .join("\n")
         : "該当なし";
+    // ─── 出店者RAG知識を検索 ──────────────────────────────────
+    let storeKnowledgeContext = "";
+    const ragTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) ragTargetVendorIds.push(targetShop.vendorId);
+    if (ragTargetVendorIds.length === 0 && matchIds.length > 0) {
+      matchIds.slice(0, 3).forEach((storeNum) => {
+        const s = allShops.find((sh) => sh.id === storeNum);
+        if (s?.vendorId) ragTargetVendorIds.push(s.vendorId);
+      });
+    }
+    if (ragTargetVendorIds.length > 0 && embedding) {
+      const knowledgeResults = await Promise.all(
+        ragTargetVendorIds.map(async (vendorId) => {
+          const res = await supabase.rpc("match_store_knowledge", {
+            query_embedding: embedding,
+            target_store_id: vendorId,
+            match_count: 2,
+            match_threshold: 0.45,
+          });
+          return res as { data: { content: string; similarity: number }[] | null };
+        })
+      );
+      const knowledgeSnippets = knowledgeResults
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => b.similarity - a.similarity)
+        .map((r) => r.content)
+        .filter(Boolean);
+      if (knowledgeSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
+      }
+    }
+    // store_knowledge 未登録の場合、店舗登録情報をフォールバックとして使用
+    if (!storeKnowledgeContext) {
+      const fallbackShops = targetShop
+        ? [targetShop]
+        : matchIds.slice(0, 3).map((id) => allShops.find((s) => s.id === id)).filter((s): s is ShopRow => s != null);
+      const fallbackSnippets = fallbackShops
+        .map((shop) => {
+          const parts = [
+            shop.owner_name ? `店主: ${shop.owner_name}` : null,
+            shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
+            shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
+            shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
+            shop.schedule ? `出店予定: ${shop.schedule}` : null,
+            shop.message ? `メッセージ: ${shop.message}` : null,
+          ].filter(Boolean);
+          return parts.length > 0 ? parts.join("\n") : null;
+        })
+        .filter(Boolean);
+      if (fallbackSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${fallbackSnippets.join("\n---\n")}`;
+      }
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (targetShop) {
       shopIntent = true;
       const targetParts = [
         `id:${targetShop.id}`,
         targetShop.name ? `name:${targetShop.name}` : null,
+        targetShop.owner_name ? `owner:${targetShop.owner_name}` : null,
         targetShop.category ? `category:${targetShop.category}` : null,
         targetShop.products?.length
           ? `products:${targetShop.products.join(" / ")}`
@@ -361,7 +473,7 @@ export async function POST(request: Request) {
 
     const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
       location ? `${location.lat}, ${location.lng}` : "不明"
-    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`;
+    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}${storeKnowledgeContext}`;
     const userContent = imageDataUrl
       ? [
           { type: "text", text: `${userContextText}\n画像が添付されています。` },
@@ -424,6 +536,37 @@ export async function POST(request: Request) {
     if (shopMatch) {
       reply = reply.replace(shopMatch[0], "").trim();
     }
+
+    // ─── AI相談ログを記録（fire-and-forget） ────────────────
+    const locationType = classifyLocationType(location);
+    const intentCategory = classifyIntent(rawQuestion);
+    const keywords = extractKeywords(rawQuestion);
+
+    const logTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) logTargetVendorIds.push(targetShop.vendorId);
+    if (logTargetVendorIds.length === 0 && uniqueRecommended.length > 0) {
+      uniqueRecommended.forEach((storeNum) => {
+        const shop = allShops.find((s) => s.id === storeNum);
+        if (shop?.vendorId) logTargetVendorIds.push(shop.vendorId);
+      });
+    }
+
+    if (logTargetVendorIds.length > 0) {
+      const logs = logTargetVendorIds.map((vendorId) => ({
+        store_id: vendorId,
+        question_text: rawQuestion || "(画像のみ)",
+        intent_category: intentCategory,
+        keywords,
+        location_type: locationType,
+        is_recommendation: uniqueRecommended.some((storeNum) => {
+          const s = allShops.find((sh) => sh.id === storeNum);
+          return s?.vendorId === vendorId;
+        }),
+      }));
+      supabase.from("ai_consult_logs").insert(logs).then(() => {});
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (!shopIntent || uniqueRecommended.length === 0) {
       return NextResponse.json({ reply, imageUrl });
     }

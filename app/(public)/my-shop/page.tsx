@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, FileText, LogOut, BarChart2 } from "lucide-react";
+import { Megaphone, Store, FileText, LogOut, BarChart2, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -41,6 +41,15 @@ const MENU_ITEMS = [
     icon: BarChart2,
     badge: "分析",
     image: "/images/home/posters/HomePagePoster6.jpeg",
+  },
+  {
+    title: "AIばあちゃんに教える",
+    description: "お店の情報をAIに学習させる",
+    href: "/vendor/ai-knowledge",
+    accent: "from-rose-400/40 via-rose-100/70 to-white",
+    icon: Sparkles,
+    badge: "AI知識",
+    image: "/images/home/posters/HomePagePoster2.png",
   },
 ];
 
