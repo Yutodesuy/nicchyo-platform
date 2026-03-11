@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { Shop } from '../../map/data/shops';
 import ShopResultCard from './ShopResultCard';
 import EmptyState from './EmptyState';
@@ -9,11 +8,12 @@ import { Map } from 'lucide-react';
 interface SearchResultsProps {
   shops: Shop[];
   totalCount: number;
+  currentPage: number;
+  totalPages: number;
   hasQuery: boolean;
   categories: string[];
   favoriteShopIds: number[];
-  hasMore: boolean;
-  onLoadMore?: () => void;
+  onPageSelect?: (page: number) => void;
   onCategoryClick?: (category: string) => void;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
@@ -29,11 +29,12 @@ interface SearchResultsProps {
 export default function SearchResults({
   shops,
   totalCount,
+  currentPage,
+  totalPages,
   hasQuery,
   categories,
   favoriteShopIds,
-  hasMore,
-  onLoadMore,
+  onPageSelect,
   onCategoryClick,
   onToggleFavorite,
   onSelectShop,
@@ -41,23 +42,7 @@ export default function SearchResults({
   mapLabel,
   enableSearchMapHighlight = false,
 }: SearchResultsProps) {
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!hasMore || !onLoadMore || !sentinelRef.current) return;
-    const target = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMore, onLoadMore]);
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   // 結果がない場合は空状態を表示
   if (shops.length === 0) {
@@ -111,12 +96,31 @@ export default function SearchResults({
           ))}
         </div>
 
-        {hasMore && (
-          <div
-            ref={sentinelRef}
-            className="mt-6 flex items-center justify-center py-6 text-xs text-gray-500"
-          >
-            読み込み中...
+        {totalCount > 10 && (
+          <div className="mt-6 flex flex-col items-center gap-3 border-t border-amber-100 pt-5">
+            <p className="text-xs font-medium text-gray-500">
+              {currentPage} / {totalPages} ページ
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {pageNumbers.map((pageNumber) => {
+                const isActive = pageNumber === currentPage;
+                return (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => onPageSelect?.(pageNumber)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`min-w-10 rounded-full border px-3 py-2 text-sm font-semibold shadow-sm transition ${
+                      isActive
+                        ? "border-amber-200 bg-amber-600 text-white"
+                        : "border-amber-200 bg-white text-amber-900 hover:bg-amber-50"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
