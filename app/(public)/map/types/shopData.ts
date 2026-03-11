@@ -165,9 +165,6 @@ export interface ShopSystemData {
 
   /** 作成日時 */
   createdAt?: number;
-
-  /** 出店者UUID（Supabase auth.uid） */
-  vendorId?: string;
 }
 
 /**

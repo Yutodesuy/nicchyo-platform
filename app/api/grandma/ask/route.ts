@@ -44,7 +44,7 @@ function extractKeywords(question: string): string[] {
 
 type ShopRow = {
   id: number;
-  vendorId?: string;
+  vendorId?: string | null;
   name: string | null;
   owner_name: string | null;
   chome: string | null;
@@ -57,7 +57,6 @@ type ShopRow = {
   shop_strength: string | null;
   lat: number | null;
   lng: number | null;
-  vendorId?: string | null;
 };
 
 type KnowledgeRow = {
@@ -184,7 +183,7 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
       id: shop.id,
-      vendorId: shop.vendorId,
+      vendorId: shop.vendorId ?? null,
       name: shop.name ?? null,
       owner_name: shop.ownerName ?? null,
       chome: shop.chome ?? null,
@@ -197,7 +196,6 @@ export async function POST(request: Request) {
       shop_strength: shop.shopStrength ?? null,
       lat: shop.lat ?? null,
       lng: shop.lng ?? null,
-      vendorId: shop.vendorId ?? null,
     }));
 
     let targetShop: ShopRow | null = null;
