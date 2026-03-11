@@ -621,8 +621,9 @@ body.home-poster-zoom-open .hamburger-button {
 }
 
 .shop-marker-container {
+  transform: scale(var(--shop-marker-zoom-scale, 1));
+  transform-origin: center bottom;
   rotate: var(--map-rotation-inverse, 0deg);
-  transform-origin: center center;
 }
 
 .map-landmark-icon {
