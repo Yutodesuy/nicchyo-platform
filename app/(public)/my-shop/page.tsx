@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -41,14 +41,14 @@ const MENU_ITEMS = [
 ];
 
 export default function MyShopPage() {
-  const { isLoggedIn, permissions } = useAuth();
+  const { isLoggedIn, permissions, logout } = useAuth();
   const canAccess = isLoggedIn;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.18),_rgba(255,255,255,0))] pb-24">
-      {/* ヘッダー */}
-      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-2xl items-center justify-between">
+      {/* モバイル用ヘッダー */}
+      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm md:hidden">
+        <div className="flex items-center">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-600">
               Vendor Console
@@ -58,7 +58,30 @@ export default function MyShopPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl px-4 pt-5 md:max-w-4xl">
+      <div className="mx-auto w-full max-w-2xl px-4 pt-5 md:max-w-4xl md:pt-8">
+        {/* デスクトップ用ヘッダー */}
+        <div className="hidden md:block">
+          <div className="rounded-[32px] border border-amber-100 bg-white/95 px-6 py-7 text-center shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-700">
+              Vendor Console
+            </p>
+            <h1 className="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
+              出店者メニュー
+            </h1>
+            {isLoggedIn && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                >
+                  <LogOut size={12} />
+                  ログアウト
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {!canAccess ? (
           <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             出店者としてログインしてください。ログインは
