@@ -26,7 +26,7 @@ interface Kotodute {
 }
 
 function ModeratorKotoduteContent() {
-  const { permissions } = useAuth();
+  const { permissions, isLoading } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | KotoduteStatus>("all");
   const [shopFilter, setShopFilter] = useState<string>("all");
@@ -37,6 +37,17 @@ function ModeratorKotoduteContent() {
   const [selectedKotoduteIds, setSelectedKotoduteIds] = useState<number[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!permissions.canModerateContent) {
+      router.push("/");
+    }
+  }, [isLoading, permissions.canModerateContent, router]);
+
+  if (isLoading || !permissions.canModerateContent) {
+    return null;
+  }
 
   // ダミーデータ（メモ化）
   const dummyKotodute: Kotodute[] = useMemo(
@@ -336,17 +347,6 @@ function ModeratorKotoduteContent() {
     estimateSize: () => 220,
     overscan: 3,
   });
-
-  // モデレーター権限チェック
-  useEffect(() => {
-    if (!permissions.canModerateContent) {
-      router.push("/");
-    }
-  }, [permissions.canModerateContent, router]);
-
-  if (!permissions.canModerateContent) {
-    return null;
-  }
 
   return (
     <AdminLayout>

@@ -29,7 +29,7 @@ const ActivityItem = React.memo(function ActivityItem({
 });
 
 function AdminDashboardContent() {
-  const { user, permissions } = useAuth();
+  const { user, permissions, isLoading } = useAuth();
   const router = useRouter();
 
   // 統計データ（メモ化） - フックは早期リターンの前に配置
@@ -71,12 +71,13 @@ function AdminDashboardContent() {
 
   // 管理者権限チェック - フックの後に配置
   useEffect(() => {
+    if (isLoading) return;
     if (!permissions.isSuperAdmin) {
       router.push("/");
     }
-  }, [permissions.isSuperAdmin, router]);
+  }, [isLoading, permissions.isSuperAdmin, router]);
 
-  if (!permissions.isSuperAdmin) {
+  if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
 

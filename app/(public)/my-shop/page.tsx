@@ -54,8 +54,8 @@ const MENU_ITEMS = [
 ];
 
 export default function MyShopPage() {
-  const { isLoggedIn, permissions, logout } = useAuth();
-  const canAccess = isLoggedIn;
+  const { isLoggedIn, permissions, logout, isLoading } = useAuth();
+  const canAccess = !isLoading && isLoggedIn;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.25),_rgba(255,255,255,0))] pb-24">
@@ -80,7 +80,11 @@ export default function MyShopPage() {
           )}
         </div>
 
-        {!canAccess ? (
+        {isLoading ? (
+        <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ログイン状態を確認しています。しばらくお待ちください。
+        </div>
+        ) : !canAccess ? (
         <div className="mt-6 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           出店者としてログインしてください。ログインは
           <Link href="/login" className="ml-1 font-semibold underline">
