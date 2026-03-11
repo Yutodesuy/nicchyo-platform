@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend } from "../_types";
+import type { ProductSale, VendorAnalytics, HourlyData, MarketTrend, SearchSourceRatio, SearchKeywordTrend, AiConsultAnalytics } from "../_types";
 
 // ─── ページビュー ───────────────────────────────────────────
 
@@ -136,6 +136,23 @@ export async function saveTodayProductSales(
   if (error) throw error;
 }
 
+export async function fetchSearchSourceRatio(vendorId: string): Promise<SearchSourceRatio> {
+  const supabase = createClient();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("shop_page_views")
+    .select("source")
+    .eq("vendor_id", vendorId)
+    .gte("viewed_at", weekAgo);
+  const counts: SearchSourceRatio = { preVisit: 0, onSite: 0, other: 0 };
+  for (const row of data ?? []) {
+    if (row.source === "search") counts.preVisit++;
+    else if (row.source === "map") counts.onSite++;
+    else counts.other++;
+  }
+  return counts;
+}
+
 export async function fetchMarketTrends(): Promise<MarketTrend[]> {
   const supabase = createClient();
   const { data } = await supabase
@@ -161,4 +178,92 @@ export async function fetchMarketTrends(): Promise<MarketTrend[]> {
       total_quantity: total,
       vendor_count: vendors.size,
     }));
+}
+
+// ─── 商品検索ログ ────────────────────────────────────────────
+
+export async function recordProductSearch(keyword: string, resultCount: number): Promise<void> {
+  const supabase = createClient();
+  await supabase.from("product_search_logs").insert({ keyword, result_count: resultCount });
+}
+
+export async function fetchProductSearchTrends(
+  myProductNames: string[]
+): Promise<SearchKeywordTrend[]> {
+  const supabase = createClient();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("product_search_logs")
+    .select("keyword")
+    .gte("searched_at", weekAgo);
+
+  if (!data) return [];
+
+  const countMap = new Map<string, number>();
+  for (const row of data) {
+    const kw = row.keyword.trim().toLowerCase();
+    if (kw.length < 2) continue;
+    countMap.set(kw, (countMap.get(kw) ?? 0) + 1);
+  }
+
+  const lowerProductNames = myProductNames.map((n) => n.toLowerCase());
+
+  return [...countMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([keyword, count]) => ({
+      keyword,
+      count,
+      matchesMyProducts: lowerProductNames.some(
+        (p) => p.includes(keyword) || keyword.includes(p)
+      ),
+    }));
+}
+
+// ─── AI相談アナリティクス ────────────────────────────────────
+
+export async function fetchAiConsultAnalytics(vendorId: string): Promise<AiConsultAnalytics> {
+  const supabase = createClient();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("ai_consult_logs")
+    .select("intent_category, keywords, location_type, is_recommendation")
+    .eq("store_id", vendorId)
+    .gte("consulted_at", weekAgo);
+
+  if (!data || data.length === 0) {
+    return { topics: [], keywords: [], recommendationCount: 0, locationRatio: { preVisit: 0, onSite: 0 }, totalCount: 0 };
+  }
+
+  // トピック集計
+  const topicMap = new Map<string, number>();
+  for (const row of data) {
+    const cat = row.intent_category ?? "その他";
+    topicMap.set(cat, (topicMap.get(cat) ?? 0) + 1);
+  }
+  const topics = [...topicMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => ({ category, count }));
+
+  // キーワード集計
+  const kwMap = new Map<string, number>();
+  for (const row of data) {
+    for (const kw of (row.keywords as string[]) ?? []) {
+      if (kw.length >= 2) kwMap.set(kw, (kwMap.get(kw) ?? 0) + 1);
+    }
+  }
+  const keywords = [...kwMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([keyword, count]) => ({ keyword, count }));
+
+  // 紹介回数
+  const recommendationCount = data.filter((r) => r.is_recommendation).length;
+
+  // 来訪前/現地
+  const preVisit = data.filter((r) => r.location_type === "pre_visit").length;
+  const onSite   = data.filter((r) => r.location_type === "on_site").length;
+
+  return { topics, keywords, recommendationCount, locationRatio: { preVisit, onSite }, totalCount: data.length };
 }
