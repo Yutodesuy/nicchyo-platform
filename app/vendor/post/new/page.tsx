@@ -160,6 +160,7 @@ export default function VendorPostNewPage() {
         setExistingImageUrl(post.image_url);
       }
       setIsRepost(true);
+      setActiveTab("new");
     });
   }, [searchParams]);
 
