@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, FileText, LogOut, BarChart2, Sparkles } from "lucide-react";
+import { Megaphone, Store, LogOut, BarChart2, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -14,15 +14,6 @@ const MENU_ITEMS = [
     icon: Megaphone,
     badge: "お知らせ",
     image: "/images/home/posters/HomePagePoster3.jpeg",
-  },
-  {
-    title: "投稿履歴",
-    description: "過去の投稿を確認・再投稿",
-    href: "/vendor/posts",
-    accent: "from-sky-400/40 via-sky-100/70 to-white",
-    icon: FileText,
-    badge: "履歴",
-    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "出店情報の更新",

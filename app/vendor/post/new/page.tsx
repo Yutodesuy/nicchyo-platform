@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  History,
 } from "lucide-react";
 
 type ExpirationOption = { preset: ExpirationPreset; label: string; desc: string; icon: typeof Clock };
@@ -131,6 +132,11 @@ export default function VendorPostNewPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">New Post</p>
             <h1 className="text-xl font-bold text-slate-900">最新情報を発信</h1>
           </div>
+          <Link href="/vendor/posts"
+            className="ml-auto flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            <History size={14} />投稿履歴
+          </Link>
         </div>
       </div>
 
