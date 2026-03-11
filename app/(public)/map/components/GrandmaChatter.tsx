@@ -1157,7 +1157,7 @@ export default function GrandmaChatter({
                   {bubbleIcon}
                 </span>
               )}
-              <div className="space-y-1">
+              <div key={current.id} className="grandma-comment-bounce space-y-1">
                 {isShopIntro ? (
                   (() => {
                     const [title, ...rest] = bubbleText.split("\n");
