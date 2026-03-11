@@ -440,6 +440,28 @@ body.grandma-chat-open .leaflet-container {
   margin-bottom: 30px;
 }
 
+.shop-simple-banner-name-hidden .shop-simple-banner-name {
+  display: none;
+  margin-bottom: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-body {
+  display: none;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner {
+  width: 108px;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
 .shop-simple-banner-product {
   font-size: 11px;
   color: #475569;
