@@ -371,8 +371,8 @@ type MapViewProps = {
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 12;
-const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 18;
+const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
+const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
 const PAN_START_THRESHOLD_PX = 3;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.01;
@@ -414,11 +414,9 @@ function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => vo
 function MapAutoRotationController({
   enabled,
   onAutoRotationChange,
-  onResumeFromManualPause,
 }: {
   enabled: boolean;
   onAutoRotationChange: (rotation: number | null) => void;
-  onResumeFromManualPause: (reason: "moveend" | "zoomend") => void;
 }) {
   const map = useMap();
 
@@ -436,11 +434,9 @@ function MapAutoRotationController({
     };
 
     const handleMoveEnd = () => {
-      onResumeFromManualPause("moveend");
       updateAutoRotation();
     };
     const handleZoomEnd = () => {
-      onResumeFromManualPause("zoomend");
       updateAutoRotation();
     };
 
@@ -455,7 +451,6 @@ function MapAutoRotationController({
     enabled,
     map,
     onAutoRotationChange,
-    onResumeFromManualPause,
   ]);
 
   return null;
@@ -576,6 +571,7 @@ const MapView = memo(function MapView({
   const [isAutoRotationPaused, setIsAutoRotationPaused] = useState(false);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const [isTouchRotating, setIsTouchRotating] = useState(false);
+  const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
     const { innerWidth, innerHeight } = window;
@@ -969,17 +965,6 @@ const MapView = memo(function MapView({
     [isMinimumZoomMode]
   );
 
-  const handleResumeFromManualPause = useCallback((reason: "moveend" | "zoomend") => {
-    isAutoRotationPausedRef.current = false;
-    setIsAutoRotationPaused((prev) => {
-      if (!prev) return prev;
-      return false;
-    });
-    if (reason === "zoomend") {
-      setManualRotationOffset(0);
-    }
-  }, []);
-
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
     LANDMARK_SPECS.forEach((spec) => {
@@ -1020,6 +1005,7 @@ const MapView = memo(function MapView({
     (e: React.TouchEvent<HTMLDivElement>) => {
       if (interactionDisabled) return;
       if (e.touches.length === 1) {
+        setIsMultiTouchGesture(false);
         const touch = e.touches[0];
         touchPanRef.current = {
           lastX: touch.clientX,
@@ -1031,6 +1017,7 @@ const MapView = memo(function MapView({
         return;
       }
       if (e.touches.length !== 2) return;
+      setIsMultiTouchGesture(true);
       touchPanRef.current = null;
       const t0 = e.touches[0];
       const t1 = e.touches[1];
@@ -1102,6 +1089,7 @@ const MapView = memo(function MapView({
 
   const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (interactionDisabled) return;
+    setIsMultiTouchGesture(e.touches.length >= 2);
     if (e.touches.length < 2) {
       touchRotateRef.current = null;
       setIsTouchRotating(false);
@@ -1173,6 +1161,7 @@ const MapView = memo(function MapView({
         style={{
           width: `${mapShellSize}px`,
           height: `${mapShellSize}px`,
+          touchAction: "none",
           transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
           transformOrigin: "center center",
           transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
@@ -1185,7 +1174,7 @@ const MapView = memo(function MapView({
           maxZoom={MAX_ZOOM}
           scrollWheelZoom={!agentOpen && !isMobile}
           dragging={false}
-          touchZoom={agentOpen ? false : isTouchRotating ? false : isMobile ? "center" : true}
+          touchZoom={agentOpen ? false : isMultiTouchGesture || isTouchRotating ? false : isMobile ? "center" : true}
           doubleClickZoom={!agentOpen && !isMobile}
           className={`h-full w-full ${agentOpen ? "pointer-events-none" : ""}`}
           style={{
@@ -1214,7 +1203,6 @@ const MapView = memo(function MapView({
           <MapAutoRotationController
             enabled={!isMinimumZoomMode}
             onAutoRotationChange={handleAutoRotationChange}
-            onResumeFromManualPause={handleResumeFromManualPause}
           />
           <MapZoomConstraint />
           <MapZoomRoadSnapController />
