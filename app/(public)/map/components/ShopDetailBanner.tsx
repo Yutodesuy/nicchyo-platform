@@ -1,8 +1,8 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
-import type { CSSProperties } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import type { CSSProperties, RefObject } from "react";
 import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -78,6 +78,37 @@ function loadBagItems(): BagItem[] {
   }
 }
 
+function useCenterBounceTrigger(
+  rootRef: RefObject<HTMLElement | null>,
+  targetRef: RefObject<HTMLElement | null>
+) {
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const target = targetRef.current;
+    if (!root || !target || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsActive(entry.isIntersecting);
+      },
+      {
+        root,
+        threshold: 0.55,
+        rootMargin: "-28% 0px -28% 0px",
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [rootRef, targetRef]);
+
+  return isActive;
+}
+
 export default function ShopDetailBanner({
   shop,
   bagCount,
@@ -98,6 +129,9 @@ export default function ShopDetailBanner({
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
   const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
+  const [isGrandmaCommentBouncing, setIsGrandmaCommentBouncing] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const activePostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -331,6 +365,17 @@ export default function ShopDetailBanner({
     setPendingProduct(null);
   }, []);
 
+  const handleGrandmaCommentTap = useCallback(() => {
+    setIsGrandmaCommentBouncing(false);
+    if (typeof window === "undefined") {
+      setIsGrandmaCommentBouncing(true);
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      setIsGrandmaCommentBouncing(true);
+    });
+  }, []);
+
   const bannerStyle = useMemo(() => {
     if (!originRect || typeof window === "undefined") return undefined;
     const vw = window.innerWidth;
@@ -349,9 +394,12 @@ export default function ShopDetailBanner({
     } as CSSProperties;
   }, [originRect]);
 
+  const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
       <div
+        ref={scrollContainerRef}
         className={`h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl ${
           originRect ? "shop-banner-animate" : ""
         }`}
@@ -460,7 +508,12 @@ export default function ShopDetailBanner({
 
         {/* 今日のお知らせ（出店者投稿） */}
         {!isKotodute && shop.activePost && (
-          <div className="mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+          <div
+            ref={activePostRef}
+            className={`mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 ${
+              isActivePostCentered ? "center-bounce-in" : ""
+            }`}
+          >
             <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-2.5">
               <span className="text-base">📢</span>
               <span className="text-sm font-semibold text-amber-700">今日のお知らせ</span>
@@ -495,7 +548,7 @@ export default function ShopDetailBanner({
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
               <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
               <div className="mt-3 flex items-start gap-4">
-                <div className="shrink-0">
+              <div className="shrink-0">
                   <Image
                     src="/images/obaasan_transparent.png"
                     alt="おせっかいばあちゃん"
@@ -504,13 +557,20 @@ export default function ShopDetailBanner({
                     className="h-20 w-20 opacity-70"
                   />
                 </div>
-                <div className="relative w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xl leading-relaxed text-slate-700">
+                <button
+                  type="button"
+                  onClick={handleGrandmaCommentTap}
+                  onAnimationEnd={() => setIsGrandmaCommentBouncing(false)}
+                  className={`relative w-full appearance-none rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-xl leading-relaxed text-slate-700 ${
+                    isGrandmaCommentBouncing ? "center-bounce-in" : ""
+                  }`}
+                >
                   <span
                     className="absolute -left-2 top-6 h-4 w-4 rotate-45 border-b border-l border-amber-200 bg-amber-50"
                     aria-hidden
                   />
                   {shop.shopStrength?.trim() || OSEKKAI_FALLBACK}
-                </div>
+                </button>
               </div>
             </section>
 
