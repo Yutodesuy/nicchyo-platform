@@ -216,7 +216,6 @@ export async function fetchShopsFromDb(
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),
         chome: normalizeChome(location.district),
-        vendorId: vendor.id,
       };
     })
     .filter((row): row is Shop => row !== null)
