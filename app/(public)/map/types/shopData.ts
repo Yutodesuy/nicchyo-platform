@@ -142,6 +142,9 @@ export interface ShopSystemData {
   /** 店舗ID（一意、変更不可） */
   id: number;
 
+  /** 出店者UUID（内部用） */
+  vendorId?: string;
+
   /** 道路上の位置（0-149、変更不可） */
   position: number;
 

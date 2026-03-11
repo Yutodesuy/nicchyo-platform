@@ -197,6 +197,7 @@ export async function fetchShopsFromDb(
 
       return {
         id: storeNumber,
+        vendorId: vendor.id,
         name: vendor.shop_name ?? "",
         ownerName: vendor.owner_name ?? "",
         category: categoryName,

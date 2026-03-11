@@ -56,3 +56,33 @@ export type MarketTrend = {
   total_quantity: number;
   vendor_count: number;
 };
+
+export type SearchSourceRatio = {
+  preVisit: number;  // source = "search"（来訪前）
+  onSite: number;    // source = "map"（現地）
+  other: number;     // source = "direct" など
+};
+
+export type SearchKeywordTrend = {
+  keyword: string;
+  count: number;
+  matchesMyProducts: boolean;
+};
+
+export type AiConsultTopic = {
+  category: string;
+  count: number;
+};
+
+export type AiKeyword = {
+  keyword: string;
+  count: number;
+};
+
+export type AiConsultAnalytics = {
+  topics: AiConsultTopic[];
+  keywords: AiKeyword[];
+  recommendationCount: number;
+  locationRatio: { preVisit: number; onSite: number };
+  totalCount: number;
+};
