@@ -52,7 +52,7 @@ const STYLE_PRESETS = [
 
 const EMPTY_STORE: Store = {
   id: "", vendor_id: "",
-  name: "", category_id: "", style: "", style_tags: [], main_products: [],
+  name: "", owner_name: "", category_id: "", style: "", style_tags: [], main_products: [],
   main_product_prices: {},
   payment_methods: [], rain_policy: "undecided", schedule: [],
 };
@@ -104,6 +104,7 @@ export default function VendorStorePage() {
     try {
       await saveVendorStore(user.id, {
         name: form.name,
+        owner_name: form.owner_name,
         category_id: form.category_id,
         style: form.style,
         style_tags: form.style_tags,
@@ -224,6 +225,19 @@ export default function VendorStorePage() {
             placeholder="例：山田農園"
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
           />
+        </div>
+
+        {/* 店主名（任意） */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={StoreIcon} title="店主名（任意）" />
+          <input
+            type="text"
+            value={form.owner_name ?? ""}
+            onChange={(e) => setForm((prev) => ({ ...prev, owner_name: e.target.value }))}
+            placeholder="例：山田 太郎"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+          />
+          <p className="mt-1.5 text-[10px] text-slate-400">AIばあちゃんが店主名を案内するときに使用します</p>
         </div>
 
         {/* 商品ジャンル */}

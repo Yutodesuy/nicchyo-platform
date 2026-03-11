@@ -6,6 +6,8 @@ import MapPageClient from './MapPageClient';
 import type { Shop } from './data/shops';
 import { fetchShopsFromDb } from './services/shopDb';
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: 'nicchyo | Sunday Market Map',
   description: 'Explore the Sunday market map.',
