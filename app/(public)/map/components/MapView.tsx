@@ -1175,7 +1175,7 @@ const MapView = memo(function MapView({
           height: `${mapShellSize}px`,
           transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
           transformOrigin: "center center",
-          transition: isTouchRotating ? "none" : "transform 220ms ease-out",
+          transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
         }}
       >
         <MapContainer
