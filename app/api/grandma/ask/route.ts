@@ -57,6 +57,7 @@ type ShopRow = {
   shop_strength: string | null;
   lat: number | null;
   lng: number | null;
+  vendorId?: string | null;
 };
 
 type KnowledgeRow = {
@@ -196,6 +197,7 @@ export async function POST(request: Request) {
       shop_strength: shop.shopStrength ?? null,
       lat: shop.lat ?? null,
       lng: shop.lng ?? null,
+      vendorId: shop.vendorId ?? null,
     }));
 
     let targetShop: ShopRow | null = null;
@@ -253,6 +255,23 @@ export async function POST(request: Request) {
         shopIntent = true;
         shops = safeDirectRows;
         matchIds = shops.map((row) => row.id);
+      }
+    }
+
+    // 店舗名・オーナー名が質問に含まれていればshopIntentを設定（「〇〇について教えて」対応）
+    if (shops.length === 0) {
+      const nameMatches = allShops.filter((shop) => {
+        const shopName = (shop.name ?? "").replace(/\s+/g, "");
+        const ownerName = (shop.owner_name ?? "").replace(/\s+/g, "");
+        return (
+          (shopName.length >= 2 && normalized.includes(shopName)) ||
+          (ownerName.length >= 2 && normalized.includes(ownerName))
+        );
+      });
+      if (nameMatches.length > 0) {
+        shopIntent = true;
+        shops = nameMatches;
+        matchIds = nameMatches.map((s) => s.id);
       }
     }
 
@@ -324,6 +343,7 @@ export async function POST(request: Request) {
               const parts = [
                 `id:${shop.id}`,
                 shop.name ? `name:${shop.name}` : null,
+                shop.owner_name ? `owner:${shop.owner_name}` : null,
                 shop.category ? `category:${shop.category}` : null,
                 shop.products?.length
                   ? `products:${shop.products.join(" / ")}`
@@ -336,11 +356,67 @@ export async function POST(request: Request) {
             })
             .join("\n")
         : "該当なし";
+    // ─── 出店者RAG知識を検索 ──────────────────────────────────
+    let storeKnowledgeContext = "";
+    const ragTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) ragTargetVendorIds.push(targetShop.vendorId);
+    if (ragTargetVendorIds.length === 0 && matchIds.length > 0) {
+      matchIds.slice(0, 3).forEach((storeNum) => {
+        const s = allShops.find((sh) => sh.id === storeNum);
+        if (s?.vendorId) ragTargetVendorIds.push(s.vendorId);
+      });
+    }
+    if (ragTargetVendorIds.length > 0 && embedding) {
+      const knowledgeResults = await Promise.all(
+        ragTargetVendorIds.map(async (vendorId) => {
+          const res = await supabase.rpc("match_store_knowledge", {
+            query_embedding: embedding,
+            target_store_id: vendorId,
+            match_count: 2,
+            match_threshold: 0.45,
+          });
+          return res as { data: { content: string; similarity: number }[] | null };
+        })
+      );
+      const knowledgeSnippets = knowledgeResults
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => b.similarity - a.similarity)
+        .map((r) => r.content)
+        .filter(Boolean);
+      if (knowledgeSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
+      }
+    }
+    // store_knowledge 未登録の場合、店舗登録情報をフォールバックとして使用
+    if (!storeKnowledgeContext) {
+      const fallbackShops = targetShop
+        ? [targetShop]
+        : matchIds.slice(0, 3).map((id) => allShops.find((s) => s.id === id)).filter((s): s is ShopRow => s != null);
+      const fallbackSnippets = fallbackShops
+        .map((shop) => {
+          const parts = [
+            shop.owner_name ? `店主: ${shop.owner_name}` : null,
+            shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
+            shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
+            shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
+            shop.schedule ? `出店予定: ${shop.schedule}` : null,
+            shop.message ? `メッセージ: ${shop.message}` : null,
+          ].filter(Boolean);
+          return parts.length > 0 ? parts.join("\n") : null;
+        })
+        .filter(Boolean);
+      if (fallbackSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${fallbackSnippets.join("\n---\n")}`;
+      }
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (targetShop) {
       shopIntent = true;
       const targetParts = [
         `id:${targetShop.id}`,
         targetShop.name ? `name:${targetShop.name}` : null,
+        targetShop.owner_name ? `owner:${targetShop.owner_name}` : null,
         targetShop.category ? `category:${targetShop.category}` : null,
         targetShop.products?.length
           ? `products:${targetShop.products.join(" / ")}`
@@ -399,7 +475,7 @@ export async function POST(request: Request) {
 
     const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
       location ? `${location.lat}, ${location.lng}` : "不明"
-    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`;
+    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}${storeKnowledgeContext}`;
     const userContent = imageDataUrl
       ? [
           { type: "text", text: `${userContextText}\n画像が添付されています。` },
