@@ -36,6 +36,19 @@ const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
 const COMPACT_ICON_MAX_ZOOM = 17.5;
 const MID_ICON_MAX_ZOOM = 18.0;
 
+function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
+  if (currentZoom >= maxZoom - 0.001) {
+    return 1;
+  }
+  if (currentZoom >= maxZoom - 1.001) {
+    return 0.8;
+  }
+  if (currentZoom >= maxZoom - 2.001) {
+    return 0.6;
+  }
+  return 1;
+}
+
 // Helper to get origin rect for animation
 const getOriginRect = (marker: L.Marker): ShopBannerOrigin | undefined => {
   const element = marker.getElement();
@@ -206,6 +219,12 @@ export default function OptimizedShopLayerWithClustering({
     }
   };
 
+  const setMarkerZoomScale = (marker: L.Marker, scale: number) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    icon.style.setProperty("--shop-marker-zoom-scale", String(scale));
+  };
+
   const setMarkerAttendanceLabel = (marker: L.Marker, label: string) => {
     const icon = marker.getElement();
     if (!icon) return;
@@ -366,9 +385,11 @@ export default function OptimizedShopLayerWithClustering({
         const maxZoom = map.getMaxZoom() ?? map.getZoom();
         const isMaxZoom = map.getZoom() >= maxZoom - 0.001;
         const showSimpleBanner = map.getZoom() >= maxZoom - 1;
+        const markerZoomScale = getMarkerZoomScale(map.getZoom(), maxZoom);
         setMarkerProductIconVisibility(marker, map.getZoom() >= maxZoom - 1 && !isMaxZoom);
         setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
         setMarkerSimpleBannerNameVisibility(marker, isMaxZoom);
+        setMarkerZoomScale(marker, markerZoomScale);
         setMarkerAttendanceLabel(
           marker,
           attendanceLabelsRef.current[shop.id] ?? 'わからない'
@@ -386,6 +407,7 @@ export default function OptimizedShopLayerWithClustering({
       const showProductIcon = zoom >= maxZoom - 1 && !isMaxZoom;
       const showSimpleBanner = zoom >= maxZoom - 1;
       const showSimpleBannerName = isMaxZoom;
+      const markerZoomScale = getMarkerZoomScale(zoom, maxZoom);
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
@@ -445,6 +467,7 @@ export default function OptimizedShopLayerWithClustering({
           setMarkerProductIconVisibility(marker, showProductIcon);
           setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
           setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
+          setMarkerZoomScale(marker, markerZoomScale);
           setMarkerAttendanceLabel(
             marker,
             attendanceLabelsRef.current[shopId] ?? 'わからない'
