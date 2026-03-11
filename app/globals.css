@@ -149,6 +149,7 @@ body.grandma-chat-open .leaflet-container {
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
+  rotate: var(--map-rotation-inverse, 0deg);
 }
 
 .cluster-icon:hover {
@@ -348,8 +349,8 @@ body.grandma-chat-open .leaflet-container {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 86px;
-  height: 52px;
+  width: 43px;
+  height: 26px;
   padding: 0;
   box-sizing: border-box;
   border-radius: 9999px;
@@ -362,16 +363,17 @@ body.grandma-chat-open .leaflet-container {
   pointer-events: none;
   overflow: hidden;
   display: none;
+  z-index: 30;
 }
 
 .shop-side-north .shop-product-icon {
-  left: calc(100% + 8px);
-  transform: translate(0, -50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .shop-side-south .shop-product-icon {
-  left: -8px;
-  transform: translate(-100%, -50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .shop-product-icon-visible .shop-product-icon {
@@ -381,7 +383,7 @@ body.grandma-chat-open .leaflet-container {
 .shop-simple-banner {
   position: absolute;
   left: 50%;
-  bottom: 52px;
+  bottom: 24px;
   transform: translateX(-50%);
   display: none;
   width: 220px;
@@ -435,6 +437,7 @@ body.grandma-chat-open .leaflet-container {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 30px;
 }
 
 .shop-simple-banner-product {
@@ -562,6 +565,37 @@ body.home-poster-zoom-open .hamburger-button {
   position: relative;
   width: 100%;
   height: 100%;
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.shop-marker-container {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-landmark-visual {
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 1 !important;
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-visual.is-highlight {
+  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+}
+
+.major-place-label-pill {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
 }
 
 .map-building-tilted {
