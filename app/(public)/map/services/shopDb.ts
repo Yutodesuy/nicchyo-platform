@@ -11,6 +11,7 @@ type VendorRow = {
   category_id: string | null;
   categories: { name: string | null }[] | { name: string | null } | null;
   main_products: string[] | null;
+  main_product_prices: Record<string, number | null> | null;
   payment_methods: string[] | null;
   rain_policy: string | null;
   schedule: string[] | null;
@@ -77,7 +78,7 @@ export async function fetchShopsFromDb(
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, payment_methods, rain_policy, schedule"),
+      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, main_product_prices, payment_methods, rain_policy, schedule"),
     supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
@@ -196,10 +197,12 @@ export async function fetchShopsFromDb(
 
       return {
         id: storeNumber,
+        vendorId: vendor.id,
         name: vendor.shop_name ?? "",
         ownerName: vendor.owner_name ?? "",
         category: categoryName,
         products: displayProducts,
+        productPrices: (vendor.main_product_prices ?? undefined) as Record<string, number | null> | undefined,
         description: "",
         stallStyle: vendor.style ?? undefined,
         stallStyleTags: (vendor.style_tags ?? []).length > 0 ? (vendor.style_tags as string[]) : undefined,

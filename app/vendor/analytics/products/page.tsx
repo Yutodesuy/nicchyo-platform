@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fetchAllProductSales, fetchMarketTrends } from "../../_services/analyticsService";
-import type { ProductSale, MarketTrend } from "../../_types";
-import { ArrowLeft, Medal, Globe, Loader2 } from "lucide-react";
+import { fetchAllProductSales, fetchProductSearchTrends } from "../../_services/analyticsService";
+import type { ProductSale, SearchKeywordTrend } from "../../_types";
+import { ArrowLeft, Medal, Loader2, TrendingUp, Flame } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -26,14 +26,17 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function ProductAnalyticsPage() {
   const { user } = useAuth();
-  const [sales, setSales]     = useState<ProductSale[]>([]);
-  const [trends, setTrends]   = useState<MarketTrend[]>([]);
+  const [sales, setSales] = useState<ProductSale[]>([]);
+  const [searchTrends, setSearchTrends] = useState<SearchKeywordTrend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([fetchAllProductSales(user.id), fetchMarketTrends()])
-      .then(([s, t]) => { setSales(s); setTrends(t); })
+    fetchAllProductSales(user.id).then((s) => {
+      setSales(s);
+      const myNames = [...new Set(s.map((item) => item.product_name))];
+      return fetchProductSearchTrends(myNames);
+    }).then(setSearchTrends)
       .finally(() => setIsLoading(false));
   }, [user]);
 
@@ -118,47 +121,51 @@ export default function ProductAnalyticsPage() {
               )}
             </div>
 
-            {/* 市場トレンド */}
+            {/* 商品需要分析（検索ベース） */}
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-                  <Globe size={14} />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-500">
+                  <TrendingUp size={14} />
                 </div>
-                <h2 className="text-sm font-semibold text-slate-700">市場全体 人気商品トレンド</h2>
+                <h2 className="text-sm font-semibold text-slate-700">商品需要分析（検索ベース）</h2>
               </div>
-              {trends.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-400">市場全体のデータがまだありません</p>
+              <p className="mb-3 text-[10px] text-slate-400">過去7日間にユーザーが検索したキーワード上位</p>
+              {searchTrends.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-400">検索データがまだ蓄積されていません</p>
               ) : (
-                <>
-                  <div className="space-y-3">
-                    {trends.map((item) => {
-                      const maxTotal = trends[0].total_quantity;
-                      const pct = Math.round((item.total_quantity / maxTotal) * 100);
-                      return (
-                        <div key={item.rank} className="flex items-center gap-3">
-                          <span className={`w-5 flex-shrink-0 text-center text-xs font-black ${item.rank === 1 ? "text-amber-400" : item.rank === 2 ? "text-slate-400" : item.rank === 3 ? "text-amber-700" : "text-slate-400"}`}>
-                            {item.rank}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-slate-700">{item.product_name}</span>
-                                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-400">{item.vendor_count}店舗</span>
-                              </div>
-                              <span className="text-xs text-slate-500">{item.total_quantity.toLocaleString()} 個</span>
+                <div className="space-y-2.5">
+                  {searchTrends.map((item, i) => {
+                    const maxCount = searchTrends[0].count;
+                    const pct = Math.round((item.count / maxCount) * 100);
+                    return (
+                      <div key={item.keyword} className="flex items-center gap-3">
+                        <span className="w-4 flex-shrink-0 text-center text-xs font-bold text-slate-400">{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium text-slate-700">{item.keyword}</span>
+                              {item.matchesMyProducts && (
+                                <span className="flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[9px] font-semibold text-rose-500">
+                                  <Flame size={9} />自店と一致
+                                </span>
+                              )}
                             </div>
-                            <div className="h-1.5 overflow-hidden rounded-full bg-violet-100">
-                              <div className="h-full rounded-full bg-violet-400 transition-all" style={{ width: `${pct}%` }} />
-                            </div>
+                            <span className="flex-shrink-0 text-xs text-slate-500">{item.count}回</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={`h-full rounded-full transition-all ${item.matchesMyProducts ? "bg-rose-400" : "bg-slate-300"}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-3 text-[10px] text-slate-400">※ 出店者が入力した販売数量の合計値</p>
-                </>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
+
           </>
         )}
       </div>
