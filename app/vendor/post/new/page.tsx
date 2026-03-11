@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { createPost, fetchVendorPosts, repostContent } from "../../_services/postsService";
+import { createPost, fetchVendorPosts, fetchPostById, repostContent } from "../../_services/postsService";
 import type { ExpirationPreset, Post, PostStatus } from "../../_types";
 import {
   ArrowLeft,
@@ -122,6 +122,7 @@ function formatExpirationLabel(preset: ExpirationPreset, customDateTime: string)
 export default function VendorPostNewPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("new");
@@ -130,12 +131,14 @@ export default function VendorPostNewPage() {
   const [text, setText]                         = useState("");
   const [imageFile, setImageFile]               = useState<File | null>(null);
   const [imagePreview, setImagePreview]         = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [expirationPreset, setExpirationPreset] = useState<ExpirationPreset>("today");
   const [customDateTime, setCustomDateTime]     = useState("");
   const [isSubmitting, setIsSubmitting]         = useState(false);
   const [isSubmitted, setIsSubmitted]           = useState(false);
   const [showPreview, setShowPreview]           = useState(false);
   const [formError, setFormError]               = useState<string | null>(null);
+  const [isRepost, setIsRepost]                 = useState(false);
 
   // 投稿履歴の状態
   const [filterTab, setFilterTab]   = useState<FilterTab>("all");
@@ -144,6 +147,21 @@ export default function VendorPostNewPage() {
   const [historyLoaded, setHistoryLoaded]   = useState(false);
   const [historyError, setHistoryError]     = useState<string | null>(null);
   const [showRepostToast, setShowRepostToast] = useState(false);
+
+  // 編集再投稿：URLの ?repost=ID から投稿内容を事前入力
+  useEffect(() => {
+    const repostId = searchParams.get("repost");
+    if (!repostId) return;
+    fetchPostById(repostId).then((post) => {
+      if (!post) return;
+      setText(post.text);
+      if (post.image_url) {
+        setImagePreview(post.image_url);
+        setExistingImageUrl(post.image_url);
+      }
+      setIsRepost(true);
+    });
+  }, [searchParams]);
 
   // 投稿履歴タブに切り替えたときに一度だけ取得
   useEffect(() => {
@@ -183,6 +201,7 @@ export default function VendorPostNewPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImageFile(file);
+    setExistingImageUrl(null);
     const reader = new FileReader();
     reader.onload = (ev) => setImagePreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -191,6 +210,7 @@ export default function VendorPostNewPage() {
   function handleRemoveImage() {
     setImageFile(null);
     setImagePreview(null);
+    setExistingImageUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -201,7 +221,7 @@ export default function VendorPostNewPage() {
     setFormError(null);
     try {
       const expiresAt = calcExpirationTime(expirationPreset, customDateTime);
-      await createPost(user.id, text, expiresAt, imageFile ?? undefined);
+      await createPost(user.id, text, expiresAt, imageFile ?? undefined, existingImageUrl ?? undefined);
       setIsSubmitted(true);
       setHistoryLoaded(false); // 次回履歴タブ開時に再取得
     } catch {
@@ -279,6 +299,11 @@ export default function VendorPostNewPage() {
       {/* 新規投稿フォーム */}
       {activeTab === "new" && (
         <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+          {isRepost && (
+            <div className="flex items-center gap-2 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              <Pencil size={14} />過去の投稿を編集して再投稿します
+            </div>
+          )}
           {formError && (
             <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               <AlertCircle size={14} />{formError}
