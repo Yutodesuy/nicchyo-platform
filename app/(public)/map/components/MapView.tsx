@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, TileLayer } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { Navigation, Plus, Minus } from "lucide-react";
@@ -132,6 +132,8 @@ const HIROME_MARKET_CENTER_LNG = 133.535527;
 const LANDMARK_PIXEL_BASE = 192;
 const LANDMARK_SPECS: Array<{
   key: string;
+  name: string;
+  description: string;
   url: string;
   lat: number;
   lng: number;
@@ -140,6 +142,8 @@ const LANDMARK_SPECS: Array<{
 }> = [
   {
     key: "museum",
+    name: "高知県立高知城歴史博物館",
+    description: "土佐藩や高知城の歴史を学べる博物館。企画展や収蔵資料の展示も行われます。",
     url: "/images/maps/elements/buildings/KochiCastleMusium2.png",
     lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT,
     lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG,
@@ -150,6 +154,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "otepia",
+    name: "オーテピア",
+    description: "図書館・科学館・点字図書館が入る複合施設。観光の立ち寄り先としても使いやすい場所です。",
     url: "/images/maps/elements/buildings/Ohtepia.png",
     lat: OTEPIA_CENTER_LAT,
     lng: OTEPIA_CENTER_LNG,
@@ -160,6 +166,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "castle",
+    name: "高知城",
+    description: "江戸時代の天守と本丸御殿が残る高知の代表的な史跡。日曜市周辺のランドマークです。",
     url: "/images/maps/elements/buildings/KochiCastle.png",
     lat: KOCHI_CASTLE_CENTER_LAT,
     lng: KOCHI_CASTLE_CENTER_LNG,
@@ -168,6 +176,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "densha",
+    name: "路面電車",
+    description: "高知市内を走る路面電車。街歩きの目印としても分かりやすい移動インフラです。",
     url: "/images/maps/elements/buildings/Train.png",
     lat: TINTIN_DENSHA_CENTER_LAT,
     lng: TINTIN_DENSHA_CENTER_LNG,
@@ -176,6 +186,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "station",
+    name: "高知駅",
+    description: "JR高知駅。県外から日曜市へ向かうときの主要な玄関口です。",
     url: "/images/maps/elements/buildings/kochistation.png",
     lat: KOCHI_STATION_CENTER_LAT,
     lng: KOCHI_STATION_CENTER_LNG,
@@ -184,6 +196,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "ohtemae-school",
+    name: "追手前高校",
+    description: "日曜市エリア近くにある高校で、地図上では周辺位置を把握する目印になります。",
     url: "/images/maps/elements/buildings/ohtemae-school.png",
     lat: OHTEMAE_SCHOOL_CENTER_LAT,
     lng: OHTEMAE_SCHOOL_CENTER_LNG,
@@ -193,6 +207,8 @@ const LANDMARK_SPECS: Array<{
   },
   {
     key: "hirome-market",
+    name: "ひろめ市場",
+    description: "高知の名物グルメが集まる人気スポット。日曜市と合わせて回りやすい観光拠点です。",
     url: "/images/maps/elements/buildings/hirome-market.png",
     lat: HIROME_MARKET_CENTER_LAT,
     lng: HIROME_MARKET_CENTER_LNG,
@@ -1297,13 +1313,25 @@ const MapView = memo(function MapView({
               key={`landmark-${spec.key}`}
               position={[spec.lat, spec.lng]}
               icon={landmarkIcons.get(spec.key) ?? L.divIcon({ className: "map-landmark-icon" })}
-              interactive={false}
+              interactive
               keyboard={false}
               opacity={1}
               zIndexOffset={highlightEventTargets ? 1800 : 0}
-            />
+            >
+              <Popup
+                pane="landmark-popup"
+                offset={[0, -18]}
+                className="map-landmark-popup"
+              >
+                <div className="min-w-[180px] max-w-[220px]">
+                  <p className="text-sm font-bold text-slate-900">{spec.name}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{spec.description}</p>
+                </div>
+              </Popup>
+            </Marker>
           ))}
         </Pane>
+        <Pane name="landmark-popup" style={{ zIndex: 10000 }} />
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【ポイント8】最適化された店舗レイヤー
             - 300個の ShopMarker コンポーネントではなく、
