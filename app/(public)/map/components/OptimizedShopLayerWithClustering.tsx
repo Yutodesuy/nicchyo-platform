@@ -196,6 +196,16 @@ export default function OptimizedShopLayerWithClustering({
     }
   };
 
+  const setMarkerSimpleBannerNameVisibility = (marker: L.Marker, isVisible: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isVisible) {
+      icon.classList.remove('shop-simple-banner-name-hidden');
+    } else {
+      icon.classList.add('shop-simple-banner-name-hidden');
+    }
+  };
+
   const setMarkerAttendanceLabel = (marker: L.Marker, label: string) => {
     const icon = marker.getElement();
     if (!icon) return;
@@ -355,8 +365,10 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
         const maxZoom = map.getMaxZoom() ?? map.getZoom();
         const isMaxZoom = map.getZoom() >= maxZoom - 0.001;
+        const showSimpleBanner = map.getZoom() >= maxZoom - 1;
         setMarkerProductIconVisibility(marker, map.getZoom() >= maxZoom - 1 && !isMaxZoom);
-        setMarkerSimpleBannerVisibility(marker, isMaxZoom);
+        setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
+        setMarkerSimpleBannerNameVisibility(marker, isMaxZoom);
         setMarkerAttendanceLabel(
           marker,
           attendanceLabelsRef.current[shop.id] ?? 'わからない'
@@ -372,7 +384,8 @@ export default function OptimizedShopLayerWithClustering({
       const maxZoom = map.getMaxZoom() ?? zoom;
       const isMaxZoom = zoom >= maxZoom - 0.001;
       const showProductIcon = zoom >= maxZoom - 1 && !isMaxZoom;
-      const showSimpleBanner = isMaxZoom;
+      const showSimpleBanner = zoom >= maxZoom - 1;
+      const showSimpleBannerName = isMaxZoom;
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
@@ -431,6 +444,7 @@ export default function OptimizedShopLayerWithClustering({
           setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
           setMarkerProductIconVisibility(marker, showProductIcon);
           setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
+          setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
           setMarkerAttendanceLabel(
             marker,
             attendanceLabelsRef.current[shopId] ?? 'わからない'
