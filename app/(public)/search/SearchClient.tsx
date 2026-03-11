@@ -23,13 +23,102 @@ type SearchClientProps = {
   shops: Shop[];
 };
 
+type LatestPostItem = {
+  shop: Shop;
+  post: NonNullable<Shop['activePosts']>[number];
+};
+
+function isSameTokyoDay(a: Date, b: Date): boolean {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(a) === new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(b);
+}
+
+function formatDeadlineLabel(expiresAt?: string): string {
+  if (!expiresAt) return '';
+
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+
+  if (Number.isNaN(expiry.getTime()) || diffMs <= 0) {
+    return '終了';
+  }
+
+  if (isSameTokyoDay(now, expiry)) {
+    const remainingMinutes = Math.ceil(diffMs / 60000);
+    const remainingHours = Math.ceil(diffMs / 3600000);
+    const hourText = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      hour: 'numeric',
+    }).format(expiry);
+
+    if (remainingMinutes <= 60) {
+      const roundedMinutes = Math.max(10, Math.ceil(remainingMinutes / 10) * 10);
+      return `あと${roundedMinutes}分`;
+    }
+
+    if (remainingHours <= 5) {
+      return `あと${remainingHours}時間`;
+    }
+
+    const minutes = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      minute: '2-digit',
+    }).format(expiry);
+
+    if (hourText === '23' && minutes === '59') {
+      return '今日まで';
+    }
+
+    return `${hourText}まで`;
+  }
+
+  return `${new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    month: 'numeric',
+    day: 'numeric',
+  }).format(expiry)}まで`;
+}
+
+function formatPostCreatedAt(createdAt?: string): string {
+  if (!createdAt) return '';
+
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return '';
+
+  const now = new Date();
+  const sameDay = isSameTokyoDay(now, created);
+
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    ...(sameDay
+      ? {
+          hour: 'numeric',
+          minute: '2-digit',
+        }
+      : {
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+  }).format(created);
+}
+
 export default function SearchClient({ shops }: SearchClientProps) {
   const router = useRouter();
   const itemsPerPage = 10;
   const [textQuery, setTextQuery] = useState('');
-  const [filterMode, setFilterMode] = useState<'genre' | 'location'>('genre');
   const [category, setCategory] = useState<string | null>(null);
-  const [selectedChome, setSelectedChome] = useState<string | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [visibleCount, setVisibleCount] = useState(itemsPerPage);
@@ -53,7 +142,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
     searchIndex,
     textQuery,
     category,
-    chome: selectedChome,
+    chome: null,
   });
   const visibleShops = useMemo(
     () => filteredShops.slice(0, visibleCount),
@@ -63,28 +152,22 @@ export default function SearchClient({ shops }: SearchClientProps) {
 
   // カテゴリー一覧
   const categories = ['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'];
-  const chomeOptions = useMemo(
-    () => [
-      { label: '1丁目', value: '一丁目' },
-      { label: '2丁目', value: '二丁目' },
-      { label: '3丁目', value: '三丁目' },
-      { label: '4丁目', value: '四丁目' },
-      { label: '5丁目', value: '五丁目' },
-      { label: '6丁目', value: '六丁目' },
-      { label: '7丁目', value: '七丁目' },
-    ],
-    []
+
+  const latestPosts = useMemo<LatestPostItem[]>(
+    () =>
+      shops
+        .flatMap((shop) =>
+          (shop.activePosts ?? [])
+            .filter((post) => post.text?.trim())
+            .map((post) => ({ shop, post }))
+        )
+        .sort((a, b) => {
+          const aTime = new Date(a.post.createdAt ?? 0).getTime();
+          const bTime = new Date(b.post.createdAt ?? 0).getTime();
+          return bTime - aTime;
+        }),
+    [shops]
   );
-
-  const handleFilterModeChange = useCallback((nextMode: 'genre' | 'location') => {
-    setFilterMode(nextMode);
-    if (nextMode === 'genre') {
-      setSelectedChome(null);
-    } else {
-      setCategory(null);
-    }
-  }, []);
-
   // 検索キーワードをDBにログ（1秒デバウンス、2文字以上）
   useEffect(() => {
     const kw = textQuery.trim();
@@ -96,7 +179,7 @@ export default function SearchClient({ shops }: SearchClientProps) {
   }, [textQuery, filteredShops.length]);
 
   // 検索クエリが入力されているか
-  const hasQuery = textQuery.trim() !== '' || category !== null || selectedChome !== null;
+  const hasQuery = textQuery.trim() !== '' || category !== null;
   const selectedIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return filteredShops.findIndex((shop) => shop.id === selectedShop.id);
@@ -108,18 +191,15 @@ export default function SearchClient({ shops }: SearchClientProps) {
     const trimmedText = textQuery.trim();
     if (trimmedText) return trimmedText;
     if (category) return category;
-    if (selectedChome) {
-      return chomeOptions.find((chome) => chome.value === selectedChome)?.label ?? selectedChome;
-    }
     return '検索結果';
-  }, [textQuery, category, selectedChome, chomeOptions]);
+  }, [textQuery, category]);
 
   const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
-  const shouldShowMapButton = category !== null || selectedChome !== null || hasNameResults;
+  const shouldShowMapButton = category !== null || hasNameResults;
 
   useEffect(() => {
     setVisibleCount(itemsPerPage);
-  }, [itemsPerPage, textQuery, category, selectedChome]);
+  }, [itemsPerPage, textQuery, category]);
 
   useEffect(() => {
     setVisibleCount((prev) => Math.min(prev, filteredShops.length || itemsPerPage));
@@ -148,17 +228,6 @@ export default function SearchClient({ shops }: SearchClientProps) {
   const handleSuggestionClick = useCallback((cat: string) => {
     setCategory(cat);
     setTextQuery('');
-    setFilterMode('genre');
-  }, []);
-
-  // 検索結果0件時のキーワード提案クリックハンドラ
-  const handleKeywordSuggestionClick = useCallback((keyword: string) => {
-    setTextQuery(keyword);
-    // カテゴリーなどの他のフィルターはクリアするか、維持するか。
-    // 「シンプルな単語で検索」という文脈なので、カテゴリーフィルターはクリアする方が自然かもしれません。
-    setCategory(null);
-    setSelectedChome(null);
-    setFilterMode('genre'); // デフォルトに戻す
   }, []);
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
@@ -201,29 +270,17 @@ export default function SearchClient({ shops }: SearchClientProps) {
             {!hasQuery ? (
               <SearchDiscovery
                 categories={categories}
-                chomeOptions={chomeOptions}
                 onCategorySelect={(cat) => {
-                  setFilterMode('genre');
                   setCategory(cat);
                 }}
-                onChomeSelect={(chome) => {
-                  setFilterMode('location');
-                  setSelectedChome(chome);
-                }}
-                onKeywordSelect={setTextQuery}
               />
             ) : (
               <div className="animate-in slide-in-from-bottom-2 duration-300">
                 {/* カテゴリーフィルター */}
                 <CategoryFilter
-                  mode={filterMode}
-                  onModeChange={handleFilterModeChange}
                   selectedCategory={category}
                   onCategoryChange={setCategory}
-                  selectedChome={selectedChome}
-                  onChomeChange={setSelectedChome}
                   categories={categories}
-                  chomeOptions={chomeOptions}
                 />
 
                 <p className="mt-3 text-[11px] text-gray-600">
@@ -238,7 +295,6 @@ export default function SearchClient({ shops }: SearchClientProps) {
                         hasQuery={hasQuery}
                         categories={categories}
                         onCategoryClick={handleSuggestionClick}
-                        onKeywordClick={handleKeywordSuggestionClick}
                         favoriteShopIds={favoriteShopIds}
                         hasMore={hasMore}
                         onLoadMore={handleLoadMore}
@@ -252,6 +308,49 @@ export default function SearchClient({ shops }: SearchClientProps) {
               </div>
             )}
           </div>
+
+          {!hasQuery && latestPosts.length > 0 && (
+            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 text-amber-800">
+                <span className="text-base" aria-hidden>📢</span>
+                <h3 className="text-sm font-bold tracking-wider uppercase">最新情報はコチラ！</h3>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {latestPosts.map(({ shop, post }, index) => (
+                  <button
+                    key={`${shop.id}-${post.createdAt}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedShop(shop)}
+                    className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
+                  >
+                    <div className="flex gap-3">
+                      {post.imageUrl ? (
+                        <img
+                          src={post.imageUrl}
+                          alt=""
+                          className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
+                          <span className="shrink-0 text-[11px] font-semibold text-amber-700">
+                            {formatDeadlineLabel(post.expiresAt)}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">
+                          {post.text}
+                        </p>
+                        <p className="mt-2 text-right text-[11px] font-medium text-slate-500">
+                          {formatPostCreatedAt(post.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
 

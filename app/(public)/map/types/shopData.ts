@@ -93,11 +93,20 @@ export interface ShopEditableData {
   /** 雨天時対応 */
   rainPolicy?: string;
 
+  /** 出店者の投稿1件 */
+  activePosts?: {
+    text: string;
+    imageUrl?: string;
+    expiresAt: string;
+    createdAt: string;
+  }[];
+
   /** 出店者の最新投稿（有効期限内のもの） */
   activePost?: {
     text: string;
     imageUrl?: string;
     expiresAt: string;
+    createdAt?: string;
   };
 
   /** 店舗画像URL（将来の実装用） */
