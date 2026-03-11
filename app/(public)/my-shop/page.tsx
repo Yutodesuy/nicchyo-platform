@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, LogOut, BarChart2, Sparkles } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -41,7 +41,7 @@ const MENU_ITEMS = [
 ];
 
 export default function MyShopPage() {
-  const { isLoggedIn, permissions, logout } = useAuth();
+  const { isLoggedIn, permissions } = useAuth();
   const canAccess = isLoggedIn;
 
   return (
@@ -55,15 +55,6 @@ export default function MyShopPage() {
             </p>
             <h1 className="text-xl font-bold text-slate-900">出店者メニュー</h1>
           </div>
-          {isLoggedIn && (
-            <button
-              onClick={logout}
-              className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-            >
-              <LogOut size={12} />
-              ログアウト
-            </button>
-          )}
         </div>
       </div>
 
