@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
 
 type EditableShop = {
+  locationId: string;
   id: number;
   vendorId?: string;
   name: string;
@@ -16,9 +17,19 @@ type EditableShop = {
 
 const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
 
+function cloneShops(shops: EditableShop[]) {
+  return shops.map((shop) => ({ ...shop }));
+}
+
+function cloneLandmarks(landmarks: EditableLandmark[]) {
+  return landmarks.map((landmark) => ({ ...landmark }));
+}
+
 export default function MapEditClient() {
   const [shops, setShops] = useState<EditableShop[]>([]);
   const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
+  const [initialShops, setInitialShops] = useState<EditableShop[]>([]);
+  const [initialLandmarks, setInitialLandmarks] = useState<EditableLandmark[]>([]);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [selectedKind, setSelectedKind] = useState<"shop" | "landmark">("shop");
   const [selectedId, setSelectedId] = useState<string>("");
@@ -35,8 +46,14 @@ export default function MapEditClient() {
       })
       .then((data) => {
         if (!active) return;
-        setShops(data.shops ?? []);
-        setLandmarks(data.landmarks ?? []);
+        const nextShops = Array.isArray(data.shops) ? (data.shops as EditableShop[]) : [];
+        const nextLandmarks = Array.isArray(data.landmarks)
+          ? (data.landmarks as EditableLandmark[])
+          : [];
+        setShops(nextShops);
+        setLandmarks(nextLandmarks);
+        setInitialShops(cloneShops(nextShops));
+        setInitialLandmarks(cloneLandmarks(nextLandmarks));
       })
       .catch(() => {
         if (!active) return;
@@ -63,12 +80,69 @@ export default function MapEditClient() {
     setIsSaving(true);
     setMessage(null);
     try {
+      const initialShopMap = new Map(initialShops.map((shop) => [shop.locationId, shop]));
+      const currentShopMap = new Map(shops.map((shop) => [shop.locationId, shop]));
+      const updatedShops = shops.filter((shop) => {
+        const initial = initialShopMap.get(shop.locationId);
+        if (!initial) return true;
+        return (
+          initial.lat !== shop.lat ||
+          initial.lng !== shop.lng ||
+          initial.position !== shop.position
+        );
+      });
+      const deletedLocationIds = initialShops
+        .filter((shop) => !currentShopMap.has(shop.locationId))
+        .map((shop) => shop.locationId);
+
+      const initialLandmarkMap = new Map(initialLandmarks.map((landmark) => [landmark.key, landmark]));
+      const currentLandmarkMap = new Map(landmarks.map((landmark) => [landmark.key, landmark]));
+      const upsertLandmarks = landmarks.filter((landmark) => {
+        const initial = initialLandmarkMap.get(landmark.key);
+        if (!initial) return true;
+        return (
+          initial.name !== landmark.name ||
+          initial.description !== landmark.description ||
+          initial.url !== landmark.url ||
+          initial.lat !== landmark.lat ||
+          initial.lng !== landmark.lng ||
+          initial.widthPx !== landmark.widthPx ||
+          initial.heightPx !== landmark.heightPx ||
+          initial.showAtMinZoom !== landmark.showAtMinZoom
+        );
+      });
+      const deletedLandmarkKeys = initialLandmarks
+        .filter((landmark) => !currentLandmarkMap.has(landmark.key))
+        .map((landmark) => landmark.key);
+
+      if (
+        updatedShops.length === 0 &&
+        deletedLocationIds.length === 0 &&
+        upsertLandmarks.length === 0 &&
+        deletedLandmarkKeys.length === 0
+      ) {
+        setMessage("変更はありません。");
+        setIsSaving(false);
+        return;
+      }
+
       const response = await fetch("/api/admin/map-layout", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shops, landmarks }),
+        body: JSON.stringify({
+          shops: {
+            updated: updatedShops,
+            deletedLocationIds,
+          },
+          landmarks: {
+            upsert: upsertLandmarks,
+            deletedKeys: deletedLandmarkKeys,
+          },
+        }),
       });
       if (!response.ok) throw new Error("save failed");
+      setInitialShops(cloneShops(shops));
+      setInitialLandmarks(cloneLandmarks(landmarks));
       setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
     } catch {
       setMessage("保存に失敗しました。");
