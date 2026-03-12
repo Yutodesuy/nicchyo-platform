@@ -180,6 +180,11 @@ export default function SearchClient({ shops }: SearchClientProps) {
 
   // 検索クエリが入力されているか
   const hasQuery = textQuery.trim() !== '' || category !== null;
+  const filteredLatestPosts = useMemo(() => {
+    if (!hasQuery) return [];
+    const filteredIds = new Set(filteredShops.map((shop) => shop.id));
+    return latestPosts.filter(({ shop }) => filteredIds.has(shop.id));
+  }, [filteredShops, hasQuery, latestPosts]);
   const selectedIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return filteredShops.findIndex((shop) => shop.id === selectedShop.id);
@@ -286,6 +291,49 @@ export default function SearchClient({ shops }: SearchClientProps) {
                 <p className="mt-3 text-[11px] text-gray-600">
                   💡 ヒント: カテゴリーとキーワードを組み合わせて絞り込めます
                 </p>
+
+                {filteredLatestPosts.length > 0 && (
+                  <div className="mt-6 rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 text-amber-800">
+                      <span className="text-base" aria-hidden>📢</span>
+                      <h3 className="text-sm font-bold tracking-wider uppercase">該当する最新情報</h3>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {filteredLatestPosts.map(({ shop, post }, index) => (
+                        <button
+                          key={`${shop.id}-${post.createdAt}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedShop(shop)}
+                          className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
+                        >
+                          <div className="flex gap-3">
+                            {post.imageUrl ? (
+                              <img
+                                src={post.imageUrl}
+                                alt=""
+                                className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                              />
+                            ) : null}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
+                                <span className="shrink-0 text-[11px] font-semibold text-amber-700">
+                                  {formatDeadlineLabel(post.expiresAt)}
+                                </span>
+                              </div>
+                              <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">
+                                {post.text}
+                              </p>
+                              <p className="mt-2 text-right text-[11px] font-medium text-slate-500">
+                                {formatPostCreatedAt(post.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-6">
                     {/* 検索結果 */}
