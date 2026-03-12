@@ -35,7 +35,16 @@ function GuardMessage({
 }
 
 export default function VendorLayout({ children }: { children: ReactNode }) {
-  const { user, permissions } = useAuth();
+  const { user, permissions, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <GuardMessage
+        title="読み込み中です"
+        message="ログイン状態を確認しています。しばらくお待ちください。"
+      />
+    );
+  }
 
   if (!user) {
     return (

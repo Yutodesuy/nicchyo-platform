@@ -6,17 +6,18 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 export default function AdminAnalyticsPage() {
-  const { permissions } = useAuth();
+  const { permissions, isLoading } = useAuth();
   const router = useRouter();
 
   // 管理者権限チェック
   useEffect(() => {
+    if (isLoading) return;
     if (!permissions.isSuperAdmin) {
       router.push("/");
     }
-  }, [permissions.isSuperAdmin, router]);
+  }, [isLoading, permissions.isSuperAdmin, router]);
 
-  if (!permissions.isSuperAdmin) {
+  if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
 
