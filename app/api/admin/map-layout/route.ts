@@ -15,6 +15,11 @@ type EditableShop = {
   position: number;
 };
 
+type VendorOption = {
+  id: string;
+  name: string;
+};
+
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const record = user as {
@@ -130,12 +135,22 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [editableShops, landmarks] = await Promise.all([
+    const [editableShops, landmarks, vendorsResult] = await Promise.all([
       loadEditableShops(supabase),
       fetchLandmarksFromDb(supabase),
+      supabase.from("vendors").select("id, shop_name, owner_name").order("shop_name", { ascending: true }),
     ]);
 
-    return NextResponse.json({ shops: editableShops, landmarks });
+    if (vendorsResult.error) {
+      return NextResponse.json({ error: "Failed to load vendor options" }, { status: 500 });
+    }
+
+    const vendors: VendorOption[] = (vendorsResult.data ?? []).map((row) => ({
+      id: row.id as string,
+      name: ((row.shop_name as string | null) || (row.owner_name as string | null) || "名称未設定").trim(),
+    }));
+
+    return NextResponse.json({ shops: editableShops, landmarks, vendors });
   } catch {
     return NextResponse.json({ error: "Failed to load map layout" }, { status: 500 });
   }
@@ -198,8 +213,9 @@ export async function PUT(request: NextRequest) {
         }
       }
 
+      const createdLocationIdByPosition = new Map<number, string>();
       if (createdShops.length > 0) {
-        const { error } = await adminWriteClient
+        const { data, error } = await adminWriteClient
           .from("market_locations")
           .insert(
             createdShops.map((shop) => ({
@@ -207,10 +223,69 @@ export async function PUT(request: NextRequest) {
               longitude: shop.lng,
               store_number: shop.position,
             }))
-          );
+          )
+          .select("id, store_number");
 
         if (error) {
           return NextResponse.json({ error: "Failed to create shop locations" }, { status: 500 });
+        }
+
+        for (const row of data ?? []) {
+          if (row.id && row.store_number != null) {
+            createdLocationIdByPosition.set(Number(row.store_number), row.id as string);
+          }
+        }
+      }
+
+      const assignmentTargets = body.shops.updated.map((shop) => ({
+        ...shop,
+        locationId: shop.locationId.startsWith("new-")
+          ? createdLocationIdByPosition.get(shop.position) ?? shop.locationId
+          : shop.locationId,
+      }));
+
+      const affectedLocationIds = assignmentTargets
+        .map((shop) => shop.locationId)
+        .filter((locationId) => !locationId.startsWith("new-"));
+      const affectedVendorIds = assignmentTargets
+        .map((shop) => shop.vendorId)
+        .filter((vendorId): vendorId is string => Boolean(vendorId));
+
+      if (affectedLocationIds.length > 0) {
+        const { error } = await adminWriteClient
+          .from("location_assignments")
+          .delete()
+          .in("location_id", affectedLocationIds);
+
+        if (error) {
+          return NextResponse.json({ error: "Failed to clear location assignments" }, { status: 500 });
+        }
+      }
+
+      if (affectedVendorIds.length > 0) {
+        const { error } = await adminWriteClient
+          .from("location_assignments")
+          .delete()
+          .in("vendor_id", affectedVendorIds);
+
+        if (error) {
+          return NextResponse.json({ error: "Failed to clear vendor assignments" }, { status: 500 });
+        }
+      }
+
+      const assignmentsToInsert = assignmentTargets
+        .filter((shop) => shop.vendorId && !shop.locationId.startsWith("new-"))
+        .map((shop) => ({
+          location_id: shop.locationId,
+          vendor_id: shop.vendorId as string,
+          market_date: new Date().toISOString().slice(0, 10),
+        }));
+
+      if (assignmentsToInsert.length > 0) {
+        const { error } = await adminWriteClient.from("location_assignments").insert(assignmentsToInsert);
+
+        if (error) {
+          return NextResponse.json({ error: "Failed to save shop assignments" }, { status: 500 });
         }
       }
     }

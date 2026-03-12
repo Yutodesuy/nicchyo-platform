@@ -15,6 +15,11 @@ type EditableShop = {
   position: number;
 };
 
+type VendorOption = {
+  id: string;
+  name: string;
+};
+
 const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
 
 function cloneShops(shops: EditableShop[]) {
@@ -33,6 +38,7 @@ async function fetchMapLayout() {
   return response.json() as Promise<{
     shops?: EditableShop[];
     landmarks?: EditableLandmark[];
+    vendors?: VendorOption[];
   }>;
 }
 
@@ -41,6 +47,7 @@ export default function MapEditClient() {
   const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
   const [initialShops, setInitialShops] = useState<EditableShop[]>([]);
   const [initialLandmarks, setInitialLandmarks] = useState<EditableLandmark[]>([]);
+  const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [selectedKind, setSelectedKind] = useState<"shop" | "landmark">("shop");
   const [selectedId, setSelectedId] = useState<string>("");
@@ -59,8 +66,10 @@ export default function MapEditClient() {
         const nextLandmarks = Array.isArray(data.landmarks)
           ? (data.landmarks as EditableLandmark[])
           : [];
+        const nextVendors = Array.isArray(data.vendors) ? (data.vendors as VendorOption[]) : [];
         setShops(nextShops);
         setLandmarks(nextLandmarks);
+        setVendorOptions(nextVendors);
         setInitialShops(cloneShops(nextShops));
         setInitialLandmarks(cloneLandmarks(nextLandmarks));
       })
@@ -118,7 +127,8 @@ export default function MapEditClient() {
         return (
           initial.lat !== shop.lat ||
           initial.lng !== shop.lng ||
-          initial.position !== shop.position
+          initial.position !== shop.position ||
+          initial.vendorId !== shop.vendorId
         );
       });
       const deletedLocationIds = initialShops
@@ -174,8 +184,10 @@ export default function MapEditClient() {
       const nextData = await fetchMapLayout();
       const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
       const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
+      const nextVendors = Array.isArray(nextData.vendors) ? nextData.vendors : [];
       setShops(nextShops);
       setLandmarks(nextLandmarks);
+      setVendorOptions(nextVendors);
       setInitialShops(cloneShops(nextShops));
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
       setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
@@ -230,34 +242,36 @@ export default function MapEditClient() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-700">Map Admin</p>
             <h1 className="text-2xl font-bold text-slate-900">マップ管理</h1>
           </div>
-          <div className="ml-auto flex rounded-full bg-slate-100 p-1">
+          <div className="ml-auto mr-16 flex items-center gap-3">
+            <div className="flex rounded-full bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setMode("edit")}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  mode === "edit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                }`}
+              >
+                編集
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("preview")}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  mode === "preview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                }`}
+              >
+                プレビュー
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setMode("edit")}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                mode === "edit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
-              }`}
+              onClick={handleSave}
+              disabled={isSaving || isLoading}
+              className="rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              編集
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("preview")}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                mode === "preview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
-              }`}
-            >
-              プレビュー
+              {isSaving ? "保存中..." : "変更を保存"}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving || isLoading}
-            className="rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {isSaving ? "保存中..." : "変更を保存"}
-          </button>
         </div>
       </div>
 
@@ -298,33 +312,113 @@ export default function MapEditClient() {
               />
               <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
                 {filteredShops.map((shop) => (
-                <div
-                  key={shop.id}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                    selectedId === String(shop.id)
-                      ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
-                      : "border-slate-200 bg-white"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(String(shop.id))}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <span>
-                      <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
-                      <span className="block text-xs text-slate-500">#{shop.id}</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteShop(shop.id)}
-                    className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
-                    aria-label={`${shop.name} を削除`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                  <div key={shop.id}>
+                    <div
+                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                        selectedId === String(shop.id)
+                          ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedKind === "shop" && selectedId === String(shop.id)) {
+                            setSelectedId("");
+                            return;
+                          }
+                          setSelectedKind("shop");
+                          setSelectedId(String(shop.id));
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
+                          <span className="block text-xs text-slate-500">#{shop.id}</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteShop(shop.id)}
+                        className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                        aria-label={`${shop.name} を削除`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {selectedId === String(shop.id) && (
+                      <div className="mt-2 rounded-2xl bg-slate-50 p-4">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      出店者
+                    </label>
+                    <select
+                      value={shop.vendorId ?? ""}
+                      onChange={(event) =>
+                        setShops((prev) =>
+                          prev.map((item) => {
+                            if (item.id !== shop.id) return item;
+                            const vendorId = event.target.value || undefined;
+                            const vendorName =
+                              vendorOptions.find((vendor) => vendor.id === vendorId)?.name ??
+                              `未設定店舗 ${item.position}`;
+                            return {
+                              ...item,
+                              vendorId,
+                              name: vendorId ? vendorName : `未設定店舗 ${item.position}`,
+                            };
+                          })
+                        )
+                      }
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      <option value="">未割当</option>
+                      {vendorOptions.map((vendor) => (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        緯度
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={shop.lat}
+                          onChange={(event) =>
+                            setShops((prev) =>
+                              prev.map((item) =>
+                                item.id === shop.id
+                                  ? { ...item, lat: Number(event.target.value) }
+                                  : item
+                              )
+                            )
+                          }
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </label>
+                      <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        経度
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={shop.lng}
+                          onChange={(event) =>
+                            setShops((prev) =>
+                              prev.map((item) =>
+                                item.id === shop.id
+                                  ? { ...item, lng: Number(event.target.value) }
+                                  : item
+                              )
+                            )
+                          }
+                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                        />
+                      </label>
+                    </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
                 {filteredShops.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
