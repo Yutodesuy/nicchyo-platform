@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles, Settings } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS = [
@@ -48,9 +50,39 @@ const MENU_ITEMS = [
   },
 ];
 
+type SetupStep = {
+  label: string;
+  done: boolean;
+  href: string;
+};
+
 export default function MyShopPage() {
-  const { isLoggedIn, permissions } = useAuth();
+  const { isLoggedIn, user, permissions } = useAuth();
   const canAccess = isLoggedIn;
+
+  const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchVendorStore(user.id).then((store) => {
+      if (!store) return;
+      const steps: SetupStep[] = [
+        { label: "店舗名を設定する", done: !!store.name?.trim(), href: "/vendor/store" },
+        { label: "商品を追加する", done: store.main_products.length > 0, href: "/vendor/store" },
+        { label: "出店予定日を設定する", done: store.schedule.length > 0, href: "/vendor/store" },
+        { label: "決済方法を設定する", done: store.payment_methods.length > 0, href: "/vendor/store" },
+        { label: "店舗写真を追加する", done: !!store.shop_image_url, href: "/vendor/store" },
+        { label: "最初の投稿をする", done: false, href: "/vendor/post/new" },
+      ];
+      setSetupSteps(steps);
+    }).catch(() => {
+      // 取得失敗時は非表示
+    });
+  }, [user]);
+
+  const incompletedSteps = setupSteps?.filter((s) => !s.done) ?? [];
+  const completedCount = setupSteps ? setupSteps.length - incompletedSteps.length : 0;
+  const showOnboarding = setupSteps !== null && incompletedSteps.length > 0;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.18),_rgba(255,255,255,0))] pb-24">
@@ -94,6 +126,52 @@ export default function MyShopPage() {
                 現在のアカウントに出店者ロールが設定されていません。表示はできますが、保存時に制限が出る場合があります。
               </div>
             )}
+
+            {/* 初回オンボーディング */}
+            {showOnboarding && (
+              <div className="mb-5 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-600">Setup</p>
+                    <p className="text-base font-bold text-slate-900">お店の初期設定</p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {completedCount} / {setupSteps!.length} 完了
+                  </span>
+                </div>
+                {/* プログレスバー */}
+                <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-emerald-400 transition-all"
+                    style={{ width: `${(completedCount / setupSteps!.length) * 100}%` }}
+                  />
+                </div>
+                <ul className="space-y-2">
+                  {setupSteps!.map((step) => (
+                    <li key={step.label}>
+                      <Link
+                        href={step.href}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+                          step.done
+                            ? "bg-slate-50 text-slate-400"
+                            : "bg-emerald-50 text-slate-700 hover:bg-emerald-100"
+                        }`}
+                      >
+                        <CheckCircle2
+                          size={16}
+                          className={`flex-shrink-0 ${step.done ? "text-emerald-400" : "text-slate-300"}`}
+                        />
+                        <span className={`flex-1 text-sm font-medium ${step.done ? "line-through" : ""}`}>
+                          {step.label}
+                        </span>
+                        {!step.done && <ChevronRight size={14} className="flex-shrink-0 text-slate-400" />}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="grid gap-5 md:grid-cols-3">
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon;

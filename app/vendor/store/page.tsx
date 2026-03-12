@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { fetchVendorStore, saveVendorStore, fetchCategories } from "../_services/storeService";
+import { fetchVendorStore, saveVendorStore, uploadStoreImage, fetchCategories } from "../_services/storeService";
 import type { Category } from "../_services/storeService";
 import type { PaymentMethod, RainPolicy, Store } from "../_types";
 import {
@@ -20,6 +21,11 @@ import {
   Loader2,
   Tent,
   Tag,
+  Camera,
+  Clock,
+  Link as LinkIcon,
+  Instagram,
+  Globe,
 } from "lucide-react";
 
 const PAYMENT_OPTIONS: { key: PaymentMethod; label: string; emoji: string }[] = [
@@ -49,6 +55,11 @@ const STYLE_PRESETS = [
   "試食あり",
   "常設ブース",
 ];
+
+const TIME_OPTIONS = Array.from({ length: 19 }, (_, i) => {
+  const h = i + 6; // 6:00〜24:00
+  return `${h}:00`;
+});
 
 const EMPTY_STORE: Store = {
   id: "", vendor_id: "",
@@ -81,6 +92,14 @@ export default function VendorStorePage() {
   const [isSaved, setIsSaved]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
+  // 店舗写真
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // 離脱警告
+  const [isDirty, setIsDirty] = useState(false);
+
   useEffect(() => {
     fetchCategories().then(setCategories);
   }, []);
@@ -89,12 +108,43 @@ export default function VendorStorePage() {
     if (!user) return;
     fetchVendorStore(user.id)
       .then((store) => {
-        if (store) setForm(store);
-        else setForm({ ...EMPTY_STORE, id: user.id, vendor_id: user.id });
+        if (store) {
+          setForm(store);
+          if (store.shop_image_url) setImagePreview(store.shop_image_url);
+        } else {
+          setForm({ ...EMPTY_STORE, id: user.id, vendor_id: user.id });
+        }
       })
       .catch(() => setError("データの読み込みに失敗しました"))
       .finally(() => setIsLoading(false));
   }, [user]);
+
+  // 離脱警告（未保存の変更がある場合のみ）
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setIsDirty(true);
+  }
+
+  function removeImage() {
+    setImageFile(null);
+    setImagePreview(null);
+    setForm((prev) => ({ ...prev, shop_image_url: undefined }));
+    setIsDirty(true);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -102,6 +152,10 @@ export default function VendorStorePage() {
     setIsSaving(true);
     setError(null);
     try {
+      let imageUrl = form.shop_image_url;
+      if (imageFile) {
+        imageUrl = await uploadStoreImage(user.id, imageFile);
+      }
       await saveVendorStore(user.id, {
         name: form.name,
         owner_name: form.owner_name,
@@ -113,7 +167,16 @@ export default function VendorStorePage() {
         payment_methods: form.payment_methods,
         rain_policy: form.rain_policy,
         schedule: form.schedule,
+        shop_image_url: imageUrl,
+        sns_instagram: form.sns_instagram,
+        sns_x: form.sns_x,
+        sns_hp: form.sns_hp,
+        business_hours_start: form.business_hours_start,
+        business_hours_end: form.business_hours_end,
       });
+      setForm((prev) => ({ ...prev, shop_image_url: imageUrl }));
+      setImageFile(null);
+      setIsDirty(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch {
@@ -124,6 +187,7 @@ export default function VendorStorePage() {
   }
 
   function togglePayment(method: PaymentMethod) {
+    setIsDirty(true);
     setForm((prev) => ({
       ...prev,
       payment_methods: prev.payment_methods.includes(method)
@@ -135,11 +199,13 @@ export default function VendorStorePage() {
   function addStyleTag(value: string) {
     const trimmed = value.trim();
     if (!trimmed || form.style_tags.includes(trimmed)) return;
+    setIsDirty(true);
     setForm((prev) => ({ ...prev, style_tags: [...prev.style_tags, trimmed] }));
     setNewStyleTag("");
   }
 
   function removeStyleTag(tag: string) {
+    setIsDirty(true);
     setForm((prev) => ({ ...prev, style_tags: prev.style_tags.filter((t) => t !== tag) }));
   }
 
@@ -147,6 +213,7 @@ export default function VendorStorePage() {
     const trimmed = newProduct.trim();
     if (!trimmed || form.main_products.includes(trimmed)) return;
     const price = newProductPrice.trim() !== "" ? parseInt(newProductPrice, 10) : null;
+    setIsDirty(true);
     setForm((prev) => ({
       ...prev,
       main_products: [...prev.main_products, trimmed],
@@ -157,6 +224,7 @@ export default function VendorStorePage() {
   }
 
   function removeProduct(name: string) {
+    setIsDirty(true);
     setForm((prev) => {
       const prices = { ...prev.main_product_prices };
       delete prices[name];
@@ -166,6 +234,7 @@ export default function VendorStorePage() {
 
   function updateProductPrice(name: string, value: string) {
     const price = value.trim() === "" ? null : parseInt(value, 10);
+    setIsDirty(true);
     setForm((prev) => ({
       ...prev,
       main_product_prices: { ...prev.main_product_prices, [name]: isNaN(price as number) ? null : price },
@@ -174,11 +243,13 @@ export default function VendorStorePage() {
 
   function addSchedule(value: string) {
     if (!value || form.schedule.includes(value)) return;
+    setIsDirty(true);
     setForm((prev) => ({ ...prev, schedule: [...prev.schedule, value] }));
     setNewSchedule("");
   }
 
   function removeSchedule(s: string) {
+    setIsDirty(true);
     setForm((prev) => ({ ...prev, schedule: prev.schedule.filter((x) => x !== s) }));
   }
 
@@ -204,16 +275,74 @@ export default function VendorStorePage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Store Info</p>
             <h1 className="text-xl font-bold text-slate-900">店舗情報の編集</h1>
           </div>
+          {isDirty && (
+            <span className="ml-auto rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
+              未保存
+            </span>
+          )}
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+      <form onSubmit={handleSubmit} onChange={() => setIsDirty(true)} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
 
         {error && (
           <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {error}
           </div>
         )}
+
+        {/* 店舗写真 */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={Camera} title="店舗写真" />
+          {imagePreview ? (
+            <div className="relative">
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <Image
+                  src={imagePreview}
+                  alt="店舗写真プレビュー"
+                  width={800}
+                  height={400}
+                  className="h-48 w-full object-cover"
+                  unoptimized={imagePreview.startsWith("blob:")}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/70 text-white hover:bg-slate-900/80"
+              >
+                <X size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100"
+              >
+                写真を変更する
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 py-8 text-slate-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+            >
+              <Camera size={28} />
+              <span className="text-sm font-medium">タップして写真を選択</span>
+              <span className="text-xs text-slate-400">JPG・PNG・WebP / 最大5MB</span>
+            </button>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
+            className="hidden"
+          />
+          <p className="mt-1.5 text-[10px] text-slate-400">
+            マップの吹き出し・お店ページのバナーに表示されます
+          </p>
+        </div>
 
         {/* 店舗名 */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -250,7 +379,7 @@ export default function VendorStorePage() {
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, category_id: isSelected ? "" : cat.id }))}
+                  onClick={() => { setIsDirty(true); setForm((prev) => ({ ...prev, category_id: isSelected ? "" : cat.id })); }}
                   className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition ${
                     isSelected
                       ? "border-amber-400 bg-amber-50 text-amber-800"
@@ -271,7 +400,6 @@ export default function VendorStorePage() {
         {/* 出店スタイル */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Tent} title="出店スタイル" />
-          {/* 選択済みタグ */}
           <div className="mb-3 flex flex-wrap gap-2">
             {form.style_tags.map((tag) => (
               <span key={tag} className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
@@ -285,7 +413,6 @@ export default function VendorStorePage() {
               <span className="text-xs text-slate-400">スタイルを追加してください</span>
             )}
           </div>
-          {/* クイック選択 */}
           <div className="mb-2 flex flex-wrap gap-1.5">
             {STYLE_PRESETS.filter((p) => !form.style_tags.includes(p)).map((preset) => (
               <button key={preset} type="button" onClick={() => addStyleTag(preset)}
@@ -295,7 +422,6 @@ export default function VendorStorePage() {
               </button>
             ))}
           </div>
-          {/* カスタム入力 */}
           <div className="flex gap-2">
             <input
               type="text" value={newStyleTag}
@@ -310,7 +436,6 @@ export default function VendorStorePage() {
               <Plus size={14} />追加
             </button>
           </div>
-          {/* 自由記述 */}
           <textarea
             value={form.style}
             onChange={(e) => setForm((prev) => ({ ...prev, style: e.target.value }))}
@@ -376,6 +501,30 @@ export default function VendorStorePage() {
           <p className="mt-2 text-[10px] text-slate-400">金額は任意です。未入力でも追加できます。</p>
         </div>
 
+        {/* 営業時間 */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={Clock} title="営業時間（任意）" />
+          <div className="flex items-center gap-3">
+            <select
+              value={form.business_hours_start ?? ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, business_hours_start: e.target.value || undefined }))}
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+            >
+              <option value="">開始時間</option>
+              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <span className="text-sm text-slate-500 flex-shrink-0">〜</span>
+            <select
+              value={form.business_hours_end ?? ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, business_hours_end: e.target.value || undefined }))}
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+            >
+              <option value="">終了時間</option>
+              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+
         {/* 決済方法 */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={CreditCard} title="決済方法" />
@@ -403,7 +552,7 @@ export default function VendorStorePage() {
               const isSelected = form.rain_policy === opt.key;
               return (
                 <button key={opt.key} type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, rain_policy: opt.key }))}
+                  onClick={() => { setIsDirty(true); setForm((prev) => ({ ...prev, rain_policy: opt.key })); }}
                   className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition ${isSelected ? "border-amber-400 bg-amber-50" : "border-slate-200 bg-slate-50 hover:border-amber-200"}`}
                 >
                   <div>
@@ -454,6 +603,50 @@ export default function VendorStorePage() {
               <Plus size={14} />追加
             </button>
           </div>
+        </div>
+
+        {/* SNSリンク */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SectionHeader icon={LinkIcon} title="SNS・ウェブサイト（任意）" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-600">
+                <Instagram size={16} />
+              </span>
+              <input
+                type="text"
+                value={form.sns_instagram ?? ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, sns_instagram: e.target.value || undefined }))}
+                placeholder="@username または URL"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                𝕏
+              </span>
+              <input
+                type="text"
+                value={form.sns_x ?? ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, sns_x: e.target.value || undefined }))}
+                placeholder="@username または URL"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+                <Globe size={16} />
+              </span>
+              <input
+                type="text"
+                value={form.sns_hp ?? ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, sns_hp: e.target.value || undefined }))}
+                placeholder="https://example.com"
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">お店ページに表示されます。@は省略可能です。</p>
         </div>
 
         {/* 保存ボタン */}
