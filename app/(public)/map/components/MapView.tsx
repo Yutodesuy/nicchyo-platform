@@ -31,6 +31,7 @@ import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
   getRoadBounds,
+  getNearestPointOnRoad,
   getSundayMarketBounds,
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
@@ -95,16 +96,17 @@ const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
 const KOCHI_CASTLE_MUSEUM_BASE_WIDTH = 0.0036;
 const KOCHI_CASTLE_MUSEUM_SCALE = 0.7;
+const KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE = 1.5;
 const KOCHI_CASTLE_MUSEUM_WIDTH = KOCHI_CASTLE_MUSEUM_BASE_WIDTH * KOCHI_CASTLE_MUSEUM_SCALE;
 const KOCHI_CASTLE_MUSEUM_HEIGHT = KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
 const KOCHI_CASTLE_MUSEUM_CENTER_LAT = 33.5599801;
 const KOCHI_CASTLE_MUSEUM_CENTER_LNG = 133.5340747;
-const OTEPIA_CENTER_LAT = 33.5608832;
-const OTEPIA_CENTER_LNG = 133.5370493;
+const OTEPIA_CENTER_LAT = 33.5605212;
+const OTEPIA_CENTER_LNG = 133.5371029;
 const OTEPIA_SCALE = 1.3;
 const OTEPIA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * OTEPIA_SCALE;
 const OTEPIA_HEIGHT = KOCHI_CASTLE_MUSEUM_HEIGHT * OTEPIA_SCALE;
-const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (2 / 1.5);
+const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (4 / 1.5);
 const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
 const KOCHI_CASTLE_CENTER_LAT = 33.5615208;
 const KOCHI_CASTLE_CENTER_LNG = 133.5311987;
@@ -117,6 +119,16 @@ const KOCHI_STATION_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.9;
 const KOCHI_STATION_HEIGHT = KOCHI_STATION_WIDTH / KOCHI_STATION_ASPECT;
 const KOCHI_STATION_CENTER_LAT = 33.5671869;
 const KOCHI_STATION_CENTER_LNG = 133.5436682;
+const OHTEMAE_SCHOOL_ASPECT = 1536 / 1024;
+const OHTEMAE_SCHOOL_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
+const OHTEMAE_SCHOOL_HEIGHT = OHTEMAE_SCHOOL_WIDTH / OHTEMAE_SCHOOL_ASPECT;
+const OHTEMAE_SCHOOL_CENTER_LAT = 33.5616992;
+const OHTEMAE_SCHOOL_CENTER_LNG = 133.5365687;
+const HIROME_MARKET_ASPECT = 1536 / 1024;
+const HIROME_MARKET_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
+const HIROME_MARKET_HEIGHT = HIROME_MARKET_WIDTH / HIROME_MARKET_ASPECT;
+const HIROME_MARKET_CENTER_LAT = 33.5605993;
+const HIROME_MARKET_CENTER_LNG = 133.535527;
 const LANDMARK_PIXEL_BASE = 192;
 const LANDMARK_SPECS: Array<{
   key: string;
@@ -131,12 +143,14 @@ const LANDMARK_SPECS: Array<{
     url: "/images/maps/elements/buildings/KochiCastleMusium2.png",
     lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT,
     lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE,
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE) / KOCHI_CASTLE_MUSEUM_ASPECT,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE,
+    heightPx:
+      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE) /
+      KOCHI_CASTLE_MUSEUM_ASPECT,
   },
   {
     key: "otepia",
-    url: "/images/maps/elements/buildings/Otepia2.png",
+    url: "/images/maps/elements/buildings/Ohtepia.png",
     lat: OTEPIA_CENTER_LAT,
     lng: OTEPIA_CENTER_LNG,
     widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE,
@@ -149,12 +163,12 @@ const LANDMARK_SPECS: Array<{
     url: "/images/maps/elements/buildings/KochiCastle.png",
     lat: KOCHI_CASTLE_CENTER_LAT,
     lng: KOCHI_CASTLE_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (2 / 1.5),
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (2 / 1.5)) / 1.5,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5),
+    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5)) / 1.5,
   },
   {
     key: "densha",
-    url: "/images/maps/elements/buildings/TinTinDensha2.png",
+    url: "/images/maps/elements/buildings/Train.png",
     lat: TINTIN_DENSHA_CENTER_LAT,
     lng: TINTIN_DENSHA_CENTER_LNG,
     widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5),
@@ -168,14 +182,37 @@ const LANDMARK_SPECS: Array<{
     widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9,
     heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9) / KOCHI_STATION_ASPECT,
   },
+  {
+    key: "ohtemae-school",
+    url: "/images/maps/elements/buildings/ohtemae-school.png",
+    lat: OHTEMAE_SCHOOL_CENTER_LAT,
+    lng: OHTEMAE_SCHOOL_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
+    heightPx:
+      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / OHTEMAE_SCHOOL_ASPECT,
+  },
+  {
+    key: "hirome-market",
+    url: "/images/maps/elements/buildings/hirome-market.png",
+    lat: HIROME_MARKET_CENTER_LAT,
+    lng: HIROME_MARKET_CENTER_LNG,
+    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
+    heightPx:
+      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / HIROME_MARKET_ASPECT,
+  },
 ];
 const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
   { name: "高知駅", lat: KOCHI_STATION_CENTER_LAT, lng: KOCHI_STATION_CENTER_LNG },
   { name: "高知城", lat: KOCHI_CASTLE_CENTER_LAT, lng: KOCHI_CASTLE_CENTER_LNG },
   { name: "オーテピア", lat: OTEPIA_CENTER_LAT, lng: OTEPIA_CENTER_LNG },
   { name: "歴史博物館", lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT, lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG },
-  { name: "追手筋", lat: 33.56145, lng: 133.5383 },
+  { name: "ひろめ市場", lat: HIROME_MARKET_CENTER_LAT, lng: HIROME_MARKET_CENTER_LNG },
+  { name: "追手前高校", lat: OHTEMAE_SCHOOL_CENTER_LAT, lng: OHTEMAE_SCHOOL_CENTER_LNG },
+  { name: "チンチン電車", lat: TINTIN_DENSHA_CENTER_LAT, lng: TINTIN_DENSHA_CENTER_LNG },
 ];
+const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
+const MIN_ZOOM_LANDMARK_KEYS = new Set(["castle", "station", "densha"]);
+const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
 
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
 const BASEMAP_TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png";
@@ -427,6 +464,39 @@ function MapZoomConstraint() {
         return;
       }
       lastAcceptedZoom = zoom;
+    };
+
+    map.on("zoomend", handleZoomEnd);
+    return () => {
+      map.off("zoomend", handleZoomEnd);
+    };
+  }, [map]);
+
+  return null;
+}
+
+function MapZoomRoadSnapController() {
+  const map = useMap();
+
+  useEffect(() => {
+    let lastZoom = map.getZoom();
+
+    const handleZoomEnd = () => {
+      const nextZoom = map.getZoom();
+      const isZoomingIn = nextZoom > lastZoom + 0.01;
+      lastZoom = nextZoom;
+
+      if (!isZoomingIn) {
+        return;
+      }
+
+      const center = map.getCenter();
+      const nearestRoadPoint = getNearestPointOnRoad(center.lat, center.lng);
+      map.panTo([nearestRoadPoint.lat, nearestRoadPoint.lng], {
+        animate: true,
+        duration: 0.7,
+        easeLinearity: 0.25,
+      });
     };
 
     map.on("zoomend", handleZoomEnd);
@@ -804,6 +874,7 @@ const MapView = memo(function MapView({
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
   const isMinimumZoomMode = mapUiZoom <= MIN_ZOOM + 0.05;
   const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
+  const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
   const interactionDisabled = agentOpen;
   const mapRotation = isMinimumZoomMode
     ? 0
@@ -849,7 +920,7 @@ const MapView = memo(function MapView({
 
   const landmarkScale = useMemo(() => {
     const factor = Math.pow(1.22, mapUiZoom - 18);
-    return Math.min(2.8, Math.max(0.55, factor));
+    return Math.min(2.8, Math.max(0.5, factor));
   }, [mapUiZoom]);
 
   useEffect(() => {
@@ -911,6 +982,23 @@ const MapView = memo(function MapView({
     });
     return icons;
   }, [highlightEventTargets, landmarkScale]);
+
+  const visibleMajorPlaceLabels = useMemo(() => {
+    if (!isMinimumZoomMode) {
+      return MAJOR_PLACE_LABELS;
+    }
+    return [
+      ...MAJOR_PLACE_LABELS.filter((place) => MIN_ZOOM_LABEL_NAMES.has(place.name)),
+      MIN_ZOOM_ONLY_LABEL,
+    ];
+  }, [isMinimumZoomMode]);
+
+  const visibleLandmarkSpecs = useMemo(() => {
+    if (!isMinimumZoomMode) {
+      return LANDMARK_SPECS;
+    }
+    return LANDMARK_SPECS.filter((spec) => MIN_ZOOM_LANDMARK_KEYS.has(spec.key));
+  }, [isMinimumZoomMode]);
 
   const handleTouchStartRotate = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
@@ -1113,11 +1201,12 @@ const MapView = memo(function MapView({
             onResumeFromManualPause={handleResumeFromManualPause}
           />
           <MapZoomConstraint />
+          <MapZoomRoadSnapController />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
           <TileLayer
             url={BASEMAP_TILE_URL}
             attribution={BASEMAP_ATTRIBUTION}
-            opacity={0.5}
+            opacity={isMinimumZoomMode ? 0.44 : isThirdZoomFromMinimum ? 0.11 : 0.22}
             zIndex={1}
             keepBuffer={16}
           />
@@ -1128,13 +1217,15 @@ const MapView = memo(function MapView({
         <RoadOverlay overviewTint={isLowZoomTintMode} />
         <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
         <Pane name="major-place-label" style={{ zIndex: 950 }}>
-          {MAJOR_PLACE_LABELS.map((place) => (
+          {visibleMajorPlaceLabels.map((place) => (
             <Marker
               key={`major-place-${place.name}`}
               position={[place.lat, place.lng]}
               icon={L.divIcon({
                 className: "major-place-label-icon",
-                html: `<span class="major-place-label-pill" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
+                html: `<span class="major-place-label-pill${
+                  place.name === "日曜市" ? " is-sunday-market" : ""
+                }" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
                 iconSize: [0, 0],
               })}
               interactive={false}
@@ -1201,7 +1292,7 @@ const MapView = memo(function MapView({
           name="landmarks"
           style={{ zIndex: highlightEventTargets ? 3000 : 70 }}
         >
-          {LANDMARK_SPECS.map((spec) => (
+          {visibleLandmarkSpecs.map((spec) => (
             <Marker
               key={`landmark-${spec.key}`}
               position={[spec.lat, spec.lng]}
