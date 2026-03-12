@@ -248,6 +248,26 @@ export default function MapEditClient() {
     });
   };
 
+  const handleConfirmLandmark = (key: string) => {
+    setSelectedKind("landmark");
+    setSelectedId("");
+    setMessage(`建物オブジェクト ${key} の編集を確定しました。保存するとDBへ反映されます。`);
+  };
+
+  const handleCancelLandmark = (key: string) => {
+    setLandmarks((prev) => {
+      if (key.startsWith("landmark-")) {
+        return prev.filter((item) => item.key !== key);
+      }
+      const initial = initialLandmarks.find((item) => item.key === key);
+      if (!initial) return prev;
+      return prev.map((item) => (item.key === key ? { ...initial } : item));
+    });
+    if (selectedKind === "landmark" && selectedId === key) {
+      setSelectedId("");
+    }
+  };
+
   const handleAddShop = () => {
     const nextPosition = shops.reduce((max, shop) => Math.max(max, shop.position), 0) + 1;
     const fallback = selectedShop ?? shops[shops.length - 1] ?? null;
@@ -627,13 +647,22 @@ export default function MapEditClient() {
                 rows={3}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
-              <button
-                type="button"
-                onClick={() => handleDeleteLandmark(selectedLandmark.key)}
-                className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-              >
-                建物を削除
-              </button>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCancelLandmark(selectedLandmark.key)}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmLandmark(selectedLandmark.key)}
+                  className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                >
+                  確定
+                </button>
+              </div>
               <p className="text-xs text-slate-500">建物オブジェクトはDBに保存され、マップ表示へ反映されます。</p>
             </div>
           )}
@@ -653,6 +682,10 @@ export default function MapEditClient() {
             selectedKind={selectedKind}
             selectedId={selectedId}
             onSelect={(kind, id) => {
+              if (selectedKind === kind && selectedId === id) {
+                setSelectedId("");
+                return;
+              }
               setSelectedKind(kind);
               setSelectedId(id);
             }}
