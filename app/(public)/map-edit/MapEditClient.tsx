@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
@@ -101,6 +101,8 @@ export default function MapEditClient() {
   const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
+  const shopItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const landmarkItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     let active = true;
@@ -144,6 +146,7 @@ export default function MapEditClient() {
     () =>
       sortShops(
         shops.filter((shop) => {
+          if (selectedKind === "shop" && selectedId === String(shop.id)) return true;
           if (!normalizedShopQuery) return true;
           return (
             shop.name.toLowerCase().includes(normalizedShopQuery) ||
@@ -151,15 +154,16 @@ export default function MapEditClient() {
           );
         })
       ),
-    [normalizedShopQuery, shops]
+    [normalizedShopQuery, selectedId, selectedKind, shops]
   );
   const filteredLandmarks = useMemo(
     () =>
       landmarks.filter((landmark) => {
+        if (selectedKind === "landmark" && selectedId === landmark.key) return true;
         if (!normalizedLandmarkQuery) return true;
         return landmark.name.toLowerCase().includes(normalizedLandmarkQuery);
       }),
-    [landmarks, normalizedLandmarkQuery]
+    [landmarks, normalizedLandmarkQuery, selectedId, selectedKind]
   );
   const hasUnsavedChanges = useMemo(() => {
     const initialShopMap = new Map(initialShops.map((shop) => [shop.locationId, shop]));
@@ -211,6 +215,17 @@ export default function MapEditClient() {
       setIsLoadingSnapshots(false);
     }
   };
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const target =
+      selectedKind === "shop"
+        ? shopItemRefs.current[selectedId]
+        : landmarkItemRefs.current[selectedId];
+
+    target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [filteredLandmarks, filteredShops, selectedId, selectedKind]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -611,7 +626,12 @@ export default function MapEditClient() {
               />
               <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                 {filteredShops.map((shop) => (
-                  <div key={shop.id}>
+                  <div
+                    key={shop.id}
+                    ref={(node) => {
+                      shopItemRefs.current[String(shop.id)] = node;
+                    }}
+                  >
                     <div
                       role="button"
                       tabIndex={0}
@@ -785,6 +805,9 @@ export default function MapEditClient() {
               {filteredLandmarks.map((landmark) => (
                 <div
                   key={landmark.key}
+                  ref={(node) => {
+                    landmarkItemRefs.current[landmark.key] = node;
+                  }}
                   role="button"
                   tabIndex={0}
                   onClick={() => toggleLandmarkSelection(landmark.key)}
