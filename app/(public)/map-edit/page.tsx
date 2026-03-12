@@ -1,7 +1,5 @@
-"use client";
-
-import MapEditClient from "./MapEditClient";
+import { redirect } from "next/navigation";
 
 export default function MapEditPage() {
-  return <MapEditClient />;
+  redirect("/admin/map-edit");
 }
