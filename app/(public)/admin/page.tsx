@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AdminLayout, MenuCard, StatCard } from "@/components/admin";
+import { AdminLayout, AdminPageHeader, MenuCard, StatCard } from "@/components/admin";
 import { createClient } from "@/utils/supabase/server";
 
 type ActivityItem = {
@@ -219,14 +219,10 @@ export default async function AdminDashboardPage() {
 
   return (
     <AdminLayout>
-      <div className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">管理者ダッシュボード</h1>
-          <p className="mt-2 text-sm text-gray-600">ようこそ、{getDisplayName(user)}さん</p>
-        </div>
-      </div>
+      <AdminPageHeader eyebrow="Admin Dashboard" title="管理者ダッシュボード" />
 
       <div className="mx-auto max-w-7xl px-4 py-8 pb-20">
+        <p className="mb-6 pl-14 text-sm text-slate-600">ようこそ、{getDisplayName(user)}さん</p>
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <StatCard

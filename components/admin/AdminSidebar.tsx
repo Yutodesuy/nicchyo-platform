@@ -80,12 +80,6 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       >
       {/* ロゴ・ヘッダー */}
       <div className={`flex h-16 items-center justify-between px-6 ${theme.headerBg}`}>
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl" aria-hidden="true">🗺️</span>
-          <span className={`text-lg font-bold ${theme.headerText}`}>
-            日曜市プラットフォーム
-          </span>
-        </Link>
         <button
           type="button"
           onClick={onClose}
@@ -94,6 +88,12 @@ export const AdminSidebar = React.memo(function AdminSidebar({
         >
           ✕
         </button>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl" aria-hidden="true">🗺️</span>
+          <span className={`text-lg font-bold ${theme.headerText}`}>
+            管理者ページ
+          </span>
+        </div>
       </div>
 
       {/* ユーザー情報 */}
@@ -116,7 +116,10 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       {/* ナビゲーションメニュー */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+          const isDashboard = item.href === "/admin";
+          const isActive = isDashboard
+            ? pathname === "/admin"
+            : pathname === item.href || pathname?.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { AdminLayout } from "@/components/admin";
 
 function GuardMessage({
   title,
@@ -59,5 +60,5 @@ export default function AdminMapEditLayout({ children }: { children: ReactNode }
     );
   }
 
-  return <>{children}</>;
+  return <AdminLayout>{children}</AdminLayout>;
 }
