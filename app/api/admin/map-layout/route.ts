@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/utils/supabase/server";
-import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
 
@@ -30,64 +29,77 @@ function isAdminRole(role: string | null) {
 }
 
 async function loadEditableShops(supabase: ReturnType<typeof createServerClient>): Promise<EditableShop[]> {
-  const [shops, assignmentsResult, locationsResult] = await Promise.all([
-    fetchShopsFromDb(supabase),
+  const [assignmentsResult, locationsResult, vendorsResult] = await Promise.all([
     supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
-    supabase.from("market_locations").select("id, store_number"),
+    supabase.from("market_locations").select("id, store_number, latitude, longitude"),
+    supabase.from("vendors").select("id, shop_name"),
   ]);
 
-  if (assignmentsResult.error || locationsResult.error) {
+  if (assignmentsResult.error || locationsResult.error || vendorsResult.error) {
     throw new Error("Failed to load shop location mappings");
   }
 
   const assignmentsData = assignmentsResult.data ?? [];
   const locationsData = locationsResult.data ?? [];
+  const vendorsData = vendorsResult.data ?? [];
 
-  const locationIdByStoreNumber = new Map<number, string>();
-  for (const row of locationsData) {
-    if (row.id && row.store_number != null) {
-      locationIdByStoreNumber.set(Number(row.store_number), row.id as string);
+  const vendorNameById = new Map<string, string>();
+  for (const row of vendorsData) {
+    if (row.id) {
+      vendorNameById.set(row.id as string, (row.shop_name as string | null) ?? "");
     }
   }
 
-  const latestAssignmentByVendor = new Map<string, { location_id: string; market_date: string | null }>();
+  const latestAssignmentByLocation = new Map<string, { vendor_id: string | null; market_date: string | null }>();
   for (const row of assignmentsData) {
-    const vendorId = row.vendor_id as string | null;
     const locationId = row.location_id as string | null;
-    if (!vendorId || !locationId) continue;
-    const current = latestAssignmentByVendor.get(vendorId);
+    if (!locationId) continue;
+    const current = latestAssignmentByLocation.get(locationId);
     if (!current) {
-      latestAssignmentByVendor.set(vendorId, { location_id: locationId, market_date: row.market_date as string | null });
+      latestAssignmentByLocation.set(locationId, {
+        vendor_id: (row.vendor_id as string | null) ?? null,
+        market_date: (row.market_date as string | null) ?? null,
+      });
       continue;
     }
     const currentDate = current.market_date ? new Date(current.market_date) : null;
     const nextDate = row.market_date ? new Date(row.market_date as string) : null;
     if (!currentDate || (nextDate && nextDate > currentDate)) {
-      latestAssignmentByVendor.set(vendorId, { location_id: locationId, market_date: row.market_date as string | null });
+      latestAssignmentByLocation.set(locationId, {
+        vendor_id: (row.vendor_id as string | null) ?? null,
+        market_date: (row.market_date as string | null) ?? null,
+      });
     }
   }
 
-  return shops.flatMap((shop) => {
-    const locationId =
-      (shop.vendorId ? latestAssignmentByVendor.get(shop.vendorId)?.location_id : undefined) ??
-      locationIdByStoreNumber.get(shop.id);
+  return locationsData
+    .flatMap((row) => {
+      const locationId = row.id as string | null;
+      const storeNumber = Number(row.store_number ?? 0);
+      const lat = Number(row.latitude ?? 0);
+      const lng = Number(row.longitude ?? 0);
 
-    if (!locationId) {
-      return [];
-    }
+      if (!locationId || !Number.isFinite(storeNumber) || storeNumber <= 0) {
+        return [];
+      }
 
-    return [
-      {
-        locationId,
-        id: shop.id,
-        vendorId: shop.vendorId,
-        name: shop.name,
-        lat: shop.lat,
-        lng: shop.lng,
-        position: shop.position,
-      },
-    ];
-  });
+      const latestAssignment = latestAssignmentByLocation.get(locationId);
+      const vendorId = latestAssignment?.vendor_id ?? undefined;
+      const vendorName = vendorId ? vendorNameById.get(vendorId) ?? "" : "";
+
+      return [
+        {
+          locationId,
+          id: storeNumber,
+          vendorId,
+          name: vendorName || `未設定店舗 ${storeNumber}`,
+          lat,
+          lng,
+          position: storeNumber,
+        },
+      ];
+    })
+    .sort((a, b) => a.position - b.position);
 }
 
 function createAdminWriteClient(): SupabaseClient {
@@ -165,20 +177,41 @@ export async function PUT(request: NextRequest) {
     }
 
     if (body.shops.updated.length > 0) {
-      const { error } = await adminWriteClient
-        .from("market_locations")
-        .upsert(
-          body.shops.updated.map((shop) => ({
-            id: shop.locationId,
-            latitude: shop.lat,
-            longitude: shop.lng,
-            store_number: shop.position,
-          })),
-          { onConflict: "id" }
-        );
+      const createdShops = body.shops.updated.filter((shop) => shop.locationId.startsWith("new-"));
+      const existingShops = body.shops.updated.filter((shop) => !shop.locationId.startsWith("new-"));
 
-      if (error) {
-        return NextResponse.json({ error: "Failed to update shop locations" }, { status: 500 });
+      if (existingShops.length > 0) {
+        const { error } = await adminWriteClient
+          .from("market_locations")
+          .upsert(
+            existingShops.map((shop) => ({
+              id: shop.locationId,
+              latitude: shop.lat,
+              longitude: shop.lng,
+              store_number: shop.position,
+            })),
+            { onConflict: "id" }
+          );
+
+        if (error) {
+          return NextResponse.json({ error: "Failed to update shop locations" }, { status: 500 });
+        }
+      }
+
+      if (createdShops.length > 0) {
+        const { error } = await adminWriteClient
+          .from("market_locations")
+          .insert(
+            createdShops.map((shop) => ({
+              latitude: shop.lat,
+              longitude: shop.lng,
+              store_number: shop.position,
+            }))
+          );
+
+        if (error) {
+          return NextResponse.json({ error: "Failed to create shop locations" }, { status: 500 });
+        }
       }
     }
 

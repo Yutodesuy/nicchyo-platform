@@ -25,6 +25,17 @@ function cloneLandmarks(landmarks: EditableLandmark[]) {
   return landmarks.map((landmark) => ({ ...landmark }));
 }
 
+async function fetchMapLayout() {
+  const response = await fetch("/api/admin/map-layout");
+  if (!response.ok) {
+    throw new Error("failed");
+  }
+  return response.json() as Promise<{
+    shops?: EditableShop[];
+    landmarks?: EditableLandmark[];
+  }>;
+}
+
 export default function MapEditClient() {
   const [shops, setShops] = useState<EditableShop[]>([]);
   const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
@@ -41,11 +52,7 @@ export default function MapEditClient() {
 
   useEffect(() => {
     let active = true;
-    void fetch("/api/admin/map-layout")
-      .then(async (response) => {
-        if (!response.ok) throw new Error("failed");
-        return response.json();
-      })
+    void fetchMapLayout()
       .then((data) => {
         if (!active) return;
         const nextShops = Array.isArray(data.shops) ? (data.shops as EditableShop[]) : [];
@@ -164,8 +171,13 @@ export default function MapEditClient() {
         }),
       });
       if (!response.ok) throw new Error("save failed");
-      setInitialShops(cloneShops(shops));
-      setInitialLandmarks(cloneLandmarks(landmarks));
+      const nextData = await fetchMapLayout();
+      const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
+      const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
+      setShops(nextShops);
+      setLandmarks(nextLandmarks);
+      setInitialShops(cloneShops(nextShops));
+      setInitialLandmarks(cloneLandmarks(nextLandmarks));
       setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
     } catch {
       setMessage("保存に失敗しました。");
@@ -192,6 +204,22 @@ export default function MapEditClient() {
       }
       return next;
     });
+  };
+
+  const handleAddShop = () => {
+    const nextPosition = shops.reduce((max, shop) => Math.max(max, shop.position), 0) + 1;
+    const fallback = selectedShop ?? shops[shops.length - 1] ?? null;
+    const nextShop: EditableShop = {
+      locationId: `new-${Date.now()}`,
+      id: nextPosition,
+      name: `未設定店舗 ${nextPosition}`,
+      lat: fallback?.lat ?? 33.56145,
+      lng: fallback?.lng ?? 133.5383,
+      position: nextPosition,
+    };
+    setShops((prev) => [...prev, nextShop]);
+    setSelectedKind("shop");
+    setSelectedId(String(nextShop.id));
   };
 
   return (
@@ -254,12 +282,19 @@ export default function MapEditClient() {
 
           {selectedKind === "shop" ? (
             <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleAddShop}
+                className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
+              >
+                ＋店舗マーカを追加
+              </button>
               <input
                 type="search"
                 value={shopQuery}
                 onChange={(event) => setShopQuery(event.target.value)}
                 placeholder="店舗マーカを検索"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
               <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
                 {filteredShops.map((shop) => (
