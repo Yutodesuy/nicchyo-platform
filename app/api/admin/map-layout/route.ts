@@ -20,6 +20,13 @@ type VendorOption = {
   name: string;
 };
 
+type SnapshotSummary = {
+  updatedShopCount: number;
+  deletedShopCount: number;
+  upsertLandmarkCount: number;
+  deletedLandmarkCount: number;
+};
+
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const record = user as {
@@ -123,6 +130,29 @@ function createAdminWriteClient(): SupabaseClient {
   });
 }
 
+async function createMapLayoutSnapshot(
+  supabase: ReturnType<typeof createServerClient>,
+  adminWriteClient: SupabaseClient,
+  createdBy: string,
+  summary: SnapshotSummary
+) {
+  const [shops, landmarks] = await Promise.all([
+    loadEditableShops(supabase),
+    fetchLandmarksFromDb(supabase),
+  ]);
+
+  const { error } = await adminWriteClient.from("map_layout_snapshots").insert({
+    shops_json: shops,
+    landmarks_json: landmarks,
+    created_by: createdBy,
+    summary,
+  });
+
+  if (error) {
+    throw new Error("Failed to create map layout snapshot");
+  }
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -189,6 +219,21 @@ export async function PUT(request: NextRequest) {
       !Array.isArray(body.landmarks.deletedKeys)
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const hasChanges =
+      body.shops.updated.length > 0 ||
+      body.shops.deletedLocationIds.length > 0 ||
+      body.landmarks.upsert.length > 0 ||
+      body.landmarks.deletedKeys.length > 0;
+
+    if (hasChanges) {
+      await createMapLayoutSnapshot(supabase, adminWriteClient, user.id, {
+        updatedShopCount: body.shops.updated.length,
+        deletedShopCount: body.shops.deletedLocationIds.length,
+        upsertLandmarkCount: body.landmarks.upsert.length,
+        deletedLandmarkCount: body.landmarks.deletedKeys.length,
+      });
     }
 
     if (body.shops.updated.length > 0) {
