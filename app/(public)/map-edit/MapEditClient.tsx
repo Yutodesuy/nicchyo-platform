@@ -234,8 +234,26 @@ export default function MapEditClient() {
     setSelectedId(String(nextShop.id));
   };
 
+  const toggleShopSelection = (shopId: number) => {
+    if (selectedKind === "shop" && selectedId === String(shopId)) {
+      setSelectedId("");
+      return;
+    }
+    setSelectedKind("shop");
+    setSelectedId(String(shopId));
+  };
+
+  const toggleLandmarkSelection = (landmarkKey: string) => {
+    if (selectedKind === "landmark" && selectedId === landmarkKey) {
+      setSelectedId("");
+      return;
+    }
+    setSelectedKind("landmark");
+    setSelectedId(landmarkKey);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 pb-24">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-slate-100">
       <div className="border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <div className="pl-14">
@@ -275,8 +293,8 @@ export default function MapEditClient() {
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[360px_1fr]">
-        <aside className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 gap-4 overflow-hidden px-4 pt-4 lg:grid-cols-[360px_1fr]">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex gap-2">
             <button
               type="button"
@@ -295,7 +313,7 @@ export default function MapEditClient() {
           </div>
 
           {selectedKind === "shop" ? (
-            <div className="mt-4">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <button
                 type="button"
                 onClick={handleAddShop}
@@ -310,36 +328,37 @@ export default function MapEditClient() {
                 placeholder="店舗マーカを検索"
                 className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
-              <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                 {filteredShops.map((shop) => (
                   <div key={shop.id}>
                     <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleShopSelection(shop.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          toggleShopSelection(shop.id);
+                        }
+                      }}
                       className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
                         selectedId === String(shop.id)
                           ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
                           : "border-slate-200 bg-white"
-                      }`}
+                      } cursor-pointer`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedKind === "shop" && selectedId === String(shop.id)) {
-                            setSelectedId("");
-                            return;
-                          }
-                          setSelectedKind("shop");
-                          setSelectedId(String(shop.id));
-                        }}
-                        className="min-w-0 flex-1 text-left"
-                      >
+                      <div className="min-w-0 flex-1 text-left">
                         <span>
                           <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
                           <span className="block text-xs text-slate-500">#{shop.id}</span>
                         </span>
-                      </button>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleDeleteShop(shop.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteShop(shop.id);
+                        }}
                         className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                         aria-label={`${shop.name} を削除`}
                       >
@@ -347,7 +366,10 @@ export default function MapEditClient() {
                       </button>
                     </div>
                     {selectedId === String(shop.id) && (
-                      <div className="mt-2 rounded-2xl bg-slate-50 p-4">
+                      <div
+                        className="mt-2 rounded-2xl bg-slate-50 p-4"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                     <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       出店者
                     </label>
@@ -428,7 +450,7 @@ export default function MapEditClient() {
               </div>
             </div>
           ) : (
-            <div className="mt-4">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <button
                 type="button"
                 onClick={() => {
@@ -458,26 +480,34 @@ export default function MapEditClient() {
                 placeholder="建物オブジェクトを検索"
                 className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
               />
-              <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {filteredLandmarks.map((landmark) => (
                 <div
                   key={landmark.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleLandmarkSelection(landmark.key)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      toggleLandmarkSelection(landmark.key);
+                    }
+                  }}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
                     selectedId === landmark.key
                       ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
                       : "border-slate-200 bg-white"
-                  }`}
+                  } cursor-pointer`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(landmark.key)}
-                    className="min-w-0 flex-1 text-left"
-                  >
+                  <div className="min-w-0 flex-1 text-left">
                     <span className="block text-sm font-semibold text-slate-900">{landmark.name}</span>
-                  </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => handleDeleteLandmark(landmark.key)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteLandmark(landmark.key);
+                    }}
                     className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
                     aria-label={`${landmark.name} を削除`}
                   >
@@ -491,13 +521,6 @@ export default function MapEditClient() {
                 </div>
               )}
               </div>
-            </div>
-          )}
-
-          {selectedShop && selectedKind === "shop" && (
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">{selectedShop.name}</p>
-              <p className="mt-2 text-xs text-slate-500">ドラッグで位置変更できます。店舗は DB に保存されます。</p>
             </div>
           )}
 
@@ -544,7 +567,7 @@ export default function MapEditClient() {
           )}
         </aside>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="min-h-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <MapLayoutEditor
             mode={mode}
             shops={shops}

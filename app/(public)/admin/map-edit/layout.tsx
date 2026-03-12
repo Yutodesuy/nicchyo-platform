@@ -60,5 +60,5 @@ export default function AdminMapEditLayout({ children }: { children: ReactNode }
     );
   }
 
-  return <AdminLayout>{children}</AdminLayout>;
+  return <AdminLayout withBottomPadding={false}>{children}</AdminLayout>;
 }

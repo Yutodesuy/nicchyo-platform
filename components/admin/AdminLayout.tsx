@@ -11,9 +11,15 @@ import NavigationBar from "@/app/components/NavigationBar";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  withBottomPadding?: boolean;
+  showNavigationBar?: boolean;
 }
 
-export const AdminLayout = React.memo(function AdminLayout({ children }: AdminLayoutProps) {
+export const AdminLayout = React.memo(function AdminLayout({
+  children,
+  withBottomPadding = true,
+  showNavigationBar = true,
+}: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -32,9 +38,9 @@ export const AdminLayout = React.memo(function AdminLayout({ children }: AdminLa
 
       {/* メインコンテンツ */}
       <div className={`transition-[padding] duration-300 ${isSidebarOpen ? "lg:pl-64" : "lg:pl-0"}`}>
-        <main className="min-h-screen pb-24">{children}</main>
+        <main className={`min-h-screen ${withBottomPadding ? "pb-24" : ""}`}>{children}</main>
       </div>
-      <NavigationBar />
+      {showNavigationBar ? <NavigationBar /> : null}
     </div>
   );
 });

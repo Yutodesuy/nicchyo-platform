@@ -144,7 +144,7 @@ export default function MapLayoutEditor({
   }, [landmarks]);
 
   return (
-    <div className="h-[70vh] w-full">
+    <div className="h-full w-full">
       <MapContainer
         center={center}
         zoom={17}
