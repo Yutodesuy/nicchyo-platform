@@ -28,6 +28,7 @@ type ActiveContentRow = {
   body: string | null;
   image_url: string | null;
   expires_at: string;
+  created_at: string;
 };
 
 type CategoryRow = {
@@ -93,7 +94,7 @@ export async function fetchShopsFromDb(
     supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
     supabase
       .from("vendor_contents")
-      .select("vendor_id, body, image_url, expires_at")
+      .select("vendor_id, body, image_url, expires_at, created_at")
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }),
   ]);
@@ -129,15 +130,16 @@ export async function fetchShopsFromDb(
     productsByVendor.set(row.vendor_id, list);
   });
 
-  // 有効期限内の最新投稿を vendor_id ごとに1件取得
+  // 有効期限内の投稿を vendor_id ごとに時系列で保持
   const activeContents = Array.isArray(activeContentsData)
     ? (activeContentsData as ActiveContentRow[])
     : [];
-  const activeContentByVendor = new Map<string, ActiveContentRow>();
+  const activeContentsByVendor = new Map<string, ActiveContentRow[]>();
   activeContents.forEach((row) => {
-    if (row.vendor_id && !activeContentByVendor.has(row.vendor_id)) {
-      activeContentByVendor.set(row.vendor_id, row);
-    }
+    if (!row.vendor_id) return;
+    const list = activeContentsByVendor.get(row.vendor_id) ?? [];
+    list.push(row);
+    activeContentsByVendor.set(row.vendor_id, list);
   });
 
   const locationById = new Map<string, LocationRow>();
@@ -191,15 +193,18 @@ export async function fetchShopsFromDb(
       // 出店予定日: text[] を '、' で結合
       const scheduleStr = (vendor.schedule ?? []).join("、");
 
-      // 有効期限内の最新投稿
-      const content = activeContentByVendor.get(vendor.id);
-      const activePost = content
-        ? {
-            text: content.body ?? "",
-            imageUrl: content.image_url ?? undefined,
-            expiresAt: content.expires_at,
-          }
-        : undefined;
+      // 有効期限内の投稿一覧と、その先頭1件
+      const contents = activeContentsByVendor.get(vendor.id) ?? [];
+      const activePosts =
+        contents.length > 0
+          ? contents.map((content) => ({
+              text: content.body ?? "",
+              imageUrl: content.image_url ?? undefined,
+              expiresAt: content.expires_at,
+              createdAt: content.created_at,
+            }))
+          : undefined;
+      const activePost = activePosts?.[0];
 
       return {
         id: storeNumber,
@@ -217,6 +222,7 @@ export async function fetchShopsFromDb(
         shopStrength: vendor.strength ?? undefined,
         paymentMethods: (vendor.payment_methods ?? []) as string[],
         rainPolicy: vendor.rain_policy ?? undefined,
+        activePosts,
         activePost,
         images: vendor.shop_image_url ? { main: vendor.shop_image_url } : undefined,
         socialLinks: (vendor.sns_instagram || vendor.sns_x || vendor.sns_hp) ? {

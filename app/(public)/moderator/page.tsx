@@ -31,7 +31,7 @@ const ActivityItem = React.memo(function ActivityItem({
 });
 
 function ModeratorDashboardContent() {
-  const { user, permissions } = useAuth();
+  const { user, permissions, isLoading } = useAuth();
   const router = useRouter();
 
   // 統計データ（メモ化） - フックは早期リターンの前に配置
@@ -71,12 +71,13 @@ function ModeratorDashboardContent() {
 
   // モデレーター権限チェック - フックの後に配置
   useEffect(() => {
+    if (isLoading) return;
     if (!permissions.canModerateContent) {
       router.push("/");
     }
-  }, [permissions.canModerateContent, router]);
+  }, [isLoading, permissions.canModerateContent, router]);
 
-  if (!permissions.canModerateContent) {
+  if (isLoading || !permissions.canModerateContent) {
     return null;
   }
 

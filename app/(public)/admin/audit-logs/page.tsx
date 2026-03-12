@@ -39,7 +39,7 @@ interface AuditLog {
 }
 
 export default function AuditLogsPage() {
-  const { permissions } = useAuth();
+  const { permissions, isLoading } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | AuditAction | "admin" | "moderator">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,12 +47,13 @@ export default function AuditLogsPage() {
 
   // 管理者権限チェック
   useEffect(() => {
+    if (isLoading) return;
     if (!permissions.isSuperAdmin) {
       router.push("/");
     }
-  }, [permissions.isSuperAdmin, router]);
+  }, [isLoading, permissions.isSuperAdmin, router]);
 
-  if (!permissions.isSuperAdmin) {
+  if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
 
