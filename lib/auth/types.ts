@@ -11,6 +11,8 @@ export interface User {
   avatarUrl?: string;
   role: UserRole;
   vendorId?: number;
+  /** 認証プロバイダー。"email" = メール/パスワード、"google" = Googleログイン */
+  provider: "email" | "google" | string;
 }
 
 export interface PermissionCheck {
