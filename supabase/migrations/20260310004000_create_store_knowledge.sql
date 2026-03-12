@@ -13,11 +13,22 @@ create table if not exists public.store_knowledge (
 alter table public.store_knowledge enable row level security;
 
 -- 出店者は自分の知識のみ操作可能
-create policy "vendors manage own knowledge"
-on public.store_knowledge
-for all
-using (store_id = auth.uid()::text)
-with check (store_id = auth.uid()::text);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'store_knowledge'
+      and policyname = 'vendors manage own knowledge'
+  ) then
+    create policy "vendors manage own knowledge"
+    on public.store_knowledge
+    for all
+    using (store_id = auth.uid()::text)
+    with check (store_id = auth.uid()::text);
+  end if;
+end $$;
 
 -- APIからのサービスロール書き込みは RLS バイパス
 -- （service_role は RLS を自動的にバイパスする）

@@ -5,6 +5,8 @@ import { createClient } from '@/utils/supabase/server';
 import MapPageClient from './MapPageClient';
 import type { Shop } from './data/shops';
 import { fetchShopsFromDb } from './services/shopDb';
+import { fetchLandmarksFromDb } from './services/landmarksDb';
+import type { Landmark } from './types/landmark';
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,7 @@ export const metadata: Metadata = {
 export default async function MapPage() {
   const cookieStore = await cookies();
   let shops: Shop[] = [];
+  let landmarks: Landmark[] = [];
   const attendanceEstimates: Record<
     number,
     {
@@ -34,9 +37,13 @@ export default async function MapPage() {
   if (hasSupabaseEnv) {
     try {
       const supabase = createClient(cookieStore);
-      shops = await fetchShopsFromDb(supabase);
+      [shops, landmarks] = await Promise.all([
+        fetchShopsFromDb(supabase),
+        fetchLandmarksFromDb(supabase),
+      ]);
     } catch {
       shops = [];
+      landmarks = [];
     }
   }
 
@@ -46,7 +53,11 @@ export default async function MapPage() {
         <div className="flex h-screen items-center justify-center">Loading...</div>
       }
     >
-      <MapPageClient shops={shops} attendanceEstimates={attendanceEstimates} />
+      <MapPageClient
+        shops={shops}
+        landmarks={landmarks}
+        attendanceEstimates={attendanceEstimates}
+      />
     </Suspense>
   );
 }
