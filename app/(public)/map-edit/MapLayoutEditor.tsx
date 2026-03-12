@@ -12,6 +12,7 @@ import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
 
 type EditableShop = {
+  locationId: string;
   id: number;
   name: string;
   lat: number;
