@@ -4,9 +4,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 import MapPageClient from './MapPageClient';
 import type { Shop } from './data/shops';
+import { fetchMapData, AttendanceEstimate } from './fetch-map-data';
 import { fetchShopsFromDb } from './services/shopDb';
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: 'nicchyo | Sunday Market Map',
@@ -16,16 +15,7 @@ export const metadata: Metadata = {
 export default async function MapPage() {
   const cookieStore = await cookies();
   let shops: Shop[] = [];
-  const attendanceEstimates: Record<
-    number,
-    {
-      label: string;
-      p: number | null;
-      n_eff: number;
-      vendor_override: boolean;
-      evidence_summary: string;
-    }
-  > = {};
+  let attendanceEstimates: Record<number, AttendanceEstimate> = {};
 
   const hasSupabaseEnv =
     !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -34,7 +24,12 @@ export default async function MapPage() {
   if (hasSupabaseEnv) {
     try {
       const supabase = createClient(cookieStore);
-      shops = await fetchShopsFromDb(supabase);
+      const [fetchedShops, result] = await Promise.all([
+        fetchShopsFromDb(supabase),
+        fetchMapData(supabase),
+      ]);
+      shops = fetchedShops;
+      attendanceEstimates = result.attendanceEstimates;
     } catch {
       shops = [];
     }
