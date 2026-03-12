@@ -1413,8 +1413,6 @@ const MapView = memo(function MapView({
             }}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
-            inMarket={isInMarket === true}
-            attendanceEstimate={attendanceEstimates?.[selectedShop.id]}
             originRect={shopBannerOrigin ?? undefined}
           />
         </>
