@@ -110,13 +110,19 @@ export interface ShopEditableData {
     additional?: string[];
   };
 
-  /** SNSリンク（将来の実装用） */
+  /** SNSリンク */
   socialLinks?: {
     instagram?: string;
     facebook?: string;
     twitter?: string;
     website?: string;
   };
+
+  /** 営業開始時間（例: "9:00"） */
+  businessHoursStart?: string;
+
+  /** 営業終了時間（例: "15:00"） */
+  businessHoursEnd?: string;
 
   /** 最終更新日時（自動設定） */
   lastUpdated?: number;

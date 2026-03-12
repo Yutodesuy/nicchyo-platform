@@ -15,6 +15,12 @@ type VendorRow = {
   payment_methods: string[] | null;
   rain_policy: string | null;
   schedule: string[] | null;
+  shop_image_url: string | null;
+  sns_instagram: string | null;
+  sns_x: string | null;
+  sns_hp: string | null;
+  business_hours_start: string | null;
+  business_hours_end: string | null;
 };
 
 type ActiveContentRow = {
@@ -78,7 +84,7 @@ export async function fetchShopsFromDb(
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, main_product_prices, payment_methods, rain_policy, schedule"),
+      .select("id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, main_product_prices, payment_methods, rain_policy, schedule, shop_image_url, sns_instagram, sns_x, sns_hp, business_hours_start, business_hours_end"),
     supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
@@ -212,6 +218,14 @@ export async function fetchShopsFromDb(
         paymentMethods: (vendor.payment_methods ?? []) as string[],
         rainPolicy: vendor.rain_policy ?? undefined,
         activePost,
+        images: vendor.shop_image_url ? { main: vendor.shop_image_url } : undefined,
+        socialLinks: (vendor.sns_instagram || vendor.sns_x || vendor.sns_hp) ? {
+          instagram: vendor.sns_instagram ?? undefined,
+          twitter: vendor.sns_x ?? undefined,
+          website: vendor.sns_hp ?? undefined,
+        } : undefined,
+        businessHoursStart: vendor.business_hours_start ?? undefined,
+        businessHoursEnd: vendor.business_hours_end ?? undefined,
         position: storeNumber,
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),

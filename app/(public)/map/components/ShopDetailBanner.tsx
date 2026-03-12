@@ -660,6 +660,55 @@ export default function ShopDetailBanner({
                   </div>
                 </div>
               )}
+
+              {/* 営業時間 */}
+              {(shop.businessHoursStart || shop.businessHoursEnd) && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">営業時間</p>
+                  <p className="mt-2 text-xl text-slate-700">
+                    🕐 {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
+                  </p>
+                </div>
+              )}
+
+              {/* SNSリンク */}
+              {(shop.socialLinks?.instagram || shop.socialLinks?.twitter || shop.socialLinks?.website) && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">SNS・ウェブサイト</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {shop.socialLinks?.instagram && (
+                      <a
+                        href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-base font-medium text-pink-700 transition hover:bg-pink-100"
+                      >
+                        <span>📸</span> Instagram
+                      </a>
+                    )}
+                    {shop.socialLinks?.twitter && (
+                      <a
+                        href={shop.socialLinks.twitter.startsWith("http") ? shop.socialLinks.twitter : `https://x.com/${shop.socialLinks.twitter.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-base font-medium text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <span>𝕏</span> X
+                      </a>
+                    )}
+                    {shop.socialLinks?.website && (
+                      <a
+                        href={shop.socialLinks.website.startsWith("http") ? shop.socialLinks.website : `https://${shop.socialLinks.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-base font-medium text-sky-700 transition hover:bg-sky-100"
+                      >
+                        <span>🌐</span> ウェブサイト
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
