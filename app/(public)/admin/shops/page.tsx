@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
-import { shops as allShops } from "@/app/(public)/map/data/shops";
 import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/exportUtils";
 import { showToast } from "@/lib/admin/toast";
 import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
@@ -14,6 +13,7 @@ import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShort
 import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
 import { Tooltip } from "@/components/admin/desktop/Tooltip";
 import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
+import { useShops } from "@/lib/hooks/useShops";
 
 type ShopStatus = "active" | "pending" | "suspended";
 
@@ -21,7 +21,6 @@ interface ShopWithStatus {
   id: number;
   name: string;
   category: string;
-  icon: string;
   status: ShopStatus;
   owner?: string;
   registeredDate?: string;
@@ -30,6 +29,7 @@ interface ShopWithStatus {
 function AdminShopsContent() {
   const { permissions } = useAuth();
   const router = useRouter();
+  const { shops: allShops } = useShops();
   const [filter, setFilter] = useState<"all" | ShopStatus>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,12 +62,11 @@ function AdminShopsContent() {
         id: shop.id,
         name: shop.name,
         category: shop.category,
-        icon: shop.icon,
         status: index % 10 === 0 ? "pending" : index % 20 === 0 ? "suspended" : "active",
         owner: `店主${shop.id}`,
         registeredDate: "2024-01-15",
       })),
-    []
+    [allShops]
   );
 
   // ユニークなカテゴリーを抽出
@@ -605,9 +604,6 @@ function AdminShopsContent() {
                           </td>
                           <td className="whitespace-nowrap px-6 py-4">
                             <div className="flex items-center">
-                              <span className="mr-3 text-2xl" aria-hidden="true">
-                                {shop.icon}
-                              </span>
                               <div>
                                 <div className="font-medium text-gray-900">{shop.name}</div>
                                 <div className="text-sm text-gray-500">ID: {shop.id}</div>

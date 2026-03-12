@@ -149,6 +149,7 @@ body.grandma-chat-open .leaflet-container {
   font-weight: bold;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
+  rotate: var(--map-rotation-inverse, 0deg);
 }
 
 .cluster-icon:hover {
@@ -348,8 +349,8 @@ body.grandma-chat-open .leaflet-container {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 86px;
-  height: 52px;
+  width: 43px;
+  height: 26px;
   padding: 0;
   box-sizing: border-box;
   border-radius: 9999px;
@@ -362,16 +363,17 @@ body.grandma-chat-open .leaflet-container {
   pointer-events: none;
   overflow: hidden;
   display: none;
+  z-index: 30;
 }
 
 .shop-side-north .shop-product-icon {
-  left: calc(100% + 8px);
-  transform: translate(0, -50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .shop-side-south .shop-product-icon {
-  left: -8px;
-  transform: translate(-100%, -50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .shop-product-icon-visible .shop-product-icon {
@@ -381,7 +383,7 @@ body.grandma-chat-open .leaflet-container {
 .shop-simple-banner {
   position: absolute;
   left: 50%;
-  bottom: 52px;
+  bottom: 24px;
   transform: translateX(-50%);
   display: none;
   width: 220px;
@@ -435,6 +437,29 @@ body.grandma-chat-open .leaflet-container {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 30px;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-name {
+  display: none;
+  margin-bottom: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-body {
+  display: none;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner {
+  width: 108px;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
 }
 
 .shop-simple-banner-product {
@@ -477,6 +502,35 @@ body.grandma-chat-open .leaflet-container {
   overflow: hidden;
   min-height: 72px;
   max-height: 72px;
+}
+
+.grandma-comment-bounce {
+  animation: grandma-comment-bounce-in 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transform-origin: left center;
+}
+
+.center-bounce-in {
+  animation: grandma-comment-bounce-in 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@keyframes grandma-comment-bounce-in {
+  0% {
+    opacity: 0.78;
+    transform: translateY(10px) scale(0.94);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.03);
+  }
+  70% {
+    transform: translateY(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .shop-marker-kotodute .shop-kotodute-badge {
@@ -562,37 +616,88 @@ body.home-poster-zoom-open .hamburger-button {
   position: relative;
   width: 100%;
   height: 100%;
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
 }
 
-.nav-map-arc {
-  position: relative;
-  z-index: 1;
+.shop-marker-container {
+  transform: scale(var(--shop-marker-zoom-scale, 1));
+  transform-origin: center bottom;
+  rotate: var(--map-rotation-inverse, 0deg);
 }
 
-.nav-map-arc-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+.map-landmark-icon {
+  background: transparent !important;
+  border: none !important;
 }
 
-.nav-map-arc-ring {
-  position: absolute;
-  left: 50%;
-  bottom: -2px;
-  width: 120px;
-  height: 68px;
-  border: 2px solid rgba(34, 197, 94, 0.9);
-  border-bottom: none;
-  border-top-left-radius: 9999px;
-  border-top-right-radius: 9999px;
-  background: rgba(220, 252, 231, 0.85);
-  transform: translateX(-50%);
+.map-landmark-visual {
+  display: block;
   pointer-events: none;
-  z-index: 0;
-  box-shadow: 0 -8px 18px rgba(34, 197, 94, 0.22);
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 1 !important;
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.06)
+    saturate(1.08);
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-visual.is-highlight {
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.12)
+    saturate(1.6)
+    brightness(1.15)
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+}
+
+.map-landmark-popup .leaflet-popup-content-wrapper,
+.map-landmark-popup .leaflet-popup-tip {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.map-landmark-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.leaflet-pane.leaflet-popup-pane {
+  z-index: 4000;
+}
+
+.map-landmark-popup {
+  z-index: 4000;
+}
+
+.map-landmark-popup .leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+.map-landmark-popup .leaflet-popup-content-wrapper {
+  border-radius: 16px;
+}
+
+.major-place-label-pill {
+  rotate: var(--map-rotation-inverse, 0deg);
+  transform-origin: center center;
+}
+
+.major-place-label-pill.is-sunday-market {
+  padding: 5px 14px !important;
+  background: rgba(22, 163, 74, 0.96) !important;
+  border-color: rgba(21, 128, 61, 0.5) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 10px 24px rgba(21, 128, 61, 0.28),
+    0 2px 8px rgba(15, 23, 42, 0.16);
 }
 
 .map-building-tilted {

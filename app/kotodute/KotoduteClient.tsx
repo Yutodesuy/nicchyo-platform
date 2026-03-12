@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
-import { shops } from "../(public)/map/data/shops";
+import { useShops } from "../../lib/hooks/useShops";
 import { useSearchParams } from "next/navigation";
 import { MessageSquarePlus, Sparkles } from "lucide-react";
-
-const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
 
 function formatDate(ts: number) {
   const d = new Date(ts);
@@ -27,11 +25,16 @@ function extractTarget(tag: string): number | "all" {
   return "all";
 }
 
-function findShopName(id: number) {
+function findShopName(shops: { id: number; name: string }[], id: number) {
   return shops.find((s) => s.id === id)?.name ?? `#${id}`;
 }
 
 export default function KotoduteClient() {
+  const { shops } = useShops();
+  const shopOptions = useMemo(
+    () => shops.map((s) => ({ id: s.id, name: s.name })),
+    [shops]
+  );
   const searchParams = useSearchParams();
   const prefillTarget = searchParams?.get("shopId") ?? undefined;
 
@@ -181,7 +184,7 @@ export default function KotoduteClient() {
             <div className="mt-3 space-y-2">
               {filteredNotes.map((note) => {
                 const isAll = note.shopId === "all";
-                const label = isAll ? "日曜市全体" : findShopName(note.shopId as number);
+                const label = isAll ? "日曜市全体" : findShopName(shops, note.shopId as number);
                 const targetHref = isAll ? "/map" : `/map?shop=${note.shopId}`;
 
                 return (

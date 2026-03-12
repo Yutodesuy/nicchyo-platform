@@ -157,7 +157,7 @@ export default function MapPageClient({
       if (typeof window === "undefined") return;
       const shop = shopById.get(shopId);
       if (!shop) return;
-      const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+      const bannerSeed = shop.position ?? shop.id;
       const src = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
       if (!src) return;
       const img = new Image();
@@ -420,7 +420,7 @@ export default function MapPageClient({
     if (!commentHighlightShopId) return null;
     const shop = shopById.get(commentHighlightShopId);
     if (!shop) return null;
-    const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+    const bannerSeed = shop.position ?? shop.id;
     return shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
   }, [commentHighlightShopId, shopById]);
 
@@ -479,7 +479,7 @@ export default function MapPageClient({
   }, [isInMarket, shopIntroComments, showGrandma]);
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       <FirstVisitGuide />
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
@@ -488,13 +488,8 @@ export default function MapPageClient({
       </div>
 
       {/* メイン */}
-      <main className="flex-1 relative pb-16 z-10">
-        <div className="h-full relative">
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500 rounded-br-lg z-[1500] pointer-events-none"></div>
-
+      <main className="relative z-10 flex-1 overflow-hidden pb-16">
+        <div className="relative h-full overflow-hidden">
             {showBanner && recommendedRecipe && (
               <div className="absolute left-4 right-4 top-4 z-[1200]">
                 <div className="rounded-2xl border border-amber-200 bg-white/95 shadow-xl p-4 flex flex-col gap-3">
@@ -571,8 +566,7 @@ export default function MapPageClient({
                   {(vendorShop?.images?.main ||
                     getShopBannerImage(
                       vendorShop?.category,
-                      ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
-                        (vendorShop?.side === "south" ? 1 : 0)
+                      (vendorShop?.position ?? vendorShop?.id ?? 0)
                     )) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
                       <img
@@ -580,8 +574,7 @@ export default function MapPageClient({
                           vendorShop?.images?.main ??
                           getShopBannerImage(
                             vendorShop?.category,
-                            ((vendorShop?.position ?? vendorShop?.id ?? 0) * 2) +
-                              (vendorShop?.side === "south" ? 1 : 0)
+                            (vendorShop?.position ?? vendorShop?.id ?? 0)
                           )
                         }
                         alt={`${vendorShopName}の写真`}

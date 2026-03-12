@@ -13,6 +13,7 @@ import { getSmartSuggestions } from "../utils/suggestionGenerator";
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
+const EXAMPLE_ROTATE_MS = 4500;
 
 type PriorityMessage = {
   text: string;
@@ -48,6 +49,7 @@ type GrandmaChatterProps = {
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
   currentZoom?: number;
+  enableSpeechInput?: boolean;
 };
 
 export default function GrandmaChatter({
@@ -74,6 +76,7 @@ export default function GrandmaChatter({
   autoAskText,
   autoAskContext,
   currentZoom,
+  enableSpeechInput = false,
 }: GrandmaChatterProps) {
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
   const [currentId, setCurrentId] = useState<string | undefined>(() => pool[0]?.id);
@@ -99,6 +102,7 @@ export default function GrandmaChatter({
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [shouldShowValidation, setShouldShowValidation] = useState(false);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -114,6 +118,7 @@ export default function GrandmaChatter({
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -124,10 +129,50 @@ export default function GrandmaChatter({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const chatStorageKeyRef = useRef<string | null>(null);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const speechStartTextRef = useRef("");
+  const speechRecognitionRef = useRef<{
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  } | null>(null);
+  const speechConstructorRef = useRef<(new () => {
+    start: () => void;
+    stop: () => void;
+    abort: () => void;
+    lang: string;
+    interimResults: boolean;
+    continuous: boolean;
+    onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+    onerror: (() => void) | null;
+    onend: (() => void) | null;
+  }) | null>(null);
   const [smartContext, setSmartContext] = useState({
     placeholder: "おばあちゃんに質問してね",
     chip: "おすすめは？"
   });
+  const consultExampleQuestions = useMemo(
+    () => [
+      "今の季節におすすめの食材はある？",
+      "子ども連れでも楽しめる場所は？",
+      "日曜市の回り方を教えて",
+      "今やってるイベントある？",
+      "お土産にぴったりのものは？",
+      "雨の日でも楽しめる場所ある？",
+      "近くで座って休める場所ある？",
+      "旬の果物が買えるお店は？",
+      "混雑を避けるコツってある？",
+      "写真映えするスポット教えて",
+    ],
+    []
+  );
   const router = useRouter();
   const dragStateRef = useRef<{
     startX: number;
@@ -181,6 +226,57 @@ export default function GrandmaChatter({
     }
     setSmartContext({ placeholder, chip });
   }, []);
+
+  useEffect(() => {
+    if (!enableSpeechInput) return;
+    if (typeof window === "undefined") return;
+    const speechConstructor =
+      (window as Window & { SpeechRecognition?: typeof speechConstructorRef.current }).SpeechRecognition ??
+      (window as Window & { webkitSpeechRecognition?: typeof speechConstructorRef.current })
+        .webkitSpeechRecognition;
+    if (speechConstructor) {
+      speechConstructorRef.current = speechConstructor;
+      setIsSpeechSupported(true);
+    } else {
+      setIsSpeechSupported(false);
+    }
+    return () => {
+      speechRecognitionRef.current?.abort();
+      speechRecognitionRef.current = null;
+    };
+  }, [enableSpeechInput]);
+
+  const stopSpeechRecognition = () => {
+    if (!isListening) return;
+    speechRecognitionRef.current?.stop();
+  };
+
+  const startSpeechRecognition = () => {
+    if (!speechConstructorRef.current) return;
+    if (isListening) {
+      stopSpeechRecognition();
+      return;
+    }
+    const recognition = speechRecognitionRef.current ?? new speechConstructorRef.current();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    speechStartTextRef.current = askText;
+    recognition.onresult = (event) => {
+      const results = Array.from(event.results ?? []);
+      const transcript = results.map((result) => result[0]?.transcript ?? "").join("");
+      setAskText(`${speechStartTextRef.current}${transcript}`);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  };
 
   useEffect(() => {
     if (!pool.length) return;
@@ -417,6 +513,22 @@ export default function GrandmaChatter({
     return () => window.clearInterval(timer);
   }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
+  const showConsultExamples =
+    layout === "page" &&
+    isChatOpen &&
+    !isInputFocused &&
+    !askText.trim() &&
+    !selectedImageFile &&
+    aiStatus !== "thinking";
+
+  useEffect(() => {
+    if (!showConsultExamples || consultExampleQuestions.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setConsultExampleIndex((prev) => (prev + 1) % consultExampleQuestions.length);
+    }, EXAMPLE_ROTATE_MS);
+    return () => window.clearInterval(timer);
+  }, [consultExampleQuestions.length, showConsultExamples]);
+
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
       dragStateRef.current.moved = false;
@@ -440,14 +552,22 @@ export default function GrandmaChatter({
     }
   };
 
+  const shouldValidateInput = layout === "page";
+
   const handleAskSubmit = async (
     text?: string,
     context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
     openChat?: boolean
   ) => {
     if (aiStatus === "thinking") return;
+    stopSpeechRecognition();
     const value = (text ?? askText).trim();
-    if (!value && !selectedImageFile) return;
+    if (!value && !selectedImageFile) {
+      if (shouldValidateInput) {
+        setShouldShowValidation(true);
+      }
+      return;
+    }
     if (openChat && !isChatOpen) {
       setIsChatOpen(true);
     }
@@ -457,6 +577,7 @@ export default function GrandmaChatter({
     setSelectedImageName(null);
     setSelectedImageFile(null);
     setSelectedImagePreview(null);
+    setShouldShowValidation(false);
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
     }
@@ -516,11 +637,15 @@ export default function GrandmaChatter({
       setSelectedImageName(null);
       setSelectedImageFile(null);
       setSelectedImagePreview(null);
+      if (shouldValidateInput && !askText.trim()) {
+        setShouldShowValidation(true);
+      }
       return;
     }
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
     setSelectedImagePreview(URL.createObjectURL(file));
+    setShouldShowValidation(false);
   };
 
   const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -680,7 +805,6 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  const templateChips = useMemo(() => [smartContext.chip, "おばあちゃん何者？", "近くのお店は？"], [smartContext.chip]);
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -715,6 +839,7 @@ export default function GrandmaChatter({
   const bubbleIcon = isChatOpen
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
+  const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -759,7 +884,7 @@ export default function GrandmaChatter({
         {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
         {!isChatOpen && !priorityMessage && smartSuggestionChips.length > 0 && layout === "floating" && (
            <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
-             {smartSuggestionChips.map((label, i) => (
+             {smartSuggestionChips.slice(0, 1).map((label, i) => (
                 <button
                   key={label}
                   type="button"
@@ -1032,7 +1157,7 @@ export default function GrandmaChatter({
                   {bubbleIcon}
                 </span>
               )}
-              <div className="space-y-1">
+              <div key={current.id} className="grandma-comment-bounce space-y-1">
                 {isShopIntro ? (
                   (() => {
                     const [title, ...rest] = bubbleText.split("\n");
@@ -1199,33 +1324,32 @@ export default function GrandmaChatter({
             </div>
           )}
           <div
-            className={`flex flex-wrap items-center justify-center gap-2 transition-all duration-200 ${
-              isChatOpen && !hasUserAsked ? "max-h-24" : "max-h-0 overflow-hidden"
-            }`}
-          >
-            {templateChips.map((label) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => handleAskSubmit(label, { source: "input" })}
-                disabled={aiStatus === "thinking"}
-                className={`rounded-full border border-amber-200 px-3 py-1.5 text-[12px] font-semibold shadow-sm transition ${
-                  aiStatus === "thinking"
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white text-amber-800 hover:bg-amber-50"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div
             className={`rounded-2xl border-2 border-amber-300 bg-white/95 p-3 shadow-sm transition-transform duration-200 ${
               isChatOpen ? "scale-100" : "scale-95"
             }`}
           >
             <div className="flex flex-col gap-2">
+              <div
+                className={`transition-all duration-200 ${
+                  showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+                }`}
+                aria-hidden={!showConsultExamples}
+              >
+                {layout === "page" && activeConsultExample && (
+                  <button
+                    type="button"
+                    onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                    className="group inline-flex w-full items-center justify-between gap-2 rounded-xl border border-amber-100 bg-white/80 px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition hover:border-amber-200 hover:bg-amber-50/70"
+                    aria-label={`質問例: ${activeConsultExample}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-amber-600">質問例</span>
+                      <span className="text-slate-600">{activeConsultExample}</span>
+                    </span>
+                    <span className="text-[11px] text-amber-500">送信</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   ref={imageInputRef}
@@ -1246,9 +1370,20 @@ export default function GrandmaChatter({
                   ref={inputRef}
                   type="text"
                   value={askText}
-                  onChange={(e) => setAskText(e.target.value)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setAskText(nextValue);
+                    if (shouldValidateInput && nextValue.trim()) {
+                      setShouldShowValidation(false);
+                    }
+                  }}
                   onFocus={() => setIsInputFocused(true)}
-                  onBlur={() => setIsInputFocused(false)}
+                  onBlur={() => {
+                    setIsInputFocused(false);
+                    if (shouldValidateInput && !askText.trim() && !selectedImageFile) {
+                      setShouldShowValidation(true);
+                    }
+                  }}
                   disabled={aiStatus === "thinking"}
                   className={`w-full rounded-xl border px-3 py-2 text-base shadow-sm focus:outline-none focus:ring-2 ${
                     aiStatus === "thinking"
@@ -1257,6 +1392,41 @@ export default function GrandmaChatter({
                   }`}
                   placeholder={smartContext.placeholder}
                 />
+                {enableSpeechInput && (
+                  <button
+                    type="button"
+                    onClick={startSpeechRecognition}
+                    disabled={!isSpeechSupported || aiStatus === "thinking"}
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition ${
+                      !isSpeechSupported || aiStatus === "thinking"
+                        ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                        : isListening
+                          ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
+                          : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                    }`}
+                    aria-label={isListening ? "音声入力を停止" : "音声入力を開始"}
+                  >
+                    {isListening ? (
+                      <span className="text-sm font-semibold">■</span>
+                    ) : (
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    )}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleAskSubmit()}
@@ -1283,9 +1453,25 @@ export default function GrandmaChatter({
                   </svg>
                 </button>
               </div>
+              {enableSpeechInput && !isSpeechSupported && (
+                <div className="text-[11px] text-slate-500">
+                  音声入力は対応ブラウザのみ
+                </div>
+              )}
+              {enableSpeechInput && isListening && (
+                <div className="flex items-center gap-2 text-[11px] text-red-600">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
+                  音声入力中
+                </div>
+              )}
               {selectedImageName && (
                 <div className="text-[11px] text-slate-600">
                   画像: {selectedImageName}
+                </div>
+              )}
+              {shouldShowValidation && (
+                <div className="text-[11px] font-semibold text-rose-500">
+                  質問内容を入力するか写真を選んでね。
                 </div>
               )}
             </div>
