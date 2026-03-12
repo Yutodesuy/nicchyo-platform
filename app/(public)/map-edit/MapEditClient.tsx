@@ -20,6 +20,19 @@ type VendorOption = {
   name: string;
 };
 
+type SnapshotItem = {
+  id: string;
+  created_at: string;
+  created_by: string | null;
+  summary?: {
+    updatedShopCount?: number;
+    deletedShopCount?: number;
+    upsertLandmarkCount?: number;
+    deletedLandmarkCount?: number;
+    restoreSourceSnapshotId?: string;
+  } | null;
+};
+
 const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
 
 function cloneShops(shops: EditableShop[]) {
@@ -84,6 +97,10 @@ export default function MapEditClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [shopQuery, setShopQuery] = useState("");
   const [landmarkQuery, setLandmarkQuery] = useState("");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
+  const [isRestoring, setIsRestoring] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -144,6 +161,56 @@ export default function MapEditClient() {
       }),
     [landmarks, normalizedLandmarkQuery]
   );
+  const hasUnsavedChanges = useMemo(() => {
+    const initialShopMap = new Map(initialShops.map((shop) => [shop.locationId, shop]));
+    const currentShopMap = new Map(shops.map((shop) => [shop.locationId, shop]));
+    const updatedShopExists = shops.some((shop) => {
+      const initial = initialShopMap.get(shop.locationId);
+      if (!initial) return true;
+      return (
+        initial.lat !== shop.lat ||
+        initial.lng !== shop.lng ||
+        initial.position !== shop.position ||
+        initial.vendorId !== shop.vendorId
+      );
+    });
+    const deletedShopExists = initialShops.some((shop) => !currentShopMap.has(shop.locationId));
+    const initialLandmarkMap = new Map(initialLandmarks.map((landmark) => [landmark.key, landmark]));
+    const currentLandmarkMap = new Map(landmarks.map((landmark) => [landmark.key, landmark]));
+    const updatedLandmarkExists = landmarks.some((landmark) => {
+      const initial = initialLandmarkMap.get(landmark.key);
+      if (!initial) return true;
+      return (
+        initial.name !== landmark.name ||
+        initial.description !== landmark.description ||
+        initial.url !== landmark.url ||
+        initial.lat !== landmark.lat ||
+        initial.lng !== landmark.lng ||
+        initial.widthPx !== landmark.widthPx ||
+        initial.heightPx !== landmark.heightPx ||
+        initial.showAtMinZoom !== landmark.showAtMinZoom
+      );
+    });
+    const deletedLandmarkExists = initialLandmarks.some(
+      (landmark) => !currentLandmarkMap.has(landmark.key)
+    );
+
+    return updatedShopExists || deletedShopExists || updatedLandmarkExists || deletedLandmarkExists;
+  }, [initialLandmarks, initialShops, landmarks, shops]);
+
+  const loadSnapshots = async () => {
+    setIsLoadingSnapshots(true);
+    try {
+      const response = await fetch("/api/admin/map-layout/snapshots");
+      if (!response.ok) throw new Error("failed");
+      const data = (await response.json()) as { snapshots?: SnapshotItem[] };
+      setSnapshots(Array.isArray(data.snapshots) ? data.snapshots : []);
+    } catch {
+      setMessage("バックアップ履歴の取得に失敗しました。");
+    } finally {
+      setIsLoadingSnapshots(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -220,6 +287,9 @@ export default function MapEditClient() {
       setVendorOptions(nextVendors);
       setInitialShops(cloneShops(nextShops));
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
+      if (isHistoryOpen) {
+        await loadSnapshots();
+      }
       setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
     } catch {
       setMessage("保存に失敗しました。");
@@ -330,6 +400,61 @@ export default function MapEditClient() {
     setSelectedId(landmarkKey);
   };
 
+  const handleOpenHistory = async () => {
+    if (!isHistoryOpen) {
+      setIsHistoryOpen(true);
+      await loadSnapshots();
+      return;
+    }
+    setIsHistoryOpen(false);
+  };
+
+  const handleRestoreSnapshot = async (snapshotId: string) => {
+    if (hasUnsavedChanges) {
+      setMessage("現在の変更を保存してからでないと復元できません。");
+      return;
+    }
+
+    setIsRestoring(snapshotId);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/map-layout/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ snapshotId }),
+      });
+      if (!response.ok) throw new Error("restore failed");
+
+      const nextData = await fetchMapLayout();
+      const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
+      const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
+      const nextVendors = Array.isArray(nextData.vendors) ? nextData.vendors : [];
+      setShops(sortShops(nextShops));
+      setLandmarks(nextLandmarks);
+      setVendorOptions(nextVendors);
+      setInitialShops(cloneShops(nextShops));
+      setInitialLandmarks(cloneLandmarks(nextLandmarks));
+      await loadSnapshots();
+      setMessage("バックアップから復元しました。復元前の状態も自動保存しています。");
+    } catch {
+      setMessage("バックアップからの復元に失敗しました。");
+    } finally {
+      setIsRestoring(null);
+    }
+  };
+
+  const formatSnapshotDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-slate-100">
       <div className="border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur-sm">
@@ -339,6 +464,13 @@ export default function MapEditClient() {
             <h1 className="text-2xl font-bold text-slate-900">マップ管理</h1>
           </div>
           <div className="ml-auto mr-16 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenHistory}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              履歴
+            </button>
             <div className="flex rounded-full bg-slate-100 p-1">
               <button
                 type="button"
@@ -371,7 +503,78 @@ export default function MapEditClient() {
         </div>
       </div>
 
-      <div className="mx-auto grid min-h-0 w-full max-w-7xl flex-1 gap-4 overflow-hidden px-4 pt-4 lg:grid-cols-[360px_1fr]">
+      <div
+        className={`mx-auto grid min-h-0 w-full max-w-7xl flex-1 gap-4 overflow-hidden px-4 pt-4 ${
+          isHistoryOpen
+            ? "lg:grid-cols-[320px_360px_1fr]"
+            : "lg:grid-cols-[360px_1fr]"
+        }`}
+      >
+        {isHistoryOpen && (
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Backup History</p>
+                <h2 className="mt-1 text-lg font-bold text-slate-900">保存履歴</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                aria-label="履歴を閉じる"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              復元は、現在のマップを保存済みの状態でのみ実行できます。
+            </p>
+            <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {isLoadingSnapshots ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                  履歴を読み込み中です。
+                </div>
+              ) : snapshots.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                  保存履歴はまだありません。
+                </div>
+              ) : (
+                snapshots.map((snapshot) => (
+                  <div key={snapshot.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {formatSnapshotDate(snapshot.created_at)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">ID: {snapshot.id}</p>
+                    <p className="mt-2 text-xs text-slate-600">
+                      店舗更新 {snapshot.summary?.updatedShopCount ?? 0}件 / 店舗削除 {snapshot.summary?.deletedShopCount ?? 0}件
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      建物更新 {snapshot.summary?.upsertLandmarkCount ?? 0}件 / 建物削除 {snapshot.summary?.deletedLandmarkCount ?? 0}件
+                    </p>
+                    {snapshot.summary?.restoreSourceSnapshotId && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        復元前バックアップ
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreSnapshot(snapshot.id)}
+                      disabled={hasUnsavedChanges || isRestoring !== null}
+                      className="mt-3 w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      {isRestoring === snapshot.id ? "復元中..." : "この状態に復元"}
+                    </button>
+                    {hasUnsavedChanges && (
+                      <p className="mt-2 text-[11px] text-rose-600">
+                        現在の変更を保存してから復元してください。
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+        )}
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex gap-2">
             <button
