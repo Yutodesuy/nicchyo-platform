@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import NavigationBar from "@/app/components/NavigationBar";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
 
@@ -81,6 +82,26 @@ export default function MapEditClient() {
     }
   };
 
+  const handleDeleteShop = (shopId: number) => {
+    setShops((prev) => {
+      const next = prev.filter((shop) => shop.id !== shopId);
+      if (selectedKind === "shop" && selectedId === String(shopId)) {
+        setSelectedId(next[0] ? String(next[0].id) : "");
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteLandmark = (key: string) => {
+    setLandmarks((prev) => {
+      const next = prev.filter((item) => item.key !== key);
+      if (selectedKind === "landmark" && selectedId === key) {
+        setSelectedId(next[0]?.key ?? "");
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 pb-24">
       <div className="border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur-sm">
@@ -128,19 +149,31 @@ export default function MapEditClient() {
           {selectedKind === "shop" ? (
             <div className="mt-4 space-y-2">
               {shops.map((shop) => (
-                <button
+                <div
                   key={shop.id}
-                  type="button"
-                  onClick={() => setSelectedId(String(shop.id))}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
                     selectedId === String(shop.id) ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
                   }`}
                 >
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
-                    <span className="block text-xs text-slate-500">#{shop.id}</span>
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(String(shop.id))}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
+                      <span className="block text-xs text-slate-500">#{shop.id}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteShop(shop.id)}
+                    className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                    aria-label={`${shop.name} を削除`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               ))}
             </div>
           ) : (
@@ -168,16 +201,28 @@ export default function MapEditClient() {
                 建物を追加
               </button>
               {landmarks.map((landmark) => (
-                <button
+                <div
                   key={landmark.key}
-                  type="button"
-                  onClick={() => setSelectedId(landmark.key)}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
                     selectedId === landmark.key ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
                   }`}
                 >
-                  <span className="block text-sm font-semibold text-slate-900">{landmark.name}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(landmark.key)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className="block text-sm font-semibold text-slate-900">{landmark.name}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLandmark(landmark.key)}
+                    className="ml-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                    aria-label={`${landmark.name} を削除`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -216,10 +261,7 @@ export default function MapEditClient() {
               />
               <button
                 type="button"
-                onClick={() => {
-                  setLandmarks((prev) => prev.filter((item) => item.key !== selectedLandmark.key));
-                  setSelectedId(landmarks[0]?.key ?? "");
-                }}
+                onClick={() => handleDeleteLandmark(selectedLandmark.key)}
                 className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
               >
                 建物を削除
@@ -251,6 +293,8 @@ export default function MapEditClient() {
             onMoveLandmark={(key, lat, lng) =>
               setLandmarks((prev) => prev.map((item) => (item.key === key ? { ...item, lat, lng } : item)))
             }
+            onDeleteShop={handleDeleteShop}
+            onDeleteLandmark={handleDeleteLandmark}
           />
         </div>
       </div>
