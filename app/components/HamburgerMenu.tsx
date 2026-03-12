@@ -111,6 +111,22 @@ export default function HamburgerMenu() {
                   {permissions.isSuperAdmin && (
                     <>
                       <li>
+                        <Link
+                          href="/my-market"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
+                        >
+                          <MenuIcon name="shop" className="h-5 w-5 text-red-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">マイ市場</p>
+                            <p className="text-xs text-gray-500">管理者向けメニュー</p>
+                          </div>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            管理
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
                         <div className="rounded-lg bg-red-50 px-3 py-2 mb-2">
                           <p className="text-xs font-semibold text-red-700 flex items-center gap-1">
                             <MenuIcon name="settings" className="h-4 w-4 text-red-700" />
