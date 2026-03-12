@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import NavigationBar from "@/app/components/NavigationBar";
 
@@ -37,6 +37,14 @@ const MENU_ITEMS = [
     accent: "from-rose-400/40 via-rose-100/70 to-white",
     icon: Sparkles,
     image: "/images/home/posters/HomePagePoster2.png",
+  },
+  {
+    title: "アカウント設定",
+    description: "名前・メール・パスワード変更",
+    href: "/vendor/account",
+    accent: "from-slate-400/30 via-slate-100/70 to-white",
+    icon: Settings,
+    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
 ];
 
