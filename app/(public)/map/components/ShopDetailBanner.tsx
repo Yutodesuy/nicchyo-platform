@@ -26,14 +26,6 @@ type ShopDetailBannerProps = {
   onClose?: () => void;
   onAddToBag?: (name: string, fromShopId?: number) => void;
   variant?: "default" | "kotodute";
-  inMarket?: boolean;
-  attendanceEstimate?: {
-    label: string;
-    p: number | null;
-    n_eff: number;
-    vendor_override: boolean;
-    evidence_summary: string;
-  };
   originRect?: { x: number; y: number; width: number; height: number };
 };
 
@@ -115,8 +107,6 @@ export default function ShopDetailBanner({
   onClose,
   onAddToBag,
   variant = "default",
-  inMarket,
-  attendanceEstimate,
   originRect,
 }: ShopDetailBannerProps) {
   const router = useRouter();
@@ -128,7 +118,6 @@ export default function ShopDetailBanner({
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
-  const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
   const [isGrandmaCommentBouncing, setIsGrandmaCommentBouncing] = useState(false);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -253,52 +242,6 @@ export default function ShopDetailBanner({
       .filter((recipe) => recipe.ingredientIds.some((id) => ids.has(id)))
       .slice(0, 2);
   }, [matchedIngredientIds]);
-  const shopStatusSignals = useMemo(() => {
-    const seed = typeof shop.id === "number" ? shop.id : Number(String(shop.id).replace(/\D/g, "")) || 0;
-    const total = (seed * 7) % 20;
-    const ratioSeed = ((seed % 7) + 2) / 10;
-    const openVotes = total === 0 ? 0 : Math.round(total * ratioSeed);
-    const closedVotes = Math.max(total - openVotes, 0);
-    const vendorPick = seed % 13 === 0 ? "open" : seed % 17 === 0 ? "closed" : null;
-    return { total, openVotes, closedVotes, vendorPick };
-  }, [shop.id]);
-  const shopStatusLabel = useMemo(() => {
-    if (attendanceEstimate?.label) return attendanceEstimate.label;
-    if (shopStatusSignals.vendorPick === "open") return "出店している";
-    if (shopStatusSignals.vendorPick === "closed") return "出店していない";
-    const priorYes = 5;
-    const priorNo = 5;
-    const nEff = shopStatusSignals.total;
-    if (nEff < 3) return "わからない";
-    const yes = priorYes + shopStatusSignals.openVotes;
-    const no = priorNo + shopStatusSignals.closedVotes;
-    const p = yes / (yes + no);
-    if (p >= 0.85) return "出店している可能性が高い";
-    if (p >= 0.7) return "おそらく出店している";
-    if (p > 0.2 && p < 0.5) return "出店していないかもしれない";
-    if (p <= 0.2) return "出店していない可能性が高い";
-    return "おそらく出店している";
-  }, [shopStatusSignals, attendanceEstimate]);
-  const shopStatusDisplay = useMemo(() => {
-    if (shopStatusLabel === "出店している" || shopStatusLabel === "出店していない") {
-      return shopStatusLabel;
-    }
-    const rangeMap: Record<string, string> = {
-      "出店している可能性が高い": "85〜100%",
-      "おそらく出店している": "70〜85%",
-      "出店していないかもしれない": "20〜50%",
-      "出店していない可能性が高い": "0〜20%",
-      "わからない": "50%",
-    };
-    const range = rangeMap[shopStatusLabel] ?? "50%";
-    return `${shopStatusLabel}（${range}）`;
-  }, [shopStatusLabel]);
-  const statusBoxTone = useMemo(() => {
-    if (!attendanceEstimate?.vendor_override) return "neutral";
-    if (shopStatusLabel === "出店している") return "open";
-    if (shopStatusLabel === "出店していない") return "closed";
-    return "neutral";
-  }, [attendanceEstimate, shopStatusLabel]);
   const shopNameSizeClass = useMemo(() => {
     const length = shop.name?.length ?? 0;
     if (length >= 18) return "text-2xl";
@@ -335,11 +278,6 @@ export default function ShopDetailBanner({
     },
     []
   );
-  const handleShopStatusSubmit = useCallback(() => {
-    if (!shopOpenStatus) return;
-  }, [shopOpenStatus]);
-
-
   const canEditShop = permissions.canEditShop(shop.id);
   const bannerSeed = shop.position ?? shop.id;
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
@@ -460,57 +398,6 @@ export default function ShopDetailBanner({
               e.currentTarget.style.display = "none";
             }}
           />
-          {!isKotodute && inMarket === true && !attendanceEstimate?.vendor_override && (
-            <div className="absolute bottom-4 right-4 rounded-2xl border-2 border-amber-200 bg-amber-50/90 px-4 py-3 shadow-lg">
-              <p className="text-base font-semibold text-amber-800">今日はお店を</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShopOpenStatus("open")}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                    shopOpenStatus === "open"
-                      ? "border-emerald-400 bg-emerald-100 text-emerald-900"
-                      : "border-amber-200 bg-white text-amber-800"
-                  }`}
-                >
-                  出店している
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShopOpenStatus("closed")}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                    shopOpenStatus === "closed"
-                      ? "border-slate-500 bg-slate-200 text-slate-900"
-                      : "border-amber-200 bg-white text-amber-800"
-                  }`}
-                >
-                  出店していない
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShopStatusSubmit}
-                  disabled={!shopOpenStatus}
-                  className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-semibold text-white transition enabled:hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
-                >
-                  更新する
-                </button>
-              </div>
-            </div>
-          )}
-          {!isKotodute && (inMarket !== true || attendanceEstimate?.vendor_override) && (
-            <div
-              className={`absolute bottom-4 right-4 rounded-2xl border-2 px-4 py-3 shadow-lg ${
-                statusBoxTone === "open"
-                  ? "border-emerald-400 bg-emerald-100 text-emerald-900"
-                  : statusBoxTone === "closed"
-                  ? "border-red-400 bg-red-100 text-red-900"
-                  : "border-slate-200 bg-white/90 text-slate-900"
-              }`}
-            >
-              <p className="text-base font-semibold">今日はお店を</p>
-              <p className="mt-2 text-lg font-semibold">{shopStatusDisplay}</p>
-            </div>
-          )}
         </div>
 
         {/* ヘッダー */}
