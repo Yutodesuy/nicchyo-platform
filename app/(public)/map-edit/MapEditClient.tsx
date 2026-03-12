@@ -30,6 +30,34 @@ function cloneLandmarks(landmarks: EditableLandmark[]) {
   return landmarks.map((landmark) => ({ ...landmark }));
 }
 
+function getUnassignedPriority(shop: EditableShop) {
+  if (shop.vendorId) return Number.NEGATIVE_INFINITY;
+  if (shop.locationId.startsWith("new-")) {
+    const createdAt = Number(shop.locationId.slice(4));
+    if (Number.isFinite(createdAt)) {
+      return createdAt;
+    }
+  }
+  return 0;
+}
+
+function sortShops(items: EditableShop[]) {
+  return [...items].sort((a, b) => {
+    const aUnassigned = a.vendorId ? 1 : 0;
+    const bUnassigned = b.vendorId ? 1 : 0;
+    if (aUnassigned !== bUnassigned) {
+      return aUnassigned - bUnassigned;
+    }
+    if (!a.vendorId && !b.vendorId) {
+      const priorityDiff = getUnassignedPriority(b) - getUnassignedPriority(a);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+    }
+    return a.position - b.position;
+  });
+}
+
 async function fetchMapLayout() {
   const response = await fetch("/api/admin/map-layout");
   if (!response.ok) {
@@ -67,7 +95,7 @@ export default function MapEditClient() {
           ? (data.landmarks as EditableLandmark[])
           : [];
         const nextVendors = Array.isArray(data.vendors) ? (data.vendors as VendorOption[]) : [];
-        setShops(nextShops);
+        setShops(sortShops(nextShops));
         setLandmarks(nextLandmarks);
         setVendorOptions(nextVendors);
         setInitialShops(cloneShops(nextShops));
@@ -97,13 +125,15 @@ export default function MapEditClient() {
   const normalizedLandmarkQuery = landmarkQuery.trim().toLowerCase();
   const filteredShops = useMemo(
     () =>
-      shops.filter((shop) => {
-        if (!normalizedShopQuery) return true;
-        return (
-          shop.name.toLowerCase().includes(normalizedShopQuery) ||
-          String(shop.id).includes(normalizedShopQuery)
-        );
-      }),
+      sortShops(
+        shops.filter((shop) => {
+          if (!normalizedShopQuery) return true;
+          return (
+            shop.name.toLowerCase().includes(normalizedShopQuery) ||
+            String(shop.id).includes(normalizedShopQuery)
+          );
+        })
+      ),
     [normalizedShopQuery, shops]
   );
   const filteredLandmarks = useMemo(
@@ -185,7 +215,7 @@ export default function MapEditClient() {
       const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
       const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
       const nextVendors = Array.isArray(nextData.vendors) ? nextData.vendors : [];
-      setShops(nextShops);
+      setShops(sortShops(nextShops));
       setLandmarks(nextLandmarks);
       setVendorOptions(nextVendors);
       setInitialShops(cloneShops(nextShops));
@@ -229,9 +259,37 @@ export default function MapEditClient() {
       lng: fallback?.lng ?? 133.5383,
       position: nextPosition,
     };
-    setShops((prev) => [...prev, nextShop]);
+    setShops((prev) => sortShops([...prev, nextShop]));
     setSelectedKind("shop");
     setSelectedId(String(nextShop.id));
+  };
+
+  const handleConfirmNewShop = (shopId: number) => {
+    setSelectedKind("shop");
+    setSelectedId("");
+    setMessage(`店舗マーカ #${shopId} を追加しました。保存するとDBへ反映されます。`);
+  };
+
+  const handleConfirmShop = (shopId: number) => {
+    setSelectedKind("shop");
+    setSelectedId("");
+    setMessage(`店舗マーカ #${shopId} の編集を確定しました。保存するとDBへ反映されます。`);
+  };
+
+  const handleCancelShop = (shopId: number) => {
+    setShops((prev) => {
+      const target = prev.find((shop) => shop.id === shopId);
+      if (!target) return prev;
+      if (target.locationId.startsWith("new-")) {
+        return prev.filter((shop) => shop.id !== shopId);
+      }
+      const initial = initialShops.find((shop) => shop.locationId === target.locationId);
+      if (!initial) return prev;
+      return sortShops(prev.map((shop) => (shop.id === shopId ? { ...initial } : shop)));
+    });
+    if (selectedKind === "shop" && selectedId === String(shopId)) {
+      setSelectedId("");
+    }
   };
 
   const toggleShopSelection = (shopId: number) => {
@@ -437,6 +495,26 @@ export default function MapEditClient() {
                           className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
                         />
                       </label>
+                    </div>
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCancelShop(shop.id)}
+                        className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          shop.locationId.startsWith("new-")
+                            ? handleConfirmNewShop(shop.id)
+                            : handleConfirmShop(shop.id)
+                        }
+                        className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                      >
+                        確定
+                      </button>
                     </div>
                       </div>
                     )}
