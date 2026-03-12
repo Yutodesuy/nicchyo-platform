@@ -894,3 +894,19 @@ body.home-poster-zoom-open .hamburger-button {
     transform: scaleX(1);
   }
 }
+@layer components {
+  .map-edit-marker-popup .leaflet-popup-content-wrapper {
+    border-radius: 20px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    padding: 0;
+  }
+
+  .map-edit-marker-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 14px 16px;
+  }
+
+  .map-edit-marker-popup .leaflet-popup-tip-container {
+    display: none;
+  }
+}

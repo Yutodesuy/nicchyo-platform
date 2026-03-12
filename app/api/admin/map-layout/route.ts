@@ -133,6 +133,29 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    const currentShops = await fetchShopsFromDb(supabase);
+    const incomingShopIds = new Set(body.shops.map((shop) => shop.id));
+    const locationIdsToDelete = new Set<string>();
+
+    for (const shop of currentShops) {
+      if (incomingShopIds.has(shop.id)) continue;
+
+      const locationId =
+        (shop.vendorId ? latestAssignmentByVendor.get(shop.vendorId)?.location_id : undefined) ??
+        locationIdByStoreNumber.get(shop.id);
+
+      if (locationId) {
+        locationIdsToDelete.add(locationId);
+      }
+    }
+
+    for (const locationId of locationIdsToDelete) {
+      const { error } = await supabase.from("market_locations").delete().eq("id", locationId);
+      if (error) {
+        return NextResponse.json({ error: `Failed to delete shop location ${locationId}` }, { status: 500 });
+      }
+    }
+
     const incomingKeys = new Set(body.landmarks.map((landmark) => landmark.key));
     const { data: existingLandmarks, error: existingLandmarksError } = await supabase
       .from("map_landmarks")

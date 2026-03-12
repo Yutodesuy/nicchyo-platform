@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
 
 type EditableShop = {
@@ -21,6 +22,8 @@ type Props = {
   onSelect: (kind: "shop" | "landmark", id: string) => void;
   onMoveShop: (id: number, lat: number, lng: number) => void;
   onMoveLandmark: (key: string, lat: number, lng: number) => void;
+  onDeleteShop: (id: number) => void;
+  onDeleteLandmark: (key: string) => void;
 };
 
 function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void }) {
@@ -54,6 +57,8 @@ export default function MapLayoutEditor({
   onSelect,
   onMoveShop,
   onMoveLandmark,
+  onDeleteShop,
+  onDeleteLandmark,
 }: Props) {
   const center = useMemo<[number, number]>(() => {
     const first = shops[0] ?? landmarks[0];
@@ -88,7 +93,30 @@ export default function MapLayoutEditor({
                 onMoveShop(shop.id, latlng.lat, latlng.lng);
               },
             }}
-          />
+          >
+            <Popup className="map-edit-marker-popup" closeButton={false} offset={[0, -12]}>
+              <div className="min-w-[180px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shop</p>
+                    <h3 className="mt-1 text-sm font-semibold text-slate-900">{shop.name}</h3>
+                    <p className="mt-1 text-xs text-slate-500">#{shop.id}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteShop(shop.id)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                    aria-label={`${shop.name} を削除`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  {shop.lat.toFixed(6)}, {shop.lng.toFixed(6)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
         ))}
         {landmarks.map((landmark) => (
           <Marker
@@ -104,7 +132,29 @@ export default function MapLayoutEditor({
                 onMoveLandmark(landmark.key, latlng.lat, latlng.lng);
               },
             }}
-          />
+          >
+            <Popup className="map-edit-marker-popup" closeButton={false} offset={[0, -12]}>
+              <div className="min-w-[180px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Landmark</p>
+                    <h3 className="mt-1 text-sm font-semibold text-slate-900">{landmark.name}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteLandmark(landmark.key)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                    aria-label={`${landmark.name} を削除`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  {landmark.lat.toFixed(6)}, {landmark.lng.toFixed(6)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
         ))}
       </MapContainer>
     </div>
