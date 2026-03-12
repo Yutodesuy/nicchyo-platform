@@ -13,7 +13,6 @@ import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout, Adm
 import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShortcuts";
 import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
 import { Tooltip } from "@/components/admin/desktop/Tooltip";
-import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
 
 interface AdminUser {
   id: string;
@@ -43,7 +42,6 @@ function AdminUsersContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-  const [dataDensity, setDataDensity] = useState<DataDensity>("standard");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +121,7 @@ function AdminUsersContent() {
   const rowVirtualizer = useVirtualizer({
     count: sortedData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => DENSITY_CONFIG[dataDensity].rowHeight,
+    estimateSize: () => 56,
     overscan: 5,
   });
 
@@ -485,7 +483,6 @@ function AdminUsersContent() {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
               <input
                 ref={searchInputRef}
                 id="user-search"
