@@ -449,8 +449,9 @@ export default function ShopDetailBanner({
             {!isKotodute && (shop.businessHoursStart || shop.businessHoursEnd || shop.socialLinks?.instagram || shop.socialLinks?.twitter || shop.socialLinks?.website) && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                  <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
-                    🕐 {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
+                  <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600">
+                    🕐 <span className="font-medium text-slate-500">営業時間</span>
+                    {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
                   </span>
                 )}
                 {shop.socialLinks?.instagram && (
@@ -458,9 +459,9 @@ export default function ShopDetailBanner({
                     href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-sm font-medium text-pink-700 transition hover:bg-pink-100"
+                    className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-sm font-medium text-pink-700 transition hover:bg-pink-100"
                   >
-                    📸 Instagram
+                    📸 <span>Instagramを見る</span>
                   </a>
                 )}
                 {shop.socialLinks?.twitter && (
@@ -468,9 +469,9 @@ export default function ShopDetailBanner({
                     href={shop.socialLinks.twitter.startsWith("http") ? shop.socialLinks.twitter : `https://x.com/${shop.socialLinks.twitter.replace(/^@/, "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                   >
-                    𝕏 X
+                    𝕏 <span>X（旧Twitter）を見る</span>
                   </a>
                 )}
                 {shop.socialLinks?.website && (
@@ -478,9 +479,9 @@ export default function ShopDetailBanner({
                     href={shop.socialLinks.website.startsWith("http") ? shop.socialLinks.website : `https://${shop.socialLinks.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
+                    className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
                   >
-                    🌐 サイト
+                    🌐 <span>ウェブサイトを見る</span>
                   </a>
                 )}
               </div>
