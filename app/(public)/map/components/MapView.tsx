@@ -48,7 +48,7 @@ import {
   canShowShopDetailBanner,
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
-import landmarksData from "../data/landmarks.json";
+import type { Landmark } from "../types/landmark";
 import {
   getAutoRotationForVisibleRoad,
   getShortestAngleDelta,
@@ -94,34 +94,7 @@ const INITIAL_ZOOM = MAX_ZOOM;
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
-const LANDMARK_SPECS: Array<{
-  key: string;
-  name: string;
-  description: string;
-  url: string;
-  lat: number;
-  lng: number;
-  widthPx: number;
-  heightPx: number;
-  showAtMinZoom: boolean;
-}> = landmarksData as Array<{
-  key: string;
-  name: string;
-  description: string;
-  url: string;
-  lat: number;
-  lng: number;
-  widthPx: number;
-  heightPx: number;
-  showAtMinZoom: boolean;
-}>;
-const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
-  ...LANDMARK_SPECS.map((spec) => ({ name: spec.name, lat: spec.lat, lng: spec.lng })),
-];
 const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
-const MIN_ZOOM_LANDMARK_KEYS = new Set(
-  LANDMARK_SPECS.filter((spec) => spec.showAtMinZoom).map((spec) => spec.key)
-);
 const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
 
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
@@ -233,6 +206,7 @@ function MapControls({
 
 type MapViewProps = {
   shops?: Shop[];
+  landmarks?: Landmark[];
   initialShopId?: number;
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
@@ -420,6 +394,7 @@ function MapZoomRoadSnapController() {
 
 const MapView = memo(function MapView({
   shops: initialShops,
+  landmarks = [],
   initialShopId,
   selectedRecipe,
   showRecipeOverlay,
@@ -453,6 +428,15 @@ const MapView = memo(function MapView({
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
+  );
+  const landmarkSpecs = useMemo(() => landmarks ?? [], [landmarks]);
+  const majorPlaceLabels = useMemo(
+    () => landmarkSpecs.map((spec) => ({ name: spec.name, lat: spec.lat, lng: spec.lng })),
+    [landmarkSpecs]
+  );
+  const minZoomLandmarkKeys = useMemo(
+    () => new Set(landmarkSpecs.filter((spec) => spec.showAtMinZoom).map((spec) => spec.key)),
+    [landmarkSpecs]
   );
   const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
     applyShopEdits(sourceShops)
@@ -876,7 +860,7 @@ const MapView = memo(function MapView({
 
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
-    LANDMARK_SPECS.forEach((spec) => {
+    landmarkSpecs.forEach((spec) => {
       const width = Math.max(1, Math.round(spec.widthPx * landmarkScale));
       const height = Math.max(1, Math.round(spec.heightPx * landmarkScale));
       const highlightClass = highlightEventTargets ? " is-highlight" : "";
@@ -891,24 +875,24 @@ const MapView = memo(function MapView({
       );
     });
     return icons;
-  }, [highlightEventTargets, landmarkScale]);
+  }, [highlightEventTargets, landmarkScale, landmarkSpecs]);
 
   const visibleMajorPlaceLabels = useMemo(() => {
     if (!isMinimumZoomMode) {
-      return MAJOR_PLACE_LABELS;
+      return majorPlaceLabels;
     }
     return [
-      ...MAJOR_PLACE_LABELS.filter((place) => MIN_ZOOM_LABEL_NAMES.has(place.name)),
+      ...majorPlaceLabels.filter((place) => MIN_ZOOM_LABEL_NAMES.has(place.name)),
       MIN_ZOOM_ONLY_LABEL,
     ];
-  }, [isMinimumZoomMode]);
+  }, [isMinimumZoomMode, majorPlaceLabels]);
 
   const visibleLandmarkSpecs = useMemo(() => {
     if (!isMinimumZoomMode) {
-      return LANDMARK_SPECS;
+      return landmarkSpecs;
     }
-    return LANDMARK_SPECS.filter((spec) => MIN_ZOOM_LANDMARK_KEYS.has(spec.key));
-  }, [isMinimumZoomMode]);
+    return landmarkSpecs.filter((spec) => minZoomLandmarkKeys.has(spec.key));
+  }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys]);
 
   const handleTouchStartRotate = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {

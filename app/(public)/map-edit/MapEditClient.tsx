@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
+import type { Landmark as EditableLandmark } from "../map/types/landmark";
 
 type EditableShop = {
   id: number;
@@ -12,18 +13,6 @@ type EditableShop = {
   lat: number;
   lng: number;
   position: number;
-};
-
-type EditableLandmark = {
-  key: string;
-  name: string;
-  description: string;
-  url: string;
-  lat: number;
-  lng: number;
-  widthPx: number;
-  heightPx: number;
-  showAtMinZoom: boolean;
 };
 
 const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
@@ -84,7 +73,7 @@ export default function MapEditClient() {
         body: JSON.stringify({ shops, landmarks }),
       });
       if (!response.ok) throw new Error("save failed");
-      setMessage("保存しました。店舗座標はDB、建物オブジェクトはマップ定義へ反映されます。");
+      setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
     } catch {
       setMessage("保存に失敗しました。");
     } finally {
@@ -235,7 +224,7 @@ export default function MapEditClient() {
               >
                 建物を削除
               </button>
-              <p className="text-xs text-slate-500">建物オブジェクトはローカルのマップ定義に保存されます。</p>
+              <p className="text-xs text-slate-500">建物オブジェクトはDBに保存され、マップ表示へ反映されます。</p>
             </div>
           )}
 

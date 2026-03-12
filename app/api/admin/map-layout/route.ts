@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
-import { readLandmarks, writeLandmarks, type EditableLandmark } from "@/lib/admin/mapLayout";
+import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
+import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
 
 type EditableShop = {
   id: number;
@@ -38,10 +39,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [shops, landmarks] = await Promise.all([
-      fetchShopsFromDb(supabase),
-      readLandmarks(),
-    ]);
+    const [shops, landmarks] = await Promise.all([fetchShopsFromDb(supabase), fetchLandmarksFromDb(supabase)]);
 
     const editableShops: EditableShop[] = shops.map((shop) => ({
       id: shop.id,
@@ -135,7 +133,50 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    await writeLandmarks(body.landmarks);
+    const incomingKeys = new Set(body.landmarks.map((landmark) => landmark.key));
+    const { data: existingLandmarks, error: existingLandmarksError } = await supabase
+      .from("map_landmarks")
+      .select("key");
+
+    if (existingLandmarksError) {
+      return NextResponse.json({ error: "Failed to load landmark mappings" }, { status: 500 });
+    }
+
+    const existingKeys = Array.isArray(existingLandmarks)
+      ? existingLandmarks
+          .map((row) => (typeof row.key === "string" ? row.key : null))
+          .filter((key): key is string => key !== null)
+      : [];
+
+    for (const key of existingKeys) {
+      if (incomingKeys.has(key)) continue;
+
+      const { error } = await supabase.from("map_landmarks").delete().eq("key", key);
+      if (error) {
+        return NextResponse.json({ error: `Failed to delete landmark ${key}` }, { status: 500 });
+      }
+    }
+
+    if (body.landmarks.length > 0) {
+      const { error: landmarksError } = await supabase.from("map_landmarks").upsert(
+        body.landmarks.map((landmark) => ({
+          key: landmark.key,
+          name: landmark.name,
+          description: landmark.description,
+          image_url: landmark.url,
+          latitude: landmark.lat,
+          longitude: landmark.lng,
+          width_px: landmark.widthPx,
+          height_px: landmark.heightPx,
+          show_at_min_zoom: landmark.showAtMinZoom,
+        })),
+        { onConflict: "key" }
+      );
+
+      if (landmarksError) {
+        return NextResponse.json({ error: "Failed to save landmarks" }, { status: 500 });
+      }
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

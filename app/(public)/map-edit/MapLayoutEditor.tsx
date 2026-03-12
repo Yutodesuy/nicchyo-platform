@@ -4,16 +4,10 @@ import { useMemo } from "react";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import type { Landmark as EditableLandmark } from "../map/types/landmark";
 
 type EditableShop = {
   id: number;
-  name: string;
-  lat: number;
-  lng: number;
-};
-
-type EditableLandmark = {
-  key: string;
   name: string;
   lat: number;
   lng: number;
