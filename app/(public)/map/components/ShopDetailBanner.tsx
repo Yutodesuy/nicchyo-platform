@@ -130,8 +130,10 @@ export default function ShopDetailBanner({
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
   const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
   const [isGrandmaCommentBouncing, setIsGrandmaCommentBouncing] = useState(false);
+  const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
+  const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -394,6 +396,46 @@ export default function ShopDetailBanner({
     } as CSSProperties;
   }, [originRect]);
 
+  const activePosts = useMemo(() => {
+    if (shop.activePosts && shop.activePosts.length > 0) {
+      return shop.activePosts;
+    }
+    if (shop.activePost) {
+      return [
+        {
+          text: shop.activePost.text,
+          imageUrl: shop.activePost.imageUrl,
+          expiresAt: shop.activePost.expiresAt,
+          createdAt: shop.activePost.createdAt ?? '',
+        },
+      ];
+    }
+    return [];
+  }, [shop.activePost, shop.activePosts]);
+
+  useEffect(() => {
+    setCurrentPostIndex(0);
+  }, [shop.id]);
+
+  useEffect(() => {
+    if (activePosts.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setCurrentPostIndex((prev) => (prev + 1) % activePosts.length);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [activePosts.length]);
+
+  useEffect(() => {
+    const container = activePostCarouselRef.current;
+    if (!container) return;
+    const target = container.children[currentPostIndex] as HTMLElement | undefined;
+    if (!target) return;
+    container.scrollTo({
+      left: target.offsetLeft,
+      behavior: 'smooth',
+    });
+  }, [currentPostIndex]);
+
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
 
   return (
@@ -507,7 +549,7 @@ export default function ShopDetailBanner({
         </div>
 
         {/* 今日のお知らせ（出店者投稿） */}
-        {!isKotodute && shop.activePost && (
+        {!isKotodute && activePosts.length > 0 && (
           <div
             ref={activePostRef}
             className={`mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 ${
@@ -518,26 +560,54 @@ export default function ShopDetailBanner({
               <span className="text-base">📢</span>
               <span className="text-sm font-semibold text-amber-700">今日のお知らせ</span>
               <span className="ml-auto text-xs text-amber-500">
-                {(() => {
-                  const diff = new Date(shop.activePost.expiresAt).getTime() - Date.now();
-                  if (diff <= 0) return "期限切れ";
-                  const h = Math.floor(diff / 3600000);
-                  const m = Math.floor((diff % 3600000) / 60000);
-                  return h > 0 ? `あと${h}時間` : `あと${m}分`;
-                })()}
+                {activePosts.length > 1 ? `${currentPostIndex + 1}/${activePosts.length}` : ""}
               </span>
             </div>
-            {shop.activePost.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={shop.activePost.imageUrl}
-                alt="お知らせ画像"
-                className="h-40 w-full object-cover"
-              />
-            )}
-            <p className="whitespace-pre-wrap px-4 py-3 text-lg leading-relaxed text-slate-800">
-              {shop.activePost.text}
-            </p>
+            <div
+              ref={activePostCarouselRef}
+              className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
+            >
+              {activePosts.map((post, index) => (
+                <article
+                  key={`${shop.id}-${post.createdAt || post.expiresAt}-${index}`}
+                  className="w-full shrink-0 snap-center"
+                >
+                  <div className="flex items-center gap-2 px-4 py-2 text-xs text-amber-600">
+                    <span>
+                      {(() => {
+                        const diff = new Date(post.expiresAt).getTime() - Date.now();
+                        if (diff <= 0) return "期限切れ";
+                        const h = Math.floor(diff / 3600000);
+                        const m = Math.floor((diff % 3600000) / 60000);
+                        return h > 0 ? `あと${h}時間` : `あと${m}分`;
+                      })()}
+                    </span>
+                    {post.createdAt ? (
+                      <span className="ml-auto">
+                        {new Intl.DateTimeFormat("ja-JP", {
+                          timeZone: "Asia/Tokyo",
+                          month: "numeric",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }).format(new Date(post.createdAt))}
+                      </span>
+                    ) : null}
+                  </div>
+                  {post.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={post.imageUrl}
+                      alt="お知らせ画像"
+                      className="h-40 w-full object-cover"
+                    />
+                  )}
+                  <p className="whitespace-pre-wrap px-4 py-3 text-lg leading-relaxed text-slate-800">
+                    {post.text}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
         )}
 

@@ -6,16 +6,17 @@ import { useEffect } from "react";
 import Link from "next/link";
 
 export default function AdminContentPage() {
-  const { permissions } = useAuth();
+  const { permissions, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    if (isLoading) return;
     if (!permissions.isSuperAdmin) {
       router.push("/");
     }
-  }, [permissions.isSuperAdmin, router]);
+  }, [isLoading, permissions.isSuperAdmin, router]);
 
-  if (!permissions.isSuperAdmin) {
+  if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
 
