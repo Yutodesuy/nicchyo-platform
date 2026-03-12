@@ -21,6 +21,7 @@ const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false 
 export default function MapEditClient() {
   const [shops, setShops] = useState<EditableShop[]>([]);
   const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [selectedKind, setSelectedKind] = useState<"shop" | "landmark">("shop");
   const [selectedId, setSelectedId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -38,10 +39,6 @@ export default function MapEditClient() {
         if (!active) return;
         setShops(data.shops ?? []);
         setLandmarks(data.landmarks ?? []);
-        if ((data.shops ?? []).length > 0) {
-          setSelectedKind("shop");
-          setSelectedId(String(data.shops[0].id));
-        }
       })
       .catch(() => {
         if (!active) return;
@@ -116,11 +113,31 @@ export default function MapEditClient() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-700">Map Admin</p>
             <h1 className="text-2xl font-bold text-slate-900">マップ管理</h1>
           </div>
+          <div className="ml-auto flex rounded-full bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                mode === "edit" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+              }`}
+            >
+              編集
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("preview")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                mode === "preview" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+              }`}
+            >
+              プレビュー
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving || isLoading}
-            className="ml-auto rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {isSaving ? "保存中..." : "変更を保存"}
           </button>
@@ -151,8 +168,10 @@ export default function MapEditClient() {
               {shops.map((shop) => (
                 <div
                   key={shop.id}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
-                    selectedId === String(shop.id) ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                    selectedId === String(shop.id)
+                      ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
+                      : "border-slate-200 bg-white"
                   }`}
                 >
                   <button
@@ -203,8 +222,10 @@ export default function MapEditClient() {
               {landmarks.map((landmark) => (
                 <div
                   key={landmark.key}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
-                    selectedId === landmark.key ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                    selectedId === landmark.key
+                      ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
+                      : "border-slate-200 bg-white"
                   }`}
                 >
                   <button
@@ -279,6 +300,7 @@ export default function MapEditClient() {
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <MapLayoutEditor
+            mode={mode}
             shops={shops}
             landmarks={landmarks}
             selectedKind={selectedKind}
@@ -287,6 +309,7 @@ export default function MapEditClient() {
               setSelectedKind(kind);
               setSelectedId(id);
             }}
+            onClearSelection={() => setSelectedId("")}
             onMoveShop={(id, lat, lng) =>
               setShops((prev) => prev.map((shop) => (shop.id === id ? { ...shop, lat, lng } : shop)))
             }
