@@ -36,6 +36,8 @@ export default function MapEditClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [shopQuery, setShopQuery] = useState("");
+  const [landmarkQuery, setLandmarkQuery] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -74,6 +76,27 @@ export default function MapEditClient() {
   const selectedLandmark = useMemo(
     () => landmarks.find((landmark) => landmark.key === selectedId) ?? null,
     [landmarks, selectedId]
+  );
+  const normalizedShopQuery = shopQuery.trim().toLowerCase();
+  const normalizedLandmarkQuery = landmarkQuery.trim().toLowerCase();
+  const filteredShops = useMemo(
+    () =>
+      shops.filter((shop) => {
+        if (!normalizedShopQuery) return true;
+        return (
+          shop.name.toLowerCase().includes(normalizedShopQuery) ||
+          String(shop.id).includes(normalizedShopQuery)
+        );
+      }),
+    [normalizedShopQuery, shops]
+  );
+  const filteredLandmarks = useMemo(
+    () =>
+      landmarks.filter((landmark) => {
+        if (!normalizedLandmarkQuery) return true;
+        return landmark.name.toLowerCase().includes(normalizedLandmarkQuery);
+      }),
+    [landmarks, normalizedLandmarkQuery]
   );
 
   const handleSave = async () => {
@@ -230,8 +253,16 @@ export default function MapEditClient() {
           </div>
 
           {selectedKind === "shop" ? (
-            <div className="mt-4 space-y-2">
-              {shops.map((shop) => (
+            <div className="mt-4">
+              <input
+                type="search"
+                value={shopQuery}
+                onChange={(event) => setShopQuery(event.target.value)}
+                placeholder="店舗マーカを検索"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
+                {filteredShops.map((shop) => (
                 <div
                   key={shop.id}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
@@ -259,10 +290,16 @@ export default function MapEditClient() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-              ))}
+                ))}
+                {filteredShops.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                    該当する店舗マーカはありません。
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4">
               <button
                 type="button"
                 onClick={() => {
@@ -283,9 +320,17 @@ export default function MapEditClient() {
                 }}
                 className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
               >
-                建物を追加
+                ＋建物を追加
               </button>
-              {landmarks.map((landmark) => (
+              <input
+                type="search"
+                value={landmarkQuery}
+                onChange={(event) => setLandmarkQuery(event.target.value)}
+                placeholder="建物オブジェクトを検索"
+                className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+              />
+              <div className="mt-3 max-h-[336px] space-y-2 overflow-y-auto pr-1">
+              {filteredLandmarks.map((landmark) => (
                 <div
                   key={landmark.key}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
@@ -311,6 +356,12 @@ export default function MapEditClient() {
                   </button>
                 </div>
               ))}
+              {filteredLandmarks.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                  該当する建物オブジェクトはありません。
+                </div>
+              )}
+              </div>
             </div>
           )}
 
