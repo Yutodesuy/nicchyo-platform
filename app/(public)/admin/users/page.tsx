@@ -21,7 +21,7 @@ interface AdminUser {
   email: string;
   role: UserRole;
   avatarUrl?: string;
-  vendorId?: number;
+  vendorId?: string;
   registeredDate: string;
   lastLogin: string;
   status: "active" | "suspended";
@@ -38,6 +38,9 @@ function AdminUsersContent() {
   const [newRole, setNewRole] = useState<UserRole>("general_user");
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [dataDensity, setDataDensity] = useState<DataDensity>("standard");
@@ -51,77 +54,43 @@ function AdminUsersContent() {
     }
   }, [permissions.isSuperAdmin, router]);
 
-  if (!permissions.isSuperAdmin) {
-    return null;
-  }
+  useEffect(() => {
+    if (!permissions.isSuperAdmin) {
+      setIsLoadingUsers(false);
+      return;
+    }
 
-  // ダミーデータ
-  const dummyUsers: AdminUser[] = useMemo(
-    () => [
-      {
-        id: "1",
-        name: "高知市管理者",
-        email: "admin@kochi-city.jp",
-        role: "super_admin",
-        registeredDate: "2024-01-01",
-        lastLogin: "2024-12-30 10:30",
-        status: "active",
-      },
-      {
-        id: "2",
-        name: "食材のお店1",
-        email: "nicchyo-owner-001@example.com",
-        role: "vendor",
-        vendorId: 1,
-        registeredDate: "2024-01-15",
-        lastLogin: "2024-12-29 14:20",
-        status: "active",
-      },
-      {
-        id: "3",
-        name: "果物の山田",
-        email: "yamada@example.com",
-        role: "vendor",
-        vendorId: 2,
-        registeredDate: "2024-02-01",
-        lastLogin: "2024-12-28 09:15",
-        status: "active",
-      },
-      {
-        id: "4",
-        name: "観光客ユーザー",
-        email: "user@example.com",
-        role: "general_user",
-        registeredDate: "2024-03-10",
-        lastLogin: "2024-12-30 08:45",
-        status: "active",
-      },
-      {
-        id: "5",
-        name: "田中太郎",
-        email: "tanaka@example.com",
-        role: "general_user",
-        registeredDate: "2024-04-15",
-        lastLogin: "2024-12-25 16:30",
-        status: "active",
-      },
-      {
-        id: "6",
-        name: "鈴木花子",
-        email: "suzuki@example.com",
-        role: "vendor",
-        vendorId: 3,
-        registeredDate: "2024-05-20",
-        lastLogin: "2024-11-30 11:00",
-        status: "suspended",
-      },
-    ],
-    []
-  );
+    let active = true;
+    setIsLoadingUsers(true);
+    setLoadError(null);
+
+    void fetch("/api/admin/users")
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("failed");
+        }
+        return response.json() as Promise<{ users?: AdminUser[] }>;
+      })
+      .then((data) => {
+        if (!active) return;
+        setUsers(Array.isArray(data.users) ? data.users : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadError("ユーザーデータの取得に失敗しました。");
+      })
+      .finally(() => {
+        if (active) setIsLoadingUsers(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [permissions.isSuperAdmin]);
 
   // フィルタリング（メモ化）
   const filteredUsers = useMemo(() => {
-    return dummyUsers.filter((user) => {
+    return users.filter((user) => {
       const matchesFilter =
         filter === "all" ||
         (filter === "suspended" && user.status === "suspended") ||
@@ -132,7 +101,7 @@ function AdminUsersContent() {
         user.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [dummyUsers, filter, debouncedSearchQuery]);
+  }, [users, filter, debouncedSearchQuery]);
 
   // ソート機能
   const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredUsers, "name");
@@ -140,13 +109,13 @@ function AdminUsersContent() {
   // 統計（メモ化）
   const stats = useMemo(
     () => ({
-      total: dummyUsers.length,
-      admins: dummyUsers.filter((u) => u.role === "super_admin").length,
-      vendors: dummyUsers.filter((u) => u.role === "vendor").length,
-      users: dummyUsers.filter((u) => u.role === "general_user").length,
-      suspended: dummyUsers.filter((u) => u.status === "suspended").length,
+      total: users.length,
+      admins: users.filter((u) => u.role === "super_admin").length,
+      vendors: users.filter((u) => u.role === "vendor").length,
+      users: users.filter((u) => u.role === "general_user").length,
+      suspended: users.filter((u) => u.status === "suspended").length,
     }),
-    [dummyUsers]
+    [users]
   );
 
   // Virtual scrolling setup
@@ -389,6 +358,10 @@ function AdminUsersContent() {
     },
   ]);
 
+  if (!permissions.isSuperAdmin) {
+    return null;
+  }
+
   return (
     <AdminLayout>
       {/* ヘッダー */}
@@ -581,7 +554,15 @@ function AdminUsersContent() {
         )}
 
         {/* ユーザーリスト */}
-        {filteredUsers.length === 0 ? (
+        {isLoadingUsers ? (
+          <div className="rounded-lg bg-white p-8 shadow">
+            <p className="text-sm text-gray-500">ユーザーデータを読み込んでいます...</p>
+          </div>
+        ) : loadError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-8 shadow">
+            <p className="text-sm text-red-700">{loadError}</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <EmptyState
             icon="👥"
             title="ユーザーが見つかりません"

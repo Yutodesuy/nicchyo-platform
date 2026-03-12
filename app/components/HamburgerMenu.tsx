@@ -112,13 +112,13 @@ export default function HamburgerMenu() {
                     <>
                       <li>
                         <Link
-                          href="/my-market"
+                          href="/admin"
                           onClick={closeMenu}
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
                         >
                           <MenuIcon name="shop" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">マイ市場</p>
+                            <p className="text-sm font-medium">管理ダッシュボード</p>
                             <p className="text-xs text-gray-500">管理者向けメニュー</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">

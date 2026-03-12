@@ -19,7 +19,13 @@ interface NavItem {
   show?: boolean;
 }
 
-export const AdminSidebar = React.memo(function AdminSidebar() {
+export const AdminSidebar = React.memo(function AdminSidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
   const { user, permissions } = useAuth();
   const pathname = usePathname();
   const theme = getRoleTheme(user?.role);
@@ -27,14 +33,14 @@ export const AdminSidebar = React.memo(function AdminSidebar() {
   const navItems: NavItem[] = [
     {
       label: "ダッシュボード",
-      href: permissions.isSuperAdmin ? "/admin" : "/moderator",
+      href: "/admin",
       icon: "📊",
-      show: true,
+      show: permissions.isSuperAdmin,
     },
     {
-      label: "店舗管理",
-      href: "/admin/shops",
-      icon: "🏪",
+      label: "マップ編集",
+      href: "/admin/map-edit",
+      icon: "🗺️",
       show: permissions.isSuperAdmin,
     },
     {
@@ -51,22 +57,43 @@ export const AdminSidebar = React.memo(function AdminSidebar() {
     },
     {
       label: "設定",
-      href: permissions.isSuperAdmin ? "/admin/settings" : "/moderator/settings",
+      href: "/admin/settings",
       icon: "⚙️",
-      show: true,
+      show: permissions.isSuperAdmin,
     },
   ].filter((item) => item.show !== false);
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200">
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="fixed inset-0 z-[9998] bg-slate-950/30 backdrop-blur-[1px] lg:hidden"
+          aria-label="サイドバーを閉じる"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-[9999] flex w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
       {/* ロゴ・ヘッダー */}
-      <div className={`flex items-center justify-center h-16 px-6 ${theme.headerBg}`}>
+      <div className={`flex h-16 items-center justify-between px-6 ${theme.headerBg}`}>
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden="true">🗺️</span>
           <span className={`text-lg font-bold ${theme.headerText}`}>
             日曜市プラットフォーム
           </span>
         </Link>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${theme.headerText} transition hover:bg-white/20`}
+          aria-label="サイドバーを閉じる"
+        >
+          ✕
+        </button>
       </div>
 
       {/* ユーザー情報 */}
@@ -94,6 +121,7 @@ export const AdminSidebar = React.memo(function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition group ${
                 isActive
                   ? `${theme.accent.bg} ${theme.accent.text} shadow-sm`
@@ -118,27 +146,7 @@ export const AdminSidebar = React.memo(function AdminSidebar() {
           );
         })}
       </nav>
-
-      {/* フッター */}
-      <div className="px-4 py-4 border-t border-gray-200">
-        <Link
-          href="/map"
-          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-        >
-          <span className="text-xl" aria-hidden="true">🗺️</span>
-          <span className="font-medium text-sm">マップに戻る</span>
-        </Link>
-        <button
-          onClick={() => {
-            // ログアウト処理（実装時に追加）
-            window.location.href = "/";
-          }}
-          className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition mt-1"
-        >
-          <span className="text-xl" aria-hidden="true">🚪</span>
-          <span className="font-medium text-sm">ログアウト</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 });
