@@ -31,7 +31,12 @@ export default function LoginPage() {
       setError("ログインできませんでした。メールアドレスやパスワードにお間違いがないか確認してください。");
       return;
     }
-    const destination = loggedInUser.role === "vendor" ? "/my-shop" : "/map";
+    const destination =
+      loggedInUser.role === "vendor"
+        ? "/my-shop"
+        : loggedInUser.role === "super_admin"
+          ? "/my-market"
+          : "/map";
     router.push(destination);
   };
 

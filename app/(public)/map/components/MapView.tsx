@@ -48,6 +48,7 @@ import {
   canShowShopDetailBanner,
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
+import landmarksData from "../data/landmarks.json";
 import {
   getAutoRotationForVisibleRoad,
   getShortestAngleDelta,
@@ -93,125 +94,34 @@ const INITIAL_ZOOM = MAX_ZOOM;
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 
-const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
-const KOCHI_CASTLE_MUSEUM_BASE_WIDTH = 0.0036;
-const KOCHI_CASTLE_MUSEUM_SCALE = 0.7;
-const KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE = 1.5;
-const KOCHI_CASTLE_MUSEUM_WIDTH = KOCHI_CASTLE_MUSEUM_BASE_WIDTH * KOCHI_CASTLE_MUSEUM_SCALE;
-const KOCHI_CASTLE_MUSEUM_HEIGHT = KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
-const KOCHI_CASTLE_MUSEUM_CENTER_LAT = 33.5599801;
-const KOCHI_CASTLE_MUSEUM_CENTER_LNG = 133.5340747;
-const OTEPIA_CENTER_LAT = 33.5605212;
-const OTEPIA_CENTER_LNG = 133.5371029;
-const OTEPIA_SCALE = 1.3;
-const OTEPIA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * OTEPIA_SCALE;
-const OTEPIA_HEIGHT = KOCHI_CASTLE_MUSEUM_HEIGHT * OTEPIA_SCALE;
-const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (4 / 1.5);
-const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
-const KOCHI_CASTLE_CENTER_LAT = 33.5615208;
-const KOCHI_CASTLE_CENTER_LNG = 133.5311987;
-const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (1.6 / 1.5);
-const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
-const TINTIN_DENSHA_CENTER_LAT = 33.5613531;
-const TINTIN_DENSHA_CENTER_LNG = 133.543104;
-const KOCHI_STATION_ASPECT = 1536 / 1024;
-const KOCHI_STATION_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.9;
-const KOCHI_STATION_HEIGHT = KOCHI_STATION_WIDTH / KOCHI_STATION_ASPECT;
-const KOCHI_STATION_CENTER_LAT = 33.5671869;
-const KOCHI_STATION_CENTER_LNG = 133.5436682;
-const OHTEMAE_SCHOOL_ASPECT = 1536 / 1024;
-const OHTEMAE_SCHOOL_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
-const OHTEMAE_SCHOOL_HEIGHT = OHTEMAE_SCHOOL_WIDTH / OHTEMAE_SCHOOL_ASPECT;
-const OHTEMAE_SCHOOL_CENTER_LAT = 33.5616992;
-const OHTEMAE_SCHOOL_CENTER_LNG = 133.5365687;
-const HIROME_MARKET_ASPECT = 1536 / 1024;
-const HIROME_MARKET_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
-const HIROME_MARKET_HEIGHT = HIROME_MARKET_WIDTH / HIROME_MARKET_ASPECT;
-const HIROME_MARKET_CENTER_LAT = 33.5605993;
-const HIROME_MARKET_CENTER_LNG = 133.535527;
-const LANDMARK_PIXEL_BASE = 192;
 const LANDMARK_SPECS: Array<{
   key: string;
+  name: string;
+  description: string;
   url: string;
   lat: number;
   lng: number;
   widthPx: number;
   heightPx: number;
-}> = [
-  {
-    key: "museum",
-    url: "/images/maps/elements/buildings/KochiCastleMusium2.png",
-    lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT,
-    lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE) /
-      KOCHI_CASTLE_MUSEUM_ASPECT,
-  },
-  {
-    key: "otepia",
-    url: "/images/maps/elements/buildings/Ohtepia.png",
-    lat: OTEPIA_CENTER_LAT,
-    lng: OTEPIA_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE) /
-      KOCHI_CASTLE_MUSEUM_ASPECT,
-  },
-  {
-    key: "castle",
-    url: "/images/maps/elements/buildings/KochiCastle.png",
-    lat: KOCHI_CASTLE_CENTER_LAT,
-    lng: KOCHI_CASTLE_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5),
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5)) / 1.5,
-  },
-  {
-    key: "densha",
-    url: "/images/maps/elements/buildings/Train.png",
-    lat: TINTIN_DENSHA_CENTER_LAT,
-    lng: TINTIN_DENSHA_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5),
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5)) / 2,
-  },
-  {
-    key: "station",
-    url: "/images/maps/elements/buildings/kochistation.png",
-    lat: KOCHI_STATION_CENTER_LAT,
-    lng: KOCHI_STATION_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9,
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9) / KOCHI_STATION_ASPECT,
-  },
-  {
-    key: "ohtemae-school",
-    url: "/images/maps/elements/buildings/ohtemae-school.png",
-    lat: OHTEMAE_SCHOOL_CENTER_LAT,
-    lng: OHTEMAE_SCHOOL_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / OHTEMAE_SCHOOL_ASPECT,
-  },
-  {
-    key: "hirome-market",
-    url: "/images/maps/elements/buildings/hirome-market.png",
-    lat: HIROME_MARKET_CENTER_LAT,
-    lng: HIROME_MARKET_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / HIROME_MARKET_ASPECT,
-  },
-];
+  showAtMinZoom: boolean;
+}> = landmarksData as Array<{
+  key: string;
+  name: string;
+  description: string;
+  url: string;
+  lat: number;
+  lng: number;
+  widthPx: number;
+  heightPx: number;
+  showAtMinZoom: boolean;
+}>;
 const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
-  { name: "高知駅", lat: KOCHI_STATION_CENTER_LAT, lng: KOCHI_STATION_CENTER_LNG },
-  { name: "高知城", lat: KOCHI_CASTLE_CENTER_LAT, lng: KOCHI_CASTLE_CENTER_LNG },
-  { name: "オーテピア", lat: OTEPIA_CENTER_LAT, lng: OTEPIA_CENTER_LNG },
-  { name: "歴史博物館", lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT, lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG },
-  { name: "ひろめ市場", lat: HIROME_MARKET_CENTER_LAT, lng: HIROME_MARKET_CENTER_LNG },
-  { name: "追手前高校", lat: OHTEMAE_SCHOOL_CENTER_LAT, lng: OHTEMAE_SCHOOL_CENTER_LNG },
-  { name: "チンチン電車", lat: TINTIN_DENSHA_CENTER_LAT, lng: TINTIN_DENSHA_CENTER_LNG },
+  ...LANDMARK_SPECS.map((spec) => ({ name: spec.name, lat: spec.lat, lng: spec.lng })),
 ];
 const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
-const MIN_ZOOM_LANDMARK_KEYS = new Set(["castle", "station", "densha"]);
+const MIN_ZOOM_LANDMARK_KEYS = new Set(
+  LANDMARK_SPECS.filter((spec) => spec.showAtMinZoom).map((spec) => spec.key)
+);
 const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
 
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";

@@ -22,6 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function normalizeRole(value?: string | null): UserRole {
+  if (value === "admin") return "super_admin";
   if (value === "super_admin") return "super_admin";
   if (value === "moderator") return "moderator";
   if (value === "vendor") return "vendor";

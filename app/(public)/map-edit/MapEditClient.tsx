@@ -1,0 +1,271 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import NavigationBar from "@/app/components/NavigationBar";
+
+type EditableShop = {
+  id: number;
+  vendorId?: string;
+  name: string;
+  lat: number;
+  lng: number;
+  position: number;
+};
+
+type EditableLandmark = {
+  key: string;
+  name: string;
+  description: string;
+  url: string;
+  lat: number;
+  lng: number;
+  widthPx: number;
+  heightPx: number;
+  showAtMinZoom: boolean;
+};
+
+const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
+
+export default function MapEditClient() {
+  const [shops, setShops] = useState<EditableShop[]>([]);
+  const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
+  const [selectedKind, setSelectedKind] = useState<"shop" | "landmark">("shop");
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/admin/map-layout")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("failed");
+        return response.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        setShops(data.shops ?? []);
+        setLandmarks(data.landmarks ?? []);
+        if ((data.shops ?? []).length > 0) {
+          setSelectedKind("shop");
+          setSelectedId(String(data.shops[0].id));
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setMessage("マップ編集データの取得に失敗しました。");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedShop = useMemo(
+    () => shops.find((shop) => String(shop.id) === selectedId) ?? null,
+    [selectedId, shops]
+  );
+  const selectedLandmark = useMemo(
+    () => landmarks.find((landmark) => landmark.key === selectedId) ?? null,
+    [landmarks, selectedId]
+  );
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/map-layout", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shops, landmarks }),
+      });
+      if (!response.ok) throw new Error("save failed");
+      setMessage("保存しました。店舗座標はDB、建物オブジェクトはマップ定義へ反映されます。");
+    } catch {
+      setMessage("保存に失敗しました。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 pb-24">
+      <div className="border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <Link
+            href="/my-market"
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            戻る
+          </Link>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-700">Map Admin</p>
+            <h1 className="text-2xl font-bold text-slate-900">マップ管理</h1>
+          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || isLoading}
+            className="ml-auto rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {isSaving ? "保存中..." : "変更を保存"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[360px_1fr]">
+        <aside className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedKind("shop")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${selectedKind === "shop" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
+            >
+              店舗マーカ
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedKind("landmark")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${selectedKind === "landmark" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
+            >
+              建物オブジェクト
+            </button>
+          </div>
+
+          {selectedKind === "shop" ? (
+            <div className="mt-4 space-y-2">
+              {shops.map((shop) => (
+                <button
+                  key={shop.id}
+                  type="button"
+                  onClick={() => setSelectedId(String(shop.id))}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
+                    selectedId === String(shop.id) ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">{shop.name}</span>
+                    <span className="block text-xs text-slate-500">#{shop.id}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const key = `landmark-${Date.now()}`;
+                  const next: EditableLandmark = {
+                    key,
+                    name: "新しい建物",
+                    description: "",
+                    url: "/images/maps/elements/buildings/Ohtepia.png",
+                    lat: 33.56145,
+                    lng: 133.5383,
+                    widthPx: 128,
+                    heightPx: 96,
+                    showAtMinZoom: false,
+                  };
+                  setLandmarks((prev) => [...prev, next]);
+                  setSelectedId(key);
+                }}
+                className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
+              >
+                建物を追加
+              </button>
+              {landmarks.map((landmark) => (
+                <button
+                  key={landmark.key}
+                  type="button"
+                  onClick={() => setSelectedId(landmark.key)}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${
+                    selectedId === landmark.key ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold text-slate-900">{landmark.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedShop && selectedKind === "shop" && (
+            <div className="mt-6 rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">{selectedShop.name}</p>
+              <p className="mt-2 text-xs text-slate-500">ドラッグで位置変更できます。店舗は DB に保存されます。</p>
+            </div>
+          )}
+
+          {selectedLandmark && selectedKind === "landmark" && (
+            <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-4">
+              <input
+                value={selectedLandmark.name}
+                onChange={(event) =>
+                  setLandmarks((prev) =>
+                    prev.map((item) =>
+                      item.key === selectedLandmark.key ? { ...item, name: event.target.value } : item
+                    )
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+              <textarea
+                value={selectedLandmark.description}
+                onChange={(event) =>
+                  setLandmarks((prev) =>
+                    prev.map((item) =>
+                      item.key === selectedLandmark.key ? { ...item, description: event.target.value } : item
+                    )
+                  )
+                }
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setLandmarks((prev) => prev.filter((item) => item.key !== selectedLandmark.key));
+                  setSelectedId(landmarks[0]?.key ?? "");
+                }}
+                className="rounded-full bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
+              >
+                建物を削除
+              </button>
+              <p className="text-xs text-slate-500">建物オブジェクトはローカルのマップ定義に保存されます。</p>
+            </div>
+          )}
+
+          {message && (
+            <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+              {message}
+            </div>
+          )}
+        </aside>
+
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <MapLayoutEditor
+            shops={shops}
+            landmarks={landmarks}
+            selectedKind={selectedKind}
+            selectedId={selectedId}
+            onSelect={(kind, id) => {
+              setSelectedKind(kind);
+              setSelectedId(id);
+            }}
+            onMoveShop={(id, lat, lng) =>
+              setShops((prev) => prev.map((shop) => (shop.id === id ? { ...shop, lat, lng } : shop)))
+            }
+            onMoveLandmark={(key, lat, lng) =>
+              setLandmarks((prev) => prev.map((item) => (item.key === key ? { ...item, lat, lng } : item)))
+            }
+          />
+        </div>
+      </div>
+      <NavigationBar />
+    </div>
+  );
+}
