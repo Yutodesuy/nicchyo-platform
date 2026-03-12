@@ -35,7 +35,7 @@ const GuardMessage = ({
 
 export default function MyShopLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, permissions } = useAuth();
+  const { user, permissions, isLoading } = useAuth();
 
   useEffect(() => {
     if (pathname !== "/my-shop") return;
@@ -55,6 +55,15 @@ export default function MyShopLayout({ children }: { children: ReactNode }) {
       },
     });
   }, [pathname]);
+
+  if (isLoading) {
+    return (
+      <GuardMessage
+        title="読み込み中です"
+        message="ログイン状態を確認しています。しばらくお待ちください。"
+      />
+    );
+  }
 
   if (!user) {
     return (

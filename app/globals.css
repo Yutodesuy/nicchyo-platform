@@ -440,6 +440,28 @@ body.grandma-chat-open .leaflet-container {
   margin-bottom: 30px;
 }
 
+.shop-simple-banner-name-hidden .shop-simple-banner-name {
+  display: none;
+  margin-bottom: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-body {
+  display: none;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner {
+  width: 108px;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 0;
+}
+
+.shop-simple-banner-name-hidden .shop-simple-banner-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
 .shop-simple-banner-product {
   font-size: 11px;
   color: #475569;
@@ -480,6 +502,35 @@ body.grandma-chat-open .leaflet-container {
   overflow: hidden;
   min-height: 72px;
   max-height: 72px;
+}
+
+.grandma-comment-bounce {
+  animation: grandma-comment-bounce-in 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transform-origin: left center;
+}
+
+.center-bounce-in {
+  animation: grandma-comment-bounce-in 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@keyframes grandma-comment-bounce-in {
+  0% {
+    opacity: 0.78;
+    transform: translateY(10px) scale(0.94);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.03);
+  }
+  70% {
+    transform: translateY(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .shop-marker-kotodute .shop-kotodute-badge {
@@ -570,8 +621,9 @@ body.home-poster-zoom-open .hamburger-button {
 }
 
 .shop-marker-container {
+  transform: scale(var(--shop-marker-zoom-scale, 1));
+  transform-origin: center bottom;
   rotate: var(--map-rotation-inverse, 0deg);
-  transform-origin: center center;
 }
 
 .map-landmark-icon {
@@ -585,17 +637,41 @@ body.home-poster-zoom-open .hamburger-button {
   user-select: none;
   -webkit-user-drag: none;
   opacity: 1 !important;
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.06)
+    saturate(1.08);
   rotate: var(--map-rotation-inverse, 0deg);
   transform-origin: center center;
 }
 
 .map-landmark-visual.is-highlight {
-  filter: saturate(1.6) brightness(1.15) drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
+  filter:
+    drop-shadow(0 2px 6px rgba(255, 255, 255, 0.32))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12))
+    contrast(1.12)
+    saturate(1.6)
+    brightness(1.15)
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.8));
 }
 
 .major-place-label-pill {
   rotate: var(--map-rotation-inverse, 0deg);
   transform-origin: center center;
+}
+
+.major-place-label-pill.is-sunday-market {
+  padding: 5px 14px !important;
+  background: rgba(22, 163, 74, 0.96) !important;
+  border-color: rgba(21, 128, 61, 0.5) !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em;
+  box-shadow:
+    0 10px 24px rgba(21, 128, 61, 0.28),
+    0 2px 8px rgba(15, 23, 42, 0.16);
 }
 
 .map-building-tilted {
