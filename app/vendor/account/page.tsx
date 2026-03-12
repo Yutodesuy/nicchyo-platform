@@ -174,33 +174,26 @@ export default function VendorAccountPage() {
 
         {/* プロフィール */}
         <form onSubmit={handleProfileSubmit} className="space-y-4">
-          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={User} title="表示名" />
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：山田 太郎"
-              disabled={SAVE_DISABLED}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
             />
           </div>
 
-          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={Mail} title="メールアドレス" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="例：example@email.com"
-              disabled={SAVE_DISABLED}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
             />
-            {!SAVE_DISABLED && (
-              <p className="mt-1.5 text-[10px] text-slate-400">
-                メールアドレスを変更すると確認メールが送信されます
-              </p>
-            )}
           </div>
 
           {profileError && (
@@ -233,20 +226,18 @@ export default function VendorAccountPage() {
 
         {/* パスワード変更 */}
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
-          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={Lock} title="パスワード変更" />
             <div className="space-y-2">
               <PasswordInput
                 value={newPassword}
                 onChange={setNewPassword}
                 placeholder="新しいパスワード（8文字以上）"
-                disabled={SAVE_DISABLED}
               />
               <PasswordInput
                 value={confirmPassword}
                 onChange={setConfirmPassword}
                 placeholder="新しいパスワード（確認）"
-                disabled={SAVE_DISABLED}
               />
             </div>
           </div>
