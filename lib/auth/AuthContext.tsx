@@ -38,7 +38,7 @@ function getVendorId(value: unknown): number | undefined {
 }
 
 function mapSupabaseUser(user: SupabaseUser): User {
-  const appMeta = user.app_metadata as { role?: string } | undefined;
+  const appMeta = user.app_metadata as { role?: string; provider?: string } | undefined;
   const userMeta = user.user_metadata as {
     role?: string;
     vendorId?: unknown;
@@ -52,6 +52,7 @@ function mapSupabaseUser(user: SupabaseUser): User {
   const vendorId = getVendorId(userMeta?.vendorId);
   const name = userMeta?.name ?? userMeta?.full_name ?? (user.email ? user.email.split("@")[0] : "user");
   const avatarUrl = userMeta?.avatarUrl ?? userMeta?.avatar_url;
+  const provider = appMeta?.provider ?? "email";
 
   return {
     id: user.id,
@@ -60,6 +61,7 @@ function mapSupabaseUser(user: SupabaseUser): User {
     avatarUrl,
     role,
     vendorId,
+    provider,
   };
 }
 

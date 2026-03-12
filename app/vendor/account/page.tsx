@@ -224,51 +224,70 @@ export default function VendorAccountPage() {
           </button>
         </form>
 
-        {/* パスワード変更 */}
-        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+        {/* パスワード変更：Googleログインユーザーには非表示 */}
+        {user?.provider === "google" ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={Lock} title="パスワード変更" />
-            <div className="space-y-2">
-              <PasswordInput
-                value={newPassword}
-                onChange={setNewPassword}
-                placeholder="新しいパスワード（8文字以上）"
-              />
-              <PasswordInput
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                placeholder="新しいパスワード（確認）"
-              />
-            </div>
+            <p className="text-xs text-slate-500">
+              Googleアカウントでログインしているため、パスワードはGoogle側で管理されています。
+              変更する場合は
+              <a
+                href="https://myaccount.google.com/security"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-blue-600 underline underline-offset-2"
+              >
+                Googleアカウント設定
+              </a>
+              から行ってください。
+            </p>
           </div>
-
-          {passwordError && (
-            <div className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-              {passwordError}
+        ) : (
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <SectionHeader icon={Lock} title="パスワード変更" />
+              <div className="space-y-2">
+                <PasswordInput
+                  value={newPassword}
+                  onChange={setNewPassword}
+                  placeholder="新しいパスワード（8文字以上）"
+                />
+                <PasswordInput
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder="新しいパスワード（確認）"
+                />
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)}
-            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-              SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)
-                ? "cursor-not-allowed bg-slate-200 text-slate-400"
-                : isPasswordSaved
-                ? "bg-emerald-500 text-white"
-                : "bg-amber-500 text-white hover:bg-amber-400"
-            }`}
-          >
-            {isSavingPassword ? (
-              <><Loader2 size={18} className="animate-spin" />変更中...</>
-            ) : isPasswordSaved ? (
-              <><CheckCircle2 size={18} />変更しました！</>
-            ) : (
-              <><Lock size={18} />パスワードを変更する</>
+            {passwordError && (
+              <div className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+                {passwordError}
+              </div>
             )}
-          </button>
-        </form>
+
+            <button
+              type="submit"
+              disabled={SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)}
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
+                SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)
+                  ? "cursor-not-allowed bg-slate-200 text-slate-400"
+                  : isPasswordSaved
+                  ? "bg-emerald-500 text-white"
+                  : "bg-amber-500 text-white hover:bg-amber-400"
+              }`}
+            >
+              {isSavingPassword ? (
+                <><Loader2 size={18} className="animate-spin" />変更中...</>
+              ) : isPasswordSaved ? (
+                <><CheckCircle2 size={18} />変更しました！</>
+              ) : (
+                <><Lock size={18} />パスワードを変更する</>
+              )}
+            </button>
+          </form>
+        )}
 
         {/* ログアウト */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
