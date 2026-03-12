@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { AdminLayout, AdminPageHeader, MenuCard, StatCard } from "@/components/admin";
+import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
 import { createClient } from "@/utils/supabase/server";
 
 type ActivityItem = {
@@ -15,17 +15,26 @@ type VisitorPoint = {
   count: number;
 };
 
-const MENU_ITEMS = [
-  { title: "マップ管理", description: "建物や店舗マーカの位置を編集", icon: "🗺️", href: "/admin/map-edit", bgColor: "bg-sky-500" },
-  { title: "店舗管理", description: "店舗情報の確認・編集・承認", icon: "🏪", href: "/admin/shops", bgColor: "bg-blue-500" },
-  { title: "ユーザー管理", description: "ユーザーアカウントの管理", icon: "👥", href: "/admin/users", bgColor: "bg-green-500" },
-  { title: "イベント管理", description: "日曜市イベントの管理", icon: "📅", href: "/admin/events", bgColor: "bg-purple-500" },
-  { title: "コンテンツ管理", description: "レシピ・お知らせの管理", icon: "📝", href: "/admin/content", bgColor: "bg-orange-500" },
-  { title: "統計・分析", description: "アクセス解析とレポート", icon: "📊", href: "/admin/analytics", bgColor: "bg-pink-500" },
-  { title: "設定", description: "システム設定と管理", icon: "⚙️", href: "/admin/settings", bgColor: "bg-gray-500" },
-  { title: "監査ログ", description: "管理者操作の履歴確認", icon: "📋", href: "/admin/audit-logs", bgColor: "bg-red-500" },
-  { title: "モデレーション", description: "ことづての承認・管理", icon: "🛡️", href: "/moderator", bgColor: "bg-purple-500" },
-];
+type DurationPoint = {
+  date: string;
+  averageMinutes: number;
+  vendorAverageMinutes: number;
+};
+
+type PageAnalyticsRow = {
+  visit_date: string;
+  visitor_key: string;
+  path: string;
+  duration_seconds: number | null;
+  user_role: string | null;
+};
+
+type UrlSummary = {
+  path: string;
+  visitors: number;
+  averageMinutes: number;
+  totalMinutes: number;
+};
 
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
@@ -71,6 +80,43 @@ function formatShortDate(value: string) {
   }).format(date);
 }
 
+function formatMinutes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0.0分";
+  return `${value.toFixed(1)}分`;
+}
+
+function isAdminAnalyticsRole(role: string | null | undefined) {
+  return role === "admin" || role === "super_admin";
+}
+
+function buildVisitorDailyDurationMap(rows: PageAnalyticsRow[]) {
+  const byDate = new Map<string, Map<string, number>>();
+
+  for (const row of rows) {
+    if (!row.visit_date || !row.visitor_key) continue;
+    if (isAdminAnalyticsRole(row.user_role)) continue;
+    const duration = typeof row.duration_seconds === "number" ? row.duration_seconds : 0;
+    const visitorMap = byDate.get(row.visit_date) ?? new Map<string, number>();
+    visitorMap.set(row.visitor_key, (visitorMap.get(row.visitor_key) ?? 0) + duration);
+    byDate.set(row.visit_date, visitorMap);
+  }
+
+  return byDate;
+}
+
+function buildDailyUniqueVisitorMap(rows: PageAnalyticsRow[]) {
+  const byDate = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    if (!row.visit_date || !row.visitor_key) continue;
+    const visitors = byDate.get(row.visit_date) ?? new Set<string>();
+    visitors.add(row.visitor_key);
+    byDate.set(row.visit_date, visitors);
+  }
+
+  return byDate;
+}
+
 export default async function AdminDashboardPage() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
@@ -88,6 +134,7 @@ export default async function AdminDashboardPage() {
   }
 
   const now = new Date();
+  const todayIso = now.toISOString().slice(0, 10);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
   const weeklyStart = new Date(now);
@@ -96,32 +143,29 @@ export default async function AdminDashboardPage() {
 
   const [
     vendorsCountResult,
-    marketLocationsCountResult,
     activeContentsCountResult,
-    landmarksCountResult,
     visitorStatsResult,
-    weeklyVisitorStatsResult,
+    pageAnalyticsResult,
     latestVendorsResult,
     latestContentsResult,
     latestLandmarksResult,
   ] = await Promise.all([
     supabase.from("vendors").select("*", { count: "exact", head: true }),
-    supabase.from("market_locations").select("*", { count: "exact", head: true }),
     supabase
       .from("vendor_contents")
       .select("*", { count: "exact", head: true })
       .gt("expires_at", now.toISOString()),
-    supabase.from("map_landmarks").select("*", { count: "exact", head: true }),
-    supabase
-      .from("web_visitor_stats")
-      .select("visitor_count")
-      .gte("visit_date", monthStart)
-      .lt("visit_date", monthEnd),
     supabase
       .from("web_visitor_stats")
       .select("visit_date, visitor_count")
+      .gte("visit_date", monthStart)
+      .lt("visit_date", monthEnd),
+    supabase
+      .from("web_page_analytics")
+      .select("visit_date, visitor_key, path, duration_seconds, user_role")
       .gte("visit_date", weeklyStartIso)
-      .lte("visit_date", monthEnd),
+      .lte("visit_date", todayIso)
+      .order("created_at", { ascending: false }),
     supabase
       .from("vendors")
       .select("id, shop_name, created_at")
@@ -143,51 +187,118 @@ export default async function AdminDashboardPage() {
     const count = typeof row.visitor_count === "number" ? row.visitor_count : 0;
     return sum + count;
   }, 0);
-  const weeklyVisitorMap = new Map(
-    (weeklyVisitorStatsResult.data ?? []).map((row) => [
-      row.visit_date as string,
-      typeof row.visitor_count === "number" ? row.visitor_count : 0,
-    ])
+
+  const pageAnalytics = Array.isArray(pageAnalyticsResult.data)
+    ? (pageAnalyticsResult.data as PageAnalyticsRow[])
+    : [];
+  const nonAdminPageAnalytics = pageAnalytics.filter((row) => !isAdminAnalyticsRole(row.user_role));
+  const weeklyVisitorStatsRows = Array.isArray(visitorStatsResult.data)
+    ? visitorStatsResult.data
+    : [];
+  const monthVisitorTotalByDate = new Map<string, number>();
+  for (const row of weeklyVisitorStatsRows) {
+    const visitDate = (row as { visit_date?: string }).visit_date;
+    if (!visitDate) continue;
+    monthVisitorTotalByDate.set(
+      visitDate,
+      typeof row.visitor_count === "number" ? row.visitor_count : 0
+    );
+  }
+  const dailyUniqueVisitorMap = buildDailyUniqueVisitorMap(nonAdminPageAnalytics);
+  const vendorPageAnalytics = nonAdminPageAnalytics.filter((row) => row.user_role === "vendor");
+  const vendorDailyUniqueVisitorMap = buildDailyUniqueVisitorMap(vendorPageAnalytics);
+
+  const weeklyVisitorSeries: Array<VisitorPoint & { vendorCount: number }> = Array.from(
+    { length: 7 },
+    (_, index) => {
+      const date = new Date(weeklyStart);
+      date.setDate(weeklyStart.getDate() + index);
+      const iso = date.toISOString().slice(0, 10);
+      return {
+        date: iso,
+        count: monthVisitorTotalByDate.get(iso) ?? dailyUniqueVisitorMap.get(iso)?.size ?? 0,
+        vendorCount: vendorDailyUniqueVisitorMap.get(iso)?.size ?? 0,
+      };
+    }
   );
-  const weeklyVisitorSeries: VisitorPoint[] = Array.from({ length: 7 }, (_, index) => {
+
+  const vendorVisitorsToday = new Set(
+    nonAdminPageAnalytics
+      .filter((row) => row.visit_date === todayIso && row.user_role === "vendor")
+      .map((row) => row.visitor_key)
+  ).size;
+
+  const visitorDailyDurationMap = buildVisitorDailyDurationMap(nonAdminPageAnalytics);
+  const vendorVisitorDailyDurationMap = buildVisitorDailyDurationMap(vendorPageAnalytics);
+
+  const durationSeries: DurationPoint[] = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weeklyStart);
     date.setDate(weeklyStart.getDate() + index);
     const iso = date.toISOString().slice(0, 10);
+    const visitorDurations = Array.from((visitorDailyDurationMap.get(iso) ?? new Map()).values());
+    const totalDuration = visitorDurations.reduce((sum, value) => sum + value, 0);
+    const vendorDurations = Array.from((vendorVisitorDailyDurationMap.get(iso) ?? new Map()).values());
+    const vendorTotalDuration = vendorDurations.reduce((sum, value) => sum + value, 0);
     return {
       date: iso,
-      count: weeklyVisitorMap.get(iso) ?? 0,
+      averageMinutes:
+        visitorDurations.length > 0 ? totalDuration / visitorDurations.length / 60 : 0,
+      vendorAverageMinutes:
+        vendorDurations.length > 0 ? vendorTotalDuration / vendorDurations.length / 60 : 0,
     };
   });
-  const weeklyMax = Math.max(...weeklyVisitorSeries.map((item) => item.count), 1);
-  const compositionItems = [
-    {
-      label: "店舗",
-      value: vendorsCountResult.count ?? 0,
-      color: "bg-blue-500",
-    },
-    {
-      label: "マーカ",
-      value: marketLocationsCountResult.count ?? 0,
-      color: "bg-emerald-500",
-    },
-    {
-      label: "建物",
-      value: landmarksCountResult.count ?? 0,
-      color: "bg-amber-500",
-    },
-    {
-      label: "公開中投稿",
-      value: activeContentsCountResult.count ?? 0,
-      color: "bg-rose-500",
-    },
-  ];
-  const compositionMax = Math.max(...compositionItems.map((item) => item.value), 1);
+
+  const durationMax = Math.max(
+    ...durationSeries.flatMap((item) => [item.averageMinutes, item.vendorAverageMinutes]),
+    1
+  );
+  const allVisitorTotals = Array.from(visitorDailyDurationMap.values()).flatMap((visitorMap) =>
+    Array.from(visitorMap.values())
+  );
+  const weeklyDurationTotal = allVisitorTotals.reduce((sum, value) => sum + value, 0);
+  const webAverageStayMinutes =
+    allVisitorTotals.length > 0 ? weeklyDurationTotal / allVisitorTotals.length / 60 : 0;
+
+  const todayUrlMap = new Map<string, Map<string, number>>();
+  for (const row of nonAdminPageAnalytics) {
+    if (row.visit_date !== todayIso) continue;
+    const path = row.path || "/";
+    const visitors = todayUrlMap.get(path) ?? new Map<string, number>();
+    visitors.set(
+      row.visitor_key,
+      (visitors.get(row.visitor_key) ?? 0) +
+        (typeof row.duration_seconds === "number" ? row.duration_seconds : 0)
+    );
+    todayUrlMap.set(path, visitors);
+  }
+
+  const urlSummaries: UrlSummary[] = Array.from(todayUrlMap.entries())
+    .map(([path, visitors]) => {
+      const visitorDurations = Array.from(visitors.values());
+      const totalSeconds = visitorDurations.reduce((sum, value) => sum + value, 0);
+      return {
+      path,
+      visitors: visitors.size,
+      averageMinutes: visitors.size > 0 ? totalSeconds / visitors.size / 60 : 0,
+      totalMinutes: totalSeconds / 60,
+    };
+    })
+    .sort((a, b) => {
+      if (b.visitors !== a.visitors) return b.visitors - a.visitors;
+      return b.totalMinutes - a.totalMinutes;
+    })
+    .slice(0, 12);
+
+  const weeklyMax = Math.max(
+    ...weeklyVisitorSeries.flatMap((item) => [item.count, item.vendorCount]),
+    1
+  );
 
   const stats = [
     { title: "登録店舗数", value: vendorsCountResult.count ?? 0, icon: "🏪", bgColor: "bg-blue-50", textColor: "text-blue-600" },
-    { title: "配置済みマーカ数", value: marketLocationsCountResult.count ?? 0, icon: "📍", bgColor: "bg-green-50", textColor: "text-green-600" },
     { title: "今月の訪問者", value: monthVisitors, icon: "📊", bgColor: "bg-purple-50", textColor: "text-purple-600" },
-    { title: "公開中のお知らせ", value: activeContentsCountResult.count ?? 0, icon: "📝", bgColor: "bg-orange-50", textColor: "text-orange-600" },
+    { title: "出店者アクセス数", value: vendorVisitorsToday, icon: "🧑‍🌾", bgColor: "bg-emerald-50", textColor: "text-emerald-600" },
+    { title: "Web平均滞在時間", value: formatMinutes(webAverageStayMinutes), icon: "⏱️", bgColor: "bg-amber-50", textColor: "text-amber-600" },
   ];
 
   const recentActivities: ActivityItem[] = [
@@ -223,7 +334,7 @@ export default async function AdminDashboardPage() {
 
       <div className="mx-auto max-w-7xl px-4 py-8 pb-20">
         <p className="mb-6 pl-14 text-sm text-slate-600">ようこそ、{getDisplayName(user)}さん</p>
-        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (
             <StatCard
               key={stat.title}
@@ -236,7 +347,7 @@ export default async function AdminDashboardPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="visitor-chart">
             <div className="flex items-end justify-between gap-4">
               <div>
@@ -247,19 +358,39 @@ export default async function AdminDashboardPage() {
                   直近7日間の訪問者推移
                 </h2>
               </div>
-              <p className="text-sm text-gray-500">最大 {weeklyMax} 人/日</p>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">最大 {weeklyMax} 人/日</p>
+                <div className="mt-2 flex items-center justify-end gap-4 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+                    全体
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    出店者のみ
+                  </span>
+                </div>
+              </div>
             </div>
             <div className="mt-8 flex h-72 items-end gap-3">
               {weeklyVisitorSeries.map((item) => (
                 <div key={item.date} className="flex flex-1 flex-col items-center gap-3">
-                  <div className="flex h-56 w-full items-end rounded-2xl bg-gradient-to-b from-purple-50 to-white px-2 pb-2">
+                  <div className="flex h-56 w-full items-end gap-2 rounded-2xl bg-gradient-to-b from-purple-50 to-white px-2 pb-2">
                     <div
-                      className="w-full rounded-xl bg-gradient-to-t from-purple-600 via-fuchsia-500 to-violet-400 shadow-[0_10px_24px_rgba(139,92,246,0.22)]"
+                      className="w-1/2 rounded-xl bg-gradient-to-t from-purple-600 via-fuchsia-500 to-violet-400 shadow-[0_10px_24px_rgba(139,92,246,0.22)]"
                       style={{ height: `${Math.max((item.count / weeklyMax) * 100, item.count > 0 ? 10 : 0)}%` }}
+                    />
+                    <div
+                      className="w-1/2 rounded-xl bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400 shadow-[0_10px_24px_rgba(16,185,129,0.22)]"
+                      style={{
+                        height: `${Math.max((item.vendorCount / weeklyMax) * 100, item.vendorCount > 0 ? 10 : 0)}%`,
+                      }}
                     />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-900">{item.count}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {item.count} / {item.vendorCount}
+                    </p>
                     <p className="text-xs text-gray-500">{formatShortDate(item.date)}</p>
                   </div>
                 </div>
@@ -267,68 +398,125 @@ export default async function AdminDashboardPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="composition-chart">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">
-              Inventory
-            </p>
-            <h2 id="composition-chart" className="mt-2 text-xl font-bold text-gray-900">
-              運営データの構成
-            </h2>
-            <div className="mt-6 space-y-5">
-              {compositionItems.map((item) => (
-                <div key={item.label}>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">{item.label}</span>
-                    <span className="font-semibold text-gray-900">{item.value}</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-gray-100">
+          <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="duration-chart">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">
+                  Stay Time
+                </p>
+                <h2 id="duration-chart" className="mt-2 text-xl font-bold text-gray-900">
+                  日別の平均滞在時間
+                </h2>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500">平均 {formatMinutes(webAverageStayMinutes)}</p>
+                <div className="mt-2 flex items-center justify-end gap-4 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                    全体
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    出店者のみ
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-8 flex h-72 items-end gap-3">
+              {durationSeries.map((item) => (
+                <div key={item.date} className="flex flex-1 flex-col items-center gap-3">
+                  <div className="flex h-56 w-full items-end gap-2 rounded-2xl bg-gradient-to-b from-sky-50 to-white px-2 pb-2">
                     <div
-                      className={`h-3 rounded-full ${item.color}`}
-                      style={{ width: `${Math.max((item.value / compositionMax) * 100, item.value > 0 ? 8 : 0)}%` }}
+                      className="w-1/2 rounded-xl bg-gradient-to-t from-sky-600 via-cyan-500 to-teal-400 shadow-[0_10px_24px_rgba(14,165,233,0.22)]"
+                      style={{
+                        height: `${Math.max((item.averageMinutes / durationMax) * 100, item.averageMinutes > 0 ? 10 : 0)}%`,
+                      }}
                     />
+                    <div
+                      className="w-1/2 rounded-xl bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400 shadow-[0_10px_24px_rgba(16,185,129,0.22)]"
+                      style={{
+                        height: `${Math.max((item.vendorAverageMinutes / durationMax) * 100, item.vendorAverageMinutes > 0 ? 10 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {formatMinutes(item.averageMinutes)} / {formatMinutes(item.vendorAverageMinutes)}
+                    </p>
+                    <p className="text-xs text-gray-500">{formatShortDate(item.date)}</p>
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="mt-8 rounded-2xl border border-sky-100 bg-sky-50/80 p-4">
-              <p className="text-sm font-semibold text-sky-900">クイック操作</p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {MENU_ITEMS.slice(0, 4).map((item) => (
-                  <MenuCard
-                    key={item.title}
-                    title={item.title}
-                    description={item.description}
-                    icon={item.icon}
-                    href={item.href}
-                    bgColor={item.bgColor}
-                  />
-                ))}
-              </div>
             </div>
           </section>
         </div>
 
-        <div className="mt-8 rounded-lg bg-white p-6 shadow" role="region" aria-labelledby="recent-activity">
-          <h2 id="recent-activity" className="mb-4 text-xl font-bold text-gray-900">
-            最近のアクティビティ
-          </h2>
-          {recentActivities.length === 0 ? (
-            <p className="text-sm text-gray-500">表示できる最新アクティビティはまだありません。</p>
-          ) : (
-            <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 border-b border-gray-100 pb-3 last:border-0">
-                  <span className="text-2xl" aria-hidden="true">
-                    {activity.icon}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.text}</p>
-                    <p className="mt-1 text-xs text-gray-500">{formatDateTime(activity.timestamp)}</p>
-                  </div>
-                </div>
-              ))}
+        <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="url-summary">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+                  URL Analytics
+                </p>
+                <h2 id="url-summary" className="mt-2 text-xl font-bold text-gray-900">
+                  URL別の来訪者数と滞在時間
+                </h2>
+              </div>
+              <p className="text-sm text-gray-500">対象日: {formatShortDate(todayIso)}</p>
             </div>
-          )}
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-100">
+              <div className="grid grid-cols-[1.8fr_0.6fr_0.8fr_0.8fr] bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <span>URL</span>
+                <span className="text-right">来訪者数</span>
+                <span className="text-right">平均滞在</span>
+                <span className="text-right">合計滞在</span>
+              </div>
+              {urlSummaries.length === 0 ? (
+                <div className="px-4 py-8 text-sm text-slate-500">まだ URL 別の滞在データはありません。</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {urlSummaries.map((item) => (
+                    <div
+                      key={item.path}
+                      className="grid grid-cols-[1.8fr_0.6fr_0.8fr_0.8fr] items-center gap-3 px-4 py-3 text-sm text-slate-700"
+                    >
+                      <span className="truncate font-medium text-slate-900">{item.path}</span>
+                      <span className="text-right">{item.visitors}</span>
+                      <span className="text-right">{formatMinutes(item.averageMinutes)}</span>
+                      <span className="text-right">{formatMinutes(item.totalMinutes)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg bg-white p-6 shadow" role="region" aria-labelledby="recent-activity">
+            <h2 id="recent-activity" className="mb-4 text-xl font-bold text-gray-900">
+              最近のアクティビティ
+            </h2>
+            {recentActivities.length === 0 ? (
+              <p className="text-sm text-gray-500">表示できる最新アクティビティはまだありません。</p>
+            ) : (
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 border-b border-gray-100 pb-3 last:border-0">
+                    <span className="text-2xl" aria-hidden="true">
+                      {activity.icon}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">{activity.text}</p>
+                      <p className="mt-1 text-xs text-gray-500">{formatDateTime(activity.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="mt-4 text-xs text-slate-400">
+          滞在時間と URL 別集計は、ページ離脱時に記録されるアクセスログをもとに集計しています。
         </div>
       </div>
     </AdminLayout>
