@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { createClient } from "@/utils/supabase/client";
 import {
   ArrowLeft,
   Save,
@@ -16,7 +15,15 @@ import {
   Lock,
   LogOut,
   AlertTriangle,
+  Eye,
+  EyeOff,
+  Construction,
 } from "lucide-react";
+
+// TODO: 現在、出店者のメールアドレス・パスワードが一部公開状態のため
+//       プロフィール・パスワード変更は一時的に無効化しています。
+//       セキュリティ対応（RLS・認証フロー整備）完了後に有効化してください。
+const SAVE_DISABLED = true;
 
 function SectionHeader({ icon: Icon, title }: { icon: typeof User; title: string }) {
   return (
@@ -25,6 +32,40 @@ function SectionHeader({ icon: Icon, title }: { icon: typeof User; title: string
         <Icon size={14} />
       </div>
       <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+    </div>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 pr-10 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
     </div>
   );
 }
@@ -49,7 +90,7 @@ export default function VendorAccountPage() {
 
   async function handleProfileSubmit(e: FormEvent) {
     e.preventDefault();
-    if (isSavingProfile || !user) return;
+    if (SAVE_DISABLED || isSavingProfile || !user) return;
     setIsSavingProfile(true);
     setProfileError(null);
     try {
@@ -65,7 +106,7 @@ export default function VendorAccountPage() {
 
   async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault();
-    if (isSavingPassword) return;
+    if (SAVE_DISABLED || isSavingPassword) return;
     if (newPassword.length < 8) {
       setPasswordError("パスワードは8文字以上で設定してください。");
       return;
@@ -77,6 +118,7 @@ export default function VendorAccountPage() {
     setIsSavingPassword(true);
     setPasswordError(null);
     try {
+      const { createClient } = await import("@/utils/supabase/client");
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
@@ -117,31 +159,48 @@ export default function VendorAccountPage() {
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
 
+        {/* 一時停止バナー */}
+        {SAVE_DISABLED && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <Construction size={18} className="mt-0.5 flex-shrink-0 text-amber-600" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">変更機能は現在準備中です</p>
+              <p className="mt-0.5 text-xs text-amber-700">
+                セキュリティ対応の完了後に有効化予定です。ログアウトは引き続き使用できます。
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* プロフィール */}
         <form onSubmit={handleProfileSubmit} className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
             <SectionHeader icon={User} title="表示名" />
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：山田 太郎"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              disabled={SAVE_DISABLED}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
             <SectionHeader icon={Mail} title="メールアドレス" />
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="例：example@email.com"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              disabled={SAVE_DISABLED}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300 disabled:cursor-not-allowed"
             />
-            <p className="mt-1.5 text-[10px] text-slate-400">
-              メールアドレスを変更すると確認メールが送信されます
-            </p>
+            {!SAVE_DISABLED && (
+              <p className="mt-1.5 text-[10px] text-slate-400">
+                メールアドレスを変更すると確認メールが送信されます
+              </p>
+            )}
           </div>
 
           {profileError && (
@@ -153,9 +212,9 @@ export default function VendorAccountPage() {
 
           <button
             type="submit"
-            disabled={isSavingProfile}
+            disabled={SAVE_DISABLED || isSavingProfile}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-              isSavingProfile
+              SAVE_DISABLED || isSavingProfile
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : isProfileSaved
                 ? "bg-emerald-500 text-white"
@@ -174,22 +233,20 @@ export default function VendorAccountPage() {
 
         {/* パスワード変更 */}
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${SAVE_DISABLED ? "opacity-60" : ""}`}>
             <SectionHeader icon={Lock} title="パスワード変更" />
             <div className="space-y-2">
-              <input
-                type="password"
+              <PasswordInput
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={setNewPassword}
                 placeholder="新しいパスワード（8文字以上）"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+                disabled={SAVE_DISABLED}
               />
-              <input
-                type="password"
+              <PasswordInput
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={setConfirmPassword}
                 placeholder="新しいパスワード（確認）"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+                disabled={SAVE_DISABLED}
               />
             </div>
           </div>
@@ -203,12 +260,10 @@ export default function VendorAccountPage() {
 
           <button
             type="submit"
-            disabled={isSavingPassword || (!newPassword && !confirmPassword)}
+            disabled={SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-              isSavingPassword
+              SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
-                : !newPassword && !confirmPassword
-                ? "cursor-not-allowed bg-slate-100 text-slate-400"
                 : isPasswordSaved
                 ? "bg-emerald-500 text-white"
                 : "bg-amber-500 text-white hover:bg-amber-400"
