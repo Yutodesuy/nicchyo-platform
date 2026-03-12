@@ -14,6 +14,7 @@ import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLay
 type EditableShop = {
   locationId: string;
   id: number;
+  vendorId?: string;
   name: string;
   lat: number;
   lng: number;
@@ -42,11 +43,17 @@ function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void
   return null;
 }
 
-function createMarkerIcon(kind: "shop" | "landmark", isSelected: boolean) {
+function createMarkerIcon(kind: "shop" | "landmark", isSelected: boolean, isUnassigned = false) {
   const size = isSelected ? 26 : 18;
   const borderRadius = kind === "shop" ? "9999px" : "6px";
-  const background = kind === "shop" ? "#0284c7" : "#f97316";
-  const glow = kind === "shop" ? "rgba(2,132,199,.38)" : "rgba(249,115,22,.38)";
+  const background =
+    kind === "shop" ? (isUnassigned ? "#94a3b8" : "#0284c7") : "#f97316";
+  const glow =
+    kind === "shop"
+      ? isUnassigned
+        ? "rgba(148,163,184,.38)"
+        : "rgba(2,132,199,.38)"
+      : "rgba(249,115,22,.38)";
   const outline = isSelected ? "0 0 0 6px rgba(255,255,255,.95), 0 0 0 10px rgba(15,23,42,.14)" : "";
 
   return L.divIcon({
@@ -80,7 +87,11 @@ export default function MapLayoutEditor({
     for (const shop of shops) {
       icons.set(
         shop.id,
-        createMarkerIcon("shop", selectedKind === "shop" && selectedId === String(shop.id))
+        createMarkerIcon(
+          "shop",
+          selectedKind === "shop" && selectedId === String(shop.id),
+          !shop.vendorId
+        )
       );
     }
     return icons;
@@ -97,9 +108,11 @@ export default function MapLayoutEditor({
   }, [landmarks, selectedId, selectedKind]);
   const previewShops = useMemo<Shop[]>(
     () =>
-      shops.map((shop) => ({
+      shops
+        .filter((shop) => shop.vendorId)
+        .map((shop) => ({
         id: shop.id,
-        vendorId: undefined,
+        vendorId: shop.vendorId,
         name: shop.name,
         ownerName: "",
         category: "",
@@ -171,7 +184,7 @@ export default function MapLayoutEditor({
               <Marker
                 key={shop.id}
                 position={[shop.lat, shop.lng]}
-                icon={shopIcons.get(shop.id) ?? createMarkerIcon("shop", false)}
+                icon={shopIcons.get(shop.id) ?? createMarkerIcon("shop", false, !shop.vendorId)}
                 draggable={selectedKind === "shop" && selectedId === String(shop.id)}
                 eventHandlers={{
                   click: () => onSelect("shop", String(shop.id)),
@@ -189,6 +202,9 @@ export default function MapLayoutEditor({
                         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Shop</p>
                         <h3 className="mt-1 text-sm font-semibold text-slate-900">{shop.name}</h3>
                         <p className="mt-1 text-xs text-slate-500">#{shop.id}</p>
+                        {!shop.vendorId && (
+                          <p className="mt-1 text-xs font-medium text-slate-400">出店者未割当</p>
+                        )}
                       </div>
                       <button
                         type="button"
