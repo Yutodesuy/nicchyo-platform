@@ -304,6 +304,7 @@ export default function VendorStorePage() {
                   height={400}
                   className="h-48 w-full object-cover"
                   unoptimized={imagePreview.startsWith("blob:")}
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
               </div>
               <button

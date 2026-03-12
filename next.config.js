@@ -7,7 +7,15 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60, // 秒単位でのキャッシュ時間
+    minimumCacheTTL: 60,
+    remotePatterns: [
+      {
+        // Supabase Storage（出店者がアップロードした店舗写真・投稿画像）
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 
   // 本番環境の圧縮設定
