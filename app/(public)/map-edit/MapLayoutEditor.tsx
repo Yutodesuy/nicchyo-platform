@@ -64,13 +64,21 @@ export default function MapLayoutEditor({
     const first = shops[0] ?? landmarks[0];
     return first ? [first.lat, first.lng] : [33.56145, 133.5383];
   }, [landmarks, shops]);
+  const maxZoom = 20;
 
   return (
     <div className="h-[70vh] w-full">
-      <MapContainer center={center} zoom={17} className="h-full w-full" scrollWheelZoom>
+      <MapContainer
+        center={center}
+        zoom={17}
+        maxZoom={maxZoom}
+        className="h-full w-full"
+        scrollWheelZoom
+      >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap contributors &copy; CARTO'
+          maxZoom={maxZoom}
         />
         <ClickCapture
           onClick={(lat, lng) => {
