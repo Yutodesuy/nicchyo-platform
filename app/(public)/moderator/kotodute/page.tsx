@@ -7,7 +7,7 @@ import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/ex
 import { showToast } from "@/lib/admin/toast";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
-import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
+import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout, AdminPageHeader } from "@/components/admin";
 
 type KotoduteStatus = "published" | "flagged" | "hidden" | "deleted";
 
@@ -350,36 +350,32 @@ function ModeratorKotoduteContent() {
 
   return (
     <AdminLayout>
-      {/* ヘッダー */}
-      <div className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">ことづて管理</h1>
-            </div>
-            <div className="flex gap-2">
-              <LoadingButton
-                onClick={handleExportCSV}
-                isLoading={isExporting}
-                loadingText="出力中..."
-                className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
-                aria-label="CSVファイルをエクスポート"
-              >
-                CSV出力
-              </LoadingButton>
-              <LoadingButton
-                onClick={handleExportJSON}
-                isLoading={isExporting}
-                loadingText="出力中..."
-                className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
-                aria-label="JSONファイルをエクスポート"
-              >
-                JSON出力
-              </LoadingButton>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        eyebrow="Kotodute Admin"
+        title="ことづて管理"
+        actions={
+          <>
+            <LoadingButton
+              onClick={handleExportCSV}
+              isLoading={isExporting}
+              loadingText="出力中..."
+              className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
+              aria-label="CSVファイルをエクスポート"
+            >
+              CSV出力
+            </LoadingButton>
+            <LoadingButton
+              onClick={handleExportJSON}
+              isLoading={isExporting}
+              loadingText="出力中..."
+              className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
+              aria-label="JSONファイルをエクスポート"
+            >
+              JSON出力
+            </LoadingButton>
+          </>
+        }
+      />
 
       {/* メインコンテンツ */}
       <div className="mx-auto max-w-7xl px-4 py-8">
