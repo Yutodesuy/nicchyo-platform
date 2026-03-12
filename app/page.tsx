@@ -4,16 +4,44 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMapLoading } from "./components/MapLoadingProvider";
 import { motion } from "framer-motion";
-import { MapPin, Coffee, Utensils, HelpCircle, ChevronRight, User } from "lucide-react";
+import { MapPin, ChevronRight, ShieldCheck, User } from "lucide-react";
+
+type HomeSummary = {
+  categoryCount: number | null;
+  weeklyVisitorTotal: number | null;
+};
 
 export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
   const [loaded, setLoaded] = useState(false);
+  const [summary, setSummary] = useState<HomeSummary>({
+    categoryCount: null,
+    weeklyVisitorTotal: null,
+  });
 
   useEffect(() => {
     setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    const endpoint = "/api/analytics/home-visit";
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([], { type: "application/json" });
+      navigator.sendBeacon(endpoint, blob);
+      return;
+    }
+
+    void fetch(endpoint, {
+      method: "POST",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }, [loaded]);
 
   // Remove zooming class if it exists from previous navigation
   useEffect(() => {
@@ -21,11 +49,46 @@ export default function HomePage() {
     document.body.classList.remove("home-poster-zoom-open");
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSummary = async () => {
+      try {
+        const response = await fetch("/api/analytics/home-summary", {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as Partial<HomeSummary> & { ok?: boolean };
+        if (!payload.ok || cancelled) return;
+        setSummary({
+          categoryCount:
+            typeof payload.categoryCount === "number" ? payload.categoryCount : null,
+          weeklyVisitorTotal:
+            typeof payload.weeklyVisitorTotal === "number"
+              ? payload.weeklyVisitorTotal
+              : null,
+        });
+      } catch {
+        // keep fallback values
+      }
+    };
+
+    void loadSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleMapClick = () => {
     startMapLoading();
     setTimeout(() => {
       router.push("/map");
     }, 300);
+  };
+
+  const handleAnalysisClick = () => {
+    router.push("/analysis");
   };
 
   return (
@@ -69,13 +132,16 @@ export default function HomePage() {
             </div>
 
             <p className="text-sm font-medium leading-relaxed text-amber-800/80 mb-8">
-              広くてにぎやかな日曜市。<br />
-              <span className="font-bold text-amber-900">「お守りマップ」</span>があれば、<br />
-              もう迷子も怖くありません。
+              初めてでも、ゆっくり歩ける。<br />
+              <span className="font-bold text-amber-900">「お守りマップ」</span>で<br />
+              迷いを安心に。
             </p>
 
-            <button
+            <motion.button
               onClick={handleMapClick}
+              initial={{ scale: 1 }}
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 p-4 text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-95"
             >
               <div className="flex items-center justify-center gap-2 text-lg font-bold tracking-wide">
@@ -83,12 +149,11 @@ export default function HomePage() {
                 <ChevronRight className="h-5 w-5" />
               </div>
               <div className="absolute inset-0 -z-10 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-            </button>
+            </motion.button>
 
-            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest">
-               <span>Smart Guide</span>
-               <span>•</span>
-               <span>Free</span>
+            <div className="mt-4 flex items-center justify-center gap-3 text-[10px] font-bold text-amber-500/80 uppercase tracking-widest">
+              <span className="rounded-full bg-amber-100 px-3 py-1">迷わない</span>
+              <span className="rounded-full bg-amber-100 px-3 py-1">やさしい</span>
             </div>
           </div>
         </motion.div>
@@ -99,71 +164,74 @@ export default function HomePage() {
         <div className="mx-auto max-w-2xl">
           <div className="text-center mb-10">
             <h2 className="text-lg font-bold text-amber-800 md:text-xl">
-              はじめてでも、大丈夫。
+              はじめてでも、安心。
             </h2>
             <p className="mt-4 text-amber-900/70 leading-relaxed">
-              「お店が多すぎてわからない」<br />
-              「トイレはどこにあるの？」<br />
-              そんな不安を解消します。
+              「どこに行けばいい？」<br />
+              そんな気持ちに寄り添います。
             </p>
           </div>
 
-            <div className="mt-8 bg-amber-50 rounded-2xl p-6 border border-amber-100">
-              <p className="text-center text-lg font-bold text-orange-700 leading-relaxed">
-                nicchyoは、<br />
-                あなたの「歩くパートナー」です。
-              </p>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <ShieldCheck className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">迷ったらすぐ戻れる</p>
             </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <MapPin className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">現在地がひと目でわかる</p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+              <User className="h-6 w-6 text-orange-600" />
+              <p className="text-sm font-semibold text-amber-900">案内人がそっと提案</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* --- FEATURES SECTION (Concrete Benefits) --- */}
-      <section className="bg-white py-16 px-6">
+      {/* --- DATA SECTION --- */}
+      <section className="bg-white px-6 py-16">
         <div className="mx-auto max-w-4xl">
-          <h2 className="text-center text-xl font-bold text-amber-900 mb-10">
-            安心して楽しむための<br className="md:hidden" />
-            3つの機能
-          </h2>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-amber-900 md:text-2xl">
+              日曜市をデータで見る
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-amber-900/70">
+              出店数やジャンル傾向を、ひと目で把握できます。
+            </p>
+          </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                <Coffee className="h-6 w-6" />
-              </div>
-              <div className="text-left md:text-center">
-                <h3 className="font-bold text-amber-900">休憩スポット検索</h3>
-                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
-                  トイレやベンチの場所を一目でチェック。
-                </p>
-              </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
+              <p className="text-xs font-semibold tracking-wider text-amber-700/80">出店カテゴリ</p>
+              <p className="mt-2 text-3xl font-bold text-amber-900">
+                {summary.categoryCount !== null ? summary.categoryCount.toLocaleString() : "--"}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-amber-900/70">
+                出店者データからカテゴリ数を集計しています。
+              </p>
             </div>
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
+              <p className="text-xs font-semibold tracking-wider text-amber-700/80">今週の動向</p>
+              <p className="mt-2 text-3xl font-bold text-amber-900">
+                {summary.weeklyVisitorTotal !== null
+                  ? `${summary.weeklyVisitorTotal.toLocaleString()}人`
+                  : "--"}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-amber-900/70">
+                月曜から本日までのWeb来訪者合計です。
+              </p>
+            </div>
+          </div>
 
-            {/* Feature 2 */}
-            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                <User className="h-6 w-6" />
-              </div>
-              <div className="text-left md:text-center">
-                <h3 className="font-bold text-amber-900">おせっかいな案内人</h3>
-                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
-                  「にちよさん」がおすすめのお店を紹介。
-                </p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex flex-row md:flex-col items-center gap-4 bg-[#FAFAF8] rounded-2xl p-5 shadow-sm border border-amber-50">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                <MapPin className="h-6 w-6" />
-              </div>
-              <div className="text-left md:text-center">
-                <h3 className="font-bold text-amber-900">現在地マップ</h3>
-                <p className="mt-1 text-xs text-amber-800/70 leading-relaxed">
-                  今いる場所の近くに何があるかすぐわかる。
-                </p>
-              </div>
-            </div>
+          <div className="mt-8 text-center">
+            <button
+              onClick={handleAnalysisClick}
+              className="group inline-flex items-center justify-center gap-2 rounded-full bg-amber-900 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-amber-800 active:scale-95"
+            >
+              <span>分析ページを見る</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </section>

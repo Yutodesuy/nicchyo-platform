@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "../../../lib/auth/AuthContext";
-import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
 import NavigationBar from "../../components/NavigationBar";
 import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff, AlertCircle } from "lucide-react";
@@ -17,33 +16,23 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
-  const hasCaptcha = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    if (hasCaptcha && !captchaToken) {
-      setError("認証を完了してください。");
-      return;
-    }
-
     setIsSubmitting(true);
-    const ok = await loginWithCredentials(
-      identifier,
-      password,
-      hasCaptcha ? captchaToken : undefined
-    );
+    const loggedInUser = await loginWithCredentials(identifier, password);
     setIsSubmitting(false);
 
-    if (!ok) {
+    if (!loggedInUser) {
       setError("ログインできませんでした。メールアドレスやパスワードにお間違いがないか確認してください。");
       return;
     }
-    router.push("/map");
+    const destination = loggedInUser.role === "vendor" ? "/my-shop" : "/map";
+    router.push(destination);
   };
 
   const handleGoogleLogin = async () => {
@@ -215,16 +204,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {hasCaptcha && (
-            <div className="mt-4 flex items-center justify-center">
-              <TurnstileWidget
-                onVerify={setCaptchaToken}
-                onExpire={() => setCaptchaToken("")}
-                onError={() => setCaptchaToken("")}
-                className="flex items-center justify-center"
-              />
-            </div>
-          )}
         </div>
 
         {/* Footer Links */}

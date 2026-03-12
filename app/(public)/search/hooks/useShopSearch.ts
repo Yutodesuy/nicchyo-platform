@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Shop } from '../../map/data/shops';
+import type { Shop } from '../../map/data/shops';
 import { ShopSearchIndex } from '../lib/searchIndex';
 
 /**

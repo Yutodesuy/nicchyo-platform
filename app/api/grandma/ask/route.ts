@@ -1,26 +1,56 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { grandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
+import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type MatchRow = {
-  shop_id: string;
-  similarity: number;
-};
+// ─── 日曜市エリア判定 ────────────────────────────────────────
+const MARKET_CENTER = { lat: 33.5650, lng: 133.5310 };
+const ON_SITE_RADIUS_KM = 0.5;
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+function classifyLocationType(location: { lat: number; lng: number } | null | undefined): "pre_visit" | "on_site" | "unknown" {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return "unknown";
+  return haversineKm(location, MARKET_CENTER) <= ON_SITE_RADIUS_KM ? "on_site" : "pre_visit";
+}
+
+function classifyIntent(question: string): string {
+  if (/人気|売れ|ランキング|売れ筋/.test(question)) return "人気商品";
+  if (/味|美味|うまい|おいし|甘|辛|酸っ|塩/.test(question)) return "味";
+  if (/行列|混|待ち|並ぶ|並び/.test(question)) return "行列";
+  if (/何時|営業|開店|閉店|時間|朝|終わ/.test(question)) return "営業時間";
+  if (/おすすめ|オススメ|いい|良い/.test(question)) return "おすすめ";
+  return "その他";
+}
+
+function extractKeywords(question: string): string[] {
+  const stopwords = /^(は|が|を|に|で|と|も|の|て|だ|な|や|か|から|まで|より|けど|ので|って|ね|よ|し|ている|てる|です|ます|ない|ある|いる|する|した|して|できる|ください|教え|知り|たい|たい|って)$/;
+  const tokens = question
+    .replace(/[、。！？\s]/g, " ")
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !stopwords.test(t));
+  return [...new Set(tokens)].slice(0, 10);
+}
 
 type ShopRow = {
-  id: string;
-  legacy_id: number | null;
+  id: number;
+  vendorId?: string | null;
   name: string | null;
   owner_name: string | null;
   chome: string | null;
   category: string | null;
   products: string[] | null;
   description: string | null;
-  specialty_dish: string | null;
-  about_vendor: string | null;
   stall_style: string | null;
   schedule: string | null;
   message: string | null;
@@ -151,82 +181,37 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
+      id: shop.id,
+      vendorId: shop.vendorId ?? null,
+      name: shop.name ?? null,
+      owner_name: shop.ownerName ?? null,
+      chome: shop.chome ?? null,
+      category: shop.category ?? null,
+      products: shop.products ?? [],
+      description: shop.description ?? null,
+      stall_style: shop.stallStyle ?? null,
+      schedule: shop.schedule ?? null,
+      message: shop.message ?? null,
+      shop_strength: shop.shopStrength ?? null,
+      lat: shop.lat ?? null,
+      lng: shop.lng ?? null,
+    }));
+
     let targetShop: ShopRow | null = null;
     if (targetShopId || targetShopName) {
-      const { data } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(
-          [
-            targetShopId ? `legacy_id.eq.${targetShopId}` : null,
-            targetShopName ? `name.ilike.%${targetShopName}%` : null,
-          ]
-            .filter(Boolean)
-            .join(",")
-        )
-        .limit(1);
-      const rows = Array.isArray(data) ? (data as unknown as ShopRow[]) : [];
-      targetShop = rows[0] ?? null;
+      targetShop =
+        allShops.find((shop) => {
+          if (targetShopId && shop.id === targetShopId) return true;
+          if (targetShopName && shop.name) {
+            return shop.name.includes(targetShopName);
+          }
+          return false;
+        }) ?? null;
     }
-    const { data: matches } = await supabase
-      .rpc("match_shop_embeddings", {
-        query_embedding: embedding,
-        match_count: 3,
-        match_threshold: 0,
-      })
-      .returns<MatchRow[]>();
 
-    const safeMatches = Array.isArray(matches) ? matches : [];
-    const sortedMatches = [...safeMatches].sort(
-      (a, b) => b.similarity - a.similarity
-    );
-    let matchIds = sortedMatches.map((row) => row.shop_id).filter(Boolean);
     let shops: ShopRow[] = [];
-    if (matchIds.length > 0) {
-      const { data } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .in("id", matchIds);
-      shops = (data ?? []) as unknown as ShopRow[];
-    }
+    let matchIds: number[] = [];
 
     const shortQuery = normalized.length <= 6 && normalized.length > 0;
     const nameQuery = question
@@ -243,46 +228,15 @@ export async function POST(request: Request) {
           normalizedNameQuery.slice(2),
         ].filter(Boolean);
       }
-      const filters = [
-        `owner_name.ilike.%${nameQuery}%`,
-        `name.ilike.%${nameQuery}%`,
-        ...nameParts.flatMap((part) => [
-          `owner_name.ilike.%${part}%`,
-          `name.ilike.%${part}%`,
-        ]),
-      ];
-      const { data: directRows } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(filters.join(","));
-      const safeDirectRows = (Array.isArray(directRows)
-        ? directRows
-        : []) as unknown as ShopRow[];
-      const normalizedMatches = safeDirectRows.filter((row) => {
+      const safeDirectRows = allShops.filter((row) => {
         const owner = (row.owner_name ?? "").replace(/\s+/g, "");
-        return owner.includes(normalizedNameQuery);
+        const shopName = (row.name ?? "").replace(/\s+/g, "");
+        if (owner.includes(normalizedNameQuery) || shopName.includes(normalizedNameQuery)) {
+          return true;
+        }
+        return nameParts.some((part) => owner.includes(part) || shopName.includes(part));
       });
-      const useRows =
-        normalizedMatches.length > 0 ? normalizedMatches : safeDirectRows;
+      const useRows = safeDirectRows;
       if (useRows.length > 0) {
         shopIntent = true;
         shops = useRows;
@@ -291,36 +245,55 @@ export async function POST(request: Request) {
     }
 
     if (!shopIntent && shortQuery) {
-      const { data: directRows } = await supabase
-        .from("shops")
-        .select(
-          [
-            "id",
-            "legacy_id",
-            "name",
-            "owner_name",
-            "chome",
-            "category",
-            "products",
-            "description",
-            "specialty_dish",
-            "about_vendor",
-            "stall_style",
-            "schedule",
-            "message",
-            "shop_strength",
-            "lat",
-            "lng",
-          ].join(",")
-        )
-        .or(`products.cs.{${normalized}},synonyms.cs.{${normalized}}`);
-      const safeDirectRows = (Array.isArray(directRows)
-        ? directRows
-        : []) as unknown as ShopRow[];
+      const safeDirectRows = allShops.filter((row) => {
+        const products = row.products ?? [];
+        return products.some((item) => item.includes(normalized));
+      });
       if (safeDirectRows.length > 0) {
         shopIntent = true;
         shops = safeDirectRows;
         matchIds = shops.map((row) => row.id);
+      }
+    }
+
+    // 店舗名・オーナー名が質問に含まれていればshopIntentを設定（「〇〇について教えて」対応）
+    if (shops.length === 0) {
+      const nameMatches = allShops.filter((shop) => {
+        const shopName = (shop.name ?? "").replace(/\s+/g, "");
+        const ownerName = (shop.owner_name ?? "").replace(/\s+/g, "");
+        return (
+          (shopName.length >= 2 && normalized.includes(shopName)) ||
+          (ownerName.length >= 2 && normalized.includes(ownerName))
+        );
+      });
+      if (nameMatches.length > 0) {
+        shopIntent = true;
+        shops = nameMatches;
+        matchIds = nameMatches.map((s) => s.id);
+      }
+    }
+
+    if (shopIntent && shops.length === 0) {
+      const scored = allShops
+        .map((shop) => {
+          const name = shop.name ?? "";
+          const owner = shop.owner_name ?? "";
+          const category = shop.category ?? "";
+          const products = shop.products ?? [];
+          let score = 0;
+          if (name.includes(normalized)) score += 3;
+          if (owner.includes(normalized)) score += 2;
+          if (category.includes(normalized)) score += 2;
+          if (products.some((item) => item.includes(normalized))) score += 2;
+          return { shop, score };
+        })
+        .filter((row) => row.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6)
+        .map((row) => row.shop);
+      if (scored.length > 0) {
+        shops = scored;
+        matchIds = scored.map((row) => row.id);
       }
     }
 
@@ -367,15 +340,12 @@ export async function POST(request: Request) {
             .map((shop) => {
               const parts = [
                 `id:${shop.id}`,
-                shop.legacy_id
-                  ? `legacy_id:${String(shop.legacy_id).padStart(3, "0")}`
-                  : null,
                 shop.name ? `name:${shop.name}` : null,
+                shop.owner_name ? `owner:${shop.owner_name}` : null,
                 shop.category ? `category:${shop.category}` : null,
                 shop.products?.length
                   ? `products:${shop.products.join(" / ")}`
                   : null,
-                shop.specialty_dish ? `specialty:${shop.specialty_dish}` : null,
                 shop.description ? `desc:${shop.description}` : null,
                 shop.shop_strength ? `strength:${shop.shop_strength}` : null,
                 shop.message ? `message:${shop.message}` : null,
@@ -384,13 +354,67 @@ export async function POST(request: Request) {
             })
             .join("\n")
         : "該当なし";
+    // ─── 出店者RAG知識を検索 ──────────────────────────────────
+    let storeKnowledgeContext = "";
+    const ragTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) ragTargetVendorIds.push(targetShop.vendorId);
+    if (ragTargetVendorIds.length === 0 && matchIds.length > 0) {
+      matchIds.slice(0, 3).forEach((storeNum) => {
+        const s = allShops.find((sh) => sh.id === storeNum);
+        if (s?.vendorId) ragTargetVendorIds.push(s.vendorId);
+      });
+    }
+    if (ragTargetVendorIds.length > 0 && embedding) {
+      const knowledgeResults = await Promise.all(
+        ragTargetVendorIds.map(async (vendorId) => {
+          const res = await supabase.rpc("match_store_knowledge", {
+            query_embedding: embedding,
+            target_store_id: vendorId,
+            match_count: 2,
+            match_threshold: 0.45,
+          });
+          return res as { data: { content: string; similarity: number }[] | null };
+        })
+      );
+      const knowledgeSnippets = knowledgeResults
+        .flatMap((r) => r.data ?? [])
+        .sort((a, b) => b.similarity - a.similarity)
+        .map((r) => r.content)
+        .filter(Boolean);
+      if (knowledgeSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
+      }
+    }
+    // store_knowledge 未登録の場合、店舗登録情報をフォールバックとして使用
+    if (!storeKnowledgeContext) {
+      const fallbackShops = targetShop
+        ? [targetShop]
+        : matchIds.slice(0, 3).map((id) => allShops.find((s) => s.id === id)).filter((s): s is ShopRow => s != null);
+      const fallbackSnippets = fallbackShops
+        .map((shop) => {
+          const parts = [
+            shop.owner_name ? `店主: ${shop.owner_name}` : null,
+            shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
+            shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
+            shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
+            shop.schedule ? `出店予定: ${shop.schedule}` : null,
+            shop.message ? `メッセージ: ${shop.message}` : null,
+          ].filter(Boolean);
+          return parts.length > 0 ? parts.join("\n") : null;
+        })
+        .filter(Boolean);
+      if (fallbackSnippets.length > 0) {
+        storeKnowledgeContext = `\n出店者からの店舗情報:\n${fallbackSnippets.join("\n---\n")}`;
+      }
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (targetShop) {
       shopIntent = true;
       const targetParts = [
-        targetShop.legacy_id
-          ? `legacy_id:${String(targetShop.legacy_id).padStart(3, "0")}`
-          : null,
+        `id:${targetShop.id}`,
         targetShop.name ? `name:${targetShop.name}` : null,
+        targetShop.owner_name ? `owner:${targetShop.owner_name}` : null,
         targetShop.category ? `category:${targetShop.category}` : null,
         targetShop.products?.length
           ? `products:${targetShop.products.join(" / ")}`
@@ -426,13 +450,13 @@ export async function POST(request: Request) {
       location && Number.isFinite(location.lat) && Number.isFinite(location.lng);
     const sortLegacyByDistance = (
       ids: number[],
-      rows: Array<{ legacy_id: number | null; lat: number | null; lng: number | null }>
+      rows: Array<{ id: number; lat: number | null; lng: number | null }>
     ) => {
       if (!hasLocation) return ids;
       const loc = { lat: location!.lat, lng: location!.lng };
       return [...ids]
         .map((id) => {
-          const row = rows.find((shop) => shop.legacy_id === id);
+          const row = rows.find((shop) => shop.id === id);
           if (!row || row.lat == null || row.lng == null) {
             return { id, dist: null };
           }
@@ -449,7 +473,7 @@ export async function POST(request: Request) {
 
     const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
       location ? `${location.lat}, ${location.lng}` : "不明"
-    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}`;
+    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}${storeKnowledgeContext}`;
     const userContent = imageDataUrl
       ? [
           { type: "text", text: `${userContextText}\n画像が添付されています。` },
@@ -502,28 +526,47 @@ export async function POST(request: Request) {
 
     let recommendedIds = shopIds;
     if (recommendedIds.length > 0 && hasLocation && shopIntent) {
-      const { data: locationRows } = await supabase
-        .from("shops")
-        .select(["legacy_id", "lat", "lng"].join(","))
-        .in("legacy_id", recommendedIds);
-      const rows = (locationRows ?? []) as unknown as Array<{
-        legacy_id: number | null;
-        lat: number | null;
-        lng: number | null;
-      }>;
-      recommendedIds = sortLegacyByDistance(recommendedIds, rows);
+      recommendedIds = sortLegacyByDistance(recommendedIds, shops);
     }
     if (recommendedIds.length === 0 && shopIntent && matchIds.length > 0) {
-      const legacyIds = matchIds
-        .map((id) => shops.find((row) => row.id === id)?.legacy_id ?? null)
-        .filter((value): value is number => typeof value === "number");
-      recommendedIds = sortLegacyByDistance(legacyIds, shops);
+      recommendedIds = sortLegacyByDistance(matchIds, shops);
     }
 
     const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);
     if (shopMatch) {
       reply = reply.replace(shopMatch[0], "").trim();
     }
+
+    // ─── AI相談ログを記録（fire-and-forget） ────────────────
+    const locationType = classifyLocationType(location);
+    const intentCategory = classifyIntent(rawQuestion);
+    const keywords = extractKeywords(rawQuestion);
+
+    const logTargetVendorIds: string[] = [];
+    if (targetShop?.vendorId) logTargetVendorIds.push(targetShop.vendorId);
+    if (logTargetVendorIds.length === 0 && uniqueRecommended.length > 0) {
+      uniqueRecommended.forEach((storeNum) => {
+        const shop = allShops.find((s) => s.id === storeNum);
+        if (shop?.vendorId) logTargetVendorIds.push(shop.vendorId);
+      });
+    }
+
+    if (logTargetVendorIds.length > 0) {
+      const logs = logTargetVendorIds.map((vendorId) => ({
+        store_id: vendorId,
+        question_text: rawQuestion || "(画像のみ)",
+        intent_category: intentCategory,
+        keywords,
+        location_type: locationType,
+        is_recommendation: uniqueRecommended.some((storeNum) => {
+          const s = allShops.find((sh) => sh.id === storeNum);
+          return s?.vendorId === vendorId;
+        }),
+      }));
+      supabase.from("ai_consult_logs").insert(logs).then(() => {});
+    }
+    // ──────────────────────────────────────────────────────────
+
     if (!shopIntent || uniqueRecommended.length === 0) {
       return NextResponse.json({ reply, imageUrl });
     }

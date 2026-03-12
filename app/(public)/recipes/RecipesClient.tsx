@@ -12,8 +12,8 @@ import {
   seasonalCollections,
   type Recipe,
 } from "../../../lib/recipes";
-import { shops } from "../map/data/shops";
 import { getSmartRecipePlaceholder } from "./recipes-smart-defaults";
+import { useShops } from "../../../lib/hooks/useShops";
 
 // Local storage key
 const STORAGE_KEY = "nicchyo-fridge-items";
@@ -56,6 +56,7 @@ const difficultyLabel = (difficulty: Recipe["difficulty"]) => {
 };
 
 export default function RecipesClient() {
+  const { shops } = useShops();
   const [fridge, setFridge] = useState<FridgeItem[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
@@ -69,7 +70,7 @@ export default function RecipesClient() {
 
   const shopCategoryById = useMemo(() => {
     return new Map(shops.map((shop) => [shop.id, shop.category]));
-  }, []);
+  }, [shops]);
 
   const findIngredientMatch = (name: string) => {
     const lower = name.trim().toLowerCase();

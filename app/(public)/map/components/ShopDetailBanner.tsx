@@ -1,8 +1,8 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
-import type { CSSProperties } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import type { CSSProperties, RefObject } from "react";
 import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -78,6 +78,37 @@ function loadBagItems(): BagItem[] {
   }
 }
 
+function useCenterBounceTrigger(
+  rootRef: RefObject<HTMLElement | null>,
+  targetRef: RefObject<HTMLElement | null>
+) {
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const target = targetRef.current;
+    if (!root || !target || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsActive(entry.isIntersecting);
+      },
+      {
+        root,
+        threshold: 0.55,
+        rootMargin: "-28% 0px -28% 0px",
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [rootRef, targetRef]);
+
+  return isActive;
+}
+
 export default function ShopDetailBanner({
   shop,
   bagCount,
@@ -98,6 +129,9 @@ export default function ShopDetailBanner({
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
   const [shopOpenStatus, setShopOpenStatus] = useState<"open" | "closed" | null>(null);
+  const [isGrandmaCommentBouncing, setIsGrandmaCommentBouncing] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const activePostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -263,21 +297,6 @@ export default function ShopDetailBanner({
     if (shopStatusLabel === "出店していない") return "closed";
     return "neutral";
   }, [attendanceEstimate, shopStatusLabel]);
-  const askTopics = useMemo(() => {
-    if (Array.isArray(shop.topic) && shop.topic.length > 0) {
-      return shop.topic.filter((item) => item && item.trim()).slice(0, 6);
-    }
-    const raw = (shop.message || shop.aboutVendor || shop.description || "").trim();
-    if (raw) {
-      const parsed = raw
-        .split(/[\n、,・]/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      if (parsed.length > 0) return parsed;
-    }
-    return ["おすすめの食べ方", "旬の話題", "市場のこと", "出店のこだわり"];
-  }, [shop.aboutVendor, shop.description, shop.message, shop.topic]);
   const shopNameSizeClass = useMemo(() => {
     const length = shop.name?.length ?? 0;
     if (length >= 18) return "text-2xl";
@@ -320,7 +339,7 @@ export default function ShopDetailBanner({
 
 
   const canEditShop = permissions.canEditShop(shop.id);
-  const bannerSeed = (shop.position ?? shop.id) * 2 + (shop.side === "south" ? 1 : 0);
+  const bannerSeed = shop.position ?? shop.id;
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
   const handleEditShop = useCallback(() => {
@@ -346,6 +365,17 @@ export default function ShopDetailBanner({
     setPendingProduct(null);
   }, []);
 
+  const handleGrandmaCommentTap = useCallback(() => {
+    setIsGrandmaCommentBouncing(false);
+    if (typeof window === "undefined") {
+      setIsGrandmaCommentBouncing(true);
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      setIsGrandmaCommentBouncing(true);
+    });
+  }, []);
+
   const bannerStyle = useMemo(() => {
     if (!originRect || typeof window === "undefined") return undefined;
     const vw = window.innerWidth;
@@ -364,9 +394,12 @@ export default function ShopDetailBanner({
     } as CSSProperties;
   }, [originRect]);
 
+  const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
+
   return (
     <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
       <div
+        ref={scrollContainerRef}
         className={`h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl ${
           originRect ? "shop-banner-animate" : ""
         }`}
@@ -473,14 +506,49 @@ export default function ShopDetailBanner({
           </div>
         </div>
 
+        {/* 今日のお知らせ（出店者投稿） */}
+        {!isKotodute && shop.activePost && (
+          <div
+            ref={activePostRef}
+            className={`mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 ${
+              isActivePostCentered ? "center-bounce-in" : ""
+            }`}
+          >
+            <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-2.5">
+              <span className="text-base">📢</span>
+              <span className="text-sm font-semibold text-amber-700">今日のお知らせ</span>
+              <span className="ml-auto text-xs text-amber-500">
+                {(() => {
+                  const diff = new Date(shop.activePost.expiresAt).getTime() - Date.now();
+                  if (diff <= 0) return "期限切れ";
+                  const h = Math.floor(diff / 3600000);
+                  const m = Math.floor((diff % 3600000) / 60000);
+                  return h > 0 ? `あと${h}時間` : `あと${m}分`;
+                })()}
+              </span>
+            </div>
+            {shop.activePost.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={shop.activePost.imageUrl}
+                alt="お知らせ画像"
+                className="h-40 w-full object-cover"
+              />
+            )}
+            <p className="whitespace-pre-wrap px-4 py-3 text-lg leading-relaxed text-slate-800">
+              {shop.activePost.text}
+            </p>
+          </div>
+        )}
+
         {!isKotodute && (
           <div className="mt-6 divide-y divide-slate-200">
             <section className="py-8 text-xl text-slate-700">
-              <p className="text-base font-semibold text-slate-500">主な商品</p>
+              <p className="text-base font-semibold text-slate-500">商品ジャンル</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
               <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
               <div className="mt-3 flex items-start gap-4">
-                <div className="shrink-0">
+              <div className="shrink-0">
                   <Image
                     src="/images/obaasan_transparent.png"
                     alt="おせっかいばあちゃん"
@@ -489,13 +557,20 @@ export default function ShopDetailBanner({
                     className="h-20 w-20 opacity-70"
                   />
                 </div>
-                <div className="relative w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xl leading-relaxed text-slate-700">
+                <button
+                  type="button"
+                  onClick={handleGrandmaCommentTap}
+                  onAnimationEnd={() => setIsGrandmaCommentBouncing(false)}
+                  className={`relative w-full appearance-none rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-xl leading-relaxed text-slate-700 ${
+                    isGrandmaCommentBouncing ? "center-bounce-in" : ""
+                  }`}
+                >
                   <span
                     className="absolute -left-2 top-6 h-4 w-4 rotate-45 border-b border-l border-amber-200 bg-amber-50"
                     aria-hidden
                   />
                   {shop.shopStrength?.trim() || OSEKKAI_FALLBACK}
-                </div>
+                </button>
               </div>
             </section>
 
@@ -529,6 +604,7 @@ export default function ShopDetailBanner({
                 const specificKey = buildBagKey(product, shop.id);
                 const anyKey = buildBagKey(product, undefined);
                 const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
+                const price = shop.productPrices?.[product] ?? null;
                 return (
                   <button
                     key={product}
@@ -545,6 +621,11 @@ export default function ShopDetailBanner({
                     aria-label={`${product}`}
                   >
                     {product}
+                    {price != null && (
+                      <span className="ml-1.5 text-base font-normal text-slate-500">
+                        ¥{price.toLocaleString()}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -580,25 +661,65 @@ export default function ShopDetailBanner({
           </section>
 
           <section className="py-10 text-slate-800">
-            <div className="space-y-10 text-2xl">
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">出店スタイル</p>
-                <p className="mt-2 text-2xl text-slate-700">
-                  {shop.stallStyle ?? shop.schedule}
-                </p>
-              </div>
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">出店者の想い・こだわり</p>
-                <p className="mt-2 text-2xl leading-snug text-slate-800">
-                  {shop.aboutVendor || shop.message || shop.description}
-                </p>
-              </div>
-              <div className="border-t border-slate-200 pt-8 first:border-t-0 first:pt-0">
-                <p className="text-base font-semibold text-slate-500">得意料理</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-900">
-                  {shop.specialtyDish ?? "なし"}
-                </p>
-              </div>
+            <div className="space-y-8">
+              {/* 出店スタイル・出店予定日・雨天時対応 */}
+              {(shop.stallStyleTags?.length || shop.stallStyle || shop.schedule || (shop.rainPolicy && shop.rainPolicy !== "undecided")) ? (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                  {(shop.stallStyleTags ?? []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(shop.stallStyleTags ?? []).map((tag) => (
+                        <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {shop.stallStyle && (
+                    <p className="mt-2 text-xl text-slate-700">{shop.stallStyle}</p>
+                  )}
+                  {shop.schedule && (
+                    <p className="mt-1 text-xl text-slate-600">{shop.schedule}</p>
+                  )}
+                  {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
+                    <p className="mt-2 text-xl text-slate-700">
+                      {shop.rainPolicy === "outdoor" && "🌧 雨でも出店"}
+                      {shop.rainPolicy === "tent" && "⛺ 雨でも出店（テント）"}
+                      {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
+                  <p className="mt-2 text-2xl text-slate-400">—</p>
+                </div>
+              )}
+
+              {/* 決済方法 */}
+              {(shop.paymentMethods ?? []).length > 0 && (
+                <div>
+                  <p className="text-base font-semibold text-slate-500">決済方法</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(shop.paymentMethods ?? []).map((method) => {
+                      const labels: Record<string, string> = {
+                        cash: "💴 現金",
+                        card: "💳 カード",
+                        paypay: "📱 PayPay",
+                        ic: "🚃 交通系IC",
+                      };
+                      return (
+                        <span
+                          key={method}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700"
+                        >
+                          {labels[method] ?? method}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
@@ -763,16 +884,6 @@ export default function ShopDetailBanner({
                 </div>
               )}
 
-              <div className="mt-10 border-t border-slate-200 pt-8">
-                <p className="text-base font-semibold text-slate-500">聞いてほしいこと</p>
-                <ul className="mt-4 space-y-3 text-lg text-slate-800">
-                  {askTopics.map((topic) => (
-                    <li key={topic} className="border border-slate-200 bg-white px-3 py-3">
-                      {topic}
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </section>
           </div>
         )}

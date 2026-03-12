@@ -45,6 +45,116 @@ function buildContent(row) {
   return parts.filter(Boolean).join("\n");
 }
 
+async function fetchRows(supabase, from, to) {
+  const [
+    { data: vendorsData, error: vendorsError },
+    { data: categoriesData, error: categoriesError },
+    { data: productsData, error: productsError },
+    { data: locationsData, error: locationsError },
+  ] = await Promise.all([
+    supabase
+      .from("vendors")
+      .select("id, shop_name, owner_name, strength, style, category_id")
+      .order("id", { ascending: true })
+      .range(from, to),
+    supabase.from("categories").select("id, name"),
+    supabase.from("products").select("vendor_id, name"),
+    supabase
+      .from("market_locations")
+      .select("id, store_number, latitude, longitude, district"),
+  ]);
+
+  if (vendorsError) throw new Error(`Supabase error: ${vendorsError.message}`);
+  if (categoriesError) throw new Error(`Supabase error: ${categoriesError.message}`);
+  if (productsError) throw new Error(`Supabase error: ${productsError.message}`);
+  if (locationsError) throw new Error(`Supabase error: ${locationsError.message}`);
+
+  const { data: marketAssignmentsData, error: marketAssignmentsError } = await supabase
+    .from("market_assignments")
+    .select("vendor_id, location_id, market_date");
+
+  let assignmentsData = marketAssignmentsData;
+  let assignmentsError = marketAssignmentsError;
+
+  if (marketAssignmentsError) {
+    const fallback = await supabase
+      .from("location_assignments")
+      .select("vendor_id, location_id, market_date");
+    assignmentsData = fallback.data;
+    assignmentsError = fallback.error;
+  }
+
+  if (assignmentsError) {
+    throw new Error(`Supabase error: ${assignmentsError.message}`);
+  }
+
+  const categoryById = new Map(
+    (categoriesData ?? [])
+      .filter((row) => row && row.id)
+      .map((row) => [row.id, row.name ?? ""])
+  );
+
+  const productsByVendorId = new Map();
+  for (const row of productsData ?? []) {
+    if (!row?.vendor_id || !row.name) continue;
+    const list = productsByVendorId.get(row.vendor_id) ?? [];
+    list.push(row.name);
+    productsByVendorId.set(row.vendor_id, list);
+  }
+
+  const locationById = new Map(
+    (locationsData ?? [])
+      .filter((row) => row && row.id)
+      .map((row) => [row.id, row])
+  );
+
+  const latestAssignmentByVendorId = new Map();
+  for (const row of assignmentsData ?? []) {
+    if (!row?.vendor_id || !row.location_id) continue;
+    const current = latestAssignmentByVendorId.get(row.vendor_id);
+    if (!current) {
+      latestAssignmentByVendorId.set(row.vendor_id, row);
+      continue;
+    }
+    const currentDate = current.market_date ? new Date(current.market_date) : null;
+    const nextDate = row.market_date ? new Date(row.market_date) : null;
+    if (!currentDate || (nextDate && nextDate > currentDate)) {
+      latestAssignmentByVendorId.set(row.vendor_id, row);
+    }
+  }
+
+  return (vendorsData ?? [])
+    .map((vendor) => {
+      const assignment = latestAssignmentByVendorId.get(vendor.id);
+      if (!assignment?.location_id) return null;
+      const location = locationById.get(assignment.location_id);
+      if (!location) return null;
+
+      return {
+        id: vendor.id,
+        legacy_id: location.store_number,
+        name: vendor.shop_name ?? "",
+        owner_name: vendor.owner_name ?? "",
+        category: categoryById.get(vendor.category_id) ?? "",
+        chome: location.district ?? "",
+        side: "",
+        position: location.store_number ?? "",
+        lat: location.latitude ?? null,
+        lng: location.longitude ?? null,
+        description: "",
+        products: productsByVendorId.get(vendor.id) ?? [],
+        specialty_dish: "",
+        about_vendor: "",
+        stall_style: vendor.style ?? "",
+        schedule: "",
+        message: "",
+        synonyms: "",
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.legacy_id ?? 0) - (b.legacy_id ?? 0));
+}
+
 async function fetchEmbeddings(apiKey, inputs) {
   const response = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
@@ -94,47 +204,7 @@ async function main() {
   let totalProcessed = 0;
 
   while (true) {
-    const baseFields = [
-      "id",
-      "legacy_id",
-      "name",
-      "category",
-      "chome",
-      "side",
-      "position",
-      "lat",
-      "lng",
-      "description",
-      "products",
-      "specialty_dish",
-      "about_vendor",
-      "stall_style",
-      "schedule",
-      "message",
-    ];
-    let data = null;
-    let error = null;
-    const { data: firstData, error: firstError } = await supabase
-      .from("shops")
-      .select([...baseFields, "synonyms"].join(","))
-      .order("legacy_id", { ascending: true })
-      .range(from, from + pageSize - 1);
-    if (firstError && firstError.message.includes("synonyms")) {
-      const fallback = await supabase
-        .from("shops")
-        .select(baseFields.join(","))
-        .order("legacy_id", { ascending: true })
-        .range(from, from + pageSize - 1);
-      data = fallback.data;
-      error = fallback.error;
-    } else {
-      data = firstData;
-      error = firstError;
-    }
-
-    if (error) {
-      throw new Error(`Supabase error: ${error.message}`);
-    }
+    const data = await fetchRows(supabase, from, from + pageSize - 1);
 
     if (!data || data.length === 0) break;
 
@@ -157,7 +227,7 @@ async function main() {
     );
 
     const payload = rows.map((row, index) => ({
-      shop_id: row.id,
+      shop_id: row.legacy_id,
       content: row.content,
       embedding: embeddings[index],
     }));
@@ -171,7 +241,7 @@ async function main() {
     }
 
     totalProcessed += payload.length;
-    console.log(`Processed ${totalProcessed} shops...`);
+    console.log(`Processed ${totalProcessed} vendors...`);
     from += pageSize;
   }
 
