@@ -778,9 +778,9 @@ export default function MapEditClient() {
                   const key = `landmark-${Date.now()}`;
                   const next: EditableLandmark = {
                     key,
-                    name: "新しい建物",
+                    name: "",
                     description: "",
-                    url: "/images/maps/elements/buildings/Ohtepia.png",
+                    url: "",
                     lat: 33.56145,
                     lng: 133.5383,
                     widthPx: 128,
@@ -871,6 +871,18 @@ export default function MapEditClient() {
                   )
                 }
                 rows={3}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+              <input
+                value={selectedLandmark.url}
+                onChange={(event) =>
+                  setLandmarks((prev) =>
+                    prev.map((item) =>
+                      item.key === selectedLandmark.key ? { ...item, url: event.target.value } : item
+                    )
+                  )
+                }
+                placeholder="画像URL"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               />
               <div className="flex items-center justify-end gap-2">

@@ -43,17 +43,24 @@ function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void
   return null;
 }
 
-function createMarkerIcon(kind: "shop" | "landmark", isSelected: boolean, isUnassigned = false) {
+function createMarkerIcon(
+  kind: "shop" | "landmark",
+  isSelected: boolean,
+  isUnassigned = false,
+  isIncompleteLandmark = false
+) {
   const size = isSelected ? 26 : 18;
   const borderRadius = kind === "shop" ? "9999px" : "6px";
   const background =
-    kind === "shop" ? (isUnassigned ? "#94a3b8" : "#0284c7") : "#f97316";
+    kind === "shop"
+      ? (isUnassigned ? "#94a3b8" : "#0284c7")
+      : (isIncompleteLandmark ? "#c7926a" : "#f97316");
   const glow =
     kind === "shop"
       ? isUnassigned
         ? "rgba(148,163,184,.38)"
         : "rgba(2,132,199,.38)"
-      : "rgba(249,115,22,.38)";
+      : (isIncompleteLandmark ? "rgba(199,146,106,.38)" : "rgba(249,115,22,.38)");
   const outline = isSelected ? "0 0 0 6px rgba(255,255,255,.95), 0 0 0 10px rgba(15,23,42,.14)" : "";
 
   return L.divIcon({
@@ -99,9 +106,15 @@ export default function MapLayoutEditor({
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
     for (const landmark of landmarks) {
+      const isIncomplete = !landmark.name.trim() || !landmark.url.trim();
       icons.set(
         landmark.key,
-        createMarkerIcon("landmark", selectedKind === "landmark" && selectedId === landmark.key)
+        createMarkerIcon(
+          "landmark",
+          selectedKind === "landmark" && selectedId === landmark.key,
+          false,
+          isIncomplete
+        )
       );
     }
     return icons;
@@ -226,7 +239,10 @@ export default function MapLayoutEditor({
               <Marker
                 key={landmark.key}
                 position={[landmark.lat, landmark.lng]}
-                icon={landmarkIcons.get(landmark.key) ?? createMarkerIcon("landmark", false)}
+                icon={
+                  landmarkIcons.get(landmark.key) ??
+                  createMarkerIcon("landmark", false, false, !landmark.name.trim() || !landmark.url.trim())
+                }
                 draggable={selectedKind === "landmark" && selectedId === landmark.key}
                 eventHandlers={{
                   click: () => onSelect("landmark", landmark.key),
