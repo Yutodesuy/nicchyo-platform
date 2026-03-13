@@ -636,7 +636,7 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const keywords = extractKeywords(question);
     const shopIntent = isShopRelatedQuestion(normalized);
-    const selectedCharacters = pickConsultCharacters(question);
+    const selectedCharacters = pickConsultCharacters();
 
     let targetShop: Shop | null = null;
     if (targetShopId) {
