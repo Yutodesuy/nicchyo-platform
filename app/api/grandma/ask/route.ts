@@ -347,7 +347,8 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
 async function fetchCandidateVendorIds(
   supabase: SupabaseClient,
   keywords: string[],
-  targetShopName: string | null
+  targetShopName: string | null,
+  embedding: number[] | null
 ) {
   const vendorIds = new Set<string>();
   const searchWords = [...new Set([...(targetShopName ? [targetShopName] : []), ...keywords])]
@@ -395,6 +396,21 @@ async function fetchCandidateVendorIds(
         .limit(8);
       (categoryVendors ?? []).forEach((row) => {
         if (row.id) vendorIds.add(row.id);
+      });
+    }
+  }
+
+  if (embedding) {
+    const { data: embeddingMatches } = await supabase
+      .rpc("match_vendor_embeddings", {
+        query_embedding: embedding,
+        match_count: 8,
+        match_threshold: 0.45,
+      })
+      .returns<{ vendor_id: string; similarity: number }[]>();
+    if (Array.isArray(embeddingMatches)) {
+      embeddingMatches.forEach((row) => {
+        if (row.vendor_id) vendorIds.add(row.vendor_id);
       });
     }
   }
@@ -764,31 +780,6 @@ export async function POST(request: Request) {
       targetShop = await fetchShopByName(supabase, targetShopName);
     }
 
-    const candidateVendorIds = shopIntent
-      ? await fetchCandidateVendorIds(supabase, keywords, targetShopName)
-      : [];
-    if (targetShop?.vendorId) {
-      candidateVendorIds.unshift(targetShop.vendorId);
-    }
-    const candidateShops = await fetchShopsByVendorIds(
-      supabase,
-      Array.from(new Set(candidateVendorIds)).slice(0, 12)
-    );
-    if (
-      shopIntent &&
-      !targetShop &&
-      candidateShops.length === 0 &&
-      !imageDataUrl
-    ) {
-      return NextResponse.json(
-        buildErrorResponse(
-          "no_result",
-          selectedCharacters,
-          "ぴったり当てはまるお店は見つからんかったけんど、言い方を少し変えると探しやすくなるかもしれんね。"
-        )
-      );
-    }
-
     const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: {
@@ -832,6 +823,31 @@ export async function POST(request: Request) {
           }
         ),
         { status: 500 }
+      );
+    }
+
+    const candidateVendorIds = shopIntent
+      ? await fetchCandidateVendorIds(supabase, keywords, targetShopName, embedding)
+      : [];
+    if (targetShop?.vendorId) {
+      candidateVendorIds.unshift(targetShop.vendorId);
+    }
+    const candidateShops = await fetchShopsByVendorIds(
+      supabase,
+      Array.from(new Set(candidateVendorIds)).slice(0, 12)
+    );
+    if (
+      shopIntent &&
+      !targetShop &&
+      candidateShops.length === 0 &&
+      !imageDataUrl
+    ) {
+      return NextResponse.json(
+        buildErrorResponse(
+          "no_result",
+          selectedCharacters,
+          "ぴったり当てはまるお店は見つからんかったけんど、言い方を少し変えると探しやすくなるかもしれんね。"
+        )
       );
     }
 
