@@ -312,19 +312,6 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/vendor/store"
-                          onClick={closeMenu}
-                          className={menuItemClass('/vendor/store', 'hover:bg-amber-50')}
-                        >
-                          <MenuIcon name="store-edit" className={`h-5 w-5 ${isActive('/vendor/store') ? 'text-white' : 'text-amber-600'}`} />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">店舗情報編集</p>
-                            <p className={`text-xs ${isActive('/vendor/store') ? 'text-white/80' : 'text-gray-500'}`}>営業時間・商品・SNSなど</p>
-                          </div>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
                           href="/vendor/post/new"
                           onClick={closeMenu}
                           className={menuItemClass('/vendor/post/new', 'hover:bg-amber-50')}
@@ -338,14 +325,14 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/vendor/posts"
+                          href="/vendor/store"
                           onClick={closeMenu}
-                          className={menuItemClass('/vendor/posts', 'hover:bg-amber-50')}
+                          className={menuItemClass('/vendor/store', 'hover:bg-amber-50')}
                         >
-                          <MenuIcon name="list" className={`h-5 w-5 ${isActive('/vendor/posts') ? 'text-white' : 'text-amber-600'}`} />
+                          <MenuIcon name="store-edit" className={`h-5 w-5 ${isActive('/vendor/store') ? 'text-white' : 'text-amber-600'}`} />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">投稿履歴</p>
-                            <p className={`text-xs ${isActive('/vendor/posts') ? 'text-white/80' : 'text-gray-500'}`}>過去の投稿・再投稿</p>
+                            <p className="text-sm font-medium">店舗情報の更新</p>
+                            <p className={`text-xs ${isActive('/vendor/store') ? 'text-white/80' : 'text-gray-500'}`}>営業時間・商品・SNSなど</p>
                           </div>
                         </Link>
                       </li>
@@ -372,6 +359,19 @@ export default function HamburgerMenu() {
                           <div className="flex-1">
                             <p className="text-sm font-medium">AIばあちゃんに教える</p>
                             <p className={`text-xs ${isActive('/vendor/ai-knowledge') ? 'text-white/80' : 'text-gray-500'}`}>お店の情報を学習させる</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/account"
+                          onClick={closeMenu}
+                          className={menuItemClass('/vendor/account', 'hover:bg-amber-50')}
+                        >
+                          <MenuIcon name="user" className={`h-5 w-5 ${isActive('/vendor/account') ? 'text-white' : 'text-amber-600'}`} />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">アカウント設定</p>
+                            <p className={`text-xs ${isActive('/vendor/account') ? 'text-white/80' : 'text-gray-500'}`}>名前・メール・パスワード変更</p>
                           </div>
                         </Link>
                       </li>
