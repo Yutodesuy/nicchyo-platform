@@ -1,26 +1,134 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { grandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
-import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { buildGrandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
+import {
+  CONSULT_CHARACTER_BY_ID,
+  pickConsultCharacters,
+  type ConsultCharacter,
+  type ConsultCharacterId,
+} from "@/app/(public)/consult/data/consultCharacters";
+import type {
+  ConsultAskResponse,
+  ConsultHistoryEntry,
+  ConsultTurn,
+} from "@/app/(public)/consult/types/consultConversation";
+import type { Shop } from "@/app/(public)/map/data/shops";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ─── 日曜市エリア判定 ────────────────────────────────────────
-const MARKET_CENTER = { lat: 33.5650, lng: 133.5310 };
+const MARKET_CENTER = { lat: 33.565, lng: 133.531 };
 const ON_SITE_RADIUS_KM = 0.5;
 
+type VendorRow = {
+  id: string;
+  shop_name: string | null;
+  owner_name: string | null;
+  strength: string | null;
+  style: string | null;
+  style_tags: string[] | null;
+  category_id: string | null;
+  categories: { name: string | null }[] | { name: string | null } | null;
+  main_products: string[] | null;
+  main_product_prices: Record<string, number | null> | null;
+  payment_methods: string[] | null;
+  rain_policy: string | null;
+  schedule: string[] | null;
+};
+
+type ProductRow = {
+  vendor_id: string | null;
+  name: string | null;
+};
+
+type LocationRow = {
+  id: string;
+  store_number: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  district: string | null;
+};
+
+type AssignmentRow = {
+  vendor_id: string | null;
+  location_id: string | null;
+  market_date: string | null;
+};
+
+type ActiveContentRow = {
+  vendor_id: string | null;
+  body: string | null;
+  image_url: string | null;
+  expires_at: string;
+  created_at: string;
+};
+
+type CategoryRow = {
+  id: string;
+  name: string | null;
+};
+
+type KnowledgeRow = {
+  id: string;
+  category: string | null;
+  title: string | null;
+  content: string | null;
+  image_url: string | null;
+};
+
+type ParsedRequest = {
+  text: string;
+  location: { lat: number; lng: number } | null;
+  imageDataUrl: string | null;
+  targetShopId: number | null;
+  targetShopName: string | null;
+  history: ConsultHistoryEntry[];
+  memorySummary: string;
+};
+
+type StructuredConsultResponse = {
+  summary: string;
+  turns: { speakerId: ConsultCharacterId; text: string }[];
+  shopIds: number[];
+  imageUrl: string | null;
+};
+
+const CHOME_VALUES = new Set([
+  "一丁目",
+  "二丁目",
+  "三丁目",
+  "四丁目",
+  "五丁目",
+  "六丁目",
+  "七丁目",
+]);
+
+function normalizeChome(value: string | null): Shop["chome"] {
+  if (value && CHOME_VALUES.has(value)) {
+    return value as Shop["chome"];
+  }
+  return undefined;
+}
+
 function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const toRad = (v: number) => (v * Math.PI) / 180;
+  const toRad = (value: number) => (value * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(h));
 }
 
-function classifyLocationType(location: { lat: number; lng: number } | null | undefined): "pre_visit" | "on_site" | "unknown" {
-  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return "unknown";
-  return haversineKm(location, MARKET_CENTER) <= ON_SITE_RADIUS_KM ? "on_site" : "pre_visit";
+function classifyLocationType(
+  location: { lat: number; lng: number } | null | undefined
+): "pre_visit" | "on_site" | "unknown" {
+  if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+    return "unknown";
+  }
+  return haversineKm(location, MARKET_CENTER) <= ON_SITE_RADIUS_KM
+    ? "on_site"
+    : "pre_visit";
 }
 
 function classifyIntent(question: string): string {
@@ -33,114 +141,485 @@ function classifyIntent(question: string): string {
 }
 
 function extractKeywords(question: string): string[] {
-  const stopwords = /^(は|が|を|に|で|と|も|の|て|だ|な|や|か|から|まで|より|けど|ので|って|ね|よ|し|ている|てる|です|ます|ない|ある|いる|する|した|して|できる|ください|教え|知り|たい|たい|って)$/;
+  const stopwords =
+    /^(は|が|を|に|で|と|も|の|て|だ|な|や|か|から|まで|より|けど|ので|って|ね|よ|し|ている|てる|です|ます|ない|ある|いる|する|した|して|できる|ください|教え|知り|たい)$/;
   const tokens = question
-    .replace(/[、。！？\s]/g, " ")
+    .replace(/[、。！？,\s]/g, " ")
     .split(" ")
-    .map((t) => t.trim())
-    .filter((t) => t.length >= 2 && !stopwords.test(t));
-  return [...new Set(tokens)].slice(0, 10);
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !stopwords.test(token));
+  return [...new Set(tokens)].slice(0, 6);
 }
 
-type ShopRow = {
-  id: number;
-  vendorId?: string | null;
-  name: string | null;
-  owner_name: string | null;
-  chome: string | null;
-  category: string | null;
-  products: string[] | null;
-  description: string | null;
-  stall_style: string | null;
-  schedule: string | null;
-  message: string | null;
-  shop_strength: string | null;
-  lat: number | null;
-  lng: number | null;
-};
+function sanitizeLikeKeyword(value: string) {
+  return value.replace(/[%_,]/g, "").trim();
+}
 
-type KnowledgeRow = {
-  id: string;
-  category: string | null;
-  title: string | null;
-  content: string | null;
-  image_url: string | null;
-};
+function isShopRelatedQuestion(normalized: string): boolean {
+  return /お店|おすすめ|人気|売って|買い|食べ|飲み|野菜|果物|惣菜|お土産|アクセサリー|雑貨|道具|工具|植物|苗|花|ハンドメイド|工芸|ランチ|朝ごはん|おやつ|スイーツ|食材|食べ物/.test(
+    normalized
+  );
+}
+
+function buildHistoryContext(history: ConsultHistoryEntry[], memorySummary: string) {
+  const recentHistory = history.slice(-6);
+  const historyBlock =
+    recentHistory.length > 0
+      ? recentHistory
+          .map((entry) => {
+            const speaker =
+              entry.role === "assistant"
+                ? entry.speakerName || entry.speakerId || "assistant"
+                : "user";
+            return `${speaker}: ${entry.text}`;
+          })
+          .join("\n")
+      : "なし";
+
+  return [
+    `会話メモ: ${memorySummary || "まだ特記事項なし"}`,
+    `直近の会話:\n${historyBlock}`,
+  ].join("\n");
+}
+
+async function parseRequest(request: Request): Promise<ParsedRequest> {
+  const contentType = request.headers.get("content-type") ?? "";
+  let text = "";
+  let location: { lat: number; lng: number } | null = null;
+  let imageDataUrl: string | null = null;
+  let targetShopId: number | null = null;
+  let targetShopName: string | null = null;
+  let history: ConsultHistoryEntry[] = [];
+  let memorySummary = "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    text = typeof form.get("text") === "string" ? String(form.get("text")) : "";
+    if (typeof form.get("location") === "string") {
+      try {
+        location = JSON.parse(String(form.get("location"))) as {
+          lat: number;
+          lng: number;
+        } | null;
+      } catch {
+        location = null;
+      }
+    }
+    if (typeof form.get("shopId") === "string" && String(form.get("shopId")).trim()) {
+      const parsed = Number(form.get("shopId"));
+      targetShopId = Number.isFinite(parsed) ? parsed : null;
+    }
+    if (typeof form.get("shopName") === "string" && String(form.get("shopName")).trim()) {
+      targetShopName = String(form.get("shopName")).trim();
+    }
+    if (typeof form.get("history") === "string") {
+      try {
+        history = JSON.parse(String(form.get("history"))) as ConsultHistoryEntry[];
+      } catch {
+        history = [];
+      }
+    }
+    if (typeof form.get("memorySummary") === "string") {
+      memorySummary = String(form.get("memorySummary")).trim();
+    }
+    const formImage = form.get("image");
+    if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
+      const imageFile = formImage as File;
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const mime = imageFile.type || "image/jpeg";
+      imageDataUrl = `data:${mime};base64,${base64}`;
+    }
+  } else {
+    const payload = (await request.json()) as {
+      text?: string;
+      location?: { lat: number; lng: number } | null;
+      shopId?: number | null;
+      shopName?: string | null;
+      history?: ConsultHistoryEntry[];
+      memorySummary?: string;
+    };
+    text = payload.text ?? "";
+    location = payload.location ?? null;
+    targetShopId =
+      typeof payload.shopId === "number" && Number.isFinite(payload.shopId)
+        ? payload.shopId
+        : null;
+    targetShopName = payload.shopName?.trim() || null;
+    history = Array.isArray(payload.history) ? payload.history : [];
+    memorySummary = payload.memorySummary?.trim() || "";
+  }
+
+  return {
+    text: text.trim(),
+    location,
+    imageDataUrl,
+    targetShopId,
+    targetShopName,
+    history,
+    memorySummary,
+  };
+}
+
+async function fetchCandidateVendorIds(
+  supabase: SupabaseClient,
+  keywords: string[],
+  targetShopName: string | null
+) {
+  const vendorIds = new Set<string>();
+  const searchWords = [...new Set([...(targetShopName ? [targetShopName] : []), ...keywords])]
+    .map(sanitizeLikeKeyword)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  for (const word of searchWords) {
+    const { data: vendorMatches } = await supabase
+      .from("vendors")
+      .select("id")
+      .or(
+        [
+          `shop_name.ilike.%${word}%`,
+          `owner_name.ilike.%${word}%`,
+          `strength.ilike.%${word}%`,
+          `style.ilike.%${word}%`,
+        ].join(",")
+      )
+      .limit(8);
+    (vendorMatches ?? []).forEach((row) => {
+      if (row.id) vendorIds.add(row.id);
+    });
+
+    const { data: productMatches } = await supabase
+      .from("products")
+      .select("vendor_id")
+      .ilike("name", `%${word}%`)
+      .limit(10);
+    (productMatches ?? []).forEach((row) => {
+      if (row.vendor_id) vendorIds.add(row.vendor_id);
+    });
+
+    const { data: categoryMatches } = await supabase
+      .from("categories")
+      .select("id")
+      .ilike("name", `%${word}%`)
+      .limit(5);
+    const categoryIds = (categoryMatches ?? []).map((row) => row.id).filter(Boolean);
+    if (categoryIds.length > 0) {
+      const { data: categoryVendors } = await supabase
+        .from("vendors")
+        .select("id")
+        .in("category_id", categoryIds)
+        .limit(8);
+      (categoryVendors ?? []).forEach((row) => {
+        if (row.id) vendorIds.add(row.id);
+      });
+    }
+  }
+
+  return Array.from(vendorIds).slice(0, 12);
+}
+
+async function fetchShopsByVendorIds(
+  supabase: SupabaseClient,
+  vendorIds: string[]
+): Promise<Shop[]> {
+  if (vendorIds.length === 0) return [];
+
+  const [
+    { data: vendorsData },
+    { data: productsData },
+    { data: assignmentsData },
+    { data: activeContentsData },
+  ] = await Promise.all([
+    supabase
+      .from("vendors")
+      .select(
+        "id, shop_name, owner_name, strength, style, style_tags, category_id, categories(name), main_products, main_product_prices, payment_methods, rain_policy, schedule"
+      )
+      .in("id", vendorIds),
+    supabase.from("products").select("vendor_id, name").in("vendor_id", vendorIds),
+    supabase
+      .from("location_assignments")
+      .select("vendor_id, location_id, market_date")
+      .in("vendor_id", vendorIds),
+    supabase
+      .from("vendor_contents")
+      .select("vendor_id, body, image_url, expires_at, created_at")
+      .in("vendor_id", vendorIds)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const vendors = Array.isArray(vendorsData) ? (vendorsData as VendorRow[]) : [];
+  const products = Array.isArray(productsData) ? (productsData as ProductRow[]) : [];
+  const assignments = Array.isArray(assignmentsData)
+    ? (assignmentsData as AssignmentRow[])
+    : [];
+  const activeContents = Array.isArray(activeContentsData)
+    ? (activeContentsData as ActiveContentRow[])
+    : [];
+
+  const latestAssignmentByVendor = new Map<string, AssignmentRow>();
+  assignments.forEach((row) => {
+    if (!row.vendor_id || !row.location_id) return;
+    const current = latestAssignmentByVendor.get(row.vendor_id);
+    if (!current) {
+      latestAssignmentByVendor.set(row.vendor_id, row);
+      return;
+    }
+    const currentDate = current.market_date ? new Date(current.market_date) : null;
+    const nextDate = row.market_date ? new Date(row.market_date) : null;
+    if (!currentDate || (nextDate && nextDate > currentDate)) {
+      latestAssignmentByVendor.set(row.vendor_id, row);
+    }
+  });
+
+  const locationIds = Array.from(
+    new Set(
+      Array.from(latestAssignmentByVendor.values())
+        .map((row) => row.location_id)
+        .filter((value): value is string => !!value)
+    )
+  );
+
+  const { data: locationsData } =
+    locationIds.length > 0
+      ? await supabase
+          .from("market_locations")
+          .select("id, store_number, latitude, longitude, district")
+          .in("id", locationIds)
+      : { data: [] as LocationRow[] };
+
+  const locations = Array.isArray(locationsData) ? (locationsData as LocationRow[]) : [];
+
+  const productsByVendor = new Map<string, string[]>();
+  products.forEach((row) => {
+    if (!row.vendor_id || !row.name) return;
+    const list = productsByVendor.get(row.vendor_id) ?? [];
+    list.push(row.name);
+    productsByVendor.set(row.vendor_id, list);
+  });
+
+  const activeContentsByVendor = new Map<string, ActiveContentRow[]>();
+  activeContents.forEach((row) => {
+    if (!row.vendor_id) return;
+    const list = activeContentsByVendor.get(row.vendor_id) ?? [];
+    list.push(row);
+    activeContentsByVendor.set(row.vendor_id, list);
+  });
+
+  const locationById = new Map<string, LocationRow>();
+  locations.forEach((row) => {
+    if (row.id) locationById.set(row.id, row);
+  });
+
+  return vendors
+    .map((vendor): Shop | null => {
+      const assignment = latestAssignmentByVendor.get(vendor.id);
+      if (!assignment?.location_id) return null;
+      const location = locationById.get(assignment.location_id);
+      if (!location) return null;
+      const storeNumber = Number(location.store_number ?? 0);
+      if (!Number.isFinite(storeNumber) || storeNumber <= 0) return null;
+
+      const catRaw = vendor.categories;
+      const joinedCategoryName = Array.isArray(catRaw)
+        ? (catRaw[0]?.name ?? null)
+        : ((catRaw as { name: string | null } | null)?.name ?? null);
+      const displayProducts =
+        (vendor.main_products ?? []).length > 0
+          ? (vendor.main_products as string[])
+          : (productsByVendor.get(vendor.id) ?? []);
+      const scheduleStr = (vendor.schedule ?? []).join("、");
+      const contents = activeContentsByVendor.get(vendor.id) ?? [];
+      const activePosts =
+        contents.length > 0
+          ? contents.map((content) => ({
+              text: content.body ?? "",
+              imageUrl: content.image_url ?? undefined,
+              expiresAt: content.expires_at,
+              createdAt: content.created_at,
+            }))
+          : undefined;
+      const activePost = activePosts?.[0];
+
+      return {
+        id: storeNumber,
+        vendorId: vendor.id,
+        name: vendor.shop_name ?? "",
+        ownerName: vendor.owner_name ?? "",
+        category: joinedCategoryName ?? "",
+        products: displayProducts,
+        productPrices: (vendor.main_product_prices ?? undefined) as
+          | Record<string, number | null>
+          | undefined,
+        description: "",
+        stallStyle: vendor.style ?? undefined,
+        stallStyleTags:
+          (vendor.style_tags ?? []).length > 0
+            ? (vendor.style_tags as string[])
+            : undefined,
+        schedule: scheduleStr,
+        message: undefined,
+        shopStrength: vendor.strength ?? undefined,
+        paymentMethods: (vendor.payment_methods ?? []) as string[],
+        rainPolicy: vendor.rain_policy ?? undefined,
+        activePosts,
+        activePost,
+        position: storeNumber,
+        lat: Number(location.latitude ?? 0),
+        lng: Number(location.longitude ?? 0),
+        chome: normalizeChome(location.district),
+      };
+    })
+    .filter((shop): shop is Shop => shop !== null)
+    .sort((a, b) => a.id - b.id);
+}
+
+async function fetchShopByStoreNumber(
+  supabase: SupabaseClient,
+  storeNumber: number
+): Promise<Shop | null> {
+  const { data: locationsData } = await supabase
+    .from("market_locations")
+    .select("id")
+    .eq("store_number", storeNumber)
+    .limit(1);
+  const locationId = locationsData?.[0]?.id;
+  if (!locationId) return null;
+
+  const { data: assignmentsData } = await supabase
+    .from("location_assignments")
+    .select("vendor_id, market_date")
+    .eq("location_id", locationId)
+    .order("market_date", { ascending: false })
+    .limit(1);
+  const vendorId = assignmentsData?.[0]?.vendor_id;
+  if (!vendorId) return null;
+
+  const shops = await fetchShopsByVendorIds(supabase, [vendorId]);
+  return shops[0] ?? null;
+}
+
+async function fetchShopByName(
+  supabase: SupabaseClient,
+  shopName: string
+): Promise<Shop | null> {
+  const keyword = sanitizeLikeKeyword(shopName);
+  if (!keyword) return null;
+  const { data } = await supabase
+    .from("vendors")
+    .select("id")
+    .or(`shop_name.ilike.%${keyword}%,owner_name.ilike.%${keyword}%`)
+    .limit(1);
+  const vendorId = data?.[0]?.id;
+  if (!vendorId) return null;
+  const shops = await fetchShopsByVendorIds(supabase, [vendorId]);
+  return shops[0] ?? null;
+}
+
+function summarizeShops(shops: Shop[]) {
+  if (shops.length === 0) return "該当なし";
+  return shops
+    .slice(0, 6)
+    .map((shop) => {
+      const parts = [
+        `id:${shop.id}`,
+        shop.name ? `name:${shop.name}` : null,
+        shop.ownerName ? `owner:${shop.ownerName}` : null,
+        shop.category ? `category:${shop.category}` : null,
+        shop.products.length > 0 ? `products:${shop.products.join(" / ")}` : null,
+        shop.shopStrength ? `strength:${shop.shopStrength}` : null,
+        shop.schedule ? `schedule:${shop.schedule}` : null,
+      ].filter(Boolean);
+      return parts.join(" | ");
+    })
+    .join("\n");
+}
+
+function sortShopIdsByDistance(
+  ids: number[],
+  shops: Shop[],
+  location: { lat: number; lng: number } | null
+) {
+  if (!location) return ids;
+  return [...ids]
+    .map((id) => {
+      const shop = shops.find((candidate) => candidate.id === id);
+      if (!shop) return { id, distance: Number.POSITIVE_INFINITY };
+      return {
+        id,
+        distance: haversineKm(location, { lat: shop.lat, lng: shop.lng }),
+      };
+    })
+    .sort((a, b) => a.distance - b.distance)
+    .map((item) => item.id);
+}
+
+function buildResponseSchema(characters: ConsultCharacter[]) {
+  return {
+    type: "json_schema",
+    json_schema: {
+      name: "consult_duet_response",
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          summary: { type: "string" },
+          turns: {
+            type: "array",
+            minItems: 2,
+            maxItems: 4,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                speakerId: {
+                  type: "string",
+                  enum: characters.map((character) => character.id),
+                },
+                text: { type: "string" },
+              },
+              required: ["speakerId", "text"],
+            },
+          },
+          shopIds: {
+            type: "array",
+            maxItems: 3,
+            items: { type: "number" },
+          },
+          imageUrl: {
+            anyOf: [{ type: "string" }, { type: "null" }],
+          },
+        },
+        required: ["summary", "turns", "shopIds", "imageUrl"],
+      },
+    },
+  } as const;
+}
 
 export async function POST(request: Request) {
   try {
-    const contentType = request.headers.get("content-type") ?? "";
-    let text: string | undefined;
-    let location: { lat: number; lng: number } | null | undefined;
-    let imageDataUrl: string | null = null;
-    let targetShopId: number | null = null;
-    let targetShopName: string | null = null;
-
-    if (contentType.includes("multipart/form-data")) {
-      const form = await request.formData();
-      const formText = form.get("text");
-      const formLocation = form.get("location");
-      const formShopId = form.get("shopId");
-      const formShopName = form.get("shopName");
-      const formImage = form.get("image");
-      text = typeof formText === "string" ? formText : undefined;
-      if (typeof formLocation === "string") {
-        try {
-          location = JSON.parse(formLocation) as { lat: number; lng: number } | null;
-        } catch {
-          location = null;
-        }
-      }
-      if (typeof formShopId === "string" && formShopId.trim()) {
-        const parsed = Number(formShopId);
-        targetShopId = Number.isFinite(parsed) ? parsed : null;
-      }
-      if (typeof formShopName === "string" && formShopName.trim()) {
-        targetShopName = formShopName.trim();
-      }
-      if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
-        const imageFile = formImage as File;
-        const arrayBuffer = await imageFile.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
-        const mime = imageFile.type || "image/jpeg";
-        imageDataUrl = `data:${mime};base64,${base64}`;
-      }
-    } else {
-      const payload = (await request.json()) as {
-        text?: string;
-        location?: { lat: number; lng: number } | null;
-        shopId?: number | null;
-        shopName?: string | null;
-      };
-      text = payload.text;
-      location = payload.location;
-      targetShopId =
-        typeof payload.shopId === "number" && Number.isFinite(payload.shopId)
-          ? payload.shopId
-          : null;
-      targetShopName = payload.shopName?.trim() || null;
-    }
-
-    const rawQuestion = (text ?? "").trim();
-    const question = rawQuestion || (imageDataUrl ? "画像について教えて" : "");
+    const {
+      text,
+      location,
+      imageDataUrl,
+      targetShopId,
+      targetShopName,
+      history,
+      memorySummary,
+    } = await parseRequest(request);
+    const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
       return NextResponse.json({ reply: "質問を入力してね。" }, { status: 400 });
     }
 
     const normalized = question.replace(/\s+/g, "");
-    if (
-      normalized.includes("おばあちゃんは何者") ||
-      normalized.includes("おばあちゃん何者")
-    ) {
+    if (normalized.includes("おばあちゃんは何者") || normalized.includes("おばあちゃん何者")) {
       return NextResponse.json({
-        reply:
-          "高知の日曜市を案内するおせっかいばあちゃんやきね。困ったら何でも聞いてや。",
+        reply: "高知の日曜市を案内するにちよさんたちやきね。気軽に聞いてや。",
       });
     }
-
-    let shopIntent = /お店|おすすめ|人気|売って|買い|食べ|飲み|野菜|果物|惣菜|お土産|アクセサリー|雑貨|道具|工具|植物|苗|花|ハンドメイド|工芸|ランチ|朝ごはん|おやつ|スイーツ|食材|食べ物/.test(
-      normalized
-    );
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -151,6 +630,30 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const keywords = extractKeywords(question);
+    const shopIntent = isShopRelatedQuestion(normalized);
+    const selectedCharacters = pickConsultCharacters(question);
+
+    let targetShop: Shop | null = null;
+    if (targetShopId) {
+      targetShop = await fetchShopByStoreNumber(supabase, targetShopId);
+    }
+    if (!targetShop && targetShopName) {
+      targetShop = await fetchShopByName(supabase, targetShopName);
+    }
+
+    const candidateVendorIds = shopIntent
+      ? await fetchCandidateVendorIds(supabase, keywords, targetShopName)
+      : [];
+    if (targetShop?.vendorId) {
+      candidateVendorIds.unshift(targetShop.vendorId);
+    }
+    const candidateShops = await fetchShopsByVendorIds(
+      supabase,
+      Array.from(new Set(candidateVendorIds)).slice(0, 12)
+    );
 
     const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
@@ -180,123 +683,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const allShops: ShopRow[] = (await fetchShopsFromDb(supabase)).map((shop) => ({
-      id: shop.id,
-      vendorId: shop.vendorId ?? null,
-      name: shop.name ?? null,
-      owner_name: shop.ownerName ?? null,
-      chome: shop.chome ?? null,
-      category: shop.category ?? null,
-      products: shop.products ?? [],
-      description: shop.description ?? null,
-      stall_style: shop.stallStyle ?? null,
-      schedule: shop.schedule ?? null,
-      message: shop.message ?? null,
-      shop_strength: shop.shopStrength ?? null,
-      lat: shop.lat ?? null,
-      lng: shop.lng ?? null,
-    }));
-
-    let targetShop: ShopRow | null = null;
-    if (targetShopId || targetShopName) {
-      targetShop =
-        allShops.find((shop) => {
-          if (targetShopId && shop.id === targetShopId) return true;
-          if (targetShopName && shop.name) {
-            return shop.name.includes(targetShopName);
-          }
-          return false;
-        }) ?? null;
-    }
-
-    let shops: ShopRow[] = [];
-    let matchIds: number[] = [];
-
-    const shortQuery = normalized.length <= 6 && normalized.length > 0;
-    const nameQuery = question
-      .replace(/さん.*$/, "")
-      .replace(/のお店.*$/, "")
-      .trim();
-    const wantsOwnerSearch = question.includes("さん") || question.includes("のお店");
-    if (nameQuery.length > 0 && wantsOwnerSearch) {
-      const normalizedNameQuery = nameQuery.replace(/\s+/g, "");
-      let nameParts = nameQuery.split(/\s+/).filter(Boolean);
-      if (nameParts.length === 1 && normalizedNameQuery.length >= 3) {
-        nameParts = [
-          normalizedNameQuery.slice(0, 2),
-          normalizedNameQuery.slice(2),
-        ].filter(Boolean);
-      }
-      const safeDirectRows = allShops.filter((row) => {
-        const owner = (row.owner_name ?? "").replace(/\s+/g, "");
-        const shopName = (row.name ?? "").replace(/\s+/g, "");
-        if (owner.includes(normalizedNameQuery) || shopName.includes(normalizedNameQuery)) {
-          return true;
-        }
-        return nameParts.some((part) => owner.includes(part) || shopName.includes(part));
-      });
-      const useRows = safeDirectRows;
-      if (useRows.length > 0) {
-        shopIntent = true;
-        shops = useRows;
-        matchIds = shops.map((row) => row.id);
-      }
-    }
-
-    if (!shopIntent && shortQuery) {
-      const safeDirectRows = allShops.filter((row) => {
-        const products = row.products ?? [];
-        return products.some((item) => item.includes(normalized));
-      });
-      if (safeDirectRows.length > 0) {
-        shopIntent = true;
-        shops = safeDirectRows;
-        matchIds = shops.map((row) => row.id);
-      }
-    }
-
-    // 店舗名・オーナー名が質問に含まれていればshopIntentを設定（「〇〇について教えて」対応）
-    if (shops.length === 0) {
-      const nameMatches = allShops.filter((shop) => {
-        const shopName = (shop.name ?? "").replace(/\s+/g, "");
-        const ownerName = (shop.owner_name ?? "").replace(/\s+/g, "");
-        return (
-          (shopName.length >= 2 && normalized.includes(shopName)) ||
-          (ownerName.length >= 2 && normalized.includes(ownerName))
-        );
-      });
-      if (nameMatches.length > 0) {
-        shopIntent = true;
-        shops = nameMatches;
-        matchIds = nameMatches.map((s) => s.id);
-      }
-    }
-
-    if (shopIntent && shops.length === 0) {
-      const scored = allShops
-        .map((shop) => {
-          const name = shop.name ?? "";
-          const owner = shop.owner_name ?? "";
-          const category = shop.category ?? "";
-          const products = shop.products ?? [];
-          let score = 0;
-          if (name.includes(normalized)) score += 3;
-          if (owner.includes(normalized)) score += 2;
-          if (category.includes(normalized)) score += 2;
-          if (products.some((item) => item.includes(normalized))) score += 2;
-          return { shop, score };
-        })
-        .filter((row) => row.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 6)
-        .map((row) => row.shop);
-      if (scored.length > 0) {
-        shops = scored;
-        matchIds = scored.map((row) => row.id);
-      }
-    }
-
     const { data: knowledgeMatches } = await supabase
       .rpc("match_knowledge_embeddings", {
         query_embedding: embedding,
@@ -304,176 +690,78 @@ export async function POST(request: Request) {
         match_threshold: 0.55,
       })
       .returns<{ id: string; similarity: number }[]>();
-    const safeKnowledgeMatches = Array.isArray(knowledgeMatches)
-      ? knowledgeMatches
-      : [];
-    const knowledgeIds = safeKnowledgeMatches
-      .map((row) => row.id)
-      .filter(Boolean);
+    const safeKnowledgeMatches = Array.isArray(knowledgeMatches) ? knowledgeMatches : [];
+    const knowledgeIds = safeKnowledgeMatches.map((row) => row.id).filter(Boolean);
     let knowledgeRows: KnowledgeRow[] = [];
     if (knowledgeIds.length > 0) {
       const { data } = await supabase
         .from("knowledge_embeddings")
-        .select(["id", "category", "title", "content", "image_url"].join(","))
+        .select("id, category, title, content, image_url")
         .in("id", knowledgeIds);
-      knowledgeRows = (data ?? []) as unknown as KnowledgeRow[];
+      knowledgeRows = (data ?? []) as KnowledgeRow[];
+    }
+
+    let storeKnowledgeContext = "";
+    const ragVendorIds = Array.from(
+      new Set(
+        [
+          targetShop?.vendorId ?? null,
+          ...candidateShops.slice(0, 3).map((shop) => shop.vendorId ?? null),
+        ].filter((value): value is string => !!value)
+      )
+    );
+    if (ragVendorIds.length > 0) {
+      const knowledgeResults = await Promise.all(
+        ragVendorIds.map(async (vendorId) => {
+          const result = await supabase.rpc("match_store_knowledge", {
+            query_embedding: embedding,
+            target_store_id: vendorId,
+            match_count: 2,
+            match_threshold: 0.45,
+          });
+          return result as { data: { content: string; similarity: number }[] | null };
+        })
+      );
+      const snippets = knowledgeResults
+        .flatMap((result) => result.data ?? [])
+        .sort((a, b) => b.similarity - a.similarity)
+        .map((row) => row.content)
+        .filter(Boolean);
+      if (snippets.length > 0) {
+        storeKnowledgeContext = snippets.join("\n---\n");
+      }
     }
 
     const knowledgeContext =
       knowledgeRows.length > 0
         ? knowledgeRows
             .map((row) => {
-              const parts = [
+              return [
                 `id:${row.id}`,
                 row.category ? `category:${row.category}` : null,
                 row.title ? `title:${row.title}` : null,
                 row.content ? `content:${row.content}` : null,
                 row.image_url ? `image_url:${row.image_url}` : null,
-              ].filter(Boolean);
-              return parts.join(" | ");
+              ]
+                .filter(Boolean)
+                .join(" | ");
             })
             .join("\n")
         : "該当なし";
-    let shopContext =
-      shops.length > 0
-        ? shops
-            .map((shop) => {
-              const parts = [
-                `id:${shop.id}`,
-                shop.name ? `name:${shop.name}` : null,
-                shop.owner_name ? `owner:${shop.owner_name}` : null,
-                shop.category ? `category:${shop.category}` : null,
-                shop.products?.length
-                  ? `products:${shop.products.join(" / ")}`
-                  : null,
-                shop.description ? `desc:${shop.description}` : null,
-                shop.shop_strength ? `strength:${shop.shop_strength}` : null,
-                shop.message ? `message:${shop.message}` : null,
-              ].filter(Boolean);
-              return parts.join(" | ");
-            })
-            .join("\n")
-        : "該当なし";
-    // ─── 出店者RAG知識を検索 ──────────────────────────────────
-    let storeKnowledgeContext = "";
-    const ragTargetVendorIds: string[] = [];
-    if (targetShop?.vendorId) ragTargetVendorIds.push(targetShop.vendorId);
-    if (ragTargetVendorIds.length === 0 && matchIds.length > 0) {
-      matchIds.slice(0, 3).forEach((storeNum) => {
-        const s = allShops.find((sh) => sh.id === storeNum);
-        if (s?.vendorId) ragTargetVendorIds.push(s.vendorId);
-      });
-    }
-    if (ragTargetVendorIds.length > 0 && embedding) {
-      const knowledgeResults = await Promise.all(
-        ragTargetVendorIds.map(async (vendorId) => {
-          const res = await supabase.rpc("match_store_knowledge", {
-            query_embedding: embedding,
-            target_store_id: vendorId,
-            match_count: 2,
-            match_threshold: 0.45,
-          });
-          return res as { data: { content: string; similarity: number }[] | null };
-        })
-      );
-      const knowledgeSnippets = knowledgeResults
-        .flatMap((r) => r.data ?? [])
-        .sort((a, b) => b.similarity - a.similarity)
-        .map((r) => r.content)
-        .filter(Boolean);
-      if (knowledgeSnippets.length > 0) {
-        storeKnowledgeContext = `\n出店者からの店舗情報:\n${knowledgeSnippets.join("\n---\n")}`;
-      }
-    }
-    // store_knowledge 未登録の場合、店舗登録情報をフォールバックとして使用
-    if (!storeKnowledgeContext) {
-      const fallbackShops = targetShop
-        ? [targetShop]
-        : matchIds.slice(0, 3).map((id) => allShops.find((s) => s.id === id)).filter((s): s is ShopRow => s != null);
-      const fallbackSnippets = fallbackShops
-        .map((shop) => {
-          const parts = [
-            shop.owner_name ? `店主: ${shop.owner_name}` : null,
-            shop.shop_strength ? `こだわり: ${shop.shop_strength}` : null,
-            shop.products?.length ? `商品: ${shop.products.join(", ")}` : null,
-            shop.stall_style ? `出店スタイル: ${shop.stall_style}` : null,
-            shop.schedule ? `出店予定: ${shop.schedule}` : null,
-            shop.message ? `メッセージ: ${shop.message}` : null,
-          ].filter(Boolean);
-          return parts.length > 0 ? parts.join("\n") : null;
-        })
-        .filter(Boolean);
-      if (fallbackSnippets.length > 0) {
-        storeKnowledgeContext = `\n出店者からの店舗情報:\n${fallbackSnippets.join("\n---\n")}`;
-      }
-    }
-    // ──────────────────────────────────────────────────────────
 
-    if (targetShop) {
-      shopIntent = true;
-      const targetParts = [
-        `id:${targetShop.id}`,
-        targetShop.name ? `name:${targetShop.name}` : null,
-        targetShop.owner_name ? `owner:${targetShop.owner_name}` : null,
-        targetShop.category ? `category:${targetShop.category}` : null,
-        targetShop.products?.length
-          ? `products:${targetShop.products.join(" / ")}`
-          : null,
-        targetShop.shop_strength ? `strength:${targetShop.shop_strength}` : null,
-      ].filter(Boolean);
-      if (targetParts.length > 0) {
-        const targetContext = `TARGET_SHOP: ${targetParts.join(" | ")}`;
-        shopContext = `${targetContext}\n${shopContext}`.trim();
-        shops = [targetShop, ...shops.filter((shop) => shop.id !== targetShop!.id)];
-        matchIds = [targetShop.id, ...matchIds.filter((id) => id !== targetShop!.id)];
-        matchIds = Array.from(new Set(matchIds));
-      }
-    }
+    const userContextText = [
+      buildHistoryContext(history, memorySummary),
+      `今回の質問: ${text || "（画像についての相談）"}`,
+      `位置情報: ${location ? `${location.lat}, ${location.lng}` : "不明"}`,
+      targetShop
+        ? `注目中の店舗: id:${targetShop.id} | name:${targetShop.name} | owner:${targetShop.ownerName}`
+        : "注目中の店舗: なし",
+      `店舗候補:\n${summarizeShops(targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops)}`,
+      `共通知識:\n${knowledgeContext}`,
+      `出店者知識:\n${storeKnowledgeContext || "該当なし"}`,
+      `選ばれた話者: ${selectedCharacters.map((character) => character.name).join(" / ")}`,
+    ].join("\n\n");
 
-    const haversine = (
-      a: { lat: number; lng: number },
-      b: { lat: number; lng: number }
-    ) => {
-      const toRad = (value: number) => (value * Math.PI) / 180;
-      const dLat = toRad(b.lat - a.lat);
-      const dLng = toRad(b.lng - a.lng);
-      const lat1 = toRad(a.lat);
-      const lat2 = toRad(b.lat);
-      const sinDLat = Math.sin(dLat / 2);
-      const sinDLng = Math.sin(dLng / 2);
-      const h =
-        sinDLat * sinDLat +
-        Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
-      return 2 * 6371 * Math.asin(Math.sqrt(h));
-    };
-    const hasLocation =
-      location && Number.isFinite(location.lat) && Number.isFinite(location.lng);
-    const sortLegacyByDistance = (
-      ids: number[],
-      rows: Array<{ id: number; lat: number | null; lng: number | null }>
-    ) => {
-      if (!hasLocation) return ids;
-      const loc = { lat: location!.lat, lng: location!.lng };
-      return [...ids]
-        .map((id) => {
-          const row = rows.find((shop) => shop.id === id);
-          if (!row || row.lat == null || row.lng == null) {
-            return { id, dist: null };
-          }
-          return { id, dist: haversine(loc, { lat: row.lat, lng: row.lng }) };
-        })
-        .sort((a, b) => {
-          if (a.dist === null && b.dist === null) return 0;
-          if (a.dist === null) return 1;
-          if (b.dist === null) return -1;
-          return a.dist - b.dist;
-        })
-        .map((item) => item.id);
-    };
-
-    const userContextText = `ユーザー質問: ${rawQuestion || "（画像のみ）"}\n現在位置: ${
-      location ? `${location.lat}, ${location.lng}` : "不明"
-    }\n店舗情報:\n${shopContext}\n知識ベース:\n${knowledgeContext}${storeKnowledgeContext}`;
     const userContent = imageDataUrl
       ? [
           { type: "text", text: `${userContextText}\n画像が添付されています。` },
@@ -489,10 +777,14 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        temperature: 0.4,
-        max_tokens: 200,
+        temperature: 0.7,
+        max_tokens: 500,
+        response_format: buildResponseSchema(selectedCharacters),
         messages: [
-          { role: "system", content: grandmaAiSystemPrompt },
+          {
+            role: "system",
+            content: buildGrandmaAiSystemPrompt(selectedCharacters),
+          },
           {
             role: "user",
             content: userContent,
@@ -506,72 +798,84 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
     const chatPayload = (await chatResponse.json()) as {
       choices?: { message?: { content?: string } }[];
     };
-    const rawReply =
-      chatPayload.choices?.[0]?.message?.content?.trim() ??
-      "うまく調べられんかったき、もう一回聞いてみて。";
+    const rawStructured =
+      chatPayload.choices?.[0]?.message?.content?.trim() ?? "";
+    const structured = JSON.parse(rawStructured) as StructuredConsultResponse;
 
-    const imageMatch = rawReply.match(/IMAGE_URL:\s*(\S+)/i);
-    let reply = imageMatch ? rawReply.replace(imageMatch[0], "").trim() : rawReply;
-    const imageUrl = imageMatch?.[1];
-    const shopMatch = reply.match(/SHOP_IDS:\s*([0-9,\s]+)/i);
-    const shopIds = shopMatch
-      ? shopMatch[1]
-          .split(",")
-          .map((value) => Number(value.trim()))
-          .filter((value) => Number.isFinite(value))
-      : [];
+    const turns: ConsultTurn[] = (structured.turns ?? [])
+      .map((turn) => {
+        const character = CONSULT_CHARACTER_BY_ID.get(turn.speakerId);
+        if (!character) return null;
+        return {
+          speakerId: character.id,
+          speakerName: character.name,
+          text: String(turn.text ?? "").trim(),
+        } satisfies ConsultTurn;
+      })
+      .filter((turn): turn is ConsultTurn => !!turn && turn.text.length > 0)
+      .slice(0, 4);
 
-    let recommendedIds = shopIds;
-    if (recommendedIds.length > 0 && hasLocation && shopIntent) {
-      recommendedIds = sortLegacyByDistance(recommendedIds, shops);
-    }
-    if (recommendedIds.length === 0 && shopIntent && matchIds.length > 0) {
-      recommendedIds = sortLegacyByDistance(matchIds, shops);
-    }
+    const recommendedIds = sortShopIdsByDistance(
+      Array.from(
+        new Set(
+          (structured.shopIds ?? [])
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value))
+        )
+      ).slice(0, 3),
+      targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops,
+      location
+    );
 
-    const uniqueRecommended = Array.from(new Set(recommendedIds)).slice(0, 3);
-    if (shopMatch) {
-      reply = reply.replace(shopMatch[0], "").trim();
-    }
+    const recommendedShops = (
+      targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops
+    ).filter((shop) => recommendedIds.includes(shop.id));
 
-    // ─── AI相談ログを記録（fire-and-forget） ────────────────
+    const finalRecommendedShops =
+      recommendedShops.length > 0 || !shopIntent
+        ? recommendedShops
+        : (targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops).slice(0, 3);
+
+    const reply =
+      turns.map((turn) => `${turn.speakerName}: ${turn.text}`).join("\n") ||
+      "うまく答えがまとまらんかったき、もう一回聞いてみてね。";
+
     const locationType = classifyLocationType(location);
-    const intentCategory = classifyIntent(rawQuestion);
-    const keywords = extractKeywords(rawQuestion);
-
-    const logTargetVendorIds: string[] = [];
-    if (targetShop?.vendorId) logTargetVendorIds.push(targetShop.vendorId);
-    if (logTargetVendorIds.length === 0 && uniqueRecommended.length > 0) {
-      uniqueRecommended.forEach((storeNum) => {
-        const shop = allShops.find((s) => s.id === storeNum);
-        if (shop?.vendorId) logTargetVendorIds.push(shop.vendorId);
-      });
-    }
-
-    if (logTargetVendorIds.length > 0) {
-      const logs = logTargetVendorIds.map((vendorId) => ({
+    const intentCategory = classifyIntent(text);
+    const logVendorIds = Array.from(
+      new Set(
+        finalRecommendedShops
+          .map((shop) => shop.vendorId)
+          .filter((value): value is string => !!value)
+      )
+    );
+    if (logVendorIds.length > 0) {
+      const logs = logVendorIds.map((vendorId) => ({
         store_id: vendorId,
-        question_text: rawQuestion || "(画像のみ)",
+        question_text: text || "(画像のみ)",
         intent_category: intentCategory,
         keywords,
         location_type: locationType,
-        is_recommendation: uniqueRecommended.some((storeNum) => {
-          const s = allShops.find((sh) => sh.id === storeNum);
-          return s?.vendorId === vendorId;
-        }),
+        is_recommendation: true,
       }));
       supabase.from("ai_consult_logs").insert(logs).then(() => {});
     }
-    // ──────────────────────────────────────────────────────────
 
-    if (!shopIntent || uniqueRecommended.length === 0) {
-      return NextResponse.json({ reply, imageUrl });
-    }
+    const response: ConsultAskResponse = {
+      reply,
+      imageUrl: structured.imageUrl ?? undefined,
+      shopIds: finalRecommendedShops.map((shop) => shop.id),
+      shops: finalRecommendedShops,
+      turns,
+      memorySummary: structured.summary?.trim() || memorySummary,
+      retryable: false,
+    };
 
-    return NextResponse.json({ reply, imageUrl, shopIds: uniqueRecommended });
+    return NextResponse.json(response);
   } catch {
     return NextResponse.json(
       { reply: "うまく調べられんかったき、もう一回聞いてみて。" },

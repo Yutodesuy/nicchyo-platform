@@ -10,47 +10,20 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import MessageBubble from "../../consult/components/MessageBubble";
+import {
+  CONSULT_CHARACTERS,
+  CONSULT_CHARACTER_BY_ID,
+  type ConsultCharacterId,
+} from "../../consult/data/consultCharacters";
+import type {
+  ConsultAskResponse,
+  ConsultHistoryEntry,
+} from "../../consult/types/consultConversation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 import type { Shop } from "../data/shops";
 import ShopResultCard from "../../search/components/ShopResultCard";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
-
-const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
-const CONSULT_CHARACTER_SHOWCASE = [
-  {
-    id: "nichiyosan",
-    name: "にちよさん",
-    subtitle: "市場のことをなんでもつないでくれる案内役",
-    image: PLACEHOLDER_IMAGE,
-    imageScale: "scale-125",
-    imagePosition: "center 28%",
-  },
-  {
-    id: "ojichan",
-    name: "よういちさん",
-    subtitle: "昔話や旬の話に強い、市場の語り部",
-    image: "/images/characters/ojichan.png",
-    imageScale: "scale-125",
-    imagePosition: "center 14%",
-  },
-  {
-    id: "onisan",
-    name: "みらいくん",
-    subtitle: "歩き方や買い回りのコツを教えてくれる",
-    image: "/images/characters/onisan.png",
-    imageScale: "scale-125",
-    imagePosition: "center 12%",
-  },
-  {
-    id: "onesan",
-    name: "よさこちゃん",
-    subtitle: "おすすめや見どころを軽やかに案内してくれる",
-    image: "/images/characters/onesan.png",
-    imageScale: "scale-125",
-    imagePosition: "center 22%",
-  },
-] as const;
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
@@ -63,19 +36,22 @@ type PriorityMessage = {
 
 type AskContext = { shopId?: number; shopName?: string; source?: "suggestion" | "input" };
 
-type AskResponse = {
-  reply: string;
-  imageUrl?: string;
-  shopIds?: number[];
-  errorMessage?: string;
-  retryable?: boolean;
-};
-
 type PendingSubmission = {
   text: string;
   imageFile?: File | null;
   imagePreview?: string | null;
   context?: AskContext;
+};
+
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  imageUrl?: string;
+  shopIds?: number[];
+  localImageUrl?: string;
+  speakerId?: ConsultCharacterId;
+  speakerName?: string;
 };
 
 type GrandmaChatterProps = {
@@ -87,8 +63,10 @@ type GrandmaChatterProps = {
   onAsk?: (
     text: string,
     imageFile?: File | null,
-    context?: AskContext
-  ) => Promise<AskResponse>;
+    context?: AskContext,
+    history?: ConsultHistoryEntry[],
+    memorySummary?: string
+  ) => Promise<ConsultAskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number) => void;
@@ -146,19 +124,11 @@ export default function GrandmaChatter({
   );
   const [askText, setAskText] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(initialOpen);
-  const [chatMessages, setChatMessages] = useState<
-    Array<{
-      id: string;
-      role: "user" | "assistant";
-      text: string;
-      imageUrl?: string;
-      shopIds?: number[];
-      localImageUrl?: string;
-    }>
-  >([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [hasUserAsked, setHasUserAsked] = useState(false);
   const [hasProcessedAutoAsk, setHasProcessedAutoAsk] = useState(false);
+  const [conversationSummary, setConversationSummary] = useState("");
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
@@ -349,8 +319,7 @@ export default function GrandmaChatter({
   useEffect(() => {
     if (layout !== "page") return;
     if (typeof window === "undefined") return;
-    const today = new Date().toISOString().slice(0, 10);
-    const key = `nicchyo-consult-chat-${today}`;
+    const key = "nicchyo-consult-chat";
     chatStorageKeyRef.current = key;
     const saved = localStorage.getItem(key);
     if (!saved) {
@@ -359,22 +328,11 @@ export default function GrandmaChatter({
     }
     try {
       const parsed = JSON.parse(saved) as
-        | Array<{
-            id: string;
-            role: "user" | "assistant";
-            text: string;
-            imageUrl?: string;
-            shopIds?: number[];
-          }>
+        | ChatMessage[]
         | {
-            messages: Array<{
-              id: string;
-              role: "user" | "assistant";
-              text: string;
-              imageUrl?: string;
-              shopIds?: number[];
-            }>;
+            messages: ChatMessage[];
             hasUserAsked?: boolean;
+            conversationSummary?: string;
           };
       const messages = Array.isArray(parsed) ? parsed : parsed.messages;
       if (Array.isArray(messages) && messages.length > 0) {
@@ -384,6 +342,9 @@ export default function GrandmaChatter({
             ? messages.some((message) => message.role === "user")
             : !!parsed.hasUserAsked || messages.some((message) => message.role === "user")
         );
+      }
+      if (!Array.isArray(parsed) && parsed.conversationSummary) {
+        setConversationSummary(parsed.conversationSummary);
       }
     } catch {
       // ignore malformed history
@@ -494,15 +455,18 @@ export default function GrandmaChatter({
       text: message.text,
       imageUrl: message.imageUrl,
       shopIds: message.shopIds,
+      speakerId: message.speakerId,
+      speakerName: message.speakerName,
     }));
     localStorage.setItem(
       chatStorageKeyRef.current,
       JSON.stringify({
         messages: serializable,
         hasUserAsked,
+        conversationSummary,
       })
     );
-  }, [chatMessages, hasLoadedHistory, hasUserAsked, layout]);
+  }, [chatMessages, conversationSummary, hasLoadedHistory, hasUserAsked, layout]);
 
   useEffect(() => {
     if (!isChatOpen) return;
@@ -676,9 +640,23 @@ export default function GrandmaChatter({
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
     const requestId = ++askRequestRef.current;
+    const historyForRequest: ConsultHistoryEntry[] = chatMessages
+      .slice(-8)
+      .map((message) => ({
+        role: message.role,
+        text: message.text,
+        speakerId: message.speakerId ?? null,
+        speakerName: message.speakerName ?? null,
+      }));
     try {
       const response = onAsk
-        ? await onAsk(value, imageFile ?? undefined, submission.context)
+        ? await onAsk(
+            value,
+            imageFile ?? undefined,
+            submission.context,
+            historyForRequest,
+            conversationSummary
+          )
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       const reply =
@@ -689,16 +667,40 @@ export default function GrandmaChatter({
       setAiImageUrl(response.imageUrl ?? null);
       setErrorNotice(response.errorMessage ?? null);
       setLastFailedSubmission(isRetryableError ? submission : null);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: reply,
-          imageUrl: response.imageUrl,
-          shopIds: response.shopIds,
-        },
-      ]);
+      if (response.memorySummary) {
+        setConversationSummary(response.memorySummary);
+      }
+      const turns =
+        response.turns && response.turns.length > 0
+          ? response.turns
+          : [
+              {
+                speakerId: "nichiyosan" as const,
+                speakerName: "にちよさん",
+                text: reply,
+              },
+            ];
+      for (let index = 0; index < turns.length; index += 1) {
+        const turn = turns[index];
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}-${index}`,
+            role: "assistant",
+            text: turn.text,
+            imageUrl: index === turns.length - 1 ? response.imageUrl : undefined,
+            shopIds: index === turns.length - 1 ? response.shopIds : undefined,
+            speakerId: turn.speakerId,
+            speakerName: turn.speakerName,
+          },
+        ]);
+        if (index < turns.length - 1) {
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, 380 + index * 180)
+          );
+          if (requestId !== askRequestRef.current) return;
+        }
+      }
     } catch {
       if (requestId !== askRequestRef.current) return;
       setAiStatus("error");
@@ -933,12 +935,15 @@ export default function GrandmaChatter({
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
   const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
   const activeConsultHero =
-    CONSULT_CHARACTER_SHOWCASE[consultHeroIndex % CONSULT_CHARACTER_SHOWCASE.length];
+    CONSULT_CHARACTERS[consultHeroIndex % CONSULT_CHARACTERS.length];
+  const defaultConsultSpeaker = CONSULT_CHARACTERS[0];
+  const getSpeakerCharacter = (speakerId?: ConsultCharacterId) =>
+    (speakerId ? CONSULT_CHARACTER_BY_ID.get(speakerId) : null) ?? defaultConsultSpeaker;
 
   useEffect(() => {
     if (!isConsultVariant) return;
     const timer = window.setInterval(() => {
-      setConsultHeroIndex((prev) => (prev + 1) % CONSULT_CHARACTER_SHOWCASE.length);
+      setConsultHeroIndex((prev) => (prev + 1) % CONSULT_CHARACTERS.length);
     }, 3200);
     return () => window.clearInterval(timer);
   }, [isConsultVariant]);
@@ -974,7 +979,7 @@ export default function GrandmaChatter({
               {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
               <div className="absolute inset-1 overflow-hidden rounded-xl bg-transparent">
                 <img
-                  src={PLACEHOLDER_IMAGE}
+                  src={defaultConsultSpeaker.image}
                   alt="おせっかいばあちゃん"
                   className="h-full w-full scale-110 object-cover object-center select-none"
                   draggable={false}
@@ -1020,7 +1025,9 @@ export default function GrandmaChatter({
             aria-label="おばあちゃんとの会話"
           >
             <div className="flex items-center justify-between gap-3 pb-3">
-              <div className={`text-sm font-semibold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>にちよさんAI</div>
+              <div className={`text-sm font-semibold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                {isConsultVariant ? "日曜市のみんな" : "にちよさんAI"}
+              </div>
               <div className="flex items-center gap-3">
                 {aiStatus !== "idle" && (
                   <Badge variant="secondary" className="text-[11px]">
@@ -1036,6 +1043,7 @@ export default function GrandmaChatter({
                         if (window.confirm("これまでの会話を消してもいいですか？")) {
                           setChatMessages([]);
                           setHasUserAsked(false);
+                          setConversationSummary("");
                           setErrorNotice(null);
                           setLastFailedSubmission(null);
                           onClear?.();
@@ -1066,7 +1074,7 @@ export default function GrandmaChatter({
                     }`}
                   >
                     <img
-                      src={isConsultVariant ? activeConsultHero.image : PLACEHOLDER_IMAGE}
+                      src={isConsultVariant ? activeConsultHero.image : defaultConsultSpeaker.image}
                       alt={isConsultVariant ? activeConsultHero.name : "にちよさん"}
                       className={`h-full w-full object-cover transition-all duration-500 ${
                         isConsultVariant ? activeConsultHero.imageScale : "scale-110"
@@ -1089,7 +1097,10 @@ export default function GrandmaChatter({
                   </div>
                 </div>
 
-              {chatMessages.map((message) => (
+              {chatMessages.map((message) => {
+                const speakerCharacter = getSpeakerCharacter(message.speakerId);
+                const speakerName = message.speakerName ?? speakerCharacter.name;
+                return (
                 <div
                   key={message.id}
                   className={`flex ${
@@ -1101,9 +1112,10 @@ export default function GrandmaChatter({
                       <div className="mt-1 flex-shrink-0">
                         <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
                           <img
-                            src={PLACEHOLDER_IMAGE}
-                            alt="にちよさん"
-                            className="h-full w-full scale-110 object-cover object-center"
+                            src={speakerCharacter.image}
+                            alt={speakerName}
+                            className={`h-full w-full object-cover ${speakerCharacter.imageScale}`}
+                            style={{ objectPosition: speakerCharacter.imagePosition }}
                             draggable={false}
                           />
                         </div>
@@ -1111,9 +1123,9 @@ export default function GrandmaChatter({
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2 pl-1">
                           <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
-                            NIChIYO VOICE
+                            SUNDAY VOICE
                           </span>
-                          <span className="text-sm font-semibold text-slate-700">にちよさん</span>
+                          <span className="text-sm font-semibold text-slate-700">{speakerName}</span>
                         </div>
                         <MessageBubble
                           role={message.role}
@@ -1186,7 +1198,7 @@ export default function GrandmaChatter({
                         <div className="flex-shrink-0">
                           <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
                             <img
-                              src={PLACEHOLDER_IMAGE}
+                              src={defaultConsultSpeaker.image}
                               alt="にちよさん"
                               className="h-full w-full scale-110 object-cover object-center"
                               draggable={false}
@@ -1255,16 +1267,17 @@ export default function GrandmaChatter({
                     </>
                   )}
                 </div>
-              ))}
+              )})}
               {aiStatus === "thinking" && (
                 isConsultVariant ? (
                   <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
                     <div className="mt-1 flex-shrink-0">
                       <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
                         <img
-                          src={PLACEHOLDER_IMAGE}
-                          alt="にちよさん"
-                          className="h-full w-full scale-110 object-cover object-center"
+                          src={activeConsultHero.image}
+                          alt={activeConsultHero.name}
+                          className={`h-full w-full object-cover ${activeConsultHero.imageScale}`}
+                          style={{ objectPosition: activeConsultHero.imagePosition }}
                           draggable={false}
                         />
                       </div>
@@ -1272,9 +1285,9 @@ export default function GrandmaChatter({
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex items-center gap-2 pl-1">
                         <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
-                          NIChIYO VOICE
+                          SUNDAY VOICE
                         </span>
-                        <span className="text-sm font-semibold text-slate-700">にちよさん</span>
+                        <span className="text-sm font-semibold text-slate-700">{activeConsultHero.name}</span>
                       </div>
                       <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-sm text-slate-800 shadow-sm">
                         <div className="flex items-center gap-2">
@@ -1292,7 +1305,7 @@ export default function GrandmaChatter({
                     <div className="flex-shrink-0">
                       <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
                         <img
-                          src={PLACEHOLDER_IMAGE}
+                          src={defaultConsultSpeaker.image}
                           alt="にちよさん"
                           className="h-full w-full scale-110 object-cover object-center"
                           draggable={false}
@@ -1382,7 +1395,7 @@ export default function GrandmaChatter({
               ) : showBubbleAvatar ? (
                 <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-transparent" aria-hidden="true">
                   <img
-                    src={PLACEHOLDER_IMAGE}
+                    src={defaultConsultSpeaker.image}
                     alt=""
                     className="h-full w-full object-cover"
                     draggable={false}
