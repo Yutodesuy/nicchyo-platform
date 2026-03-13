@@ -134,7 +134,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           />
         </div>
       </main>
-      <NavigationBar activeHref="/consult" position="absolute" />
+      <NavigationBar activeHref="/consult" />
     </div>
   );
 }
