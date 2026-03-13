@@ -1963,11 +1963,13 @@ function ConsultShopSuggestionCard({
     getShopBannerImage(shop.category, shop.position ?? shop.id);
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelectShop?.(shop.id)}
-      className="w-full rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"
-    >
+    <div className="relative w-full rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60">
+      <button
+        type="button"
+        onClick={() => onSelectShop?.(shop.id)}
+        className="absolute inset-0 rounded-2xl"
+        aria-label={`${shop.name}の詳細を見る`}
+      />
       <div className="flex items-start gap-3">
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-amber-100 bg-amber-50">
           <img
@@ -2011,6 +2013,6 @@ function ConsultShopSuggestionCard({
           </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
