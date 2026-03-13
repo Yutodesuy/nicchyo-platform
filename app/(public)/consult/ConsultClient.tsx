@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
+import ConsultChatLayout from "./components/ConsultChatLayout";
 import { grandmaComments } from "../map/data/grandmaComments";
 import type { Shop } from "../map/data/shops";
 
@@ -100,20 +101,28 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
         }}
         aria-hidden="true"
       />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
-        <GrandmaChatter
-          titleLabel="にちよさん"
-          fullWidth
-          comments={grandmaComments}
-          onAsk={handleGrandmaAsk}
-          allShops={shops}
-          aiSuggestedShops={aiSuggestedShops}
-          initialOpen
-          layout="page"
-          onClear={() => setAiSuggestedShops([])}
-          autoAskText={autoAskText}
-          autoAskContext={autoAskContext}
-          enableSpeechInput
+      <main className="relative z-10 h-full w-full px-3 pb-24 pt-20">
+        <ConsultChatLayout
+          header={<div />}
+          messages={(
+            <div className="flex w-full items-start justify-center">
+              <GrandmaChatter
+                titleLabel="にちよさん"
+                fullWidth
+                comments={grandmaComments}
+                onAsk={handleGrandmaAsk}
+                allShops={shops}
+                aiSuggestedShops={aiSuggestedShops}
+                initialOpen
+                layout="page"
+                onClear={() => setAiSuggestedShops([])}
+                autoAskText={autoAskText}
+                autoAskContext={autoAskContext}
+                enableSpeechInput
+              />
+            </div>
+          )}
+          composer={<div />}
         />
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />

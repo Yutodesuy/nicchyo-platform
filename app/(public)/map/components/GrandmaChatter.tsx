@@ -796,15 +796,15 @@ export default function GrandmaChatter({
   const hasSuggestedBox =
     !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
   const hasSupplement = hasSuggestedBox || hasImageReply;
-  const chatLiftClassName = layout === "page"
-    ? "translate-y-0"
-    : isChatOpen
-      ? isKeyboardOpen
-        ? "translate-y-[-230px]"
-        : hasSupplement
-        ? "translate-y-[-60px]"
-        : "translate-y-[-230px]"
-      : "translate-y-0";
+  const chatLiftClassName = isChatOpen
+    ? isKeyboardOpen
+      ? "translate-y-[-230px]"
+      : hasSupplement
+      ? "translate-y-[-60px]"
+      : "translate-y-[-230px]"
+    : "translate-y-0";
+  const chatPanelLift = isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
+
   const smartSuggestionChips = useMemo(() => {
     // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
     // つまり zoom < 20 の時に表示
@@ -821,16 +821,6 @@ export default function GrandmaChatter({
     return getSmartSuggestions(current.text);
   }, [current, isShopIntro, shopLookup, layout, currentZoom]);
 
-  const inputOffsetPx = isKeyboardOpen ? 0 : 0;
-  const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
-  const chatPanelLift =
-    layout === "page" ? "translate-y-0" : isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
-  const inputBottomOffset =
-    layout === "page"
-      ? isKeyboardOpen
-        ? Math.max(8, keyboardOffset + 28)
-        : 50
-      : undefined;
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage
@@ -946,11 +936,7 @@ export default function GrandmaChatter({
             </div>
             <div
               ref={chatScrollRef}
-              className={`mt-2 flex flex-col gap-4 overflow-y-auto pr-1 ${
-                layout === "page"
-                  ? "h-[calc(100svh-72px-var(--safe-bottom,0px))] pb-40"
-                  : "max-h-[calc(100vh-240px)]"
-              }`}
+              className="mt-2 flex max-h-[calc(100vh-240px)] flex-col gap-4 overflow-y-auto pr-1"
             >
               <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
                 <div className="h-32 w-32 overflow-hidden rounded-full border-4 border-amber-200 bg-amber-50 shadow-sm">
@@ -1258,19 +1244,14 @@ export default function GrandmaChatter({
       )}
 
       <div
-        className={`w-full px-3 transition-all duration-200 ${
-          layout === "page"
-            ? "fixed left-0 right-0 z-[1405]"
-            : chatPanelLift
-        } ${
+        className={`w-full px-3 transition-all duration-200 ${chatPanelLift} ${
           isChatOpen
             ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
             : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
         }`}
-        style={layout === "page" ? { bottom: `${inputBottomOffset}px` } : undefined}
         aria-hidden={!isChatOpen}
       >
-        <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
+        <div className="mx-auto w-full max-w-xl space-y-2">
           {aiImageUrl && !isChatOpen && (
             <button
               type="button"
