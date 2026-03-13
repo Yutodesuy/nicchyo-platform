@@ -18,7 +18,7 @@ async function loadShops(): Promise<Shop[]> {
 export default async function ConsultPage() {
   const shops = await loadShops();
   return (
-    <Suspense fallback={<div className="h-screen w-full bg-[#fbf8f3]" />}>
+    <Suspense fallback={<div className="h-screen w-full bg-[var(--consult-bg)]" />}>
       <ConsultClient shops={shops} />
     </Suspense>
   );

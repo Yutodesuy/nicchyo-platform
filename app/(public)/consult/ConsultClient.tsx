@@ -85,25 +85,15 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
 
   return (
     <div
-      className="relative overflow-hidden bg-[#fbf8f3]"
+      className="relative overflow-hidden bg-[var(--consult-bg)]"
       style={{ height: "100svh" }}
     >
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          backgroundImage: "url('/images/maps/placeholder-map.svg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(8px)",
-          opacity: 0.35,
-          transform: "scale(1.05)",
-        }}
-        aria-hidden="true"
-      />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />
       <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
+          variant="consult"
           comments={grandmaComments}
           onAsk={handleGrandmaAsk}
           allShops={shops}
