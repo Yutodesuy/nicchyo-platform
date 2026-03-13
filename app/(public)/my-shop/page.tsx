@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fetchVendorStore } from "@/app/vendor/_services/storeService";
+import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS = [
@@ -41,6 +42,14 @@ const MENU_ITEMS = [
     image: "/images/home/posters/HomePagePoster2.png",
   },
   {
+    title: "使い方ガイド",
+    description: "各機能の説明・Tips",
+    href: "/vendor/help",
+    accent: "from-sky-400/30 via-sky-100/70 to-white",
+    icon: BookOpen,
+    image: "/images/home/posters/HomePagePoster6.jpeg",
+  },
+  {
     title: "アカウント設定",
     description: "名前・メール・パスワード変更",
     href: "/vendor/account",
@@ -64,7 +73,7 @@ export default function MyShopPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetchVendorStore(user.id).then((store) => {
+    Promise.all([fetchVendorStore(user.id), fetchVendorPosts(user.id)]).then(([store, posts]) => {
       if (!store) return;
       const steps: SetupStep[] = [
         { label: "店舗名を設定する", done: !!store.name?.trim(), href: "/vendor/store" },
@@ -72,7 +81,7 @@ export default function MyShopPage() {
         { label: "出店予定日を設定する", done: store.schedule.length > 0, href: "/vendor/store" },
         { label: "決済方法を設定する", done: store.payment_methods.length > 0, href: "/vendor/store" },
         { label: "店舗写真を追加する", done: !!store.shop_image_url, href: "/vendor/store" },
-        { label: "最初の投稿をする", done: false, href: "/vendor/post/new" },
+        { label: "最初の投稿をする", done: posts.length > 0, href: "/vendor/post/new" },
       ];
       setSetupSteps(steps);
     }).catch(() => {
@@ -208,6 +217,7 @@ export default function MyShopPage() {
                 );
               })}
             </div>
+
           </>
         )}
       </div>
