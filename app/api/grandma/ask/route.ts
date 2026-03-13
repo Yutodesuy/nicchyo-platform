@@ -77,6 +77,13 @@ type KnowledgeRow = {
   image_url: string | null;
 };
 
+type SeasonalProductRow = {
+  vendorId: string;
+  shopName: string;
+  productName: string;
+  seasonName: string;
+};
+
 type ParsedRequest = {
   text: string;
   location: { lat: number; lng: number } | null;
@@ -168,6 +175,24 @@ function isShopRelatedQuestion(normalized: string): boolean {
   return /お店|おすすめ|人気|売って|買い|食べ|飲み|野菜|果物|惣菜|お土産|アクセサリー|雑貨|道具|工具|植物|苗|花|ハンドメイド|工芸|ランチ|朝ごはん|おやつ|スイーツ|食材|食べ物/.test(
     normalized
   );
+}
+
+function isSeasonalQuestion(normalized: string) {
+  return /季節|旬|今の時期|今の季節|春|夏|秋|冬/.test(normalized);
+}
+
+function getCurrentSeasonInfo(date = new Date()) {
+  const month = date.getMonth() + 1;
+  if (month >= 3 && month <= 5) {
+    return { seasonId: 0, seasonName: "春ー夏" };
+  }
+  if (month >= 6 && month <= 8) {
+    return { seasonId: 1, seasonName: "夏ー秋" };
+  }
+  if (month >= 9 && month <= 11) {
+    return { seasonId: 2, seasonName: "秋ー冬" };
+  }
+  return { seasonId: 3, seasonName: "冬ー春" };
 }
 
 function isUnsupportedQuestion(normalized: string) {
@@ -348,9 +373,13 @@ async function fetchCandidateVendorIds(
   supabase: SupabaseClient,
   keywords: string[],
   targetShopName: string | null,
-  embedding: number[] | null
+  embedding: number[] | null,
+  seasonalVendorIds: string[] = []
 ) {
   const vendorIds = new Set<string>();
+  seasonalVendorIds.forEach((vendorId) => {
+    if (vendorId) vendorIds.add(vendorId);
+  });
   const searchWords = [...new Set([...(targetShopName ? [targetShopName] : []), ...keywords])]
     .map(sanitizeLikeKeyword)
     .filter(Boolean)
@@ -416,6 +445,62 @@ async function fetchCandidateVendorIds(
   }
 
   return Array.from(vendorIds).slice(0, 12);
+}
+
+async function fetchSeasonalProductContext(
+  supabase: SupabaseClient,
+  seasonId: number
+): Promise<SeasonalProductRow[]> {
+  const { data: productSeasonRows } = await supabase
+    .from("product_seasons")
+    .select("product_id, season_id")
+    .eq("season_id", seasonId)
+    .limit(24);
+
+  const productIds = (productSeasonRows ?? [])
+    .map((row) => row.product_id)
+    .filter((value): value is string => !!value);
+  if (productIds.length === 0) return [];
+
+  const { data: productsData } = await supabase
+    .from("products")
+    .select("id, vendor_id, name")
+    .in("id", productIds);
+  const products = Array.isArray(productsData) ? productsData : [];
+  if (products.length === 0) return [];
+
+  const vendorIds = Array.from(
+    new Set(
+      products
+        .map((row) => row.vendor_id)
+        .filter((value): value is string => !!value)
+    )
+  );
+  const { data: vendorsData } =
+    vendorIds.length > 0
+      ? await supabase.from("vendors").select("id, shop_name").in("id", vendorIds)
+      : { data: [] as { id: string; shop_name: string | null }[] };
+
+  const vendorNameById = new Map<string, string>();
+  (vendorsData ?? []).forEach((row) => {
+    if (row.id) {
+      vendorNameById.set(row.id, row.shop_name ?? "");
+    }
+  });
+
+  const seasonName = getCurrentSeasonInfo().seasonName;
+  return products
+    .map((row) => {
+      if (!row.vendor_id || !row.name) return null;
+      return {
+        vendorId: row.vendor_id,
+        shopName: vendorNameById.get(row.vendor_id) ?? "",
+        productName: row.name,
+        seasonName,
+      } satisfies SeasonalProductRow;
+    })
+    .filter((row): row is SeasonalProductRow => row !== null)
+    .slice(0, 12);
 }
 
 async function fetchShopsByVendorIds(
@@ -771,6 +856,8 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const keywords = extractKeywords(question);
     const shopIntent = isShopRelatedQuestion(normalized);
+    const seasonalQuestion = isSeasonalQuestion(normalized);
+    const currentSeason = getCurrentSeasonInfo();
 
     let targetShop: Shop | null = null;
     if (targetShopId) {
@@ -826,8 +913,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const seasonalProducts = seasonalQuestion
+      ? await fetchSeasonalProductContext(supabase, currentSeason.seasonId)
+      : [];
+    const seasonalVendorIds = Array.from(
+      new Set(seasonalProducts.map((row) => row.vendorId))
+    );
+
     const candidateVendorIds = shopIntent
-      ? await fetchCandidateVendorIds(supabase, keywords, targetShopName, embedding)
+      ? await fetchCandidateVendorIds(
+          supabase,
+          keywords,
+          targetShopName,
+          embedding,
+          seasonalVendorIds
+        )
       : [];
     if (targetShop?.vendorId) {
       candidateVendorIds.unshift(targetShop.vendorId);
@@ -840,6 +940,7 @@ export async function POST(request: Request) {
       shopIntent &&
       !targetShop &&
       candidateShops.length === 0 &&
+      seasonalProducts.length === 0 &&
       !imageDataUrl
     ) {
       return NextResponse.json(
@@ -921,10 +1022,21 @@ export async function POST(request: Request) {
       buildHistoryContext(history, memorySummary),
       `今回の質問: ${text || "（画像についての相談）"}`,
       `位置情報: ${location ? `${location.lat}, ${location.lng}` : "不明"}`,
+      `現在の季節: ${currentSeason.seasonName}`,
       targetShop
         ? `注目中の店舗: id:${targetShop.id} | name:${targetShop.name} | owner:${targetShop.ownerName}`
         : "注目中の店舗: なし",
       `店舗候補:\n${summarizeShops(targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops)}`,
+      `季節の候補:\n${
+        seasonalProducts.length > 0
+          ? seasonalProducts
+              .map(
+                (row) =>
+                  `shop:${row.shopName || "店舗名不明"} | product:${row.productName} | season:${row.seasonName}`
+              )
+              .join("\n")
+          : "該当なし"
+      }`,
       `共通知識:\n${knowledgeContext}`,
       `出店者知識:\n${storeKnowledgeContext || "該当なし"}`,
       `選ばれた話者: ${selectedCharacters.map((character) => character.name).join(" / ")}`,
