@@ -99,44 +99,39 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
 
   return (
     <div
-      className="relative overflow-hidden bg-[var(--consult-bg)]"
-      style={{ height: "100svh" }}
+      className="relative min-h-screen bg-[var(--consult-bg)]"
     >
       <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-6">
-        <div className="flex h-full w-full max-w-5xl flex-col gap-3">
-          <section className="rounded-[28px] border border-[var(--consult-border)] bg-[var(--consult-surface)] px-5 py-4 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+      <main className="relative z-10 flex w-full items-start justify-center px-3 pb-24 pt-6">
+        <div className="flex w-full max-w-5xl flex-col gap-3">
+          <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
               Consult
             </p>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">にちよさんに相談する</h1>
-                <p className="mt-1 text-sm text-slate-600">
-                  お店探し、回り方、旬のもの、写真つきの質問までまとめて相談できます。
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+            <h1 className="mt-1 text-2xl font-bold text-gray-900">にちよさんに相談する</h1>
+            <p className="mt-1 text-sm text-gray-700">
+              お店探し、回り方、旬のもの、写真つきの質問までまとめて相談できます。
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs text-slate-600">
                 <span className="rounded-full bg-white px-3 py-1 shadow-sm">音声入力OK</span>
                 <span className="rounded-full bg-white px-3 py-1 shadow-sm">写真相談OK</span>
-              </div>
             </div>
           </section>
-        <GrandmaChatter
-          titleLabel="にちよさん"
-          fullWidth
-          variant="consult"
-          comments={grandmaComments}
-          onAsk={handleGrandmaAsk}
-          allShops={shops}
-          aiSuggestedShops={aiSuggestedShops}
-          initialOpen
-          layout="page"
-          onClear={() => setAiSuggestedShops([])}
-          autoAskText={autoAskText}
-          autoAskContext={autoAskContext}
-          enableSpeechInput
-        />
+          <GrandmaChatter
+            titleLabel="にちよさん"
+            fullWidth
+            variant="consult"
+            comments={grandmaComments}
+            onAsk={handleGrandmaAsk}
+            allShops={shops}
+            aiSuggestedShops={aiSuggestedShops}
+            initialOpen
+            layout="page"
+            onClear={() => setAiSuggestedShops([])}
+            autoAskText={autoAskText}
+            autoAskContext={autoAskContext}
+            enableSpeechInput
+          />
         </div>
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
