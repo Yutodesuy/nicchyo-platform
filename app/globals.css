@@ -15,6 +15,9 @@
  */
 :root {
   --vh: 1vh; /* JavaScriptで動的に更新 */
+  --consult-bg: radial-gradient(120% 120% at 10% 0%, #f3f6fb 0%, #e8edf5 45%, #dce4ef 100%);
+  --consult-surface: rgba(255, 255, 255, 0.94);
+  --consult-border: rgba(148, 163, 184, 0.45);
 }
 
 /* safe-area対応！EOS刁E��欠き�EAndroid ジェスチャーバ�E�E�E*/
