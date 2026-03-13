@@ -1358,6 +1358,11 @@ export default function GrandmaChatter({
                       setShouldShowValidation(false);
                     }
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" || aiStatus === "thinking") return;
+                    event.preventDefault();
+                    handleAskSubmit();
+                  }}
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => {
                     setIsInputFocused(false);
