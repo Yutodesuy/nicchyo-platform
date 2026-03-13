@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -10,6 +10,7 @@ import type { Shop } from "../map/data/shops";
 import RoadOverlay from "../map/components/RoadOverlay";
 import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
+import { normalizeRotationDeg } from "../map/utils/autoRotation";
 
 type EditableShop = {
   locationId: string;
@@ -41,6 +42,36 @@ function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void
     },
   });
   return null;
+}
+
+const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
+const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
+const PAN_START_THRESHOLD_PX = 3;
+
+function getTouchDistance(
+  t0: { clientX: number; clientY: number },
+  t1: { clientX: number; clientY: number }
+): number {
+  return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+}
+
+function rotateVector(x: number, y: number, degrees: number): { x: number; y: number } {
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: x * cos - y * sin,
+    y: x * sin + y * cos,
+  };
+}
+
+function isInteractiveMapElement(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      ".leaflet-marker-icon, .leaflet-popup, .leaflet-control, button, input, select, textarea, a"
+    )
+  );
 }
 
 function createMarkerIcon(
@@ -84,10 +115,35 @@ export default function MapLayoutEditor({
   onDeleteShop,
   onDeleteLandmark,
 }: Props) {
+  const mapRef = useRef<L.Map | null>(null);
+  const [manualRotationOffset, setManualRotationOffset] = useState(0);
+  const [isTouchRotating, setIsTouchRotating] = useState(false);
+  const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
+  const [mapShellSize, setMapShellSize] = useState(() => {
+    if (typeof window === "undefined") return 1600;
+    return Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) + 120);
+  });
+  const touchRotateRef = useRef<{
+    startAngle: number;
+    startDistance: number;
+    startRotation: number;
+    isRotating: boolean;
+  } | null>(null);
+  const touchPanRef = useRef<{
+    lastX: number;
+    lastY: number;
+    hasMoved: boolean;
+  } | null>(null);
+  const mousePanRef = useRef<{
+    lastX: number;
+    lastY: number;
+    isPanning: boolean;
+  } | null>(null);
   const center = useMemo<[number, number]>(() => {
     const first = shops[0] ?? landmarks[0];
     return first ? [first.lat, first.lng] : [33.56145, 133.5383];
   }, [landmarks, shops]);
+  const mapRotation = normalizeRotationDeg(manualRotationOffset);
   const maxZoom = 20;
   const shopIcons = useMemo(() => {
     const icons = new Map<number, L.DivIcon>();
@@ -156,15 +212,206 @@ export default function MapLayoutEditor({
     return icons;
   }, [landmarks]);
 
+  const applyManualRotation = useCallback((nextRotation: number) => {
+    setManualRotationOffset(normalizeRotationDeg(nextRotation));
+  }, []);
+
+  const panMapByScreenDelta = useCallback(
+    (dx: number, dy: number) => {
+      const map = mapRef.current;
+      if (!map) return;
+      const adjusted = rotateVector(-dx, -dy, -mapRotation);
+      map.panBy([adjusted.x, adjusted.y], {
+        animate: false,
+        noMoveStart: true,
+      });
+    },
+    [mapRotation]
+  );
+
+  const handleTouchStartRotate = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (isInteractiveMapElement(e.target)) return;
+      if (e.touches.length === 1) {
+        setIsMultiTouchGesture(false);
+        const touch = e.touches[0];
+        touchPanRef.current = {
+          lastX: touch.clientX,
+          lastY: touch.clientY,
+          hasMoved: false,
+        };
+        touchRotateRef.current = null;
+        setIsTouchRotating(false);
+        return;
+      }
+      if (e.touches.length !== 2) return;
+      setIsMultiTouchGesture(true);
+      touchPanRef.current = null;
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      const distance = getTouchDistance(t0, t1);
+      touchRotateRef.current = {
+        startAngle: angle,
+        startDistance: distance,
+        startRotation: mapRotation,
+        isRotating: false,
+      };
+    },
+    [mapRotation]
+  );
+
+  const handleTouchMoveRotate = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length === 1 && touchPanRef.current && !isTouchRotating) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchPanRef.current.lastX;
+        const dy = touch.clientY - touchPanRef.current.lastY;
+        if (!touchPanRef.current.hasMoved && Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX) {
+          return;
+        }
+        touchPanRef.current.hasMoved = true;
+        touchPanRef.current.lastX = touch.clientX;
+        touchPanRef.current.lastY = touch.clientY;
+        e.preventDefault();
+        panMapByScreenDelta(dx, dy);
+        return;
+      }
+
+      if (e.touches.length !== 2 || !touchRotateRef.current) return;
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      const deltaDeg = ((angle - touchRotateRef.current.startAngle) * 180) / Math.PI;
+      const distance = getTouchDistance(t0, t1);
+      const distanceDelta = distance - touchRotateRef.current.startDistance;
+
+      if (!touchRotateRef.current.isRotating) {
+        if (
+          Math.abs(deltaDeg) < TOUCH_ROTATION_ANGLE_THRESHOLD_DEG &&
+          Math.abs(distanceDelta) < TOUCH_ROTATION_DISTANCE_THRESHOLD_PX
+        ) {
+          return;
+        }
+        if (
+          Math.abs(deltaDeg) <= TOUCH_ROTATION_ANGLE_THRESHOLD_DEG ||
+          Math.abs(deltaDeg) * 2 < Math.abs(distanceDelta)
+        ) {
+          return;
+        }
+        touchRotateRef.current.isRotating = true;
+        setIsTouchRotating(true);
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      applyManualRotation(touchRotateRef.current.startRotation + deltaDeg);
+    },
+    [applyManualRotation, isTouchRotating, panMapByScreenDelta]
+  );
+
+  const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    setIsMultiTouchGesture(e.touches.length >= 2);
+    if (e.touches.length < 2) {
+      touchRotateRef.current = null;
+      setIsTouchRotating(false);
+    }
+    if (e.touches.length === 0) {
+      touchPanRef.current = null;
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      touchPanRef.current = {
+        lastX: touch.clientX,
+        lastY: touch.clientY,
+        hasMoved: false,
+      };
+    }
+  }, []);
+
+  const handleMouseDownPan = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    if (isInteractiveMapElement(e.target)) return;
+    mousePanRef.current = {
+      lastX: e.clientX,
+      lastY: e.clientY,
+      isPanning: false,
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setMapShellSize(Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) + 120));
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!mousePanRef.current || isTouchRotating) return;
+      const dx = e.clientX - mousePanRef.current.lastX;
+      const dy = e.clientY - mousePanRef.current.lastY;
+      if (!mousePanRef.current.isPanning && Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX) {
+        return;
+      }
+      mousePanRef.current.isPanning = true;
+      mousePanRef.current.lastX = e.clientX;
+      mousePanRef.current.lastY = e.clientY;
+      panMapByScreenDelta(dx, dy);
+    };
+    const handleUp = () => {
+      mousePanRef.current = null;
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [isTouchRotating, panMapByScreenDelta]);
+
   return (
-    <div className="h-full w-full">
-      <MapContainer
-        center={center}
-        zoom={17}
-        maxZoom={maxZoom}
-        className="h-full w-full"
-        scrollWheelZoom
+    <div
+      className="relative h-full w-full overflow-hidden"
+      style={{
+        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      }}
+    >
+      <div
+        className="absolute left-1/2 top-1/2 z-0"
+        onTouchStart={handleTouchStartRotate}
+        onTouchMove={handleTouchMoveRotate}
+        onTouchEnd={handleTouchEndRotate}
+        onTouchCancel={handleTouchEndRotate}
+        onMouseDown={handleMouseDownPan}
+        style={{
+          width: `${mapShellSize}px`,
+          height: `${mapShellSize}px`,
+          touchAction: "none",
+          transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
+          transformOrigin: "center center",
+          transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
+        }}
       >
+        <MapContainer
+          center={center}
+          zoom={17}
+          maxZoom={maxZoom}
+          className="h-full w-full"
+          scrollWheelZoom
+          dragging={false}
+          touchZoom={isMultiTouchGesture || isTouchRotating ? false : "center"}
+          style={{
+            height: "100%",
+            width: "100%",
+            backgroundColor: "#faf8f3",
+          }}
+          ref={(map) => {
+            mapRef.current = map;
+          }}
+        >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap contributors &copy; CARTO'
@@ -278,7 +525,8 @@ export default function MapLayoutEditor({
             ))}
           </>
         )}
-      </MapContainer>
+        </MapContainer>
+      </div>
     </div>
   );
 }
