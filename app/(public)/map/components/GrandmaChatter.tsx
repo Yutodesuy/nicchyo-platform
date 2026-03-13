@@ -1750,7 +1750,6 @@ export default function GrandmaChatter({
                         <Badge variant="outline" className={`text-[10px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
                         <span className="truncate text-slate-600">{activeConsultExample}</span>
                       </span>
-                      <Badge variant="secondary" className={`text-[11px] ${isConsultVariant ? "text-slate-500" : "text-amber-500"}`}>送信</Badge>
                     </button>
                   </div>
                 )}
@@ -1952,7 +1951,7 @@ export default function GrandmaChatter({
       </div>
       {layout === "page" && isPreferredCharacterPickerOpen && (
         <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-slate-900/35 px-4">
-          <div className="w-full max-w-xl rounded-[2rem] border border-amber-100 bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-xl rounded-[2rem] border border-amber-100 bg-white p-5 shadow-2xl lg:max-w-[1180px]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-bold text-slate-900">推しキャラ選択</div>
@@ -1966,7 +1965,7 @@ export default function GrandmaChatter({
                 閉じる
               </button>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
               <button
                 type="button"
                 onClick={() => {
@@ -1982,18 +1981,18 @@ export default function GrandmaChatter({
                 <div className="text-sm font-semibold text-slate-900">おまかせ</div>
                 <div className="mt-1 text-xs text-slate-500">毎回ランダムで選びます</div>
               </button>
-              {CONSULT_CHARACTERS.map((character) => (
-                <button
-                  key={character.id}
-                  type="button"
-                  onClick={() => {
-                    onPreferredCharacterChange?.(character.id);
-                    setIsPreferredCharacterPickerOpen(false);
-                  }}
-                  className={`rounded-[1.5rem] border p-3 text-left transition ${
-                    preferredCharacterId === character.id
-                      ? "border-orange-400 bg-orange-50"
-                      : "border-slate-200 bg-white hover:bg-amber-50"
+                {CONSULT_CHARACTERS.map((character) => (
+                  <button
+                    key={character.id}
+                    type="button"
+                    onClick={() => {
+                      onPreferredCharacterChange?.(character.id);
+                      setIsPreferredCharacterPickerOpen(false);
+                    }}
+                    className={`rounded-[1.5rem] border p-3 text-left transition lg:min-w-[210px] ${
+                      preferredCharacterId === character.id
+                        ? "border-orange-400 bg-orange-50"
+                        : "border-slate-200 bg-white hover:bg-amber-50"
                   }`}
                 >
                   <div className="mx-auto h-24 w-24 overflow-hidden rounded-[1.25rem] border border-amber-100 bg-amber-50">
