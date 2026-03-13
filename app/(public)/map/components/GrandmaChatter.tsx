@@ -904,8 +904,28 @@ export default function GrandmaChatter({
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
   const isKeyboardOpen = isInputFocused || keyboardShift > 0;
   const hasImageReply = !!aiImageUrl;
+  const persistedSuggestedShops = useMemo(() => {
+    for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+      const message = chatMessages[index];
+      if (message.role !== "assistant") continue;
+      if (message.shops && message.shops.length > 0) {
+        return message.shops;
+      }
+      if (message.shopIds && message.shopIds.length > 0) {
+        const resolved = message.shopIds
+          .map((id) => shopLookup.get(id))
+          .filter((shop): shop is Shop => !!shop);
+        if (resolved.length > 0) {
+          return resolved;
+        }
+      }
+    }
+    return [];
+  }, [chatMessages, shopLookup]);
+  const displayedSuggestedShops =
+    persistedSuggestedShops.length > 0 ? persistedSuggestedShops : aiSuggestedShops ?? [];
   const hasSuggestedBox =
-    !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
+    displayedSuggestedShops.length > 0 && !isKeyboardOpen;
   const hasSupplement = hasSuggestedBox || hasImageReply;
   const chatLiftClassName = layout === "page"
     ? "translate-y-0"
@@ -1552,7 +1572,7 @@ export default function GrandmaChatter({
               />
             </button>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
+          {displayedSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
             <div className={`rounded-[1.8rem] border p-3 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -1560,7 +1580,7 @@ export default function GrandmaChatter({
                   <span className="text-base font-bold text-gray-900">提案されたお店</span>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
-                  {aiSuggestedShops.length}店
+                  {displayedSuggestedShops.length}店
                 </span>
               </div>
               {aiStatus === "thinking" ? (
@@ -1569,7 +1589,7 @@ export default function GrandmaChatter({
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
-                  {aiSuggestedShops.map((shop) => (
+                  {displayedSuggestedShops.map((shop) => (
                     <ConsultShopSuggestionCard
                       key={shop.id}
                       shop={shop}
