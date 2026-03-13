@@ -1379,11 +1379,15 @@ export default function GrandmaChatter({
             </div>
           )}
           <Card
-            className={`rounded-2xl border-2 p-3 ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-300 bg-white/95"} ${
+            className={`${
+              isConsultVariant
+                ? "rounded-[20px] border border-[var(--consult-border)] bg-white/92 p-2.5 shadow-sm"
+                : "rounded-2xl border-2 border-amber-300 bg-white/95 p-3"
+            } ${
               isConsultVariant ? "transition-colors duration-150" : "transition-transform duration-200"
             } ${!isConsultVariant && !isChatOpen ? "scale-95" : "scale-100"}`}
           >
-            <div className="flex flex-col gap-2">
+              <div className={`flex flex-col ${isConsultVariant ? "gap-1.5" : "gap-2"}`}>
               <div
                 className={`transition-all duration-200 ${
                   showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
@@ -1394,7 +1398,7 @@ export default function GrandmaChatter({
                   <button
                     type="button"
                     onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                    className={`group inline-flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-white hover:bg-slate-50" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
+                    className={`group inline-flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
                     aria-label={`質問例: ${activeConsultExample}`}
                   >
                     <span className="flex items-center gap-2">
@@ -1418,10 +1422,14 @@ export default function GrandmaChatter({
                   variant="outline"
                   size="icon"
                   onClick={() => imageInputRef.current?.click()}
-                  className="border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
+                  className={`${
+                    isConsultVariant
+                      ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-50 text-base font-semibold text-slate-600 hover:bg-white"
+                      : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
+                  }`}
                   aria-label="写真を選ぶ"
                 >
-                  +
+                  {isConsultVariant ? "＋" : "+"}
                 </Button>
                 <Textarea
                   ref={inputRef}
@@ -1451,12 +1459,12 @@ export default function GrandmaChatter({
                     }
                   }}
                   disabled={aiStatus === "thinking"}
-                  rows={2}
+                  rows={isConsultVariant ? 1 : 2}
                   className={`min-h-[44px] max-h-28 resize-none ${
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "border-[var(--consult-border)] bg-white text-gray-900 focus-visible:ring-slate-400"
+                        ? "min-h-[40px] rounded-[18px] border-[var(--consult-border)] bg-white px-4 py-2 text-[14px] text-gray-900 focus-visible:ring-slate-300"
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={smartContext.placeholder}
@@ -1471,10 +1479,10 @@ export default function GrandmaChatter({
                     className={`${
                       !isSpeechSupported || aiStatus === "thinking"
                         ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                        : isListening
-                          ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
-                          : isConsultVariant
-                            ? "border-[var(--consult-border)] bg-white text-slate-700 hover:bg-slate-50"
+                      : isListening
+                        ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
+                      : isConsultVariant
+                            ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-50 text-slate-700 hover:bg-white"
                             : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
                     }`}
                     aria-label={isListening ? "音声入力を停止" : "音声入力を開始"}
@@ -1508,8 +1516,8 @@ export default function GrandmaChatter({
                   className={`${
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                      : isConsultVariant
-                        ? "border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
+                    : isConsultVariant
+                        ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
                         : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
                   }`}
                   aria-label="メッセージを送る"
@@ -1535,7 +1543,7 @@ export default function GrandmaChatter({
                 </div>
               )}
               {enableSpeechInput && isListening && (
-                <Badge variant="destructive" className="w-fit gap-2 text-[11px]">
+                <Badge variant="destructive" className="w-fit gap-2 text-[10px]">
                   <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
                   音声入力中
                 </Badge>
