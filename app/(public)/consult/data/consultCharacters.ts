@@ -19,7 +19,7 @@ export const CONSULT_CHARACTERS: ConsultCharacter[] = [
   {
     id: "nichiyosan",
     name: "にちよさん",
-    subtitle: "市場のことをなんでもつないでくれる案内役",
+    subtitle: "日曜市のことなんでも知っちゅう大ベテラン",
     image: "/images/obaasan_transparent.png",
     imageScale: "scale-125",
     imagePosition: "center 28%",
@@ -29,7 +29,7 @@ export const CONSULT_CHARACTERS: ConsultCharacter[] = [
   {
     id: "yoichisan",
     name: "よういちさん",
-    subtitle: "昔話や旬の話に強い、市場の語り部",
+    subtitle: "日曜市を支えてきたジェントルマン",
     image: "/images/characters/ojichan.png",
     imageScale: "scale-125",
     imagePosition: "center 14%",
@@ -39,7 +39,7 @@ export const CONSULT_CHARACTERS: ConsultCharacter[] = [
   {
     id: "miraikun",
     name: "みらいくん",
-    subtitle: "歩き方や買い回りのコツを教えてくれる",
+    subtitle: "さわやかで希望あふれる高知の青年",
     image: "/images/characters/onisan.png",
     imageScale: "scale-125",
     imagePosition: "center 12%",
@@ -49,7 +49,7 @@ export const CONSULT_CHARACTERS: ConsultCharacter[] = [
   {
     id: "yosakochan",
     name: "よさこちゃん",
-    subtitle: "おすすめや見どころを軽やかに案内してくれる",
+    subtitle: "明るく華やかで、みんなを元気づけてくれる土佐っ子",
     image: "/images/characters/onesan.png",
     imageScale: "scale-125",
     imagePosition: "center 22%",
