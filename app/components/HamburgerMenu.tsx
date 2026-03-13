@@ -50,7 +50,7 @@ export default function HamburgerMenu() {
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
-          paddingTop: 'calc(4rem + var(--safe-top, 0px))', // ヘッダー高さ + safe-area
+          paddingTop: 'calc(1rem + var(--safe-top, 0px))',
           paddingBottom: 'var(--safe-bottom, 0px)',
         }}
       >
@@ -118,8 +118,8 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="shop" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">管理ダッシュボード</p>
-                            <p className="text-xs text-gray-500">管理者向けメニュー</p>
+                            <p className="text-sm font-medium">ダッシュボード</p>
+                            <p className="text-xs text-gray-500">アクセスと運用状況を確認</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
@@ -136,14 +136,14 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/admin/shops"
+                          href="/admin/map-edit"
                           onClick={closeMenu}
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
                         >
                           <MenuIcon name="shop" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">店舗管理</p>
-                            <p className="text-xs text-gray-500">出店情報の管理</p>
+                            <p className="text-sm font-medium">マップ編集</p>
+                            <p className="text-xs text-gray-500">店舗マーカと建物を編集</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
@@ -158,8 +158,8 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="users" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">権限設定</p>
-                            <p className="text-xs text-gray-500">ユーザーの管理</p>
+                            <p className="text-sm font-medium">ユーザー管理</p>
+                            <p className="text-xs text-gray-500">アカウントと権限を確認</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理
@@ -168,14 +168,30 @@ export default function HamburgerMenu() {
                       </li>
                       <li>
                         <Link
-                          href="/moderator"
+                          href="/admin/kotodute"
                           onClick={closeMenu}
                           className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
                         >
                           <MenuIcon name="shield" className="h-5 w-5 text-red-600" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">投稿の管理</p>
-                            <p className="text-xs text-gray-500">投稿の確認</p>
+                            <p className="text-sm font-medium">ことづて管理</p>
+                            <p className="text-xs text-gray-500">ことづて投稿を確認</p>
+                          </div>
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                            管理
+                          </span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/admin/settings"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-red-50"
+                        >
+                          <MenuIcon name="settings" className="h-5 w-5 text-red-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">設定</p>
+                            <p className="text-xs text-gray-500">公開設定と運用上限</p>
                           </div>
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
                             管理

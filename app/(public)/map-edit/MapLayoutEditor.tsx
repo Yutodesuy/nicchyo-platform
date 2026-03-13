@@ -25,6 +25,7 @@ type Props = {
   mode: "edit" | "preview";
   shops: EditableShop[];
   landmarks: EditableLandmark[];
+  maxZoom?: number;
   selectedKind: "shop" | "landmark";
   selectedId: string;
   onSelect: (kind: "shop" | "landmark", id: string) => void;
@@ -106,6 +107,7 @@ export default function MapLayoutEditor({
   mode,
   shops,
   landmarks,
+  maxZoom = 20,
   selectedKind,
   selectedId,
   onSelect,
@@ -144,7 +146,6 @@ export default function MapLayoutEditor({
     return first ? [first.lat, first.lng] : [33.56145, 133.5383];
   }, [landmarks, shops]);
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
-  const maxZoom = 20;
   const shopIcons = useMemo(() => {
     const icons = new Map<number, L.DivIcon>();
     for (const shop of shops) {
