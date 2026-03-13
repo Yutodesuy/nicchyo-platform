@@ -13,14 +13,36 @@ create table if not exists product_sales (
 alter table product_sales enable row level security;
 
 -- 出店者は自分のデータのみ管理可能
-create policy "vendors can manage own product_sales"
-on product_sales
-for all
-using  (auth.uid() = vendor_id)
-with check (auth.uid() = vendor_id);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'product_sales'
+      and policyname = 'vendors can manage own product_sales'
+  ) then
+    create policy "vendors can manage own product_sales"
+    on product_sales
+    for all
+    using  (auth.uid() = vendor_id)
+    with check (auth.uid() = vendor_id);
+  end if;
+end $$;
 
 -- 市場トレンド集計のために全員が読める
-create policy "public can read product_sales"
-on product_sales
-for select
-using (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'product_sales'
+      and policyname = 'public can read product_sales'
+  ) then
+    create policy "public can read product_sales"
+    on product_sales
+    for select
+    using (true);
+  end if;
+end $$;
