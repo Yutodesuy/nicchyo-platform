@@ -11,6 +11,14 @@ type ConsultClientProps = {
   shops: Shop[];
 };
 
+type ConsultAskResponse = {
+  reply: string;
+  imageUrl?: string;
+  shopIds?: number[];
+  errorMessage?: string;
+  retryable?: boolean;
+};
+
 export default function ConsultClient({ shops }: ConsultClientProps) {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
   const searchParams = useSearchParams();
@@ -19,7 +27,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
     text: string,
     imageFile?: File | null,
     context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
-  ) => {
+  ): Promise<ConsultAskResponse> => {
     try {
       const useForm = !!imageFile;
       const body = useForm
@@ -44,8 +52,11 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
         body,
       });
       if (!response.ok) {
+        setAiSuggestedShops([]);
         return {
           reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+          errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+          retryable: true,
         };
       }
       const payload = (await response.json()) as {
@@ -65,11 +76,14 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
         imageUrl: payload.imageUrl,
         shopIds: payload.shopIds,
+        retryable: false,
       };
     } catch {
       setAiSuggestedShops([]);
       return {
         reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        errorMessage: "接続に失敗しました。少し時間をおいて、もう一度試してください。",
+        retryable: true,
       };
     }
   }, [shops]);
@@ -89,7 +103,25 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
       style={{ height: "100svh" }}
     >
       <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />
-      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-20">
+      <main className="relative z-10 flex h-full w-full items-start justify-center px-3 pb-24 pt-6">
+        <div className="flex h-full w-full max-w-5xl flex-col gap-3">
+          <section className="rounded-[28px] border border-[var(--consult-border)] bg-[var(--consult-surface)] px-5 py-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Consult
+            </p>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">にちよさんに相談する</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  お店探し、回り方、旬のもの、写真つきの質問までまとめて相談できます。
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                <span className="rounded-full bg-white px-3 py-1 shadow-sm">音声入力OK</span>
+                <span className="rounded-full bg-white px-3 py-1 shadow-sm">写真相談OK</span>
+              </div>
+            </div>
+          </section>
         <GrandmaChatter
           titleLabel="にちよさん"
           fullWidth
@@ -105,6 +137,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           autoAskContext={autoAskContext}
           enableSpeechInput
         />
+        </div>
       </main>
       <NavigationBar activeHref="/consult" position="absolute" />
     </div>
