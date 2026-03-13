@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import VisitorTrendSwitcher from "./VisitorTrendSwitcher";
+import NavigationBar from "@/app/components/NavigationBar";
 
 type CategoryCount = {
   name: string;
@@ -379,64 +380,67 @@ export default async function AnalysisPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAFAF8] px-6 py-14 text-amber-950">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-10 text-center">
-          <p className="text-xs font-semibold tracking-[0.2em] text-amber-700/80">NICCHYO ANALYTICS</p>
-          <h1 className="mt-3 text-3xl font-bold text-amber-900 md:text-4xl">日曜市をデータで見る</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-amber-900/70">
-            Supabaseのデータを使って、カテゴリ別の出店比率と日次のWeb来訪者数を表示しています。
-          </p>
-        </header>
+    <>
+      <main className="min-h-screen bg-[#FAFAF8] px-6 py-14 pb-28 text-amber-950">
+        <div className="mx-auto max-w-5xl">
+          <header className="mb-10 text-center">
+            <p className="text-xs font-semibold tracking-[0.2em] text-amber-700/80">NICCHYO ANALYTICS</p>
+            <h1 className="mt-3 text-3xl font-bold text-amber-900 md:text-4xl">日曜市をデータで見る</h1>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-amber-900/70">
+              Supabaseのデータを使って、カテゴリ別の出店比率と日次のWeb来訪者数を表示しています。
+            </p>
+          </header>
 
-        <section className="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-amber-900">カテゴリ別出店比率</h2>
-          <p className="mt-2 text-sm text-amber-900/70">
-            `vendors.category_id` と `categories.name` を集計して円グラフ化しています。
-          </p>
-          <div className="mt-5">
-            <PieChart data={categoryCounts} />
+          <section className="rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-amber-900">カテゴリ別出店比率</h2>
+            <p className="mt-2 text-sm text-amber-900/70">
+              `vendors.category_id` と `categories.name` を集計して円グラフ化しています。
+            </p>
+            <div className="mt-5">
+              <PieChart data={categoryCounts} />
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-amber-900">本日の来訪者数（Web）</h2>
+            <p className="mt-2 text-sm text-amber-900/70">{todayLabel} のデータを表示しています。</p>
+            <p className="mt-4 text-4xl font-extrabold text-orange-600">
+              {webVisitorCount !== null ? `${webVisitorCount.toLocaleString()} 人` : "データ未登録"}
+            </p>
+            <p className="mt-3 text-xs leading-relaxed text-amber-800/80">
+              ※この数値は現地来訪者数ではなく、Web来訪者数です。
+            </p>
+            {dataFetchNote ? (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{dataFetchNote}</p>
+            ) : null}
+
+            <div className="mt-6">
+              <VisitorTrendSwitcher
+                dailyChart={dailyChart}
+                weeklyChart={weeklyChart}
+                monthlyChart={monthlyChart}
+                yearlyChart={yearlyChart}
+              />
+            </div>
+          </section>
+
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/"
+              className="rounded-full border border-amber-200 bg-white px-5 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50"
+            >
+              ホームへ戻る
+            </Link>
+            <Link
+              href="/map"
+              className="rounded-full bg-amber-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-800"
+            >
+              マップを見る
+            </Link>
           </div>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-amber-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-amber-900">本日の来訪者数（Web）</h2>
-          <p className="mt-2 text-sm text-amber-900/70">{todayLabel} のデータを表示しています。</p>
-          <p className="mt-4 text-4xl font-extrabold text-orange-600">
-            {webVisitorCount !== null ? `${webVisitorCount.toLocaleString()} 人` : "データ未登録"}
-          </p>
-          <p className="mt-3 text-xs leading-relaxed text-amber-800/80">
-            ※この数値は現地来訪者数ではなく、Web来訪者数です。
-          </p>
-          {dataFetchNote ? (
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{dataFetchNote}</p>
-          ) : null}
-
-          <div className="mt-6">
-            <VisitorTrendSwitcher
-              dailyChart={dailyChart}
-              weeklyChart={weeklyChart}
-              monthlyChart={monthlyChart}
-              yearlyChart={yearlyChart}
-            />
-          </div>
-        </section>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/"
-            className="rounded-full border border-amber-200 bg-white px-5 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50"
-          >
-            ホームへ戻る
-          </Link>
-          <Link
-            href="/map"
-            className="rounded-full bg-amber-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-800"
-          >
-            マップを見る
-          </Link>
         </div>
-      </div>
-    </main>
+      </main>
+      <NavigationBar activeHref="/analysis" />
+    </>
   );
 }
