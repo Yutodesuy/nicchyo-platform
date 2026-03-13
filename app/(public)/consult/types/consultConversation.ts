@@ -14,6 +14,12 @@ export type ConsultTurn = {
   text: string;
 };
 
+export type ConsultErrorCode =
+  | "system_error"
+  | "insufficient_context"
+  | "unsupported_request"
+  | "no_result";
+
 export type ConsultAskResponse = {
   reply: string;
   imageUrl?: string;
@@ -22,6 +28,8 @@ export type ConsultAskResponse = {
   turns?: ConsultTurn[];
   followUpQuestion?: string;
   memorySummary?: string;
+  errorCode?: ConsultErrorCode;
+  helperQuestions?: string[];
   errorMessage?: string;
   retryable?: boolean;
 };

@@ -46,14 +46,6 @@ export default function ConsultClient() {
         headers: useForm ? undefined : { "Content-Type": "application/json" },
         body,
       });
-      if (!response.ok) {
-        setAiSuggestedShops([]);
-        return {
-          reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-          errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
-          retryable: true,
-        };
-      }
       const payload = (await response.json()) as {
         reply?: string;
         imageUrl?: string;
@@ -62,7 +54,31 @@ export default function ConsultClient() {
         turns?: ConsultAskResponse["turns"];
         followUpQuestion?: string;
         memorySummary?: string;
+        errorCode?: ConsultAskResponse["errorCode"];
+        helperQuestions?: string[];
+        errorMessage?: string;
+        retryable?: boolean;
       };
+      if (!response.ok) {
+        setAiSuggestedShops(payload.shops && payload.shops.length > 0 ? payload.shops : []);
+        return {
+          reply:
+            payload.reply ??
+            "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+          imageUrl: payload.imageUrl,
+          shopIds: payload.shopIds,
+          shops: payload.shops,
+          turns: payload.turns,
+          followUpQuestion: payload.followUpQuestion,
+          memorySummary: payload.memorySummary,
+          errorCode: payload.errorCode ?? "system_error",
+          helperQuestions: payload.helperQuestions,
+          errorMessage:
+            payload.errorMessage ??
+            "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+          retryable: payload.retryable ?? payload.errorCode === "system_error",
+        };
+      }
       if (payload.shops && payload.shops.length > 0) {
         setAiSuggestedShops(payload.shops);
       } else {
@@ -78,12 +94,16 @@ export default function ConsultClient() {
         turns: payload.turns,
         followUpQuestion: payload.followUpQuestion,
         memorySummary: payload.memorySummary,
-        retryable: false,
+        errorCode: payload.errorCode,
+        helperQuestions: payload.helperQuestions,
+        errorMessage: payload.errorMessage,
+        retryable: payload.retryable ?? false,
       };
     } catch {
       setAiSuggestedShops([]);
       return {
         reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        errorCode: "system_error",
         errorMessage: "接続に失敗しました。少し時間をおいて、もう一度試してください。",
         retryable: true,
       };
