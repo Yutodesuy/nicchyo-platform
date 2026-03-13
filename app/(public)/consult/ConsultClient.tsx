@@ -4,13 +4,26 @@ import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
+import ShopDetailBanner from "../map/components/ShopDetailBanner";
 import { grandmaComments } from "../map/data/grandmaComments";
 import type { ConsultAskResponse, ConsultHistoryEntry } from "./types/consultConversation";
 import type { Shop } from "../map/data/shops";
 
 export default function ConsultClient() {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
+  const [knownShops, setKnownShops] = useState<Shop[]>([]);
+  const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const searchParams = useSearchParams();
+
+  const mergeKnownShops = useCallback((shops: Shop[] | undefined) => {
+    if (!shops || shops.length === 0) return;
+    setKnownShops((prev) => {
+      const next = new Map<number, Shop>();
+      prev.forEach((shop) => next.set(shop.id, shop));
+      shops.forEach((shop) => next.set(shop.id, shop));
+      return Array.from(next.values());
+    });
+  }, []);
 
   const handleGrandmaAsk = useCallback(async (
     text: string,
@@ -60,6 +73,7 @@ export default function ConsultClient() {
         retryable?: boolean;
       };
       if (!response.ok) {
+        mergeKnownShops(payload.shops);
         setAiSuggestedShops(payload.shops && payload.shops.length > 0 ? payload.shops : []);
         return {
           reply:
@@ -79,6 +93,7 @@ export default function ConsultClient() {
           retryable: payload.retryable ?? payload.errorCode === "system_error",
         };
       }
+      mergeKnownShops(payload.shops);
       if (payload.shops && payload.shops.length > 0) {
         setAiSuggestedShops(payload.shops);
       } else {
@@ -108,7 +123,7 @@ export default function ConsultClient() {
         retryable: true,
       };
     }
-  }, []);
+  }, [mergeKnownShops]);
 
   const autoAskText = searchParams?.get("q") || null;
   const autoAskShopIdRaw = searchParams?.get("shopId");
@@ -145,7 +160,14 @@ export default function ConsultClient() {
             variant="consult"
             comments={grandmaComments}
             onAsk={handleGrandmaAsk}
+            allShops={knownShops}
             aiSuggestedShops={aiSuggestedShops}
+            onSelectShop={(shopId) => {
+              const shop = knownShops.find((item) => item.id === shopId);
+              if (shop) {
+                setSelectedShop(shop);
+              }
+            }}
             initialOpen
             layout="page"
             onClear={() => setAiSuggestedShops([])}
@@ -155,7 +177,8 @@ export default function ConsultClient() {
           />
         </div>
       </main>
-      <NavigationBar activeHref="/consult" />
+      {selectedShop && <ShopDetailBanner shop={selectedShop} onClose={() => setSelectedShop(null)} />}
+      {!selectedShop && <NavigationBar activeHref="/consult" />}
     </div>
   );
 }
