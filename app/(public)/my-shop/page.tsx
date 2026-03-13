@@ -42,6 +42,14 @@ const MENU_ITEMS = [
     image: "/images/home/posters/HomePagePoster2.png",
   },
   {
+    title: "使い方ガイド",
+    description: "各機能の説明・Tips",
+    href: "/vendor/help",
+    accent: "from-sky-400/30 via-sky-100/70 to-white",
+    icon: BookOpen,
+    image: "/images/home/posters/HomePagePoster6.jpeg",
+  },
+  {
     title: "アカウント設定",
     description: "名前・メール・パスワード変更",
     href: "/vendor/account",
@@ -210,17 +218,6 @@ export default function MyShopPage() {
               })}
             </div>
 
-            {/* 使い方ガイドへのリンク */}
-            <Link
-              href="/vendor/help"
-              className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:bg-slate-50"
-            >
-              <div className="flex items-center gap-2">
-                <BookOpen size={16} className="text-slate-500" />
-                <span className="text-sm font-semibold text-slate-700">使い方ガイド</span>
-              </div>
-              <ChevronRight size={16} className="text-slate-300" />
-            </Link>
           </>
         )}
       </div>
