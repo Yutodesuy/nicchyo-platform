@@ -20,6 +20,7 @@ export type ConsultAskResponse = {
   shopIds?: number[];
   shops?: Shop[];
   turns?: ConsultTurn[];
+  followUpQuestion?: string;
   memorySummary?: string;
   errorMessage?: string;
   retryable?: boolean;

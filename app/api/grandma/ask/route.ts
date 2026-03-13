@@ -91,6 +91,7 @@ type StructuredConsultResponse = {
   turns: { speakerId: ConsultCharacterId; text: string }[];
   shopIds: number[];
   imageUrl: string | null;
+  followUpQuestion: string;
 };
 
 const CHOME_VALUES = new Set([
@@ -591,8 +592,9 @@ function buildResponseSchema(characters: ConsultCharacter[]) {
           imageUrl: {
             anyOf: [{ type: "string" }, { type: "null" }],
           },
+          followUpQuestion: { type: "string" },
         },
-        required: ["summary", "turns", "shopIds", "imageUrl"],
+        required: ["summary", "turns", "shopIds", "imageUrl", "followUpQuestion"],
       },
     },
   } as const;
@@ -871,6 +873,7 @@ export async function POST(request: Request) {
       shopIds: finalRecommendedShops.map((shop) => shop.id),
       shops: finalRecommendedShops,
       turns,
+      followUpQuestion: structured.followUpQuestion?.trim() || undefined,
       memorySummary: structured.summary?.trim() || memorySummary,
       retryable: false,
     };
