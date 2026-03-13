@@ -239,7 +239,7 @@ export default function AuditLogsPage() {
           <div className="flex items-center justify-between">
             <div>
               <Link
-                href="/admin"
+                href="/admin/dashboard"
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
                 ← ダッシュボードに戻る

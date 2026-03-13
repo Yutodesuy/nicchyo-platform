@@ -15,6 +15,7 @@
  */
 :root {
   --vh: 1vh; /* JavaScriptで動的に更新 */
+  --desktop-menu-offset: 0px;
   --consult-bg: radial-gradient(120% 120% at 10% 0%, #f3f6fb 0%, #e8edf5 45%, #dce4ef 100%);
   --consult-surface: rgba(255, 255, 255, 0.94);
   --consult-border: rgba(148, 163, 184, 0.45);
@@ -57,6 +58,13 @@ html, body {
 body {
   height: 100dvh; /* モダンブラウザ */
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
+  transition: padding-right 300ms ease;
+}
+
+@media (min-width: 1024px) {
+  body {
+    padding-right: var(--desktop-menu-offset);
+  }
 }
 
 body.grandma-chat-open .leaflet-container {
@@ -595,11 +603,11 @@ body.grandma-chat-open .leaflet-container {
   display: none !important;
 }
 
-body.shop-banner-open .hamburger-button {
+body.shop-banner-open .navigation-bar {
   display: none;
 }
 
-body.shop-banner-open .navigation-bar {
+body.shop-banner-open .hamburger-button.is-closed {
   display: none;
 }
 
@@ -921,5 +929,23 @@ body.home-poster-zoom-open .hamburger-button {
   }
   100% {
     transform: scaleX(1);
+  }
+}
+@layer components {
+  .map-edit-marker-popup .leaflet-popup-content-wrapper {
+    rotate: var(--map-rotation-inverse, 0deg);
+    transform-origin: center center;
+    border-radius: 20px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    padding: 0;
+  }
+
+  .map-edit-marker-popup .leaflet-popup-content {
+    margin: 0;
+    padding: 14px 16px;
+  }
+
+  .map-edit-marker-popup .leaflet-popup-tip-container {
+    display: none;
   }
 }
