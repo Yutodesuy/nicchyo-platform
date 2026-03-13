@@ -33,7 +33,7 @@ export const AdminSidebar = React.memo(function AdminSidebar({
   const navItems: NavItem[] = [
     {
       label: "ダッシュボード",
-      href: "/admin",
+      href: "/admin/dashboard",
       icon: "📊",
       show: permissions.isSuperAdmin,
     },
@@ -116,9 +116,9 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       {/* ナビゲーションメニュー */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isDashboard = item.href === "/admin";
+          const isDashboard = item.href === "/admin/dashboard";
           const isActive = isDashboard
-            ? pathname === "/admin"
+            ? pathname === "/admin/dashboard" || pathname === "/admin"
             : pathname === item.href || pathname?.startsWith(item.href + "/");
           return (
             <Link
