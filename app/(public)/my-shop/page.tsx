@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen, ChevronDown } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
@@ -57,39 +57,11 @@ type SetupStep = {
   href: string;
 };
 
-const GUIDE_ITEMS = [
-  {
-    icon: "📣",
-    title: "最新情報の投稿",
-    description: "今日のおすすめ商品・残り数量・出店場所の変更など、お客さんに伝えたい情報をリアルタイムで発信できます。投稿は時間・本日・カスタム日時で期限設定が可能です。",
-    href: "/vendor/post/new",
-  },
-  {
-    icon: "🏪",
-    title: "店舗情報の更新",
-    description: "商品ラインナップ・価格・決済方法・出店予定日・営業時間・SNSリンクを管理します。情報を充実させるとマップでの見つかりやすさが上がります。",
-    href: "/vendor/store",
-  },
-  {
-    icon: "📊",
-    title: "アナリティクス",
-    description: "店舗の閲覧数・クリック数を先週と比較できます。時間帯別・商品別の分析や、AIばあちゃんに何回紹介されたかも確認できます。",
-    href: "/vendor/analytics",
-  },
-  {
-    icon: "🤖",
-    title: "AIばあちゃんに教える",
-    description: "お店のこだわり・おすすめの食べ方・出店歴など、自由にテキストで入力するとAIばあちゃんがお客さんに紹介してくれます。詳しく書くほど紹介の精度が上がります。",
-    href: "/vendor/ai-knowledge",
-  },
-];
-
 export default function MyShopPage() {
   const { isLoggedIn, user, permissions, isLoading } = useAuth();
   const canAccess = !isLoading && isLoggedIn;
 
   const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -238,40 +210,17 @@ export default function MyShopPage() {
               })}
             </div>
 
-            {/* 使い方ガイド */}
-            <div className="mt-5 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <button
-                onClick={() => setIsGuideOpen((v) => !v)}
-                className="flex w-full items-center justify-between px-4 py-4 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <BookOpen size={16} className="text-slate-500" />
-                  <span className="text-sm font-semibold text-slate-700">使い方ガイド</span>
-                </div>
-                <ChevronDown
-                  size={16}
-                  className={`text-slate-400 transition-transform duration-200 ${isGuideOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-              {isGuideOpen && (
-                <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
-                  {GUIDE_ITEMS.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="flex gap-3 rounded-xl bg-slate-50 px-3 py-3 transition hover:bg-amber-50"
-                    >
-                      <span className="mt-0.5 text-xl leading-none">{item.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{item.description}</p>
-                      </div>
-                      <ChevronRight size={14} className="mt-1 flex-shrink-0 text-slate-300" />
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* 使い方ガイドへのリンク */}
+            <Link
+              href="/vendor/help"
+              className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:bg-slate-50"
+            >
+              <div className="flex items-center gap-2">
+                <BookOpen size={16} className="text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">使い方ガイド</span>
+              </div>
+              <ChevronRight size={16} className="text-slate-300" />
+            </Link>
           </>
         )}
       </div>
