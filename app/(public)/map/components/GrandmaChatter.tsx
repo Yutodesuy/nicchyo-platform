@@ -27,6 +27,23 @@ type PriorityMessage = {
   badgeIcon?: string;
 };
 
+type AskContext = { shopId?: number; shopName?: string; source?: "suggestion" | "input" };
+
+type AskResponse = {
+  reply: string;
+  imageUrl?: string;
+  shopIds?: number[];
+  errorMessage?: string;
+  retryable?: boolean;
+};
+
+type PendingSubmission = {
+  text: string;
+  imageFile?: File | null;
+  imagePreview?: string | null;
+  context?: AskContext;
+};
+
 type GrandmaChatterProps = {
   comments?: typeof grandmaCommentPool;
   titleLabel?: string;
@@ -36,8 +53,8 @@ type GrandmaChatterProps = {
   onAsk?: (
     text: string,
     imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
-  ) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
+    context?: AskContext
+  ) => Promise<AskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number) => void;
@@ -112,6 +129,8 @@ export default function GrandmaChatter({
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
   const [shouldShowValidation, setShouldShowValidation] = useState(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [lastFailedSubmission, setLastFailedSubmission] = useState<PendingSubmission | null>(null);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -565,13 +584,20 @@ export default function GrandmaChatter({
 
   const handleAskSubmit = async (
     text?: string,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
-    openChat?: boolean
+    context?: AskContext,
+    openChat?: boolean,
+    retrySubmission?: PendingSubmission | null
   ) => {
     if (aiStatus === "thinking") return;
     stopSpeechRecognition();
-    const value = (text ?? askText).trim();
-    if (!value && !selectedImageFile) {
+    const submission = retrySubmission ?? {
+      text: (text ?? askText).trim(),
+      imageFile: selectedImageFile,
+      imagePreview: selectedImagePreview,
+      context,
+    };
+    const value = submission.text;
+    if (!value && !submission.imageFile) {
       if (shouldValidateInput) {
         setShouldShowValidation(true);
       }
@@ -580,13 +606,15 @@ export default function GrandmaChatter({
     if (openChat && !isChatOpen) {
       setIsChatOpen(true);
     }
-    const imageFile = selectedImageFile;
-    const imagePreview = selectedImagePreview;
+    const imageFile = submission.imageFile ?? null;
+    const imagePreview = submission.imagePreview ?? null;
     setAskText("");
     setSelectedImageName(null);
     setSelectedImageFile(null);
     setSelectedImagePreview(null);
     setShouldShowValidation(false);
+    setErrorNotice(null);
+    setLastFailedSubmission(null);
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
     }
@@ -606,14 +634,17 @@ export default function GrandmaChatter({
     const requestId = ++askRequestRef.current;
     try {
       const response = onAsk
-        ? await onAsk(value, imageFile ?? undefined, context)
+        ? await onAsk(value, imageFile ?? undefined, submission.context)
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
-      setAiStatus("answered");
       const reply =
         response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。";
+      const isRetryableError = !!response.retryable;
+      setAiStatus(isRetryableError ? "error" : "answered");
       setAiBubbleText(reply);
       setAiImageUrl(response.imageUrl ?? null);
+      setErrorNotice(response.errorMessage ?? null);
+      setLastFailedSubmission(isRetryableError ? submission : null);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -629,6 +660,8 @@ export default function GrandmaChatter({
       setAiStatus("error");
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
+      setErrorNotice("接続に失敗しました。少し時間をおいて、もう一度試してください。");
+      setLastFailedSubmission(submission);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -651,6 +684,8 @@ export default function GrandmaChatter({
       }
       return;
     }
+    setErrorNotice(null);
+    setLastFailedSubmission(null);
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
     setSelectedImagePreview(URL.createObjectURL(file));
@@ -943,12 +978,14 @@ export default function GrandmaChatter({
                     variant="outline"
                     size="default"
                     onClick={() => {
-                      if (window.confirm("これまでの会話を消してもいいですか？")) {
-                        setChatMessages([]);
-                        setHasUserAsked(false);
-                        onClear?.();
-                        if (chatStorageKeyRef.current) {
-                          localStorage.removeItem(chatStorageKeyRef.current);
+                        if (window.confirm("これまでの会話を消してもいいですか？")) {
+                          setChatMessages([]);
+                          setHasUserAsked(false);
+                          setErrorNotice(null);
+                          setLastFailedSubmission(null);
+                          onClear?.();
+                          if (chatStorageKeyRef.current) {
+                            localStorage.removeItem(chatStorageKeyRef.current);
                         }
                       }
                     }}
@@ -1383,6 +1420,10 @@ export default function GrandmaChatter({
                   onChange={(e) => {
                     const nextValue = e.target.value;
                     setAskText(nextValue);
+                    if (errorNotice) {
+                      setErrorNotice(null);
+                      setLastFailedSubmission(null);
+                    }
                     if (shouldValidateInput && nextValue.trim()) {
                       setShouldShowValidation(false);
                     }
@@ -1493,6 +1534,30 @@ export default function GrandmaChatter({
               {selectedImageName && (
                 <div className="text-[11px] text-slate-600">
                   画像: {selectedImageName}
+                </div>
+              )}
+              {errorNotice && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+                  <span>{errorNotice}</span>
+                  {lastFailedSubmission && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="default"
+                      onClick={() =>
+                        handleAskSubmit(
+                          lastFailedSubmission.text,
+                          lastFailedSubmission.context,
+                          true,
+                          lastFailedSubmission
+                        )
+                      }
+                      disabled={aiStatus === "thinking"}
+                      className="h-7 rounded-full border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                    >
+                      もう一度送る
+                    </Button>
+                  )}
                 </div>
               )}
               {shouldShowValidation && (
