@@ -1965,13 +1965,7 @@ function ConsultShopSuggestionCard({
   return (
     <button
       type="button"
-      onClick={() => {
-        if (onStartConsult) {
-          onStartConsult(shop);
-          return;
-        }
-        onSelectShop?.(shop.id);
-      }}
+      onClick={() => onSelectShop?.(shop.id)}
       className="w-full rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"
     >
       <div className="flex items-start gap-3">
@@ -1997,9 +1991,23 @@ function ConsultShopSuggestionCard({
             {shop.products.slice(0, 3).join("・")}
             {shop.products.length > 3 && " ほか"}
           </div>
-          <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
-            {onStartConsult ? "このお店について詳しく" : "詳細を見る"}
-            <span aria-hidden="true">→</span>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
+              詳細を見る
+              <span aria-hidden="true">→</span>
+            </div>
+            {onStartConsult && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onStartConsult(shop);
+                }}
+                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold text-amber-800 transition hover:bg-amber-100"
+              >
+                このお店について詳しく
+              </button>
+            )}
           </div>
         </div>
       </div>
