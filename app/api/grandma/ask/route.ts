@@ -94,6 +94,13 @@ type StructuredConsultResponse = {
   followUpQuestion: string;
 };
 
+const CONSULT_CONVERSATION_PATTERNS = [
+  "構成1: キャラ1が回答し、キャラ2がそこから自然に出てくる疑問を投げ、キャラ1が補足し、最後にキャラ2が納得と感想で締める。",
+  "構成2: キャラ1が回答し、キャラ2が別視点の答えを足し、キャラ1が共感し、最後にキャラ2がユーザーへやさしく声を掛ける。",
+  "構成3: キャラ1が回答し、キャラ2がやさしく反対側の意見や注意点を述べ、キャラ1が納得し、最後にキャラ2が整理して締める。",
+  "構成4: キャラ1が回答し、キャラ2が共感し、キャラ1が新たな意見を足し、最後にキャラ2がキャラ1とユーザーの両方を受けてまとめる。",
+] as const;
+
 const CHOME_VALUES = new Set([
   "一丁目",
   "二丁目",
@@ -569,7 +576,7 @@ function buildResponseSchema(characters: ConsultCharacter[]) {
           summary: { type: "string" },
           turns: {
             type: "array",
-            minItems: 2,
+            minItems: 1,
             maxItems: 4,
             items: {
               type: "object",
@@ -598,6 +605,14 @@ function buildResponseSchema(characters: ConsultCharacter[]) {
       },
     },
   } as const;
+}
+
+function pickConversationPattern(characters: ConsultCharacter[]) {
+  if (characters.length >= 4) {
+    return "全員会話: 選ばれた全員が1発話ずつ話し、前の発話を軽く受けながらそれぞれの言い方で答える。";
+  }
+  const index = Math.floor(Math.random() * CONSULT_CONVERSATION_PATTERNS.length);
+  return CONSULT_CONVERSATION_PATTERNS[index];
 }
 
 export async function POST(request: Request) {
@@ -637,6 +652,7 @@ export async function POST(request: Request) {
     const keywords = extractKeywords(question);
     const shopIntent = isShopRelatedQuestion(normalized);
     const selectedCharacters = pickConsultCharacters();
+    const conversationPattern = pickConversationPattern(selectedCharacters);
 
     let targetShop: Shop | null = null;
     if (targetShopId) {
@@ -785,7 +801,10 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: buildGrandmaAiSystemPrompt(selectedCharacters),
+            content: buildGrandmaAiSystemPrompt(
+              selectedCharacters,
+              conversationPattern
+            ),
           },
           {
             role: "user",
