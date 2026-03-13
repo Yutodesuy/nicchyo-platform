@@ -16,7 +16,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, TileLayer } from "react-leaflet";
+import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import { Navigation, Plus, Minus } from "lucide-react";
@@ -49,11 +49,7 @@ import {
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
 import type { Landmark } from "../types/landmark";
-import {
-  getAutoRotationForVisibleRoad,
-  getShortestAngleDelta,
-  normalizeRotationDeg,
-} from "../utils/autoRotation";
+import { normalizeRotationDeg } from "../utils/autoRotation";
 
 // Map bounds (Sunday market)
 const ROAD_BOUNDS = getRoadBounds();
@@ -93,7 +89,6 @@ const INITIAL_ZOOM = MAX_ZOOM;
 
 // Allow a slight pan margin outside road bounds
 const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
-
 const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
 const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
 
@@ -239,8 +234,8 @@ type MapViewProps = {
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 12;
-const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 18;
+const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
+const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
 const PAN_START_THRESHOLD_PX = 3;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.01;
@@ -276,56 +271,6 @@ function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => vo
       map.off("zoomend", handleZoom);
     };
   }, [map, onZoomChange]);
-  return null;
-}
-
-function MapAutoRotationController({
-  enabled,
-  onAutoRotationChange,
-  onResumeFromManualPause,
-}: {
-  enabled: boolean;
-  onAutoRotationChange: (rotation: number | null) => void;
-  onResumeFromManualPause: (reason: "moveend" | "zoomend") => void;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    const updateAutoRotation = () => {
-      if (!enabled) {
-        onAutoRotationChange(null);
-        return;
-      }
-      onAutoRotationChange(
-        getAutoRotationForVisibleRoad({
-          center: map.getCenter(),
-        })
-      );
-    };
-
-    const handleMoveEnd = () => {
-      onResumeFromManualPause("moveend");
-      updateAutoRotation();
-    };
-    const handleZoomEnd = () => {
-      onResumeFromManualPause("zoomend");
-      updateAutoRotation();
-    };
-
-    updateAutoRotation();
-    map.on("moveend", handleMoveEnd);
-    map.on("zoomend", handleZoomEnd);
-    return () => {
-      map.off("moveend", handleMoveEnd);
-      map.off("zoomend", handleZoomEnd);
-    };
-  }, [
-    enabled,
-    map,
-    onAutoRotationChange,
-    onResumeFromManualPause,
-  ]);
-
   return null;
 }
 
@@ -449,11 +394,10 @@ const MapView = memo(function MapView({
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
-  const [autoRotation, setAutoRotation] = useState(0);
   const [manualRotationOffset, setManualRotationOffset] = useState(0);
-  const [isAutoRotationPaused, setIsAutoRotationPaused] = useState(false);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const [isTouchRotating, setIsTouchRotating] = useState(false);
+  const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
     const { innerWidth, innerHeight } = window;
@@ -475,8 +419,6 @@ const MapView = memo(function MapView({
     lastY: number;
     isPanning: boolean;
   } | null>(null);
-  const autoRotationRef = useRef(0);
-  const isAutoRotationPausedRef = useRef(false);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
@@ -770,9 +712,7 @@ const MapView = memo(function MapView({
   const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
   const interactionDisabled = agentOpen;
-  const mapRotation = isMinimumZoomMode
-    ? 0
-    : normalizeRotationDeg(autoRotation + manualRotationOffset);
+  const mapRotation = normalizeRotationDeg(manualRotationOffset);
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -784,11 +724,7 @@ const MapView = memo(function MapView({
 
   const applyManualRotation = useCallback(
     (nextRotation: number) => {
-      isAutoRotationPausedRef.current = true;
-      setIsAutoRotationPaused(true);
-      setManualRotationOffset(
-        normalizeRotationDeg(nextRotation - autoRotationRef.current)
-      );
+      setManualRotationOffset(normalizeRotationDeg(nextRotation));
     },
     []
   );
@@ -816,47 +752,6 @@ const MapView = memo(function MapView({
     const factor = Math.pow(1.22, mapUiZoom - 18);
     return Math.min(2.8, Math.max(0.5, factor));
   }, [mapUiZoom]);
-
-  useEffect(() => {
-    autoRotationRef.current = autoRotation;
-  }, [autoRotation]);
-
-  useEffect(() => {
-    isAutoRotationPausedRef.current = isAutoRotationPaused;
-  }, [isAutoRotationPaused]);
-
-  useEffect(() => {
-    if (!isMinimumZoomMode) return;
-    setAutoRotation(0);
-    setManualRotationOffset(0);
-    setIsAutoRotationPaused(false);
-    autoRotationRef.current = 0;
-    isAutoRotationPausedRef.current = false;
-  }, [isMinimumZoomMode]);
-
-  const handleAutoRotationChange = useCallback(
-    (nextRotation: number | null) => {
-      if (nextRotation === null) return;
-      if (isMinimumZoomMode || isAutoRotationPausedRef.current) return;
-      setAutoRotation((prev) => {
-        const delta = getShortestAngleDelta(prev, nextRotation);
-        return normalizeRotationDeg(prev + delta);
-      });
-      setManualRotationOffset(0);
-    },
-    [isMinimumZoomMode]
-  );
-
-  const handleResumeFromManualPause = useCallback((reason: "moveend" | "zoomend") => {
-    isAutoRotationPausedRef.current = false;
-    setIsAutoRotationPaused((prev) => {
-      if (!prev) return prev;
-      return false;
-    });
-    if (reason === "zoomend") {
-      setManualRotationOffset(0);
-    }
-  }, []);
 
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
@@ -898,6 +793,7 @@ const MapView = memo(function MapView({
     (e: React.TouchEvent<HTMLDivElement>) => {
       if (interactionDisabled) return;
       if (e.touches.length === 1) {
+        setIsMultiTouchGesture(false);
         const touch = e.touches[0];
         touchPanRef.current = {
           lastX: touch.clientX,
@@ -909,6 +805,7 @@ const MapView = memo(function MapView({
         return;
       }
       if (e.touches.length !== 2) return;
+      setIsMultiTouchGesture(true);
       touchPanRef.current = null;
       const t0 = e.touches[0];
       const t1 = e.touches[1];
@@ -980,6 +877,7 @@ const MapView = memo(function MapView({
 
   const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (interactionDisabled) return;
+    setIsMultiTouchGesture(e.touches.length >= 2);
     if (e.touches.length < 2) {
       touchRotateRef.current = null;
       setIsTouchRotating(false);
@@ -1051,9 +949,10 @@ const MapView = memo(function MapView({
         style={{
           width: `${mapShellSize}px`,
           height: `${mapShellSize}px`,
+          touchAction: "none",
           transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
           transformOrigin: "center center",
-          transition: isTouchRotating ? "none" : "transform 220ms ease-out",
+          transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
         }}
       >
         <MapContainer
@@ -1063,7 +962,7 @@ const MapView = memo(function MapView({
           maxZoom={MAX_ZOOM}
           scrollWheelZoom={!agentOpen && !isMobile}
           dragging={false}
-          touchZoom={agentOpen ? false : isTouchRotating ? false : isMobile ? "center" : true}
+          touchZoom={agentOpen ? false : isMultiTouchGesture || isTouchRotating ? false : isMobile ? "center" : true}
           doubleClickZoom={!agentOpen && !isMobile}
           className={`h-full w-full ${agentOpen ? "pointer-events-none" : ""}`}
           style={{
@@ -1089,11 +988,6 @@ const MapView = memo(function MapView({
             }
           }}
         >
-          <MapAutoRotationController
-            enabled={!isMinimumZoomMode}
-            onAutoRotationChange={handleAutoRotationChange}
-            onResumeFromManualPause={handleResumeFromManualPause}
-          />
           <MapZoomConstraint />
           <MapZoomRoadSnapController />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
@@ -1191,13 +1085,25 @@ const MapView = memo(function MapView({
               key={`landmark-${spec.key}`}
               position={[spec.lat, spec.lng]}
               icon={landmarkIcons.get(spec.key) ?? L.divIcon({ className: "map-landmark-icon" })}
-              interactive={false}
+              interactive
               keyboard={false}
               opacity={1}
               zIndexOffset={highlightEventTargets ? 1800 : 0}
-            />
+            >
+              <Popup
+                pane="landmark-popup"
+                offset={[0, -18]}
+                className="map-landmark-popup"
+              >
+                <div className="min-w-[180px] max-w-[220px]">
+                  <p className="text-sm font-bold text-slate-900">{spec.name}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{spec.description}</p>
+                </div>
+              </Popup>
+            </Marker>
           ))}
         </Pane>
+        <Pane name="landmark-popup" style={{ zIndex: 10000 }} />
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             【ポイント8】最適化された店舗レイヤー
             - 300個の ShopMarker コンポーネントではなく、
