@@ -49,6 +49,7 @@ export default function PageVisitTracker() {
     pathRef.current = nextPath;
     startTimeRef.current = Date.now();
     sentRef.current = false;
+    sendVisit(nextPath, 1);
   }, [pathname, searchParams]);
 
   useEffect(() => {

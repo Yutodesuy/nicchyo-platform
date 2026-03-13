@@ -51,7 +51,7 @@ export const AdminSidebar = React.memo(function AdminSidebar({
     },
     {
       label: "ことづて管理",
-      href: "/moderator/kotodute",
+      href: "/admin/kotodute",
       icon: "💬",
       show: permissions.canModerateContent,
     },

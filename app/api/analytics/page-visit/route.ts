@@ -73,8 +73,9 @@ export async function POST(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const visitDate = getTokyoTodayIso();
   const { error } = await supabase.from("web_page_analytics").insert({
-    visit_date: getTokyoTodayIso(),
+    visit_date: visitDate,
     visitor_key: visitorKey,
     path,
     duration_seconds: durationSeconds,
