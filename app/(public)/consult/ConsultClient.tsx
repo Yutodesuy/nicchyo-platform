@@ -60,6 +60,7 @@ export default function ConsultClient() {
         shopIds?: number[];
         shops?: Shop[];
         turns?: ConsultAskResponse["turns"];
+        followUpQuestion?: string;
         memorySummary?: string;
       };
       if (payload.shops && payload.shops.length > 0) {
@@ -75,6 +76,7 @@ export default function ConsultClient() {
         shopIds: payload.shopIds,
         shops: payload.shops,
         turns: payload.turns,
+        followUpQuestion: payload.followUpQuestion,
         memorySummary: payload.memorySummary,
         retryable: false,
       };

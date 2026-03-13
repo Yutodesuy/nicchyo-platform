@@ -41,5 +41,6 @@ ${castBlock}
 - summary には、次回以降に引き継ぐ短い会話メモを120文字以内で入れる
 - turns は表示順で返す
 - turns[].speakerId は必ず上の2人の id のどちらかにする
+- followUpQuestion には、この会話の次に自然につながる短い質問を1つだけ入れる
 `.trim();
 }

@@ -52,6 +52,7 @@ type ChatMessage = {
   localImageUrl?: string;
   speakerId?: ConsultCharacterId;
   speakerName?: string;
+  followUpQuestion?: string;
 };
 
 type GrandmaChatterProps = {
@@ -457,6 +458,7 @@ export default function GrandmaChatter({
       shopIds: message.shopIds,
       speakerId: message.speakerId,
       speakerName: message.speakerName,
+      followUpQuestion: message.followUpQuestion,
     }));
     localStorage.setItem(
       chatStorageKeyRef.current,
@@ -692,6 +694,8 @@ export default function GrandmaChatter({
             shopIds: index === turns.length - 1 ? response.shopIds : undefined,
             speakerId: turn.speakerId,
             speakerName: turn.speakerName,
+            followUpQuestion:
+              index === turns.length - 1 ? response.followUpQuestion : undefined,
           },
         ]);
         if (index < turns.length - 1) {
@@ -1122,9 +1126,6 @@ export default function GrandmaChatter({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2 pl-1">
-                          <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
-                            SUNDAY VOICE
-                          </span>
                           <span className="text-sm font-semibold text-slate-700">{speakerName}</span>
                         </div>
                         <MessageBubble
@@ -1178,18 +1179,23 @@ export default function GrandmaChatter({
                             </button>
                           )}
                         </MessageBubble>
-                        <div className="mt-2 flex flex-wrap gap-2 pl-1">
-                          {buildConsultFollowUpSuggestions(message).map((suggestion) => (
+                        {message.followUpQuestion && (
+                          <div className="mt-2 flex flex-wrap gap-2 pl-1">
                             <button
-                              key={`${message.id}-${suggestion}`}
                               type="button"
-                              onClick={() => handleAskSubmit(suggestion, { source: "suggestion" }, true)}
+                              onClick={() =>
+                                handleAskSubmit(
+                                  message.followUpQuestion,
+                                  { source: "suggestion" },
+                                  true
+                                )
+                              }
                               className="rounded-full border border-amber-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
                             >
-                              {suggestion}
+                              {message.followUpQuestion}
                             </button>
-                          ))}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1284,9 +1290,6 @@ export default function GrandmaChatter({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex items-center gap-2 pl-1">
-                        <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
-                          SUNDAY VOICE
-                        </span>
                         <span className="text-sm font-semibold text-slate-700">{activeConsultHero.name}</span>
                       </div>
                       <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-sm text-slate-800 shadow-sm">
@@ -1817,33 +1820,4 @@ function pickCommentIcon(comment: { genre: string; text: string }) {
   if (text.includes("時間") || text.includes("早め")) return "⏰";
 
   return "💬";
-}
-
-function buildConsultFollowUpSuggestions(message: {
-  text: string;
-  shopIds?: number[];
-  imageUrl?: string;
-}): string[] {
-  const suggestions: string[] = [];
-
-  if (message.shopIds && message.shopIds.length > 0) {
-    suggestions.push("この中でいちばん人気のお店は？");
-    suggestions.push("朝いちで行くならどこがいい？");
-  }
-
-  if (message.imageUrl) {
-    suggestions.push("この写真の見どころを教えて");
-  }
-
-  if (message.text.includes("食材") || message.text.includes("旬") || message.text.includes("果物")) {
-    suggestions.push("今買うなら何がおすすめ？");
-  }
-
-  if (message.text.includes("回り方") || message.text.includes("順番") || message.text.includes("場所")) {
-    suggestions.push("初めてならどの順番で回るといい？");
-  }
-
-  suggestions.push("地元の人はどう楽しむ？");
-
-  return Array.from(new Set(suggestions)).slice(0, 3);
 }
