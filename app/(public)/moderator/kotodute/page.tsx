@@ -25,7 +25,7 @@ interface Kotodute {
   isReported?: boolean; // ユーザーから通報されているか
 }
 
-function ModeratorKotoduteContent() {
+export function ModeratorKotoduteContent() {
   const { permissions, isLoading } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | KotoduteStatus>("all");

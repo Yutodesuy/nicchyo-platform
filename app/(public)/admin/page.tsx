@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
+import TrafficChartCard, { type TrafficGranularity, type TrafficPoint } from "@/components/admin/TrafficChartCard";
 import { createClient } from "@/utils/supabase/server";
 
 type ActivityItem = {
@@ -8,11 +10,6 @@ type ActivityItem = {
   icon: string;
   text: string;
   timestamp: string | null;
-};
-
-type VisitorPoint = {
-  date: string;
-  count: number;
 };
 
 type DurationPoint = {
@@ -29,11 +26,34 @@ type PageAnalyticsRow = {
   user_role: string | null;
 };
 
+type DailyUniqueRow = {
+  visit_date: string;
+  visitor_key: string;
+};
+
 type UrlSummary = {
   path: string;
   visitors: number;
   averageMinutes: number;
   totalMinutes: number;
+};
+
+type VendorActivityRow = {
+  id: string;
+  shop_name: string | null;
+  created_at: string | null;
+};
+
+type ContentActivityRow = {
+  id: string;
+  title: string | null;
+  created_at: string | null;
+};
+
+type LandmarkActivityRow = {
+  key: string;
+  name: string | null;
+  created_at: string | null;
 };
 
 function getRole(user: unknown) {
@@ -80,6 +100,18 @@ function formatShortDate(value: string) {
   }).format(date);
 }
 
+function formatMonthLabel(value: string) {
+  const date = new Date(`${value}-01T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+  }).format(date) + "月";
+}
+
+function formatYearLabel(year: number) {
+  return `${year}年`;
+}
+
 function formatMinutes(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0.0分";
   return `${value.toFixed(1)}分`;
@@ -104,17 +136,133 @@ function buildVisitorDailyDurationMap(rows: PageAnalyticsRow[]) {
   return byDate;
 }
 
-function buildDailyUniqueVisitorMap(rows: PageAnalyticsRow[]) {
-  const byDate = new Map<string, Set<string>>();
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
-  for (const row of rows) {
-    if (!row.visit_date || !row.visitor_key) continue;
-    const visitors = byDate.get(row.visit_date) ?? new Set<string>();
-    visitors.add(row.visitor_key);
-    byDate.set(row.visit_date, visitors);
+function toMonthKey(date: Date) {
+  return date.toISOString().slice(0, 7);
+}
+
+function getStartOfWeek(date: Date) {
+  const result = new Date(date);
+  const day = result.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  result.setUTCDate(result.getUTCDate() + diff);
+  return result;
+}
+
+function formatWeekLabel(startIso: string) {
+  const start = new Date(`${startIso}T00:00:00Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  return `${new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(start)}-${new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(end)}`;
+}
+
+function buildTrafficSeries(
+  rows: DailyUniqueRow[],
+  now: Date
+) {
+  const normalizedRows = rows.filter((row) => row.visit_date && row.visitor_key);
+  const periodVisitors = {
+    day: new Map<string, Set<string>>(),
+    week: new Map<string, Set<string>>(),
+    month: new Map<string, Set<string>>(),
+    year: new Map<string, Set<string>>(),
+  } satisfies Record<TrafficGranularity, Map<string, Set<string>>>;
+
+  for (const row of normalizedRows) {
+    const date = new Date(`${row.visit_date}T00:00:00Z`);
+    const dayKey = row.visit_date;
+    const weekKey = toIsoDate(getStartOfWeek(date));
+    const monthKey = toMonthKey(date);
+    const yearKey = String(date.getUTCFullYear());
+    const keys: Record<TrafficGranularity, string> = {
+      day: dayKey,
+      week: weekKey,
+      month: monthKey,
+      year: yearKey,
+    };
+
+    (Object.keys(keys) as TrafficGranularity[]).forEach((granularity) => {
+      const totalSet = periodVisitors[granularity].get(keys[granularity]) ?? new Set<string>();
+      totalSet.add(row.visitor_key);
+      periodVisitors[granularity].set(keys[granularity], totalSet);
+    });
   }
 
-  return byDate;
+  const daySeries: TrafficPoint[] = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    date.setUTCDate(date.getUTCDate() - (6 - index));
+    const key = toIsoDate(date);
+    return {
+      key,
+      label: formatShortDate(key),
+      value: periodVisitors.day.get(key)?.size ?? 0,
+    };
+  });
+
+  const weekSeries: TrafficPoint[] = Array.from({ length: 8 }, (_, index) => {
+    const currentWeekStart = getStartOfWeek(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())));
+    currentWeekStart.setUTCDate(currentWeekStart.getUTCDate() - (7 * (7 - index)));
+    const key = toIsoDate(currentWeekStart);
+    return {
+      key,
+      label: formatWeekLabel(key),
+      value: periodVisitors.week.get(key)?.size ?? 0,
+    };
+  });
+
+  const monthSeries: TrafficPoint[] = Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (11 - index), 1));
+    const key = toMonthKey(date);
+    return {
+      key,
+      label: formatMonthLabel(key),
+      value: periodVisitors.month.get(key)?.size ?? 0,
+    };
+  });
+
+  const yearSeries: TrafficPoint[] = Array.from({ length: 5 }, (_, index) => {
+    const year = now.getUTCFullYear() - (4 - index);
+    const key = String(year);
+    return {
+      key,
+      label: formatYearLabel(year),
+      value: periodVisitors.year.get(key)?.size ?? 0,
+    };
+  });
+
+  return {
+    day: daySeries,
+    week: weekSeries,
+    month: monthSeries,
+    year: yearSeries,
+  } satisfies Record<TrafficGranularity, TrafficPoint[]>;
+}
+
+function createAdminReadClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return null;
+  }
+
+  return createServiceClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
 export default async function AdminDashboardPage() {
@@ -133,6 +281,9 @@ export default async function AdminDashboardPage() {
     redirect("/");
   }
 
+  const adminReadClient = createAdminReadClient();
+  const dataClient = adminReadClient ?? supabase;
+
   const now = new Date();
   const todayIso = now.toISOString().slice(0, 10);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -140,96 +291,121 @@ export default async function AdminDashboardPage() {
   const weeklyStart = new Date(now);
   weeklyStart.setDate(now.getDate() - 6);
   const weeklyStartIso = weeklyStart.toISOString().slice(0, 10);
+  const yearlyAnalyticsStart = new Date(Date.UTC(now.getFullYear() - 4, 0, 1))
+    .toISOString()
+    .slice(0, 10);
 
   const [
     vendorsCountResult,
     activeContentsCountResult,
-    visitorStatsResult,
+    periodPageAnalyticsResult,
     pageAnalyticsResult,
+    latestPageVisitDateResult,
     latestVendorsResult,
     latestContentsResult,
     latestLandmarksResult,
   ] = await Promise.all([
-    supabase.from("vendors").select("*", { count: "exact", head: true }),
-    supabase
+    dataClient.from("vendors").select("*", { count: "exact", head: true }),
+    dataClient
       .from("vendor_contents")
       .select("*", { count: "exact", head: true })
       .gt("expires_at", now.toISOString()),
-    supabase
-      .from("web_visitor_stats")
-      .select("visit_date, visitor_count")
-      .gte("visit_date", monthStart)
-      .lt("visit_date", monthEnd),
-    supabase
+    dataClient
       .from("web_page_analytics")
       .select("visit_date, visitor_key, path, duration_seconds, user_role")
-      .gte("visit_date", weeklyStartIso)
-      .lte("visit_date", todayIso)
+      .gte("visit_date", yearlyAnalyticsStart)
+      .lte("visit_date", todayIso),
+    dataClient
+      .from("web_page_analytics")
+      .select("visit_date, visitor_key, path, duration_seconds, user_role")
+      .eq("visit_date", todayIso)
       .order("created_at", { ascending: false }),
-    supabase
+    dataClient
+      .from("web_page_analytics")
+      .select("visit_date")
+      .order("visit_date", { ascending: false })
+      .limit(1),
+    dataClient
       .from("vendors")
       .select("id, shop_name, created_at")
       .order("created_at", { ascending: false })
       .limit(3),
-    supabase
+    dataClient
       .from("vendor_contents")
       .select("id, title, created_at")
       .order("created_at", { ascending: false })
       .limit(3),
-    supabase
+    dataClient
       .from("map_landmarks")
       .select("key, name, created_at")
       .order("created_at", { ascending: false })
       .limit(2),
   ]);
 
-  const monthVisitors = (visitorStatsResult.data ?? []).reduce((sum, row) => {
-    const count = typeof row.visitor_count === "number" ? row.visitor_count : 0;
-    return sum + count;
-  }, 0);
-
   const pageAnalytics = Array.isArray(pageAnalyticsResult.data)
     ? (pageAnalyticsResult.data as PageAnalyticsRow[])
     : [];
-  const nonAdminPageAnalytics = pageAnalytics.filter((row) => !isAdminAnalyticsRole(row.user_role));
-  const weeklyVisitorStatsRows = Array.isArray(visitorStatsResult.data)
-    ? visitorStatsResult.data
+  const periodPageAnalytics = Array.isArray(periodPageAnalyticsResult.data)
+    ? (periodPageAnalyticsResult.data as PageAnalyticsRow[])
     : [];
-  const monthVisitorTotalByDate = new Map<string, number>();
-  for (const row of weeklyVisitorStatsRows) {
-    const visitDate = (row as { visit_date?: string }).visit_date;
-    if (!visitDate) continue;
-    monthVisitorTotalByDate.set(
-      visitDate,
-      typeof row.visitor_count === "number" ? row.visitor_count : 0
-    );
+  const latestAnalyticsDate =
+    Array.isArray(latestPageVisitDateResult.data) &&
+    latestPageVisitDateResult.data[0] &&
+    typeof latestPageVisitDateResult.data[0].visit_date === "string"
+      ? latestPageVisitDateResult.data[0].visit_date
+      : null;
+  let latestDayPageAnalytics = pageAnalytics;
+  if (latestDayPageAnalytics.length === 0 && latestAnalyticsDate && latestAnalyticsDate !== todayIso) {
+    const latestDayAnalyticsResult = await dataClient
+      .from("web_page_analytics")
+      .select("visit_date, visitor_key, path, duration_seconds, user_role")
+      .eq("visit_date", latestAnalyticsDate)
+      .order("created_at", { ascending: false });
+    latestDayPageAnalytics = Array.isArray(latestDayAnalyticsResult.data)
+      ? (latestDayAnalyticsResult.data as PageAnalyticsRow[])
+      : [];
   }
-  const dailyUniqueVisitorMap = buildDailyUniqueVisitorMap(nonAdminPageAnalytics);
-  const vendorPageAnalytics = nonAdminPageAnalytics.filter((row) => row.user_role === "vendor");
-  const vendorDailyUniqueVisitorMap = buildDailyUniqueVisitorMap(vendorPageAnalytics);
 
-  const weeklyVisitorSeries: Array<VisitorPoint & { vendorCount: number }> = Array.from(
-    { length: 7 },
-    (_, index) => {
-      const date = new Date(weeklyStart);
-      date.setDate(weeklyStart.getDate() + index);
-      const iso = date.toISOString().slice(0, 10);
-      return {
-        date: iso,
-        count: monthVisitorTotalByDate.get(iso) ?? dailyUniqueVisitorMap.get(iso)?.size ?? 0,
-        vendorCount: vendorDailyUniqueVisitorMap.get(iso)?.size ?? 0,
-      };
-    }
+  const allTrafficRows: DailyUniqueRow[] = Array.from(
+    new Map(
+      periodPageAnalytics
+        .filter((row) => !isAdminAnalyticsRole(row.user_role))
+        .map((row) => [`${row.visit_date}:${row.visitor_key}`, { visit_date: row.visit_date, visitor_key: row.visitor_key }])
+    ).values()
   );
-
-  const vendorVisitorsToday = new Set(
-    nonAdminPageAnalytics
-      .filter((row) => row.visit_date === todayIso && row.user_role === "vendor")
+  const vendorTrafficRows: DailyUniqueRow[] = Array.from(
+    new Map(
+      periodPageAnalytics
+        .filter((row) => row.user_role === "vendor")
+        .map((row) => [`${row.visit_date}:${row.visitor_key}`, { visit_date: row.visit_date, visitor_key: row.visitor_key }])
+    ).values()
+  );
+  const trafficSeriesByGranularity = buildTrafficSeries(
+    allTrafficRows,
+    new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  );
+  const vendorTrafficSeriesByGranularity = buildTrafficSeries(
+    vendorTrafficRows,
+    new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  );
+  const monthVisitors = new Set(
+    allTrafficRows
+      .filter((row) => row.visit_date >= monthStart && row.visit_date < monthEnd)
       .map((row) => row.visitor_key)
   ).size;
+  const vendorVisitorsToday = new Set(
+    vendorTrafficRows.filter((row) => row.visit_date === todayIso).map((row) => row.visitor_key)
+  ).size;
 
-  const visitorDailyDurationMap = buildVisitorDailyDurationMap(nonAdminPageAnalytics);
-  const vendorVisitorDailyDurationMap = buildVisitorDailyDurationMap(vendorPageAnalytics);
+  const weeklyDurationRows = periodPageAnalytics.filter(
+    (row) => row.visit_date >= weeklyStartIso && row.visit_date <= todayIso
+  );
+  const visitorDailyDurationMap = buildVisitorDailyDurationMap(
+    weeklyDurationRows
+  );
+  const vendorVisitorDailyDurationMap = buildVisitorDailyDurationMap(
+    weeklyDurationRows.filter((row) => row.user_role === "vendor")
+  );
 
   const durationSeries: DurationPoint[] = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weeklyStart);
@@ -259,9 +435,9 @@ export default async function AdminDashboardPage() {
   const webAverageStayMinutes =
     allVisitorTotals.length > 0 ? weeklyDurationTotal / allVisitorTotals.length / 60 : 0;
 
+  const nonAdminPageAnalytics = latestDayPageAnalytics.filter((row) => !isAdminAnalyticsRole(row.user_role));
   const todayUrlMap = new Map<string, Map<string, number>>();
   for (const row of nonAdminPageAnalytics) {
-    if (row.visit_date !== todayIso) continue;
     const path = row.path || "/";
     const visitors = todayUrlMap.get(path) ?? new Map<string, number>();
     visitors.set(
@@ -289,35 +465,40 @@ export default async function AdminDashboardPage() {
     })
     .slice(0, 12);
 
-  const weeklyMax = Math.max(
-    ...weeklyVisitorSeries.flatMap((item) => [item.count, item.vendorCount]),
-    1
-  );
-
   const stats = [
     { title: "登録店舗数", value: vendorsCountResult.count ?? 0, icon: "🏪", bgColor: "bg-blue-50", textColor: "text-blue-600" },
     { title: "今月の訪問者", value: monthVisitors, icon: "📊", bgColor: "bg-purple-50", textColor: "text-purple-600" },
     { title: "出店者アクセス数", value: vendorVisitorsToday, icon: "🧑‍🌾", bgColor: "bg-emerald-50", textColor: "text-emerald-600" },
-    { title: "Web平均滞在時間", value: formatMinutes(webAverageStayMinutes), icon: "⏱️", bgColor: "bg-amber-50", textColor: "text-amber-600" },
+    { title: "公開中のお知らせ", value: activeContentsCountResult.count ?? 0, icon: "📝", bgColor: "bg-amber-50", textColor: "text-amber-600" },
   ];
 
+  const latestVendorRows = Array.isArray(latestVendorsResult.data)
+    ? (latestVendorsResult.data as unknown as VendorActivityRow[])
+    : [];
+  const latestContentRows = Array.isArray(latestContentsResult.data)
+    ? (latestContentsResult.data as unknown as ContentActivityRow[])
+    : [];
+  const latestLandmarkRows = Array.isArray(latestLandmarksResult.data)
+    ? (latestLandmarksResult.data as unknown as LandmarkActivityRow[])
+    : [];
+
   const recentActivities: ActivityItem[] = [
-    ...((latestVendorsResult.data ?? []).map((row) => ({
+    ...(latestVendorRows.map((row) => ({
       id: `vendor-${row.id}`,
       icon: "🏪",
       text: `店舗「${row.shop_name ?? "名称未設定"}」が登録されました`,
       timestamp: row.created_at as string | null,
     })) as ActivityItem[]),
-    ...((latestContentsResult.data ?? []).map((row) => ({
+    ...(latestContentRows.map((row) => ({
       id: `content-${row.id}`,
       icon: "📝",
       text: `投稿「${row.title ?? "タイトル未設定"}」が作成されました`,
       timestamp: row.created_at as string | null,
     })) as ActivityItem[]),
-    ...((latestLandmarksResult.data ?? []).map((row) => ({
-      id: `landmark-${row.key}`,
+    ...(latestLandmarkRows.map((row) => ({
+      id: `landmark-${row.key ?? row.name ?? row.created_at ?? Math.random().toString(36).slice(2)}`,
       icon: "🏛️",
-      text: `建物オブジェクト「${row.name ?? row.key}」が追加されました`,
+      text: `建物オブジェクト「${row.name ?? row.key ?? "名称未設定"}」が追加されました`,
       timestamp: row.created_at as string | null,
     })) as ActivityItem[]),
   ]
@@ -348,55 +529,25 @@ export default async function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="visitor-chart">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-purple-600">
-                  Traffic
-                </p>
-                <h2 id="visitor-chart" className="mt-2 text-xl font-bold text-gray-900">
-                  直近7日間の訪問者推移
-                </h2>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">最大 {weeklyMax} 人/日</p>
-                <div className="mt-2 flex items-center justify-end gap-4 text-xs text-slate-500">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-violet-500" />
-                    全体
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    出店者のみ
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="mt-8 flex h-72 items-end gap-3">
-              {weeklyVisitorSeries.map((item) => (
-                <div key={item.date} className="flex flex-1 flex-col items-center gap-3">
-                  <div className="flex h-56 w-full items-end gap-2 rounded-2xl bg-gradient-to-b from-purple-50 to-white px-2 pb-2">
-                    <div
-                      className="w-1/2 rounded-xl bg-gradient-to-t from-purple-600 via-fuchsia-500 to-violet-400 shadow-[0_10px_24px_rgba(139,92,246,0.22)]"
-                      style={{ height: `${Math.max((item.count / weeklyMax) * 100, item.count > 0 ? 10 : 0)}%` }}
-                    />
-                    <div
-                      className="w-1/2 rounded-xl bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400 shadow-[0_10px_24px_rgba(16,185,129,0.22)]"
-                      style={{
-                        height: `${Math.max((item.vendorCount / weeklyMax) * 100, item.vendorCount > 0 ? 10 : 0)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {item.count} / {item.vendorCount}
-                    </p>
-                    <p className="text-xs text-gray-500">{formatShortDate(item.date)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          <TrafficChartCard
+            eyebrow="Traffic"
+            title="サイト全体の訪問者推移"
+            legendLabel="全体"
+            dotClassName="bg-violet-500"
+            panelClassName="bg-gradient-to-b from-purple-50 to-white"
+            barClassName="bg-gradient-to-t from-purple-600 via-fuchsia-500 to-violet-400"
+            seriesByGranularity={trafficSeriesByGranularity}
+          />
+
+          <TrafficChartCard
+            eyebrow="Vendor Traffic"
+            title="出店者ロールの訪問者推移"
+            legendLabel="出店者のみ"
+            dotClassName="bg-emerald-500"
+            panelClassName="bg-gradient-to-b from-emerald-50 to-white"
+            barClassName="bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400"
+            seriesByGranularity={vendorTrafficSeriesByGranularity}
+          />
 
           <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="duration-chart">
             <div className="flex items-end justify-between gap-4">
@@ -462,7 +613,9 @@ export default async function AdminDashboardPage() {
                   URL別の来訪者数と滞在時間
                 </h2>
               </div>
-              <p className="text-sm text-gray-500">対象日: {formatShortDate(todayIso)}</p>
+              <p className="text-sm text-gray-500">
+                対象日: {formatShortDate(latestDayPageAnalytics[0]?.visit_date ?? todayIso)}
+              </p>
             </div>
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-100">
               <div className="grid grid-cols-[1.8fr_0.6fr_0.8fr_0.8fr] bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
