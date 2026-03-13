@@ -17,6 +17,40 @@ import ShopResultCard from "../../search/components/ShopResultCard";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
 
 const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
+const CONSULT_CHARACTER_SHOWCASE = [
+  {
+    id: "nichiyosan",
+    name: "にちよさん",
+    subtitle: "市場のことをなんでもつないでくれる案内役",
+    image: PLACEHOLDER_IMAGE,
+    imageScale: "scale-125",
+    imagePosition: "center 28%",
+  },
+  {
+    id: "ojichan",
+    name: "出店おじいちゃん",
+    subtitle: "昔話や旬の話に強い、市場の語り部",
+    image: "/images/characters/ojichan.png",
+    imageScale: "scale-125",
+    imagePosition: "center 14%",
+  },
+  {
+    id: "onisan",
+    name: "出店お兄さん",
+    subtitle: "歩き方や買い回りのコツを教えてくれる",
+    image: "/images/characters/onisan.png",
+    imageScale: "scale-125",
+    imagePosition: "center 12%",
+  },
+  {
+    id: "onesan",
+    name: "出店お姉さん",
+    subtitle: "おすすめや見どころを軽やかに案内してくれる",
+    image: "/images/characters/onesan.png",
+    imageScale: "scale-125",
+    imagePosition: "center 22%",
+  },
+] as const;
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
@@ -147,6 +181,7 @@ export default function GrandmaChatter({
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [consultExampleIndex, setConsultExampleIndex] = useState(0);
+  const [consultHeroIndex, setConsultHeroIndex] = useState(0);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -897,6 +932,17 @@ export default function GrandmaChatter({
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
   const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
+  const activeConsultHero =
+    CONSULT_CHARACTER_SHOWCASE[consultHeroIndex % CONSULT_CHARACTER_SHOWCASE.length];
+
+  useEffect(() => {
+    if (!isConsultVariant) return;
+    const timer = window.setInterval(() => {
+      setConsultHeroIndex((prev) => (prev + 1) % CONSULT_CHARACTER_SHOWCASE.length);
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [isConsultVariant]);
+
   return (
     <div className={shellClassName}>
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
@@ -1013,20 +1059,35 @@ export default function GrandmaChatter({
                     : "max-h-[calc(100vh-240px)]"
                 }`}
               >
-              <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
-                <div className={`h-32 w-32 overflow-hidden rounded-full border-4 shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
-                  <img
-                    src={PLACEHOLDER_IMAGE}
-                    alt="にちよさん"
-                    className="h-full w-full scale-110 object-cover object-center"
-                    draggable={false}
-                  />
+                <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
+                  <div
+                    className={`h-32 w-32 overflow-hidden rounded-[2rem] border-4 shadow-sm transition-all duration-500 ${
+                      isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"
+                    }`}
+                  >
+                    <img
+                      src={isConsultVariant ? activeConsultHero.image : PLACEHOLDER_IMAGE}
+                      alt={isConsultVariant ? activeConsultHero.name : "にちよさん"}
+                      className={`h-full w-full object-cover transition-all duration-500 ${
+                        isConsultVariant ? activeConsultHero.imageScale : "scale-110"
+                      }`}
+                      style={
+                        isConsultVariant
+                          ? { objectPosition: activeConsultHero.imagePosition }
+                          : undefined
+                      }
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                      {isConsultVariant ? activeConsultHero.name : "にちよさん"}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {isConsultVariant ? activeConsultHero.subtitle : "日曜市のことをなんでも聞いてね"}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>にちよさん</div>
-                  <div className="text-sm text-gray-600">日曜市のことをなんでも聞いてね</div>
-                </div>
-              </div>
 
               {chatMessages.map((message) => (
                 <div
@@ -1035,7 +1096,199 @@ export default function GrandmaChatter({
                     message.role === "user" ? "justify-end" : "justify-start items-start gap-2"
                   }`}
                 >
-                  {message.role === "assistant" && (
+                  {message.role === "assistant" && isConsultVariant ? (
+                    <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
+                      <div className="mt-1 flex-shrink-0">
+                        <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
+                          <img
+                            src={PLACEHOLDER_IMAGE}
+                            alt="にちよさん"
+                            className="h-full w-full scale-110 object-cover object-center"
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2 pl-1">
+                          <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
+                            NIChIYO VOICE
+                          </span>
+                          <span className="text-sm font-semibold text-slate-700">にちよさん</span>
+                        </div>
+                        <MessageBubble
+                          role={message.role}
+                          variant="consult"
+                          className="max-w-none shadow-sm"
+                        >
+                          {message.text}
+                          {message.shopIds &&
+                            message.shopIds.length > 0 &&
+                            shopLookup.size > 0 && (
+                              <div className="mt-3 rounded-2xl border border-orange-200 bg-white/70 p-2.5">
+                                <div className="flex items-center justify-between px-1">
+                                  <span className="text-xs font-bold text-orange-800">
+                                    おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
+                                  {message.shopIds
+                                    .map((id) => shopLookup.get(id))
+                                    .filter(Boolean)
+                                    .map((shop) => {
+                                      if (!shop) return null;
+                                      return (
+                                        <div key={shop.id} className="shrink-0 w-64">
+                                          <ShopResultCard
+                                            shop={shop}
+                                            isFavorite={false}
+                                            onSelectShop={() => onSelectShop?.(shop.id)}
+                                            compact
+                                          />
+                                        </div>
+                                      );
+                                    })
+                                    .filter(Boolean)}
+                                </div>
+                              </div>
+                            )}
+                          {message.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
+                              className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
+                              aria-label="写真を拡大する"
+                            >
+                              <img
+                                src={message.imageUrl}
+                                alt="案内画像"
+                                className="h-32 w-full object-cover"
+                              />
+                            </button>
+                          )}
+                        </MessageBubble>
+                        <div className="mt-2 flex flex-wrap gap-2 pl-1">
+                          {buildConsultFollowUpSuggestions(message).map((suggestion) => (
+                            <button
+                              key={`${message.id}-${suggestion}`}
+                              type="button"
+                              onClick={() => handleAskSubmit(suggestion, { source: "suggestion" }, true)}
+                              className="rounded-full border border-amber-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {message.role === "assistant" && (
+                        <div className="flex-shrink-0">
+                          <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
+                            <img
+                              src={PLACEHOLDER_IMAGE}
+                              alt="にちよさん"
+                              className="h-full w-full scale-110 object-cover object-center"
+                              draggable={false}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <MessageBubble role={message.role} variant={isConsultVariant ? "consult" : "default"} className="shadow-sm">
+                        {message.text}
+                        {message.localImageUrl && (
+                          <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
+                            <img
+                              src={message.localImageUrl}
+                              alt="送信画像"
+                              className="h-28 w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        {message.role === "assistant" &&
+                          message.shopIds &&
+                          message.shopIds.length > 0 &&
+                          shopLookup.size > 0 && (
+                            <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2">
+                              <div className="flex items-center justify-between px-1">
+                                <span className="text-xs font-bold text-orange-800">
+                                  おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
+                                </span>
+                              </div>
+                              <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
+                                {message.shopIds
+                                  .map((id) => shopLookup.get(id))
+                                  .filter(Boolean)
+                                  .map((shop) => {
+                                    if (!shop) return null;
+                                    return (
+                                      <div key={shop.id} className="shrink-0 w-64">
+                                        <ShopResultCard
+                                          shop={shop}
+                                          isFavorite={false}
+                                          onSelectShop={() => onSelectShop?.(shop.id)}
+                                          compact
+                                        />
+                                      </div>
+                                    );
+                                  })
+                                  .filter(Boolean)}
+                              </div>
+                            </div>
+                          )}
+                        {message.imageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
+                            className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
+                            aria-label="写真を拡大する"
+                          >
+                            <img
+                              src={message.imageUrl}
+                              alt="案内画像"
+                              className="h-32 w-full object-cover"
+                            />
+                          </button>
+                        )}
+                      </MessageBubble>
+                    </>
+                  )}
+                </div>
+              ))}
+              {aiStatus === "thinking" && (
+                isConsultVariant ? (
+                  <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
+                        <img
+                          src={PLACEHOLDER_IMAGE}
+                          alt="にちよさん"
+                          className="h-full w-full scale-110 object-cover object-center"
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2 pl-1">
+                        <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] text-amber-700">
+                          NIChIYO VOICE
+                        </span>
+                        <span className="text-sm font-semibold text-slate-700">にちよさん</span>
+                      </div>
+                      <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-sm text-slate-800 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                            aria-label="考え中"
+                          />
+                          <span className="text-sm text-slate-600">考え中…</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-start items-start gap-2">
                     <div className="flex-shrink-0">
                       <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
                         <img
@@ -1046,89 +1299,17 @@ export default function GrandmaChatter({
                         />
                       </div>
                     </div>
-                  )}
-
-                  <MessageBubble role={message.role} variant={isConsultVariant ? "consult" : "default"} className="shadow-sm">
-                    {message.text}
-                    {message.localImageUrl && (
-                      <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
-                        <img
-                          src={message.localImageUrl}
-                          alt="送信画像"
-                          className="h-28 w-full object-cover"
+                    <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                          aria-label="考え中"
                         />
+                        <span className="text-xs text-gray-500">考え中…</span>
                       </div>
-                    )}
-                    {message.role === "assistant" &&
-                      message.shopIds &&
-                      message.shopIds.length > 0 &&
-                      shopLookup.size > 0 && (
-                        <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2">
-                          <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-bold text-orange-800">
-                              おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
-                            </span>
-                          </div>
-                          <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
-                            {message.shopIds
-                              .map((id) => shopLookup.get(id))
-                              .filter(Boolean)
-                              .map((shop) => {
-                                if (!shop) return null;
-                                return (
-                                  <div key={shop.id} className="shrink-0 w-64">
-                                    <ShopResultCard
-                                      shop={shop}
-                                      isFavorite={false}
-                                      onSelectShop={() => onSelectShop?.(shop.id)}
-                                      compact
-                                    />
-                                  </div>
-                                );
-                              })
-                              .filter(Boolean)}
-                          </div>
-                        </div>
-                      )}
-                    {message.imageUrl && (
-                      <button
-                        type="button"
-                        onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
-                        className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
-                        aria-label="写真を拡大する"
-                      >
-                        <img
-                          src={message.imageUrl}
-                          alt="案内画像"
-                          className="h-32 w-full object-cover"
-                        />
-                      </button>
-                    )}
-                  </MessageBubble>
-                </div>
-              ))}
-              {aiStatus === "thinking" && (
-                <div className="flex justify-start items-start gap-2">
-                  <div className="flex-shrink-0">
-                    <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
-                      <img
-                        src={PLACEHOLDER_IMAGE}
-                        alt="にちよさん"
-                        className="h-full w-full scale-110 object-cover object-center"
-                        draggable={false}
-                      />
                     </div>
                   </div>
-                  <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
-                        aria-label="考え中"
-                      />
-                      <span className="text-xs text-gray-500">考え中…</span>
-                    </div>
-                  </div>
-                </div>
+                )
               )}
             </ScrollArea>
               {layout !== "page" && showScrollToBottom && (
@@ -1623,4 +1804,33 @@ function pickCommentIcon(comment: { genre: string; text: string }) {
   if (text.includes("時間") || text.includes("早め")) return "⏰";
 
   return "💬";
+}
+
+function buildConsultFollowUpSuggestions(message: {
+  text: string;
+  shopIds?: number[];
+  imageUrl?: string;
+}): string[] {
+  const suggestions: string[] = [];
+
+  if (message.shopIds && message.shopIds.length > 0) {
+    suggestions.push("この中でいちばん人気のお店は？");
+    suggestions.push("朝いちで行くならどこがいい？");
+  }
+
+  if (message.imageUrl) {
+    suggestions.push("この写真の見どころを教えて");
+  }
+
+  if (message.text.includes("食材") || message.text.includes("旬") || message.text.includes("果物")) {
+    suggestions.push("今買うなら何がおすすめ？");
+  }
+
+  if (message.text.includes("回り方") || message.text.includes("順番") || message.text.includes("場所")) {
+    suggestions.push("初めてならどの順番で回るといい？");
+  }
+
+  suggestions.push("地元の人はどう楽しむ？");
+
+  return Array.from(new Set(suggestions)).slice(0, 3);
 }
