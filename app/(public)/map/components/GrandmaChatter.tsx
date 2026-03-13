@@ -38,6 +38,8 @@ type PriorityMessage = {
 
 type AskContext = { shopId?: number; shopName?: string; source?: "suggestion" | "input" };
 
+const SHOP_CONSULT_PROMPT = "このお店のおすすめやこだわりを詳しく教えて";
+
 type PendingSubmission = {
   text: string;
   imageFile?: File | null;
@@ -133,6 +135,7 @@ export default function GrandmaChatter({
   const [hasUserAsked, setHasUserAsked] = useState(false);
   const [hasProcessedAutoAsk, setHasProcessedAutoAsk] = useState(false);
   const [conversationSummary, setConversationSummary] = useState("");
+  const [activeConsultContext, setActiveConsultContext] = useState<AskContext | null>(null);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
@@ -339,6 +342,7 @@ export default function GrandmaChatter({
             messages: ChatMessage[];
             hasUserAsked?: boolean;
             conversationSummary?: string;
+            activeConsultContext?: AskContext | null;
           };
       const messages = Array.isArray(parsed) ? parsed : parsed.messages;
       if (Array.isArray(messages) && messages.length > 0) {
@@ -351,6 +355,9 @@ export default function GrandmaChatter({
       }
       if (!Array.isArray(parsed) && parsed.conversationSummary) {
         setConversationSummary(parsed.conversationSummary);
+      }
+      if (!Array.isArray(parsed) && parsed.activeConsultContext) {
+        setActiveConsultContext(parsed.activeConsultContext);
       }
     } catch {
       // ignore malformed history
@@ -472,9 +479,10 @@ export default function GrandmaChatter({
         messages: serializable,
         hasUserAsked,
         conversationSummary,
+        activeConsultContext,
       })
     );
-  }, [chatMessages, conversationSummary, hasLoadedHistory, hasUserAsked, layout]);
+  }, [activeConsultContext, chatMessages, conversationSummary, hasLoadedHistory, hasUserAsked, layout]);
 
   useEffect(() => {
     if (!isChatOpen) return;
@@ -496,6 +504,13 @@ export default function GrandmaChatter({
   useEffect(() => {
     if (autoAskText && !hasProcessedAutoAsk) {
       setHasProcessedAutoAsk(true);
+      if (autoAskContext?.shopId || autoAskContext?.shopName) {
+        setActiveConsultContext({
+          shopId: autoAskContext?.shopId,
+          shopName: autoAskContext?.shopName,
+          source: "suggestion",
+        });
+      }
       // レイアウトがpageの場合は最初から開いているので即座に、
       // floatingの場合は開いてから少し待って送信するなどの制御ができるが、
       // ここではシンプルに少し遅延させて送信する
@@ -598,6 +613,16 @@ export default function GrandmaChatter({
 
   const shouldValidateInput = layout === "page";
 
+  const beginShopConsult = (shop: Shop) => {
+    const nextContext: AskContext = {
+      shopId: shop.id,
+      shopName: shop.name,
+      source: "suggestion",
+    };
+    setActiveConsultContext(nextContext);
+    void handleAskSubmit(SHOP_CONSULT_PROMPT, nextContext, true);
+  };
+
   const handleAskSubmit = async (
     text?: string,
     context?: AskContext,
@@ -610,8 +635,11 @@ export default function GrandmaChatter({
       text: (text ?? askText).trim(),
       imageFile: selectedImageFile,
       imagePreview: selectedImagePreview,
-      context,
+      context: context ?? activeConsultContext ?? undefined,
     };
+    if (submission.context?.shopId || submission.context?.shopName) {
+      setActiveConsultContext(submission.context);
+    }
     const value = submission.text;
     if (!value && !submission.imageFile) {
       if (shouldValidateInput) {
@@ -971,6 +999,11 @@ export default function GrandmaChatter({
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
   const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
+  const activeConsultShop =
+    activeConsultContext?.shopId != null ? shopLookup.get(activeConsultContext.shopId) : undefined;
+  const consultPlaceholder = activeConsultContext?.shopName
+    ? `「${activeConsultContext.shopName}」について聞いてみる`
+    : smartContext.placeholder;
   const activeConsultHero =
     CONSULT_CHARACTERS[consultHeroIndex % CONSULT_CHARACTERS.length];
   const defaultConsultSpeaker = CONSULT_CHARACTERS[0];
@@ -1085,6 +1118,7 @@ export default function GrandmaChatter({
                           setErrorCode(null);
                           setErrorHelperQuestions([]);
                           setLastFailedSubmission(null);
+                          setActiveConsultContext(null);
                           onClear?.();
                           if (chatStorageKeyRef.current) {
                             localStorage.removeItem(chatStorageKeyRef.current);
@@ -1193,6 +1227,11 @@ export default function GrandmaChatter({
                                       key={shop.id}
                                       shop={shop}
                                       onSelectShop={onSelectShop}
+                                      onStartConsult={
+                                        layout === "page" && isConsultVariant
+                                          ? beginShopConsult
+                                          : undefined
+                                      }
                                     />
                                   ))}
                                 </div>
@@ -1284,6 +1323,11 @@ export default function GrandmaChatter({
                                     key={shop.id}
                                     shop={shop}
                                     onSelectShop={onSelectShop}
+                                    onStartConsult={
+                                      layout === "page" && isConsultVariant
+                                        ? beginShopConsult
+                                        : undefined
+                                    }
                                   />
                                 ))}
                               </div>
@@ -1594,6 +1638,9 @@ export default function GrandmaChatter({
                       key={shop.id}
                       shop={shop}
                       onSelectShop={onSelectShop}
+                      onStartConsult={
+                        layout === "page" && isConsultVariant ? beginShopConsult : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -1610,6 +1657,41 @@ export default function GrandmaChatter({
             } ${!isConsultVariant && !isChatOpen ? "scale-95" : "scale-100"}`}
           >
               <div className={`flex flex-col ${isConsultVariant ? "gap-1.5" : "gap-2"}`}>
+              {layout === "page" && activeConsultContext?.shopName && (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-amber-100 bg-white">
+                      <img
+                        src={
+                          activeConsultShop
+                            ? getShopBannerImage(
+                                activeConsultShop.category,
+                                activeConsultShop.position ?? activeConsultShop.id
+                              )
+                            : getShopBannerImage("その他", 0)
+                        }
+                        alt={activeConsultContext.shopName}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold tracking-[0.1em] text-amber-700">
+                        このお店について相談中
+                      </div>
+                      <div className="truncate text-sm font-semibold text-slate-900">
+                        {activeConsultContext.shopName}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveConsultContext(null)}
+                    className="shrink-0 rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                  >
+                    解除
+                  </button>
+                </div>
+              )}
               <div
                 className={`transition-all duration-200 ${
                   showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
@@ -1689,7 +1771,7 @@ export default function GrandmaChatter({
                         ? "min-h-[40px] rounded-[18px] border-[var(--consult-border)] bg-white px-4 py-2 text-[14px] text-gray-900 focus-visible:ring-slate-300"
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
-                  placeholder={smartContext.placeholder}
+                  placeholder={consultPlaceholder}
                 />
                 {enableSpeechInput && (
                   <Button
@@ -1868,9 +1950,11 @@ function pickCommentIcon(comment: { genre: string; text: string }) {
 function ConsultShopSuggestionCard({
   shop,
   onSelectShop,
+  onStartConsult,
 }: {
   shop: Shop;
   onSelectShop?: (shopId: number) => void;
+  onStartConsult?: (shop: Shop) => void;
 }) {
   const previewImage =
     shop.images?.main ||
@@ -1881,7 +1965,13 @@ function ConsultShopSuggestionCard({
   return (
     <button
       type="button"
-      onClick={() => onSelectShop?.(shop.id)}
+      onClick={() => {
+        if (onStartConsult) {
+          onStartConsult(shop);
+          return;
+        }
+        onSelectShop?.(shop.id);
+      }}
       className="w-full rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"
     >
       <div className="flex items-start gap-3">
@@ -1908,7 +1998,7 @@ function ConsultShopSuggestionCard({
             {shop.products.length > 3 && " ほか"}
           </div>
           <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
-            詳細を見る
+            {onStartConsult ? "このお店について詳しく" : "詳細を見る"}
             <span aria-hidden="true">→</span>
           </div>
         </div>

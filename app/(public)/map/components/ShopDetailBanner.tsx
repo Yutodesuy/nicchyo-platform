@@ -239,6 +239,9 @@ export default function ShopDetailBanner({
   }, [router]);
 
   const isKotodute = variant === "kotodute";
+  const consultHref = `/consult?shopId=${shop.id}&shopName=${encodeURIComponent(
+    shop.name
+  )}&q=${encodeURIComponent("このお店のおすすめやこだわりを詳しく教えて")}`;
   const today = new Date();
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];
@@ -520,6 +523,14 @@ export default function ShopDetailBanner({
               <h2 className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis ${shopNameSizeClass}`}>
                 {shop.name}
               </h2>
+              {!isKotodute && (
+                <Link
+                  href={consultHref}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100"
+                >
+                  AIに詳しく聞く
+                </Link>
+              )}
               {!isKotodute && canEditShop && (
                 <button
                   type="button"
