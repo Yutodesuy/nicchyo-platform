@@ -1020,6 +1020,35 @@ export default function GrandmaChatter({
 
   return (
     <div className={shellClassName}>
+      {layout === "page" && chatMessages.length > 0 && (
+        <div className="fixed right-4 top-[79px] z-[1500]">
+          <Button
+            type="button"
+            variant="outline"
+            size="default"
+            onClick={() => {
+              if (window.confirm("これまでの会話を消してもいいですか？")) {
+                setChatMessages([]);
+                setHasUserAsked(false);
+                setConversationSummary("");
+                setErrorNotice(null);
+                setErrorCode(null);
+                setErrorHelperQuestions([]);
+                setLastFailedSubmission(null);
+                setActiveConsultContext(null);
+                onClear?.();
+                if (chatStorageKeyRef.current) {
+                  localStorage.removeItem(chatStorageKeyRef.current);
+                }
+              }
+            }}
+            className="h-auto rounded-full border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur"
+          >
+            最初から話す
+          </Button>
+        </div>
+      )}
+
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
         {showAvatarButton && (
           <div
@@ -1103,32 +1132,6 @@ export default function GrandmaChatter({
                   <Badge variant="secondary" className="text-[11px]">
                     {aiStatus === "thinking" ? "考え中…" : "続けて聞いてね"}
                   </Badge>
-                )}
-                {layout === "page" && chatMessages.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="default"
-                    onClick={() => {
-                        if (window.confirm("これまでの会話を消してもいいですか？")) {
-                          setChatMessages([]);
-                          setHasUserAsked(false);
-                          setConversationSummary("");
-                          setErrorNotice(null);
-                          setErrorCode(null);
-                          setErrorHelperQuestions([]);
-                          setLastFailedSubmission(null);
-                          setActiveConsultContext(null);
-                          onClear?.();
-                          if (chatStorageKeyRef.current) {
-                            localStorage.removeItem(chatStorageKeyRef.current);
-                        }
-                      }
-                    }}
-                    className="h-auto rounded-full px-2 py-1 text-[10px] font-medium text-slate-500"
-                  >
-                    最初から話す
-                  </Button>
                 )}
               </div>
             </div>
