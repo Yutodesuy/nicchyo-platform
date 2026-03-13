@@ -470,7 +470,12 @@ export default function GrandmaChatter({
   }, [chatMessages, hasLoadedHistory, hasUserAsked, layout]);
 
   useEffect(() => {
-    if (!isChatOpen || !chatScrollRef.current) return;
+    if (!isChatOpen) return;
+    if (layout === "page") {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+      return;
+    }
+    if (!chatScrollRef.current) return;
     const scrollContainer = chatScrollRef.current;
 
     // Only auto-scroll if we were already near bottom or it's a new message from user/assistant
@@ -479,7 +484,7 @@ export default function GrandmaChatter({
     if (isNearBottom || chatMessages.length > 0) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [chatMessages, isChatOpen, aiStatus]);
+  }, [chatMessages, isChatOpen, aiStatus, layout]);
 
   useEffect(() => {
     if (autoAskText && !hasProcessedAutoAsk) {
@@ -496,6 +501,10 @@ export default function GrandmaChatter({
   }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen]);
 
   useEffect(() => {
+    if (layout === "page") {
+      setShowScrollToBottom(false);
+      return;
+    }
     const scrollContainer = chatScrollRef.current;
     if (!scrollContainer) return;
 
@@ -506,7 +515,7 @@ export default function GrandmaChatter({
 
     scrollContainer.addEventListener('scroll', handleScroll);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [isChatOpen]);
+  }, [isChatOpen, layout]);
 
   if (!current) return null;
 
@@ -996,14 +1005,14 @@ export default function GrandmaChatter({
                 )}
               </div>
             </div>
-            <ScrollArea
-              ref={chatScrollRef}
-              className={`mt-2 flex flex-col gap-4 pr-1 ${
-                layout === "page"
-                  ? "h-[calc(100svh-72px-var(--safe-bottom,0px))] pb-40"
-                  : "max-h-[calc(100vh-240px)]"
-              }`}
-            >
+              <ScrollArea
+                ref={chatScrollRef}
+                className={`mt-2 flex flex-col gap-4 pr-1 ${
+                  layout === "page"
+                    ? "overflow-visible pb-72"
+                    : "max-h-[calc(100vh-240px)]"
+                }`}
+              >
               <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
                 <div className={`h-32 w-32 overflow-hidden rounded-full border-4 shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
                   <img
@@ -1122,8 +1131,8 @@ export default function GrandmaChatter({
                 </div>
               )}
             </ScrollArea>
-            {showScrollToBottom && (
-              <button
+              {layout !== "page" && showScrollToBottom && (
+                <button
                 type="button"
                 onClick={() => {
                   if (chatScrollRef.current) {
@@ -1303,19 +1312,19 @@ export default function GrandmaChatter({
         </div>
       )}
 
-      <div
-        className={`w-full px-3 transition-all duration-200 ${
-          layout === "page"
-            ? "fixed left-0 right-0 z-[1405]"
-            : chatPanelLift
-        } ${
-          isChatOpen
-            ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
-            : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
-        }`}
-        style={layout === "page" ? { bottom: `${inputBottomOffset}px` } : undefined}
-        aria-hidden={!isChatOpen}
-      >
+        <div
+          className={`w-full px-3 transition-all duration-200 ${
+            layout === "page"
+              ? "sticky z-[1405]"
+              : chatPanelLift
+          } ${
+            isChatOpen
+              ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
+              : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
+          }`}
+          style={layout === "page" ? { bottom: `calc(3.5rem + var(--safe-bottom, 0px) + 0.75rem)` } : undefined}
+          aria-hidden={!isChatOpen}
+        >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
           {aiImageUrl && !isChatOpen && (
             <button
