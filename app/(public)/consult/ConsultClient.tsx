@@ -1,19 +1,39 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import ShopDetailBanner from "../map/components/ShopDetailBanner";
 import { grandmaComments } from "../map/data/grandmaComments";
+import type { ConsultCharacterId } from "./data/consultCharacters";
 import type { ConsultAskResponse, ConsultHistoryEntry } from "./types/consultConversation";
 import type { Shop } from "../map/data/shops";
+
+const PREFERRED_CHARACTER_STORAGE_KEY = "nicchyo-consult-preferred-character";
 
 export default function ConsultClient() {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
   const [knownShops, setKnownShops] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [preferredCharacterId, setPreferredCharacterId] = useState<ConsultCharacterId | null>(null);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(PREFERRED_CHARACTER_STORAGE_KEY);
+    if (!saved) return;
+    setPreferredCharacterId(saved as ConsultCharacterId);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!preferredCharacterId) {
+      window.localStorage.removeItem(PREFERRED_CHARACTER_STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(PREFERRED_CHARACTER_STORAGE_KEY, preferredCharacterId);
+  }, [preferredCharacterId]);
 
   const mergeKnownShops = useCallback((shops: Shop[] | undefined) => {
     if (!shops || shops.length === 0) return;
@@ -43,6 +63,9 @@ export default function ConsultClient() {
             if (context?.shopName) form.append("shopName", context.shopName);
             form.append("history", JSON.stringify(history ?? []));
             form.append("memorySummary", memorySummary ?? "");
+            if (preferredCharacterId) {
+              form.append("preferredCharacterId", preferredCharacterId);
+            }
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
@@ -53,6 +76,7 @@ export default function ConsultClient() {
             shopName: context?.shopName ?? null,
             history: history ?? [],
             memorySummary: memorySummary ?? "",
+            preferredCharacterId,
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
@@ -123,7 +147,7 @@ export default function ConsultClient() {
         retryable: true,
       };
     }
-  }, [mergeKnownShops]);
+  }, [mergeKnownShops, preferredCharacterId]);
 
   const autoAskText = searchParams?.get("q") || null;
   const autoAskShopIdRaw = searchParams?.get("shopId");
@@ -174,6 +198,8 @@ export default function ConsultClient() {
             autoAskText={autoAskText}
             autoAskContext={autoAskContext}
             enableSpeechInput
+            preferredCharacterId={preferredCharacterId}
+            onPreferredCharacterChange={setPreferredCharacterId}
           />
         </div>
       </main>
