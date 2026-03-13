@@ -25,6 +25,7 @@ import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentS
 import type { Shop } from "../data/shops";
 import ShopResultCard from "../../search/components/ShopResultCard";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
+import { getShopBannerImage } from "@/lib/shopImages";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
@@ -50,6 +51,7 @@ type ChatMessage = {
   text: string;
   imageUrl?: string;
   shopIds?: number[];
+  shops?: Shop[];
   localImageUrl?: string;
   speakerId?: ConsultCharacterId;
   speakerName?: string;
@@ -459,6 +461,7 @@ export default function GrandmaChatter({
       text: message.text,
       imageUrl: message.imageUrl,
       shopIds: message.shopIds,
+      shops: message.shops,
       speakerId: message.speakerId,
       speakerName: message.speakerName,
       followUpQuestion: message.followUpQuestion,
@@ -699,6 +702,7 @@ export default function GrandmaChatter({
             text: turn.text,
             imageUrl: index === turns.length - 1 ? response.imageUrl : undefined,
             shopIds: index === turns.length - 1 ? response.shopIds : undefined,
+            shops: index === turns.length - 1 ? response.shops : undefined,
             speakerId: turn.speakerId,
             speakerName: turn.speakerName,
             followUpQuestion:
@@ -1145,36 +1149,36 @@ export default function GrandmaChatter({
                           className="max-w-none shadow-sm"
                         >
                           {message.text}
-                          {message.shopIds &&
-                            message.shopIds.length > 0 &&
-                            shopLookup.size > 0 && (
-                              <div className="mt-3 rounded-2xl border border-orange-200 bg-white/70 p-2.5">
-                                <div className="flex items-center justify-between px-1">
-                                  <span className="text-xs font-bold text-orange-800">
-                                    おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
+                          {(() => {
+                            const suggestedShops =
+                              message.shops && message.shops.length > 0
+                                ? message.shops
+                                : (message.shopIds ?? [])
+                                    .map((id) => shopLookup.get(id))
+                                    .filter((shop): shop is Shop => !!shop);
+                            if (suggestedShops.length === 0) return null;
+                            return (
+                              <div className="mt-3 rounded-[1.4rem] border border-amber-200 bg-[#fffaf3] p-3">
+                                <div className="flex items-center justify-between gap-2 px-1">
+                                  <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
+                                    おすすめのお店
+                                  </span>
+                                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+                                    {suggestedShops.length}件
                                   </span>
                                 </div>
-                                <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
-                                  {message.shopIds
-                                    .map((id) => shopLookup.get(id))
-                                    .filter(Boolean)
-                                    .map((shop) => {
-                                      if (!shop) return null;
-                                      return (
-                                        <div key={shop.id} className="shrink-0 w-64">
-                                          <ShopResultCard
-                                            shop={shop}
-                                            isFavorite={false}
-                                            onSelectShop={() => onSelectShop?.(shop.id)}
-                                            compact
-                                          />
-                                        </div>
-                                      );
-                                    })
-                                    .filter(Boolean)}
+                                <div className="mt-2 space-y-2">
+                                  {suggestedShops.map((shop) => (
+                                    <ConsultShopSuggestionCard
+                                      key={shop.id}
+                                      shop={shop}
+                                      onSelectShop={onSelectShop}
+                                    />
+                                  ))}
                                 </div>
                               </div>
-                            )}
+                            );
+                          })()}
                           {message.imageUrl && (
                             <button
                               type="button"
@@ -1236,36 +1240,36 @@ export default function GrandmaChatter({
                           </div>
                         )}
                         {message.role === "assistant" &&
-                          message.shopIds &&
-                          message.shopIds.length > 0 &&
-                          shopLookup.size > 0 && (
-                            <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2">
-                              <div className="flex items-center justify-between px-1">
-                                <span className="text-xs font-bold text-orange-800">
-                                  おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
+                          (() => {
+                            const suggestedShops =
+                              message.shops && message.shops.length > 0
+                                ? message.shops
+                                : (message.shopIds ?? [])
+                                    .map((id) => shopLookup.get(id))
+                                    .filter((shop): shop is Shop => !!shop);
+                            if (suggestedShops.length === 0) return null;
+                            return (
+                            <div className="mt-3 rounded-[1.2rem] border border-amber-200 bg-[#fffaf3] p-3">
+                              <div className="flex items-center justify-between gap-2 px-1">
+                                <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
+                                  おすすめのお店
+                                </span>
+                                <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+                                  {suggestedShops.length}件
                                 </span>
                               </div>
-                              <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
-                                {message.shopIds
-                                  .map((id) => shopLookup.get(id))
-                                  .filter(Boolean)
-                                  .map((shop) => {
-                                    if (!shop) return null;
-                                    return (
-                                      <div key={shop.id} className="shrink-0 w-64">
-                                        <ShopResultCard
-                                          shop={shop}
-                                          isFavorite={false}
-                                          onSelectShop={() => onSelectShop?.(shop.id)}
-                                          compact
-                                        />
-                                      </div>
-                                    );
-                                  })
-                                  .filter(Boolean)}
+                              <div className="mt-2 space-y-2">
+                                {suggestedShops.map((shop) => (
+                                  <ConsultShopSuggestionCard
+                                    key={shop.id}
+                                    shop={shop}
+                                    onSelectShop={onSelectShop}
+                                  />
+                                ))}
                               </div>
                             </div>
-                          )}
+                            );
+                          })()}
                         {message.imageUrl && (
                           <button
                             type="button"
@@ -1549,13 +1553,13 @@ export default function GrandmaChatter({
             </button>
           )}
           {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
-            <div className={`rounded-2xl border-2 p-4 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
-              <div className="flex items-center justify-between">
+            <div className={`rounded-[1.8rem] border p-3 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className={`ai-label-playful text-lg ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
-                  <span className="text-lg font-bold text-gray-900">提案されたお店</span>
+                  <span className={`text-sm font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
+                  <span className="text-base font-bold text-gray-900">提案されたお店</span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
+                <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
                   {aiSuggestedShops.length}店
                 </span>
               </div>
@@ -1564,23 +1568,13 @@ export default function GrandmaChatter({
                   <span className="h-7 w-7 animate-spin rounded-full border-2 border-amber-300 border-t-transparent" aria-label="読み込み中" />
                 </div>
               ) : (
-                <div
-                  className={`mt-3 flex gap-3 pb-2 ${
-                    aiSuggestedShops.length > 1 ? "overflow-x-auto" : ""
-                  }`}
-                >
+                <div className="mt-3 space-y-2">
                   {aiSuggestedShops.map((shop) => (
-                    <div
+                    <ConsultShopSuggestionCard
                       key={shop.id}
-                      className={aiSuggestedShops.length === 1 ? "w-full" : "shrink-0"}
-                    >
-                      <ShopResultCard
-                        shop={shop}
-                        isFavorite={false}
-                        onSelectShop={() => onSelectShop?.(shop.id)}
-                        compact={aiSuggestedShops.length > 1}
-                      />
-                    </div>
+                      shop={shop}
+                      onSelectShop={onSelectShop}
+                    />
                   ))}
                 </div>
               )}
@@ -1849,4 +1843,56 @@ function pickCommentIcon(comment: { genre: string; text: string }) {
   if (text.includes("時間") || text.includes("早め")) return "⏰";
 
   return "💬";
+}
+
+function ConsultShopSuggestionCard({
+  shop,
+  onSelectShop,
+}: {
+  shop: Shop;
+  onSelectShop?: (shopId: number) => void;
+}) {
+  const previewImage =
+    shop.images?.main ||
+    shop.images?.thumbnail ||
+    shop.images?.additional?.[0] ||
+    getShopBannerImage(shop.category, shop.position ?? shop.id);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectShop?.(shop.id)}
+      className="w-full rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"
+    >
+      <div className="flex items-start gap-3">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-amber-100 bg-amber-50">
+          <img
+            src={previewImage}
+            alt={`${shop.name}の画像`}
+            className="h-full w-full object-cover"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-slate-900">{shop.name}</div>
+              <div className="mt-0.5 text-[11px] text-slate-500">{shop.ownerName}</div>
+            </div>
+            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
+              #{shop.id}
+            </span>
+          </div>
+          <div className="mt-2 text-[11px] font-medium text-amber-700">{shop.category}</div>
+          <div className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-600">
+            {shop.products.slice(0, 3).join("・")}
+            {shop.products.length > 3 && " ほか"}
+          </div>
+          <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800">
+            詳細を見る
+            <span aria-hidden="true">→</span>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
 }
