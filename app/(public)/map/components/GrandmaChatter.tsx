@@ -28,7 +28,7 @@ const CONSULT_CHARACTER_SHOWCASE = [
   },
   {
     id: "ojichan",
-    name: "出店おじいちゃん",
+    name: "よういちさん",
     subtitle: "昔話や旬の話に強い、市場の語り部",
     image: "/images/characters/ojichan.png",
     imageScale: "scale-125",
@@ -36,7 +36,7 @@ const CONSULT_CHARACTER_SHOWCASE = [
   },
   {
     id: "onisan",
-    name: "出店お兄さん",
+    name: "みらいくん",
     subtitle: "歩き方や買い回りのコツを教えてくれる",
     image: "/images/characters/onisan.png",
     imageScale: "scale-125",
@@ -44,7 +44,7 @@ const CONSULT_CHARACTER_SHOWCASE = [
   },
   {
     id: "onesan",
-    name: "出店お姉さん",
+    name: "よさこちゃん",
     subtitle: "おすすめや見どころを軽やかに案内してくれる",
     image: "/images/characters/onesan.png",
     imageScale: "scale-125",
@@ -1055,7 +1055,7 @@ export default function GrandmaChatter({
                 ref={chatScrollRef}
                 className={`mt-2 flex flex-col gap-4 pr-1 ${
                   layout === "page"
-                    ? "overflow-visible pb-72"
+                    ? "overflow-visible pb-60"
                     : "max-h-[calc(100vh-240px)]"
                 }`}
               >
