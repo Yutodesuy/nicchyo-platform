@@ -1,4 +1,5 @@
-﻿import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { MenuProvider } from "@/lib/ui/MenuContext";
@@ -6,6 +7,7 @@ import { BagProvider } from "@/lib/storage/BagContext";
 import AppHeader from "./components/AppHeader";
 import HamburgerMenu from "./components/HamburgerMenu";
 import MapLoadingProvider from "./components/MapLoadingProvider";
+import PageVisitTracker from "./components/PageVisitTracker";
 import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
 import { Toaster } from "@/components/admin";
 
@@ -34,6 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <MapLoadingProvider>
                 <AppHeader />
                 <HamburgerMenu />
+                <Suspense fallback={null}>
+                  <PageVisitTracker />
+                </Suspense>
                 {children}
                 <Toaster />
               </MapLoadingProvider>

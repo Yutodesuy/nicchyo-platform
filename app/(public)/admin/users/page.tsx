@@ -9,11 +9,10 @@ import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/ex
 import { showToast } from "@/lib/admin/toast";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
-import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout } from "@/components/admin";
+import { StatusBadge, LoadingButton, EmptyState, ErrorBoundary, AdminLayout, AdminPageHeader } from "@/components/admin";
 import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShortcuts";
 import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
 import { Tooltip } from "@/components/admin/desktop/Tooltip";
-import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
 
 interface AdminUser {
   id: string;
@@ -21,14 +20,14 @@ interface AdminUser {
   email: string;
   role: UserRole;
   avatarUrl?: string;
-  vendorId?: number;
+  vendorId?: string;
   registeredDate: string;
   lastLogin: string;
   status: "active" | "suspended";
 }
 
 function AdminUsersContent() {
-  const { permissions, isLoading } = useAuth();
+  const { permissions } = useAuth();
   const router = useRouter();
   const [filter, setFilter] = useState<"all" | UserRole | "suspended">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,91 +37,58 @@ function AdminUsersContent() {
   const [newRole, setNewRole] = useState<UserRole>("general_user");
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-  const [dataDensity, setDataDensity] = useState<DataDensity>("standard");
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // 管理者権限チェック
   useEffect(() => {
-    if (isLoading) return;
     if (!permissions.isSuperAdmin) {
       router.push("/");
     }
-  }, [isLoading, permissions.isSuperAdmin, router]);
+  }, [permissions.isSuperAdmin, router]);
 
-  if (isLoading || !permissions.isSuperAdmin) {
-    return null;
-  }
+  useEffect(() => {
+    if (!permissions.isSuperAdmin) {
+      setIsLoadingUsers(false);
+      return;
+    }
 
-  // ダミーデータ
-  const dummyUsers: AdminUser[] = useMemo(
-    () => [
-      {
-        id: "1",
-        name: "高知市管理者",
-        email: "admin@kochi-city.jp",
-        role: "super_admin",
-        registeredDate: "2024-01-01",
-        lastLogin: "2024-12-30 10:30",
-        status: "active",
-      },
-      {
-        id: "2",
-        name: "食材のお店1",
-        email: "nicchyo-owner-001@example.com",
-        role: "vendor",
-        vendorId: 1,
-        registeredDate: "2024-01-15",
-        lastLogin: "2024-12-29 14:20",
-        status: "active",
-      },
-      {
-        id: "3",
-        name: "果物の山田",
-        email: "yamada@example.com",
-        role: "vendor",
-        vendorId: 2,
-        registeredDate: "2024-02-01",
-        lastLogin: "2024-12-28 09:15",
-        status: "active",
-      },
-      {
-        id: "4",
-        name: "観光客ユーザー",
-        email: "user@example.com",
-        role: "general_user",
-        registeredDate: "2024-03-10",
-        lastLogin: "2024-12-30 08:45",
-        status: "active",
-      },
-      {
-        id: "5",
-        name: "田中太郎",
-        email: "tanaka@example.com",
-        role: "general_user",
-        registeredDate: "2024-04-15",
-        lastLogin: "2024-12-25 16:30",
-        status: "active",
-      },
-      {
-        id: "6",
-        name: "鈴木花子",
-        email: "suzuki@example.com",
-        role: "vendor",
-        vendorId: 3,
-        registeredDate: "2024-05-20",
-        lastLogin: "2024-11-30 11:00",
-        status: "suspended",
-      },
-    ],
-    []
-  );
+    let active = true;
+    setIsLoadingUsers(true);
+    setLoadError(null);
+
+    void fetch("/api/admin/users")
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("failed");
+        }
+        return response.json() as Promise<{ users?: AdminUser[] }>;
+      })
+      .then((data) => {
+        if (!active) return;
+        setUsers(Array.isArray(data.users) ? data.users : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLoadError("ユーザーデータの取得に失敗しました。");
+      })
+      .finally(() => {
+        if (active) setIsLoadingUsers(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [permissions.isSuperAdmin]);
 
   // フィルタリング（メモ化）
   const filteredUsers = useMemo(() => {
-    return dummyUsers.filter((user) => {
+    return users.filter((user) => {
       const matchesFilter =
         filter === "all" ||
         (filter === "suspended" && user.status === "suspended") ||
@@ -133,7 +99,7 @@ function AdminUsersContent() {
         user.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [dummyUsers, filter, debouncedSearchQuery]);
+  }, [users, filter, debouncedSearchQuery]);
 
   // ソート機能
   const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredUsers, "name");
@@ -141,13 +107,13 @@ function AdminUsersContent() {
   // 統計（メモ化）
   const stats = useMemo(
     () => ({
-      total: dummyUsers.length,
-      admins: dummyUsers.filter((u) => u.role === "super_admin").length,
-      vendors: dummyUsers.filter((u) => u.role === "vendor").length,
-      users: dummyUsers.filter((u) => u.role === "general_user").length,
-      suspended: dummyUsers.filter((u) => u.status === "suspended").length,
+      total: users.length,
+      admins: users.filter((u) => u.role === "super_admin").length,
+      vendors: users.filter((u) => u.role === "vendor").length,
+      users: users.filter((u) => u.role === "general_user").length,
+      suspended: users.filter((u) => u.status === "suspended").length,
     }),
-    [dummyUsers]
+    [users]
   );
 
   // Virtual scrolling setup
@@ -155,7 +121,7 @@ function AdminUsersContent() {
   const rowVirtualizer = useVirtualizer({
     count: sortedData.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => DENSITY_CONFIG[dataDensity].rowHeight,
+    estimateSize: () => 56,
     overscan: 5,
   });
 
@@ -390,45 +356,45 @@ function AdminUsersContent() {
     },
   ]);
 
+  if (!permissions.isSuperAdmin) {
+    return null;
+  }
+
   return (
     <AdminLayout>
-      {/* ヘッダー */}
-      <div className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">ユーザー管理</h1>
-            </div>
-            <div className="flex gap-2">
-              <LoadingButton
-                onClick={handleExportCSV}
-                isLoading={isExporting}
-                loadingText="出力中..."
-                className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
-                aria-label="CSVファイルをエクスポート"
-              >
-                CSV出力
-              </LoadingButton>
-              <LoadingButton
-                onClick={handleExportJSON}
-                isLoading={isExporting}
-                loadingText="出力中..."
-                className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
-                aria-label="JSONファイルをエクスポート"
-              >
-                JSON出力
-              </LoadingButton>
-              <button
-                onClick={handleCreateUser}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-                aria-label="新規ユーザーを追加"
-              >
-                + 新規ユーザー追加
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        eyebrow="User Admin"
+        title="ユーザー管理"
+        actions={
+          <>
+            <LoadingButton
+              onClick={handleExportCSV}
+              isLoading={isExporting}
+              loadingText="出力中..."
+              className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
+              aria-label="CSVファイルをエクスポート"
+            >
+              CSV出力
+            </LoadingButton>
+            <LoadingButton
+              onClick={handleExportJSON}
+              isLoading={isExporting}
+              loadingText="出力中..."
+              className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
+              aria-label="JSONファイルをエクスポート"
+            >
+              JSON出力
+            </LoadingButton>
+            <button
+              onClick={handleCreateUser}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              aria-label="新規ユーザーを追加"
+            >
+              + 新規ユーザー追加
+            </button>
+          </>
+        }
+      />
 
       {/* メインコンテンツ */}
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -517,7 +483,6 @@ function AdminUsersContent() {
               </button>
             </div>
             <div className="flex items-center gap-4">
-              <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
               <input
                 ref={searchInputRef}
                 id="user-search"
@@ -582,7 +547,15 @@ function AdminUsersContent() {
         )}
 
         {/* ユーザーリスト */}
-        {filteredUsers.length === 0 ? (
+        {isLoadingUsers ? (
+          <div className="rounded-lg bg-white p-8 shadow">
+            <p className="text-sm text-gray-500">ユーザーデータを読み込んでいます...</p>
+          </div>
+        ) : loadError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-8 shadow">
+            <p className="text-sm text-red-700">{loadError}</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <EmptyState
             icon="👥"
             title="ユーザーが見つかりません"

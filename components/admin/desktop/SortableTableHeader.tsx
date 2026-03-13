@@ -25,12 +25,19 @@ export const SortableTableHeader = React.memo(function SortableTableHeader({
   const nextDirection = !isActive ? "asc" : currentSortDirection === "asc" ? "desc" : "asc";
 
   return (
-    <th
+    <div
       className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition select-none ${className}`}
       onClick={() => onSort(sortKey)}
       title={`${label}で${nextDirection === "asc" ? "昇順" : "降順"}ソート`}
-      scope="col"
       style={{ flex }}
+      role="columnheader"
+      aria-sort={
+        isActive
+          ? currentSortDirection === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
     >
       <div className="flex items-center gap-2">
         <span>{label}</span>
@@ -55,7 +62,7 @@ export const SortableTableHeader = React.memo(function SortableTableHeader({
           </svg>
         </div>
       </div>
-    </th>
+    </div>
   );
 });
 
