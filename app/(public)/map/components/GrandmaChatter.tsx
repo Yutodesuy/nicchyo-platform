@@ -92,6 +92,8 @@ type GrandmaChatterProps = {
   currentZoom?: number;
   enableSpeechInput?: boolean;
   variant?: "default" | "consult";
+  preferredCharacterId?: ConsultCharacterId | null;
+  onPreferredCharacterChange?: (characterId: ConsultCharacterId | null) => void;
 };
 
 export default function GrandmaChatter({
@@ -120,6 +122,8 @@ export default function GrandmaChatter({
   currentZoom,
   enableSpeechInput = false,
   variant = "default",
+  preferredCharacterId,
+  onPreferredCharacterChange,
 }: GrandmaChatterProps) {
   const isConsultVariant = variant === "consult";
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -161,6 +165,7 @@ export default function GrandmaChatter({
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const [consultHeroIndex, setConsultHeroIndex] = useState(0);
+  const [isPreferredCharacterPickerOpen, setIsPreferredCharacterPickerOpen] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -1006,6 +1011,9 @@ export default function GrandmaChatter({
     : smartContext.placeholder;
   const activeConsultHero =
     CONSULT_CHARACTERS[consultHeroIndex % CONSULT_CHARACTERS.length];
+  const preferredCharacter =
+    preferredCharacterId ? CONSULT_CHARACTER_BY_ID.get(preferredCharacterId) ?? null : null;
+  const isPreferredHero = !!preferredCharacterId && activeConsultHero.id === preferredCharacterId;
   const defaultConsultSpeaker = CONSULT_CHARACTERS[0];
   const getSpeakerCharacter = (speakerId?: ConsultCharacterId) =>
     (speakerId ? CONSULT_CHARACTER_BY_ID.get(speakerId) : null) ?? defaultConsultSpeaker;
@@ -1146,7 +1154,11 @@ export default function GrandmaChatter({
                 <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
                   <div
                     className={`h-32 w-32 overflow-hidden rounded-[2rem] border-4 shadow-sm transition-all duration-500 ${
-                      isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"
+                      isConsultVariant
+                        ? isPreferredHero
+                          ? "border-orange-400 bg-[var(--consult-surface)]"
+                          : "border-[var(--consult-border)] bg-[var(--consult-surface)]"
+                        : "border-amber-200 bg-amber-50"
                     }`}
                   >
                     <img
@@ -1186,7 +1198,13 @@ export default function GrandmaChatter({
                   {message.role === "assistant" && isConsultVariant ? (
                     <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
                       <div className="mt-1 flex-shrink-0">
-                        <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
+                        <div
+                          className={`h-11 w-11 overflow-hidden rounded-full border bg-amber-50 shadow-sm ring-2 ring-white ${
+                            preferredCharacterId && speakerCharacter.id === preferredCharacterId
+                              ? "border-orange-400"
+                              : "border-amber-200"
+                          }`}
+                        >
                           <img
                             src={speakerCharacter.image}
                             alt={speakerName}
@@ -1360,7 +1378,13 @@ export default function GrandmaChatter({
                 isConsultVariant ? (
                   <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
                     <div className="mt-1 flex-shrink-0">
-                      <div className="h-11 w-11 overflow-hidden rounded-full border border-amber-200 bg-amber-50 shadow-sm ring-2 ring-white">
+                      <div
+                        className={`h-11 w-11 overflow-hidden rounded-full border bg-amber-50 shadow-sm ring-2 ring-white ${
+                          preferredCharacterId && activeConsultHero.id === preferredCharacterId
+                            ? "border-orange-400"
+                            : "border-amber-200"
+                        }`}
+                      >
                         <img
                           src={activeConsultHero.image}
                           alt={activeConsultHero.name}
@@ -1702,18 +1726,33 @@ export default function GrandmaChatter({
                 aria-hidden={!showConsultExamples}
               >
                 {layout === "page" && activeConsultExample && (
-                  <button
-                    type="button"
-                    onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                    className={`group inline-flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
-                    aria-label={`質問例: ${activeConsultExample}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Badge variant="outline" className={`text-[10px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
-                      <span className="text-slate-600">{activeConsultExample}</span>
-                    </span>
-                    <Badge variant="secondary" className={`text-[11px] ${isConsultVariant ? "text-slate-500" : "text-amber-500"}`}>送信</Badge>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPreferredCharacterPickerOpen(true)}
+                      className={`shrink-0 rounded-xl border px-3 py-1.5 text-[11px] font-semibold shadow-inner transition ${
+                        preferredCharacter
+                          ? "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100"
+                          : isConsultVariant
+                            ? "border-[var(--consult-border)] bg-slate-50/80 text-slate-600 hover:bg-white"
+                            : "border-amber-100 bg-white/80 text-amber-600 hover:border-amber-200 hover:bg-amber-50/70"
+                      }`}
+                    >
+                      推しキャラ選択
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
+                      aria-label={`質問例: ${activeConsultExample}`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Badge variant="outline" className={`text-[10px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
+                        <span className="truncate text-slate-600">{activeConsultExample}</span>
+                      </span>
+                      <Badge variant="secondary" className={`text-[11px] ${isConsultVariant ? "text-slate-500" : "text-amber-500"}`}>送信</Badge>
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="flex items-end gap-2">
@@ -1911,6 +1950,69 @@ export default function GrandmaChatter({
           </Card>
         </div>
       </div>
+      {layout === "page" && isPreferredCharacterPickerOpen && (
+        <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-slate-900/35 px-4">
+          <div className="w-full max-w-xl rounded-[2rem] border border-amber-100 bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-slate-900">推しキャラ選択</div>
+                <div className="text-xs text-slate-500">選んだキャラは毎回キャラ1として登場します。</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreferredCharacterPickerOpen(false)}
+                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-50"
+              >
+                閉じる
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <button
+                type="button"
+                onClick={() => {
+                  onPreferredCharacterChange?.(null);
+                  setIsPreferredCharacterPickerOpen(false);
+                }}
+                className={`rounded-[1.5rem] border p-4 text-left transition ${
+                  preferredCharacterId === null
+                    ? "border-orange-400 bg-orange-50"
+                    : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                }`}
+              >
+                <div className="text-sm font-semibold text-slate-900">おまかせ</div>
+                <div className="mt-1 text-xs text-slate-500">毎回ランダムで選びます</div>
+              </button>
+              {CONSULT_CHARACTERS.map((character) => (
+                <button
+                  key={character.id}
+                  type="button"
+                  onClick={() => {
+                    onPreferredCharacterChange?.(character.id);
+                    setIsPreferredCharacterPickerOpen(false);
+                  }}
+                  className={`rounded-[1.5rem] border p-3 text-left transition ${
+                    preferredCharacterId === character.id
+                      ? "border-orange-400 bg-orange-50"
+                      : "border-slate-200 bg-white hover:bg-amber-50"
+                  }`}
+                >
+                  <div className="mx-auto h-24 w-24 overflow-hidden rounded-[1.25rem] border border-amber-100 bg-amber-50">
+                    <img
+                      src={character.image}
+                      alt={character.name}
+                      className={`h-full w-full object-cover ${character.imageScale}`}
+                      style={{ objectPosition: character.imagePosition }}
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="mt-3 text-sm font-semibold text-slate-900">{character.name}</div>
+                  <div className="mt-1 text-[11px] leading-5 text-slate-500">{character.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

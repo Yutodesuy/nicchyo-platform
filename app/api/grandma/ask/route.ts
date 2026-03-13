@@ -92,6 +92,7 @@ type ParsedRequest = {
   targetShopName: string | null;
   history: ConsultHistoryEntry[];
   memorySummary: string;
+  preferredCharacterId: ConsultCharacterId | null;
 };
 
 type StructuredConsultResponse = {
@@ -299,6 +300,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
   let targetShopName: string | null = null;
   let history: ConsultHistoryEntry[] = [];
   let memorySummary = "";
+  let preferredCharacterId: ConsultCharacterId | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
@@ -330,6 +332,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
     if (typeof form.get("memorySummary") === "string") {
       memorySummary = String(form.get("memorySummary")).trim();
     }
+    if (typeof form.get("preferredCharacterId") === "string") {
+      const value = String(form.get("preferredCharacterId")).trim() as ConsultCharacterId;
+      preferredCharacterId = CONSULT_CHARACTER_BY_ID.has(value) ? value : null;
+    }
     const formImage = form.get("image");
     if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
       const imageFile = formImage as File;
@@ -346,6 +352,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       shopName?: string | null;
       history?: ConsultHistoryEntry[];
       memorySummary?: string;
+      preferredCharacterId?: ConsultCharacterId | null;
     };
     text = payload.text ?? "";
     location = payload.location ?? null;
@@ -356,6 +363,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
     targetShopName = payload.shopName?.trim() || null;
     history = Array.isArray(payload.history) ? payload.history : [];
     memorySummary = payload.memorySummary?.trim() || "";
+    preferredCharacterId =
+      payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId)
+        ? payload.preferredCharacterId
+        : null;
   }
 
   return {
@@ -366,6 +377,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
     targetShopName,
     history,
     memorySummary,
+    preferredCharacterId,
   };
 }
 
@@ -801,6 +813,7 @@ export async function POST(request: Request) {
       targetShopName,
       history,
       memorySummary,
+      preferredCharacterId,
     } = await parseRequest(request);
     const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
@@ -808,7 +821,7 @@ export async function POST(request: Request) {
     }
 
     const normalized = question.replace(/\s+/g, "");
-    const selectedCharacters = pickConsultCharacters();
+    const selectedCharacters = pickConsultCharacters(preferredCharacterId);
     const conversationPattern = pickConversationPattern(selectedCharacters);
     if (normalized.includes("おばあちゃんは何者") || normalized.includes("おばあちゃん何者")) {
       return NextResponse.json({

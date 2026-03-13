@@ -62,16 +62,31 @@ export const CONSULT_CHARACTER_BY_ID = new Map(
   CONSULT_CHARACTERS.map((character) => [character.id, character])
 );
 
-export function pickConsultCharacters(): ConsultCharacter[] {
+export function pickConsultCharacters(
+  preferredCharacterId?: ConsultCharacterId | null
+): ConsultCharacter[] {
+  const preferredCharacter = preferredCharacterId
+    ? CONSULT_CHARACTER_BY_ID.get(preferredCharacterId) ?? null
+    : null;
   if (Math.random() < 0.05) {
-    return [...CONSULT_CHARACTERS];
+    if (!preferredCharacter) return [...CONSULT_CHARACTERS];
+    return [
+      preferredCharacter,
+      ...CONSULT_CHARACTERS.filter((character) => character.id !== preferredCharacter.id),
+    ];
   }
-  const shuffled = [...CONSULT_CHARACTERS];
+  const pool = preferredCharacter
+    ? CONSULT_CHARACTERS.filter((character) => character.id !== preferredCharacter.id)
+    : [...CONSULT_CHARACTERS];
+  const shuffled = [...pool];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
     const current = shuffled[index];
     shuffled[index] = shuffled[swapIndex];
     shuffled[swapIndex] = current;
   }
-  return shuffled.slice(0, 2);
+  if (!preferredCharacter) {
+    return shuffled.slice(0, 2);
+  }
+  return [preferredCharacter, ...shuffled.slice(0, 1)];
 }
