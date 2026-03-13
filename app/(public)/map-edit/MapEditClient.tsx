@@ -33,6 +33,20 @@ type SnapshotItem = {
   } | null;
 };
 
+type MapSettings = {
+  maxLandmarks: number;
+  maxUnassignedShopMarkers: number;
+  maxMapSnapshots: number;
+  maxEditZoom: number;
+};
+
+const DEFAULT_MAP_SETTINGS: MapSettings = {
+  maxLandmarks: 80,
+  maxUnassignedShopMarkers: 40,
+  maxMapSnapshots: 50,
+  maxEditZoom: 20,
+};
+
 const MapLayoutEditor = dynamic(() => import("./MapLayoutEditor"), { ssr: false });
 
 function cloneShops(shops: EditableShop[]) {
@@ -99,6 +113,7 @@ export default function MapEditClient() {
   const [landmarkQuery, setLandmarkQuery] = useState("");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
+  const [mapSettings, setMapSettings] = useState<MapSettings>(DEFAULT_MAP_SETTINGS);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const shopItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -106,17 +121,27 @@ export default function MapEditClient() {
 
   useEffect(() => {
     let active = true;
-    void fetchMapLayout()
-      .then((data) => {
+    void Promise.all([
+      fetchMapLayout(),
+      fetch("/api/admin/settings")
+        .then(async (response) => {
+          if (!response.ok) throw new Error("failed");
+          return (await response.json()) as { map?: Partial<MapSettings> };
+        })
+        .catch(() => ({ map: DEFAULT_MAP_SETTINGS })),
+    ])
+      .then(([data, settingsData]) => {
         if (!active) return;
         const nextShops = Array.isArray(data.shops) ? (data.shops as EditableShop[]) : [];
         const nextLandmarks = Array.isArray(data.landmarks)
           ? (data.landmarks as EditableLandmark[])
           : [];
         const nextVendors = Array.isArray(data.vendors) ? (data.vendors as VendorOption[]) : [];
+        const nextMapSettings = { ...DEFAULT_MAP_SETTINGS, ...(settingsData.map ?? {}) };
         setShops(sortShops(nextShops));
         setLandmarks(nextLandmarks);
         setVendorOptions(nextVendors);
+        setMapSettings(nextMapSettings);
         setInitialShops(cloneShops(nextShops));
         setInitialLandmarks(cloneLandmarks(nextLandmarks));
       })
@@ -354,6 +379,11 @@ export default function MapEditClient() {
   };
 
   const handleAddShop = () => {
+    const unassignedCount = shops.filter((shop) => !shop.vendorId).length;
+    if (unassignedCount >= mapSettings.maxUnassignedShopMarkers) {
+      setMessage(`未割当マーカは最大 ${mapSettings.maxUnassignedShopMarkers} 件までです。`);
+      return;
+    }
     const nextPosition = shops.reduce((max, shop) => Math.max(max, shop.position), 0) + 1;
     const fallback = selectedShop ?? shops[shops.length - 1] ?? null;
     const nextShop: EditableShop = {
@@ -373,6 +403,29 @@ export default function MapEditClient() {
     setSelectedKind("shop");
     setSelectedId("");
     setMessage(`店舗マーカ #${shopId} を追加しました。保存するとDBへ反映されます。`);
+  };
+
+  const handleAddLandmark = () => {
+    if (landmarks.length >= mapSettings.maxLandmarks) {
+      setMessage(`建物オブジェクトは最大 ${mapSettings.maxLandmarks} 件までです。`);
+      return;
+    }
+    const nextKey = `landmark-${Date.now()}`;
+    const fallback = selectedLandmark ?? landmarks[landmarks.length - 1] ?? null;
+    const nextLandmark: EditableLandmark = {
+      key: nextKey,
+      name: "",
+      description: "",
+      url: "",
+      lat: fallback?.lat ?? 33.56145,
+      lng: fallback?.lng ?? 133.5383,
+      widthPx: 120,
+      heightPx: 120,
+      showAtMinZoom: false,
+    };
+    setLandmarks((prev) => [...prev, nextLandmark]);
+    setSelectedKind("landmark");
+    setSelectedId(nextKey);
   };
 
   const handleConfirmShop = (shopId: number) => {
@@ -774,22 +827,7 @@ export default function MapEditClient() {
             <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <button
                 type="button"
-                onClick={() => {
-                  const key = `landmark-${Date.now()}`;
-                  const next: EditableLandmark = {
-                    key,
-                    name: "",
-                    description: "",
-                    url: "",
-                    lat: 33.56145,
-                    lng: 133.5383,
-                    widthPx: 128,
-                    heightPx: 96,
-                    showAtMinZoom: false,
-                  };
-                  setLandmarks((prev) => [...prev, next]);
-                  setSelectedId(key);
-                }}
+                onClick={handleAddLandmark}
                 className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
               >
                 ＋建物を追加
@@ -917,6 +955,7 @@ export default function MapEditClient() {
             mode={mode}
             shops={shops}
             landmarks={landmarks}
+            maxZoom={mapSettings.maxEditZoom}
             selectedKind={selectedKind}
             selectedId={selectedId}
             onSelect={(kind, id) => {
