@@ -6,8 +6,8 @@ export function buildGrandmaAiSystemPrompt(characters: ConsultCharacter[]): stri
       return [
         `- id: ${character.id}`,
         `  name: ${character.name}`,
-        `  style: ${character.styleNote}`,
-        `  strengths: ${character.strengths.join(" / ")}`,
+        `  personality: ${character.personality}`,
+        `  speech_style: ${character.speechStyle}`,
       ].join("\n");
     })
     .join("\n");
@@ -25,7 +25,9 @@ ${castBlock}
 - 同じ内容の言い換えを繰り返さない
 - ユーザーに一方的に説明するだけでなく、相手の発話を受けて少し返す
 - ただし雑談だけで終わらせず、質問への答えが自然に分かるようにする
-- 高知らしいやわらかい話し言葉を混ぜてよいが、不自然な過剰方言にはしない
+- みらいくんだけは標準語で話す
+- にちよさん、よういちさん、よさこちゃんは土佐弁で話す
+- 方言は不自然に過剰にしない
 
 ## 内容ルール
 - 与えられた会話メモリと直近履歴を踏まえて、文脈を引き継ぐ

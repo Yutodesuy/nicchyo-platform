@@ -699,9 +699,7 @@ export default function GrandmaChatter({
           },
         ]);
         if (index < turns.length - 1) {
-          await new Promise((resolve) =>
-            window.setTimeout(resolve, 380 + index * 180)
-          );
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
           if (requestId !== askRequestRef.current) return;
         }
       }
