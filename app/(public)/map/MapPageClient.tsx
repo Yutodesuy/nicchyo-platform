@@ -297,7 +297,9 @@ export default function MapPageClient({
   const handleGrandmaAsk = useCallback(async (
     text: string,
     imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
+    _history?: Array<{ role: "user" | "assistant"; text: string }>,
+    _memorySummary?: string
   ) => {
     try {
       const useForm = !!imageFile;

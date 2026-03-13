@@ -5,28 +5,19 @@ import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
 import { grandmaComments } from "../map/data/grandmaComments";
+import type { ConsultAskResponse, ConsultHistoryEntry } from "./types/consultConversation";
 import type { Shop } from "../map/data/shops";
 
-type ConsultClientProps = {
-  shops: Shop[];
-};
-
-type ConsultAskResponse = {
-  reply: string;
-  imageUrl?: string;
-  shopIds?: number[];
-  errorMessage?: string;
-  retryable?: boolean;
-};
-
-export default function ConsultClient({ shops }: ConsultClientProps) {
+export default function ConsultClient() {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
   const searchParams = useSearchParams();
 
   const handleGrandmaAsk = useCallback(async (
     text: string,
     imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
+    history?: ConsultHistoryEntry[],
+    memorySummary?: string
   ): Promise<ConsultAskResponse> => {
     try {
       const useForm = !!imageFile;
@@ -37,6 +28,8 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
             form.append("location", JSON.stringify(null));
             if (context?.shopId) form.append("shopId", String(context.shopId));
             if (context?.shopName) form.append("shopName", context.shopName);
+            form.append("history", JSON.stringify(history ?? []));
+            form.append("memorySummary", memorySummary ?? "");
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
@@ -45,6 +38,8 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
             location: null,
             shopId: context?.shopId ?? null,
             shopName: context?.shopName ?? null,
+            history: history ?? [],
+            memorySummary: memorySummary ?? "",
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
@@ -63,10 +58,12 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
         reply?: string;
         imageUrl?: string;
         shopIds?: number[];
+        shops?: Shop[];
+        turns?: ConsultAskResponse["turns"];
+        memorySummary?: string;
       };
-      if (payload.shopIds && payload.shopIds.length > 0) {
-        const shopSet = new Set(payload.shopIds);
-        setAiSuggestedShops(shops.filter((shop) => shopSet.has(shop.id)));
+      if (payload.shops && payload.shops.length > 0) {
+        setAiSuggestedShops(payload.shops);
       } else {
         setAiSuggestedShops([]);
       }
@@ -76,6 +73,9 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
           "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
         imageUrl: payload.imageUrl,
         shopIds: payload.shopIds,
+        shops: payload.shops,
+        turns: payload.turns,
+        memorySummary: payload.memorySummary,
         retryable: false,
       };
     } catch {
@@ -86,7 +86,7 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
         retryable: true,
       };
     }
-  }, [shops]);
+  }, []);
 
   const autoAskText = searchParams?.get("q") || null;
   const autoAskShopIdRaw = searchParams?.get("shopId");
@@ -123,7 +123,6 @@ export default function ConsultClient({ shops }: ConsultClientProps) {
             variant="consult"
             comments={grandmaComments}
             onAsk={handleGrandmaAsk}
-            allShops={shops}
             aiSuggestedShops={aiSuggestedShops}
             initialOpen
             layout="page"
