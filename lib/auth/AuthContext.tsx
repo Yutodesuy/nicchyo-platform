@@ -13,7 +13,7 @@ interface AuthContextType {
     password: string,
     captchaToken?: string
   ) => Promise<User | null>;
-  updateProfile: (updates: Pick<User, "name" | "email" | "avatarUrl">) => Promise<void>;
+  updateProfile: (updates: Pick<User, "name" | "email" | "phone" | "avatarUrl">) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
   permissions: PermissionCheck;
@@ -39,7 +39,7 @@ function getVendorId(value: unknown): number | undefined {
 }
 
 function mapSupabaseUser(user: SupabaseUser): User {
-  const appMeta = user.app_metadata as { role?: string } | undefined;
+  const appMeta = user.app_metadata as { role?: string; provider?: string } | undefined;
   const userMeta = user.user_metadata as {
     role?: string;
     vendorId?: unknown;
@@ -47,20 +47,25 @@ function mapSupabaseUser(user: SupabaseUser): User {
     full_name?: string;
     avatarUrl?: string;
     avatar_url?: string;
+    phone?: string;
   } | undefined;
 
   const role = normalizeRole(appMeta?.role ?? userMeta?.role);
   const vendorId = getVendorId(userMeta?.vendorId);
   const name = userMeta?.name ?? userMeta?.full_name ?? (user.email ? user.email.split("@")[0] : "user");
   const avatarUrl = userMeta?.avatarUrl ?? userMeta?.avatar_url;
+  const provider = appMeta?.provider ?? "email";
+  const phone = userMeta?.phone;
 
   return {
     id: user.id,
     name,
     email: user.email ?? "",
+    phone,
     avatarUrl,
     role,
     vendorId,
+    provider,
   };
 }
 
@@ -157,12 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mapped;
   };
 
-  const updateProfile = async (updates: Pick<User, "name" | "email" | "avatarUrl">) => {
+  const updateProfile = async (updates: Pick<User, "name" | "email" | "phone" | "avatarUrl">) => {
     if (!user) return;
     const payload: { data?: Record<string, string>; email?: string } = {
       data: {
         name: updates.name,
         avatarUrl: updates.avatarUrl ?? "",
+        phone: updates.phone ?? "",
       },
     };
     if (updates.email && updates.email !== user.email) {

@@ -8,9 +8,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   avatarUrl?: string;
   role: UserRole;
   vendorId?: number;
+  /** 認証プロバイダー。"email" = メール/パスワード、"google" = Googleログイン */
+  provider: "email" | "google" | string;
 }
 
 export interface PermissionCheck {
