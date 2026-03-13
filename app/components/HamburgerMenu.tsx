@@ -221,18 +221,97 @@ export default function HamburgerMenu() {
                   )}
 
                   {permissions.isVendor && (
-                    <li>
-                      <Link
-                        href="/my-shop"
-                        onClick={closeMenu}
-                        className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
-                      >
-                        <MenuIcon name="shop" className="h-5 w-5 text-amber-600" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">マイ店舗</p>
+                    <>
+                      <li>
+                        <div className="rounded-lg bg-amber-50 px-3 py-2 mb-2">
+                          <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                            <MenuIcon name="shop" className="h-4 w-4 text-amber-700" />
+                            出店者メニュー
+                          </p>
                         </div>
-                      </Link>
-                    </li>
+                      </li>
+                      <li>
+                        <Link
+                          href="/my-shop"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="shop" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">マイ店舗</p>
+                            <p className="text-xs text-gray-500">店舗ページを見る</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/store"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="store-edit" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">店舗情報編集</p>
+                            <p className="text-xs text-gray-500">営業時間・商品・SNSなど</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/post/new"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="pencil" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">最新情報の投稿</p>
+                            <p className="text-xs text-gray-500">お知らせや出店情報を発信</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/posts"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="list" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">投稿履歴</p>
+                            <p className="text-xs text-gray-500">過去の投稿・再投稿</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/analytics"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="chart" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">アナリティクス</p>
+                            <p className="text-xs text-gray-500">閲覧数・商品・AI分析</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          href="/vendor/ai-knowledge"
+                          onClick={closeMenu}
+                          className="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-700 transition hover:bg-amber-50"
+                        >
+                          <MenuIcon name="sparkles" className="h-5 w-5 text-amber-600" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">AIばあちゃんに教える</p>
+                            <p className="text-xs text-gray-500">お店の情報を学習させる</p>
+                          </div>
+                        </Link>
+                      </li>
+                      <li>
+                        <div className="my-3 border-t border-gray-200" />
+                      </li>
+                    </>
                   )}
 
                   {permissions.isGeneralUser && (
@@ -383,6 +462,10 @@ type MenuIconName =
   | 'user'
   | 'settings'
   | 'shop'
+  | 'store-edit'
+  | 'pencil'
+  | 'list'
+  | 'sparkles'
   | 'users'
   | 'shield'
   | 'bag'
@@ -575,6 +658,34 @@ function MenuIcon({ name, className }: MenuIconProps) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 16.5V10.5" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V7.5" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 16.5V12" />
+        </svg>
+      );
+    case 'store-edit':
+      return (
+        <svg {...props}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75 12 4.5l9 5.25" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5V18.75A1.5 1.5 0 0 0 6 20.25h4.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5v3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="m14.25 17.25 1.5-1.5 3 3-1.5 1.5-3-3Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="m17.25 15.75 1.5-1.5" />
+        </svg>
+      );
+    case 'pencil':
+      return (
+        <svg {...props}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+        </svg>
+      );
+    case 'list':
+      return (
+        <svg {...props}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h7.5M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+        </svg>
+      );
+    case 'sparkles':
+      return (
+        <svg {...props}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
         </svg>
       );
     default:
