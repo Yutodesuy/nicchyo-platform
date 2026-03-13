@@ -73,7 +73,7 @@ export default function AdminAnalyticsPage() {
       <div className="bg-white shadow-sm">
         <div className="mx-auto max-w-7xl px-4 py-6">
           <Link
-            href="/admin"
+            href="/admin/dashboard"
             className="text-sm text-blue-600 hover:text-blue-800"
           >
             ← ダッシュボードに戻る

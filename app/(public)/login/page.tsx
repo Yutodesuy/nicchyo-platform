@@ -35,7 +35,7 @@ export default function LoginPage() {
       loggedInUser.role === "vendor"
         ? "/my-shop"
         : loggedInUser.role === "super_admin"
-          ? "/admin"
+          ? "/admin/dashboard"
           : "/map";
     router.push(destination);
   };
