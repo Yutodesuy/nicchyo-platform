@@ -439,7 +439,20 @@ export default function ShopDetailBanner({
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30">
+    <div
+      className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30"
+      style={{ right: "var(--desktop-menu-offset, 0px)" }}
+    >
+      <div className="absolute right-6 top-6 z-[2105] flex items-center gap-2">
+        <button
+          onClick={onClose}
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-3xl font-bold text-slate-700 shadow transition-transform hover:scale-110"
+          type="button"
+          aria-label="閉じる"
+        >
+          ×
+        </button>
+      </div>
       <div
         ref={scrollContainerRef}
         className={`h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl ${
@@ -535,16 +548,6 @@ export default function ShopDetailBanner({
                 {shop.chome ?? "丁目未設定"} | {shop.ownerName}
               </p>
             )}
-          </div>
-          <div className="fixed right-6 top-6 z-[2105] flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-slate-700 text-3xl font-bold shadow transition-transform hover:scale-110"
-              type="button"
-              aria-label="閉じる"
-            >
-              ×
-            </button>
           </div>
         </div>
 

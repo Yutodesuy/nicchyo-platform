@@ -9,6 +9,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useMenu } from '@/lib/ui/MenuContext';
@@ -19,6 +20,21 @@ export default function HamburgerMenu() {
   const { isLoggedIn, user, logout, permissions } = useAuth();
   const pathname = usePathname();
   const theme = getRoleTheme(user?.role);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const desktopMenuWidth = '20rem';
+    const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+
+    root.style.setProperty(
+      '--desktop-menu-offset',
+      isMenuOpen && isDesktop ? desktopMenuWidth : '0px'
+    );
+
+    return () => {
+      root.style.setProperty('--desktop-menu-offset', '0px');
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -38,7 +54,9 @@ export default function HamburgerMenu() {
       {/* ハンバーガーボタン（固定位置・オーバーレイ） */}
       <button
         onClick={toggleMenu}
-        className="hamburger-button fixed top-4 right-4 z-[10002] flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg"
+        className={`hamburger-button fixed top-4 right-4 z-[10002] flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 text-gray-700 shadow-md transition hover:bg-white hover:shadow-lg ${
+          isMenuOpen ? "is-open" : "is-closed"
+        }`}
         aria-label="メニュー"
       >
         <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,23 +71,28 @@ export default function HamburgerMenu() {
 
       {/* 背景オーバーレイ */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm" onClick={closeMenu} />
+        <div className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm lg:hidden" onClick={closeMenu} />
       )}
 
       {/* スライドメニュー */}
       <div
-        className={`fixed right-0 top-0 z-[9999] h-[100dvh] h-[calc(var(--vh,1vh)*100)] w-80 max-w-[90vw] transform bg-white shadow-2xl transition-transform duration-300 ${
+        className={`fixed right-0 top-0 z-[9999] h-[100dvh] h-[calc(var(--vh,1vh)*100)] w-80 max-w-[90vw] transform bg-white shadow-2xl transition-transform duration-300 lg:border-l lg:border-gray-200 ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
-          paddingTop: 'calc(1rem + var(--safe-top, 0px))',
+          paddingTop: 'var(--safe-top, 0px)',
           paddingBottom: 'var(--safe-bottom, 0px)',
         }}
       >
         <div className="flex h-full flex-col">
           {/* ヘッダー */}
-          <div className="flex items-center border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-800">メニュー</h2>
+          <div className={`${theme.headerBg} ${theme.headerText} border-b border-white/10 px-4 py-4`}>
+            <div className="flex min-h-[56px] items-center gap-3">
+              <span className="text-2xl" aria-hidden="true">🗺️</span>
+              <div>
+                <h2 className="text-lg font-semibold">nicchyoメニュー</h2>
+              </div>
+            </div>
           </div>
 
           {/* プロフィール表示 */}

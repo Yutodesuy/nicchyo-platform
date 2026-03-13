@@ -15,6 +15,7 @@
  */
 :root {
   --vh: 1vh; /* JavaScriptで動的に更新 */
+  --desktop-menu-offset: 0px;
 }
 
 /* safe-area対応！EOS刁E��欠き�EAndroid ジェスチャーバ�E�E�E*/
@@ -54,6 +55,13 @@ html, body {
 body {
   height: 100dvh; /* モダンブラウザ */
   height: calc(var(--vh, 1vh) * 100); /* フォールバック */
+  transition: padding-right 300ms ease;
+}
+
+@media (min-width: 1024px) {
+  body {
+    padding-right: var(--desktop-menu-offset);
+  }
 }
 
 body.grandma-chat-open .leaflet-container {
@@ -592,11 +600,11 @@ body.grandma-chat-open .leaflet-container {
   display: none !important;
 }
 
-body.shop-banner-open .hamburger-button {
+body.shop-banner-open .navigation-bar {
   display: none;
 }
 
-body.shop-banner-open .navigation-bar {
+body.shop-banner-open .hamburger-button.is-closed {
   display: none;
 }
 
