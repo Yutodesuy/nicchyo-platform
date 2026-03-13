@@ -9,6 +9,7 @@ import {
 } from "@/app/(public)/consult/data/consultCharacters";
 import type {
   ConsultAskResponse,
+  ConsultErrorCode,
   ConsultHistoryEntry,
   ConsultTurn,
 } from "@/app/(public)/consult/types/consultConversation";
@@ -167,6 +168,80 @@ function isShopRelatedQuestion(normalized: string): boolean {
   return /お店|おすすめ|人気|売って|買い|食べ|飲み|野菜|果物|惣菜|お土産|アクセサリー|雑貨|道具|工具|植物|苗|花|ハンドメイド|工芸|ランチ|朝ごはん|おやつ|スイーツ|食材|食べ物/.test(
     normalized
   );
+}
+
+function isUnsupportedQuestion(normalized: string) {
+  return /違法|犯罪|爆弾|殺|死ね|個人情報|住所を教え|電話番号|パスワード|ハッキング|詐欺/.test(
+    normalized
+  );
+}
+
+function getErrorSpeaker(
+  errorCode: ConsultErrorCode,
+  characters: ConsultCharacter[]
+): ConsultCharacter {
+  const preferredIdByError: Record<ConsultErrorCode, ConsultCharacterId> = {
+    system_error: "nichiyosan",
+    insufficient_context: "nichiyosan",
+    unsupported_request: "nichiyosan",
+    no_result: "yosakochan",
+  };
+  return (
+    characters.find((character) => character.id === preferredIdByError[errorCode]) ??
+    characters[0]
+  );
+}
+
+function getHelperQuestions(errorCode: ConsultErrorCode): string[] {
+  switch (errorCode) {
+    case "insufficient_context":
+      return [
+        "旬の食べものを探してるんだけど、おすすめある？",
+        "おみやげ向きのお店を教えて",
+      ];
+    case "unsupported_request":
+      return [
+        "日曜市の回り方を教えて",
+        "今の季節におすすめの食材はある？",
+      ];
+    case "no_result":
+      return [
+        "近い条件でおすすめを教えて",
+        "ジャンルを変えるなら何がおすすめ？",
+      ];
+    default:
+      return [];
+  }
+}
+
+function buildErrorResponse(
+  errorCode: ConsultErrorCode,
+  characters: ConsultCharacter[],
+  message: string,
+  options?: {
+    retryable?: boolean;
+    errorMessage?: string;
+    memorySummary?: string;
+  }
+): ConsultAskResponse {
+  const speaker = getErrorSpeaker(errorCode, characters);
+  const turns: ConsultTurn[] = [
+    {
+      speakerId: speaker.id,
+      speakerName: speaker.name,
+      text: message,
+    },
+  ];
+
+  return {
+    reply: `${speaker.name}: ${message}`,
+    turns,
+    errorCode,
+    helperQuestions: getHelperQuestions(errorCode),
+    memorySummary: options?.memorySummary,
+    retryable: options?.retryable ?? false,
+    errorMessage: options?.errorMessage ?? message,
+  };
 }
 
 function buildHistoryContext(history: ConsultHistoryEntry[], memorySummary: string) {
@@ -632,10 +707,30 @@ export async function POST(request: Request) {
     }
 
     const normalized = question.replace(/\s+/g, "");
+    const selectedCharacters = pickConsultCharacters();
+    const conversationPattern = pickConversationPattern(selectedCharacters);
     if (normalized.includes("おばあちゃんは何者") || normalized.includes("おばあちゃん何者")) {
       return NextResponse.json({
         reply: "高知の日曜市を案内するにちよさんたちやきね。気軽に聞いてや。",
       });
+    }
+    if (isUnsupportedQuestion(normalized)) {
+      return NextResponse.json(
+        buildErrorResponse(
+          "unsupported_request",
+          selectedCharacters,
+          "その相談には答えられんけんど、日曜市のお店や回り方なら一緒に考えられるよ。"
+        )
+      );
+    }
+    if (text && text.length < 4 && !imageDataUrl) {
+      return NextResponse.json(
+        buildErrorResponse(
+          "insufficient_context",
+          selectedCharacters,
+          "もう少し詳しく聞かせてくれたら案内しやすいよ。食べたいものや気になるお店があると分かりやすいきね。"
+        )
+      );
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -643,7 +738,16 @@ export async function POST(request: Request) {
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!supabaseUrl || !serviceRoleKey || !openaiKey) {
       return NextResponse.json(
-        { reply: "準備中やき、もう少し待ってね。" },
+        buildErrorResponse(
+          "system_error",
+          selectedCharacters,
+          "いま準備が整ってないみたい。少しおいて、もう一回試してみてね。",
+          {
+            retryable: true,
+            errorMessage: "相談の準備がまだ整っていません。少し時間をおいて再試行してください。",
+            memorySummary,
+          }
+        ),
         { status: 500 }
       );
     }
@@ -651,8 +755,6 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const keywords = extractKeywords(question);
     const shopIntent = isShopRelatedQuestion(normalized);
-    const selectedCharacters = pickConsultCharacters();
-    const conversationPattern = pickConversationPattern(selectedCharacters);
 
     let targetShop: Shop | null = null;
     if (targetShopId) {
@@ -672,6 +774,20 @@ export async function POST(request: Request) {
       supabase,
       Array.from(new Set(candidateVendorIds)).slice(0, 12)
     );
+    if (
+      shopIntent &&
+      !targetShop &&
+      candidateShops.length === 0 &&
+      !imageDataUrl
+    ) {
+      return NextResponse.json(
+        buildErrorResponse(
+          "no_result",
+          selectedCharacters,
+          "ぴったり当てはまるお店は見つからんかったけんど、言い方を少し変えると探しやすくなるかもしれんね。"
+        )
+      );
+    }
 
     const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
@@ -686,7 +802,16 @@ export async function POST(request: Request) {
     });
     if (!embeddingResponse.ok) {
       return NextResponse.json(
-        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
+        buildErrorResponse(
+          "system_error",
+          selectedCharacters,
+          "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+          {
+            retryable: true,
+            errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+            memorySummary,
+          }
+        ),
         { status: 500 }
       );
     }
@@ -696,7 +821,16 @@ export async function POST(request: Request) {
     const embedding = embeddingPayload.data?.[0]?.embedding;
     if (!embedding) {
       return NextResponse.json(
-        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
+        buildErrorResponse(
+          "system_error",
+          selectedCharacters,
+          "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+          {
+            retryable: true,
+            errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+            memorySummary,
+          }
+        ),
         { status: 500 }
       );
     }
@@ -815,7 +949,16 @@ export async function POST(request: Request) {
     });
     if (!chatResponse.ok) {
       return NextResponse.json(
-        { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
+        buildErrorResponse(
+          "system_error",
+          selectedCharacters,
+          "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+          {
+            retryable: true,
+            errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+            memorySummary,
+          }
+        ),
         { status: 500 }
       );
     }
@@ -900,7 +1043,19 @@ export async function POST(request: Request) {
     return NextResponse.json(response);
   } catch {
     return NextResponse.json(
-      { reply: "うまく調べられんかったき、もう一回聞いてみて。" },
+      {
+        reply: "にちよさん: いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+        turns: [
+          {
+            speakerId: "nichiyosan",
+            speakerName: "にちよさん",
+            text: "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+          },
+        ],
+        errorCode: "system_error",
+        retryable: true,
+        errorMessage: "接続に失敗しました。少し時間をおいて、もう一度試してください。",
+      },
       { status: 500 }
     );
   }

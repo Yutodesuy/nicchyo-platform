@@ -17,6 +17,7 @@ import {
 } from "../../consult/data/consultCharacters";
 import type {
   ConsultAskResponse,
+  ConsultErrorCode,
   ConsultHistoryEntry,
 } from "../../consult/types/consultConversation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
@@ -135,6 +136,8 @@ export default function GrandmaChatter({
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
   const [shouldShowValidation, setShouldShowValidation] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<ConsultErrorCode | null>(null);
+  const [errorHelperQuestions, setErrorHelperQuestions] = useState<string[]>([]);
   const [lastFailedSubmission, setLastFailedSubmission] = useState<PendingSubmission | null>(null);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
@@ -624,6 +627,8 @@ export default function GrandmaChatter({
     setSelectedImagePreview(null);
     setShouldShowValidation(false);
     setErrorNotice(null);
+    setErrorCode(null);
+    setErrorHelperQuestions([]);
     setLastFailedSubmission(null);
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
@@ -668,6 +673,8 @@ export default function GrandmaChatter({
       setAiBubbleText(reply);
       setAiImageUrl(response.imageUrl ?? null);
       setErrorNotice(response.errorMessage ?? null);
+      setErrorCode(response.errorCode ?? null);
+      setErrorHelperQuestions(response.helperQuestions ?? []);
       setLastFailedSubmission(isRetryableError ? submission : null);
       if (response.memorySummary) {
         setConversationSummary(response.memorySummary);
@@ -709,6 +716,8 @@ export default function GrandmaChatter({
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
       setErrorNotice("接続に失敗しました。少し時間をおいて、もう一度試してください。");
+      setErrorCode("system_error");
+      setErrorHelperQuestions([]);
       setLastFailedSubmission(submission);
       setChatMessages((prev) => [
         ...prev,
@@ -733,6 +742,8 @@ export default function GrandmaChatter({
       return;
     }
     setErrorNotice(null);
+    setErrorCode(null);
+    setErrorHelperQuestions([]);
     setLastFailedSubmission(null);
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
@@ -1047,6 +1058,8 @@ export default function GrandmaChatter({
                           setHasUserAsked(false);
                           setConversationSummary("");
                           setErrorNotice(null);
+                          setErrorCode(null);
+                          setErrorHelperQuestions([]);
                           setLastFailedSubmission(null);
                           onClear?.();
                           if (chatStorageKeyRef.current) {
@@ -1749,26 +1762,44 @@ export default function GrandmaChatter({
                 </div>
               )}
               {errorNotice && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
-                  <span>{errorNotice}</span>
-                  {lastFailedSubmission && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="default"
-                      onClick={() =>
-                        handleAskSubmit(
-                          lastFailedSubmission.text,
-                          lastFailedSubmission.context,
-                          true,
-                          lastFailedSubmission
-                        )
-                      }
-                      disabled={aiStatus === "thinking"}
-                      className="h-7 rounded-full border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-                    >
-                      もう一度送る
-                    </Button>
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{errorNotice}</span>
+                    {lastFailedSubmission && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="default"
+                        onClick={() =>
+                          handleAskSubmit(
+                            lastFailedSubmission.text,
+                            lastFailedSubmission.context,
+                            true,
+                            lastFailedSubmission
+                          )
+                        }
+                        disabled={aiStatus === "thinking"}
+                        className="h-7 rounded-full border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                      >
+                        もう一度送る
+                      </Button>
+                    )}
+                  </div>
+                  {!lastFailedSubmission && errorCode && errorCode !== "system_error" && errorHelperQuestions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {errorHelperQuestions.map((question) => (
+                        <button
+                          key={question}
+                          type="button"
+                          onClick={() =>
+                            handleAskSubmit(question, { source: "suggestion" }, true)
+                          }
+                          className="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
