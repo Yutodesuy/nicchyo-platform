@@ -116,9 +116,9 @@ export default function VendorHelpPage() {
 
               {/* Tips */}
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {section.tips.map((tip) => (
-                    <li key={tip} className="flex items-start gap-2 text-xs text-slate-600">
+                    <li key={tip} className="flex items-start gap-2 text-sm text-slate-600">
                       <span className="mt-0.5 flex-shrink-0 text-amber-400">•</span>
                       {tip}
                     </li>
