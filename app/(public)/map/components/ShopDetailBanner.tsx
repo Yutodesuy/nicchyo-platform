@@ -27,6 +27,7 @@ type ShopDetailBannerProps = {
   onAddToBag?: (name: string, fromShopId?: number) => void;
   variant?: "default" | "kotodute";
   originRect?: { x: number; y: number; width: number; height: number };
+  layout?: "overlay" | "inline";
 };
 
 type BagItem = {
@@ -108,6 +109,7 @@ export default function ShopDetailBanner({
   onAddToBag,
   variant = "default",
   originRect,
+  layout = "overlay",
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -125,12 +127,12 @@ export default function ShopDetailBanner({
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (layout !== "overlay" || typeof document === "undefined") return;
     document.body.classList.add("shop-banner-open");
     return () => {
       document.body.classList.remove("shop-banner-open");
     };
-  }, []);
+  }, [layout]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -379,12 +381,24 @@ export default function ShopDetailBanner({
 
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
 
+  const isInline = layout === "inline";
+
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-start md:bg-transparent"
-      style={{ right: "var(--desktop-menu-offset, 0px)" }}
+      className={
+        isInline
+          ? "relative min-h-[calc(100vh-7.5rem)]"
+          : "fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-start md:bg-transparent"
+      }
+      style={isInline ? undefined : { right: "var(--desktop-menu-offset, 0px)" }}
     >
-      <div className="fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto md:left-[476px] md:right-auto md:top-4">
+      <div
+        className={
+          isInline
+            ? "absolute right-4 top-4 z-20 flex items-center gap-2"
+            : "fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto md:left-[476px] md:right-auto md:top-4"
+        }
+      >
         <button
           onClick={onClose}
           className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-3xl font-bold text-slate-700 shadow-lg backdrop-blur transition-transform hover:scale-110"
@@ -396,10 +410,12 @@ export default function ShopDetailBanner({
       </div>
       <div
         ref={scrollContainerRef}
-        className={`relative h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:w-[540px] md:max-w-[540px] md:rounded-r-[30px] md:border-r md:border-slate-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-[18px_0_48px_rgba(15,23,42,0.14)] ${
-          originRect ? "shop-banner-animate" : ""
-        }`}
-        style={bannerStyle}
+        className={`relative w-full overflow-y-auto ${
+          isInline
+            ? "h-[calc(100vh-7.5rem)] rounded-[1.75rem] border border-amber-200 bg-white/96 px-5 pb-16 pt-5 shadow-sm"
+            : "h-full max-w-none bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:w-[540px] md:max-w-[540px] md:rounded-r-[30px] md:border-r md:border-slate-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-[18px_0_48px_rgba(15,23,42,0.14)]"
+        } ${originRect && !isInline ? "shop-banner-animate" : ""}`}
+        style={isInline ? undefined : bannerStyle}
       >
         {/* 写真 */}
         <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative md:mx-0 md:mt-0 md:rounded-[26px] md:border md:border-slate-200">

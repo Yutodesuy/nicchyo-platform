@@ -13,9 +13,9 @@ import CategoryFilter from './components/CategoryFilter';
 import SearchResults from './components/SearchResults';
 import SearchDiscovery from './components/SearchDiscovery';
 import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favoriteShops';
-import ShopDetailBanner from '../map/components/ShopDetailBanner';
 import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
 import { recordProductSearch } from '@/app/vendor/_services/analyticsService';
+import ShopDetailBanner from '../map/components/ShopDetailBanner';
 
 const MapView = dynamic(() => import('../map/components/MapView'), {
   ssr: false,
@@ -128,12 +128,36 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
   const [category, setCategory] = useState<string | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
+  const [openedShop, setOpenedShop] = useState<Shop | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const touchStartY = useRef<number | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setIsDesktop(mediaQuery.matches);
+    sync();
+    mediaQuery.addEventListener('change', sync);
+    return () => mediaQuery.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (isDesktop && openedShop) {
+      document.body.classList.add('search-inline-shop-banner-open');
+      return () => {
+        document.body.classList.remove('search-inline-shop-banner-open');
+      };
+    }
+    document.body.classList.remove('search-inline-shop-banner-open');
+    return () => {
+      document.body.classList.remove('search-inline-shop-banner-open');
+    };
+  }, [isDesktop, openedShop]);
 
   const handleToggleFavorite = (shopId: number) => {
     const next = toggleFavoriteShopId(shopId);
@@ -246,34 +270,31 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
     setTextQuery('');
   }, []);
 
-  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    touchStartY.current = event.touches[0]?.clientY ?? null;
-  }, []);
-
-  const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    if (!canNavigate || touchStartY.current === null) return;
-    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
-    const delta = endY - touchStartY.current;
-    const threshold = 40;
-    if (delta <= -threshold) {
-      handleSelectByOffset(1);
-    } else if (delta >= threshold) {
-      handleSelectByOffset(-1);
+  const handleFocusShop = useCallback((shop: Shop) => {
+    if (isDesktop) {
+      if (selectedShop?.id === shop.id) {
+        setOpenedShop(shop);
+        return;
+      }
+      setSelectedShop(shop);
+      setOpenedShop(null);
+      return;
     }
-    touchStartY.current = null;
-  }, [canNavigate, handleSelectByOffset]);
+    saveSearchMapPayload({ ids: [shop.id], label: shop.name });
+    router.push(`/map?search=1&label=${encodeURIComponent(shop.name)}&shop=${shop.id}`);
+  }, [isDesktop, router, selectedShop]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24 text-gray-900 lg:pb-0">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24 text-gray-900">
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
         <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
           <div className="hidden lg:sticky lg:top-4 lg:block">
-            <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
-              <div className="mb-3 shrink-0 rounded-2xl border border-amber-100 bg-white/95 px-5 py-4 text-center shadow-sm">
-                <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
-                <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
-                <p className="mt-1 text-sm text-gray-700">マップを見ながらお店を探せます</p>
+            <div className="flex h-[calc(100vh-6.875rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
+              <div className="mb-3 shrink-0 rounded-2xl border border-amber-100 bg-white/95 px-5 py-3 text-center shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
+                <h2 className="mt-0.5 text-xl font-bold text-gray-900">お店を探す</h2>
+                <p className="mt-0.5 text-xs text-gray-700">マップを見ながらお店を探せます</p>
               </div>
               <div className="min-h-0 flex-1 overflow-hidden rounded-[1.6rem] border border-amber-100">
                 <MapView
@@ -281,6 +302,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                   landmarks={landmarks}
                   initialShopId={selectedShop?.id}
                   openInitialShopBanner={false}
+                  onShopSelect={isDesktop ? setOpenedShop : undefined}
                   searchShopIds={desktopSearchShopIds}
                   searchLabel={searchLabel}
                   suppressInitialLocationFocus
@@ -290,6 +312,14 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
+            {isDesktop && openedShop ? (
+              <ShopDetailBanner
+                shop={openedShop}
+                onClose={() => setOpenedShop(null)}
+                layout="inline"
+              />
+            ) : (
+              <>
             <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm lg:hidden">
               <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
               <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
@@ -346,7 +376,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                     <button
                       key={`${shop.id}-${post.createdAt}-${index}`}
                       type="button"
-                      onClick={() => setSelectedShop(shop)}
+                      onClick={() => handleFocusShop(shop)}
                       className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
                     >
                       <div className="flex gap-3">
@@ -390,7 +420,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                 favoriteShopIds={favoriteShopIds}
                 onPageSelect={handlePageSelect}
                 onToggleFavorite={handleToggleFavorite}
-                onSelectShop={setSelectedShop}
+                onSelectShop={handleFocusShop}
                 onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
                 mapLabel={searchLabel}
                 enableSearchMapHighlight
@@ -408,7 +438,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                     <button
                       key={`${shop.id}-${post.createdAt}-${index}`}
                       type="button"
-                      onClick={() => setSelectedShop(shop)}
+                      onClick={() => handleFocusShop(shop)}
                       className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
                     >
                       <div className="flex gap-3">
@@ -439,24 +469,13 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
         </section>
       </main>
 
-      {selectedShop && (
-        <div
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          <ShopDetailBanner
-            shop={selectedShop}
-            onClose={() => setSelectedShop(null)}
-          />
-        </div>
-      )}
-
-      {/* ナビゲーションバー */}
-      {!selectedShop && <NavigationBar />}
+      <NavigationBar />
     </div>
   );
 }
