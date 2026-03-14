@@ -1028,14 +1028,14 @@ export default function GrandmaChatter({
   };
   const renderSuggestedShopsHeader = (suggestedShops: Shop[]) => (
     <div className="flex items-center justify-between gap-2 px-1">
-      <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
+      <span className="text-[12px] font-bold tracking-[0.08em] text-amber-800">
         おすすめのお店
       </span>
       {layout === "page" && isConsultVariant ? (
         <button
           type="button"
           onClick={() => openSuggestedShopsOnMap(suggestedShops)}
-          className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+          className="rounded-full border border-pink-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-pink-700 transition hover:bg-pink-50"
         >
           マップで確認する
         </button>
@@ -1241,7 +1241,7 @@ export default function GrandmaChatter({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2 pl-1">
-                          <span className="text-sm font-semibold text-slate-700">{speakerName}</span>
+                          <span className="text-base font-semibold text-slate-700">{speakerName}</span>
                         </div>
                         <MessageBubble
                           role={message.role}
@@ -1303,7 +1303,7 @@ export default function GrandmaChatter({
                                   true
                                 )
                               }
-                              className="rounded-full border border-amber-200 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                              className="rounded-full border border-amber-200 bg-white/90 px-3 py-2 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
                             >
                               {message.followUpQuestion}
                             </button>
@@ -1407,15 +1407,15 @@ export default function GrandmaChatter({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex items-center gap-2 pl-1">
-                        <span className="text-sm font-semibold text-slate-700">{activeConsultHero.name}</span>
+                        <span className="text-base font-semibold text-slate-700">{activeConsultHero.name}</span>
                       </div>
-                      <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-sm text-slate-800 shadow-sm">
+                      <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-[15px] text-slate-800 shadow-sm">
                         <div className="flex items-center gap-2">
                           <span
                             className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
                             aria-label="考え中"
                           />
-                          <span className="text-sm text-slate-600">考え中…</span>
+                          <span className="text-base text-slate-600">考え中…</span>
                         </div>
                       </div>
                     </div>
@@ -1658,14 +1658,14 @@ export default function GrandmaChatter({
             <div className={`rounded-[1.8rem] border p-3 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
-                  <span className="text-base font-bold text-gray-900">提案されたお店</span>
+                  <span className={`text-base font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
+                  <span className="text-lg font-bold text-gray-900">提案されたお店</span>
                 </div>
                 {layout === "page" && isConsultVariant ? (
                   <button
                     type="button"
                     onClick={() => openSuggestedShopsOnMap(displayedSuggestedShops)}
-                    className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+                    className="rounded-full border border-pink-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-pink-700 transition hover:bg-pink-50"
                   >
                     マップで確認する
                   </button>
@@ -1720,13 +1720,13 @@ export default function GrandmaChatter({
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <span className="max-w-[140px] truncate text-[10px] font-semibold text-amber-900">
+                      <span className="max-w-[180px] truncate text-[12px] font-semibold text-amber-900">
                         {activeConsultContext.shopName} を相談中
                       </span>
                       <button
                         type="button"
                         onClick={() => setActiveConsultContext(null)}
-                        className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                        className="rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
                       >
                         全体へ戻る
                       </button>
@@ -1743,13 +1743,13 @@ export default function GrandmaChatter({
                           draggable={false}
                         />
                       </div>
-                      <span className="max-w-[110px] truncate text-[10px] font-semibold text-orange-900">
+                      <span className="max-w-[130px] truncate text-[12px] font-semibold text-orange-900">
                         推し: {preferredCharacter.name}
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsPreferredCharacterPickerOpen(true)}
-                        className="rounded-full border border-orange-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-orange-800 transition hover:bg-orange-100"
+                        className="rounded-full border border-orange-200 bg-white px-3 py-1 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100"
                       >
                         変更
                       </button>
@@ -1769,7 +1769,7 @@ export default function GrandmaChatter({
                     <button
                       type="button"
                       onClick={() => setIsPreferredCharacterPickerOpen(true)}
-                      className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-semibold shadow-inner transition ${
+                      className={`shrink-0 rounded-lg border px-3 py-2 text-[12px] font-semibold shadow-inner transition ${
                         preferredCharacter
                           ? "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100"
                           : isConsultVariant
@@ -1782,11 +1782,11 @@ export default function GrandmaChatter({
                     <button
                       type="button"
                       onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2.5 py-1 text-left text-[10px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
+                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-[12px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
                       aria-label={`質問例: ${activeConsultExample}`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
+                        <Badge variant="outline" className={`text-[12px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
                         <span className="truncate text-slate-600">{activeConsultExample}</span>
                       </span>
                     </button>
@@ -1808,7 +1808,7 @@ export default function GrandmaChatter({
                   onClick={() => imageInputRef.current?.click()}
                   className={`${
                     isConsultVariant
-                      ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-50 text-sm font-semibold text-slate-600 hover:bg-white"
+                      ? "h-11 w-11 rounded-full border-[var(--consult-border)] bg-slate-50 text-lg font-semibold text-slate-600 hover:bg-white"
                       : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
                   }`}
                   aria-label="写真を選ぶ"
@@ -1848,7 +1848,7 @@ export default function GrandmaChatter({
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "min-h-[38px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-2 text-[13px] text-gray-900 focus-visible:ring-slate-300"
+                        ? "min-h-[46px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300"
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={consultPlaceholder}
@@ -1922,23 +1922,23 @@ export default function GrandmaChatter({
                 </Button>
               </div>
               {enableSpeechInput && !isSpeechSupported && (
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[13px] text-slate-500">
                   音声入力は対応ブラウザのみ
                 </div>
               )}
               {enableSpeechInput && isListening && (
-                <Badge variant="destructive" className="w-fit gap-2 text-[10px]">
+                <Badge variant="destructive" className="w-fit gap-2 text-[12px]">
                   <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
                   音声入力中
                 </Badge>
               )}
               {selectedImageName && (
-                <div className="text-[11px] text-slate-600">
+                <div className="text-[13px] text-slate-600">
                   画像: {selectedImageName}
                 </div>
               )}
               {errorNotice && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>{errorNotice}</span>
                     {lastFailedSubmission && (
@@ -1955,7 +1955,7 @@ export default function GrandmaChatter({
                           )
                         }
                         disabled={aiStatus === "thinking"}
-                        className="h-7 rounded-full border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                        className="h-9 rounded-full border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-700 hover:bg-rose-100"
                       >
                         もう一度送る
                       </Button>
@@ -1970,7 +1970,7 @@ export default function GrandmaChatter({
                           onClick={() =>
                             handleAskSubmit(question, { source: "suggestion" }, true)
                           }
-                          className="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+                          className="rounded-full border border-rose-200 bg-white px-3 py-2 text-[13px] font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
                         >
                           {question}
                         </button>
@@ -1980,7 +1980,7 @@ export default function GrandmaChatter({
                 </div>
               )}
               {shouldShowValidation && (
-                <div className="text-[11px] font-semibold text-rose-500">
+                <div className="text-[13px] font-semibold text-rose-500">
                   質問内容を入力するか写真を選んでね。
                 </div>
               )}
@@ -1993,13 +1993,13 @@ export default function GrandmaChatter({
           <div className="w-full max-w-xl rounded-[2rem] border border-amber-100 bg-white p-5 shadow-2xl lg:max-w-[1180px]">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-bold text-slate-900">推しキャラ選択</div>
-                <div className="text-xs text-slate-500">選んだキャラは毎回キャラ1として登場します。</div>
+                <div className="text-base font-bold text-slate-900">推しキャラ選択</div>
+                <div className="text-sm text-slate-500">選んだキャラは毎回キャラ1として登場します。</div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPreferredCharacterPickerOpen(false)}
-                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-50"
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
               >
                 閉じる
               </button>
@@ -2017,8 +2017,8 @@ export default function GrandmaChatter({
                     : "border-slate-200 bg-slate-50 hover:bg-slate-100"
                 }`}
               >
-                <div className="text-sm font-semibold text-slate-900">おまかせ</div>
-                <div className="mt-1 text-xs text-slate-500">毎回ランダムで選びます</div>
+                <div className="text-base font-semibold text-slate-900">おまかせ</div>
+                <div className="mt-1 text-sm text-slate-500">毎回ランダムで選びます</div>
               </button>
                 {CONSULT_CHARACTERS.map((character) => (
                   <button
@@ -2043,8 +2043,8 @@ export default function GrandmaChatter({
                       draggable={false}
                     />
                   </div>
-                  <div className="mt-3 text-sm font-semibold text-slate-900">{character.name}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-slate-500">{character.subtitle}</div>
+                  <div className="mt-3 text-base font-semibold text-slate-900">{character.name}</div>
+                  <div className="mt-1 text-[12px] leading-6 text-slate-500">{character.subtitle}</div>
                 </button>
               ))}
             </div>
@@ -2130,15 +2130,15 @@ function ConsultShopSuggestionCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-slate-900">{shop.name}</div>
-              <div className="mt-0.5 text-[11px] text-slate-500">{shop.ownerName}</div>
+              <div className="truncate text-base font-semibold text-slate-900">{shop.name}</div>
+              <div className="mt-0.5 text-[12px] text-slate-500">{shop.ownerName}</div>
             </div>
-            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
               #{shop.id}
             </span>
           </div>
-          <div className="mt-2 text-[11px] font-medium text-amber-700">{shop.category}</div>
-          <div className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-600">
+          <div className="mt-2 text-[12px] font-medium text-amber-700">{shop.category}</div>
+          <div className="mt-1 line-clamp-2 text-[12px] leading-6 text-slate-600">
             {shop.products.slice(0, 3).join("・")}
             {shop.products.length > 3 && " ほか"}
           </div>
@@ -2150,7 +2150,7 @@ function ConsultShopSuggestionCard({
                   event.stopPropagation();
                   onStartConsult(shop);
                 }}
-                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
               >
                 このお店について詳しく
               </button>
