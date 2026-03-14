@@ -66,8 +66,7 @@ export default function VendorAnalyticsPage() {
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Analytics</p>
-            <h1 className="text-xl font-bold text-slate-900">アナリティクス</h1>
+            <h1 className="text-xl font-bold text-slate-900">お店の分析</h1>
           </div>
           <div className="ml-auto flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5">
             <BarChart2 size={13} className="text-amber-600" />
