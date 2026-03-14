@@ -203,6 +203,7 @@ type MapViewProps = {
   shops?: Shop[];
   landmarks?: Landmark[];
   initialShopId?: number;
+  openInitialShopBanner?: boolean;
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
@@ -230,6 +231,7 @@ type MapViewProps = {
     }
   >;
   onZoomChange?: (zoom: number) => void;
+  suppressInitialLocationFocus?: boolean;
 };
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
@@ -341,6 +343,7 @@ const MapView = memo(function MapView({
   shops: initialShops,
   landmarks = [],
   initialShopId,
+  openInitialShopBanner = true,
   selectedRecipe,
   showRecipeOverlay,
   onCloseRecipeOverlay,
@@ -359,6 +362,7 @@ const MapView = memo(function MapView({
   shopBannerVariant,
   attendanceEstimates,
   onZoomChange,
+  suppressInitialLocationFocus = false,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -463,7 +467,9 @@ const MapView = memo(function MapView({
     if (initialShopId) {
       const shop = shops.find((s) => s.id === initialShopId);
       if (shop) {
-        setSelectedShop(shop);
+        if (openInitialShopBanner) {
+          setSelectedShop(shop);
+        }
         if (mapRef.current) {
           const currentZoom = mapRef.current.getZoom();
           if (currentZoom < 18) {
@@ -474,7 +480,7 @@ const MapView = memo(function MapView({
         }
       }
     }
-  }, [initialShopId, shops]);
+  }, [initialShopId, openInitialShopBanner, shops]);
 
   useEffect(() => {
     const updateShops = () => {
@@ -1180,6 +1186,7 @@ const MapView = memo(function MapView({
             });
           }}
           isTracking={isTracking}
+          suppressInitialFocus={suppressInitialLocationFocus}
         />
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

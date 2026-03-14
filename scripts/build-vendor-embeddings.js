@@ -22,77 +22,56 @@ function loadEnvFile(filePath) {
 
 function buildContent(row) {
   const parts = [
-    row.name,
+    row.shop_name ? `shop: ${row.shop_name}` : "",
     row.owner_name ? `owner: ${row.owner_name}` : "",
-    row.category,
-    row.chome ? `block: ${row.chome}` : "",
-    row.side ? `side: ${row.side}` : "",
-    row.position ? `position: ${row.position}` : "",
-    row.lat ? `lat: ${row.lat}` : "",
-    row.lng ? `lng: ${row.lng}` : "",
-    row.description,
-    row.specialty_dish,
-    row.about_vendor,
-    row.stall_style,
-    row.schedule,
-    row.message,
-    row.synonyms ? `synonyms: ${row.synonyms}` : "",
+    row.category ? `category: ${row.category}` : "",
+    row.store_number ? `store_number: ${row.store_number}` : "",
+    row.district ? `district: ${row.district}` : "",
+    row.latitude ? `lat: ${row.latitude}` : "",
+    row.longitude ? `lng: ${row.longitude}` : "",
+    row.strength ? `strength: ${row.strength}` : "",
+    row.style ? `style: ${row.style}` : "",
+    row.style_tags?.length ? `style_tags: ${row.style_tags.join(", ")}` : "",
+    row.schedule?.length ? `schedule: ${row.schedule.join("、")}` : "",
+    row.main_products?.length ? `main_products: ${row.main_products.join(", ")}` : "",
+    row.products?.length ? `products: ${row.products.join(", ")}` : "",
+    row.latest_content ? `latest_content: ${row.latest_content}` : "",
   ].filter(Boolean);
 
-  const products = Array.isArray(row.products) ? row.products.join(", ") : "";
-  if (products) parts.push(`products: ${products}`);
-
-  return parts.filter(Boolean).join("\n");
+  return parts.join("\n");
 }
 
 async function fetchRows(supabase, from, to) {
   const [
     { data: vendorsData, error: vendorsError },
-    { data: categoriesData, error: categoriesError },
     { data: productsData, error: productsError },
     { data: locationsData, error: locationsError },
+    { data: assignmentsData, error: assignmentsError },
+    { data: contentsData, error: contentsError },
   ] = await Promise.all([
     supabase
       .from("vendors")
-      .select("id, shop_name, owner_name, strength, style, category_id")
+      .select(
+        "id, shop_name, owner_name, strength, style, style_tags, schedule, main_products, categories(name)"
+      )
       .order("id", { ascending: true })
       .range(from, to),
-    supabase.from("categories").select("id, name"),
     supabase.from("products").select("vendor_id, name"),
     supabase
       .from("market_locations")
       .select("id, store_number, latitude, longitude, district"),
+    supabase.from("location_assignments").select("vendor_id, location_id, market_date"),
+    supabase
+      .from("vendor_contents")
+      .select("vendor_id, body, created_at")
+      .order("created_at", { ascending: false }),
   ]);
 
   if (vendorsError) throw new Error(`Supabase error: ${vendorsError.message}`);
-  if (categoriesError) throw new Error(`Supabase error: ${categoriesError.message}`);
   if (productsError) throw new Error(`Supabase error: ${productsError.message}`);
   if (locationsError) throw new Error(`Supabase error: ${locationsError.message}`);
-
-  const { data: marketAssignmentsData, error: marketAssignmentsError } = await supabase
-    .from("market_assignments")
-    .select("vendor_id, location_id, market_date");
-
-  let assignmentsData = marketAssignmentsData;
-  let assignmentsError = marketAssignmentsError;
-
-  if (marketAssignmentsError) {
-    const fallback = await supabase
-      .from("location_assignments")
-      .select("vendor_id, location_id, market_date");
-    assignmentsData = fallback.data;
-    assignmentsError = fallback.error;
-  }
-
-  if (assignmentsError) {
-    throw new Error(`Supabase error: ${assignmentsError.message}`);
-  }
-
-  const categoryById = new Map(
-    (categoriesData ?? [])
-      .filter((row) => row && row.id)
-      .map((row) => [row.id, row.name ?? ""])
-  );
+  if (assignmentsError) throw new Error(`Supabase error: ${assignmentsError.message}`);
+  if (contentsError) throw new Error(`Supabase error: ${contentsError.message}`);
 
   const productsByVendorId = new Map();
   for (const row of productsData ?? []) {
@@ -101,12 +80,6 @@ async function fetchRows(supabase, from, to) {
     list.push(row.name);
     productsByVendorId.set(row.vendor_id, list);
   }
-
-  const locationById = new Map(
-    (locationsData ?? [])
-      .filter((row) => row && row.id)
-      .map((row) => [row.id, row])
-  );
 
   const latestAssignmentByVendorId = new Map();
   for (const row of assignmentsData ?? []) {
@@ -123,36 +96,45 @@ async function fetchRows(supabase, from, to) {
     }
   }
 
-  return (vendorsData ?? [])
-    .map((vendor) => {
-      const assignment = latestAssignmentByVendorId.get(vendor.id);
-      if (!assignment?.location_id) return null;
-      const location = locationById.get(assignment.location_id);
-      if (!location) return null;
+  const locationById = new Map(
+    (locationsData ?? [])
+      .filter((row) => row && row.id)
+      .map((row) => [row.id, row])
+  );
 
-      return {
-        id: vendor.id,
-        legacy_id: location.store_number,
-        name: vendor.shop_name ?? "",
-        owner_name: vendor.owner_name ?? "",
-        category: categoryById.get(vendor.category_id) ?? "",
-        chome: location.district ?? "",
-        side: "",
-        position: location.store_number ?? "",
-        lat: location.latitude ?? null,
-        lng: location.longitude ?? null,
-        description: "",
-        products: productsByVendorId.get(vendor.id) ?? [],
-        specialty_dish: "",
-        about_vendor: "",
-        stall_style: vendor.style ?? "",
-        schedule: "",
-        message: "",
-        synonyms: "",
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => (a.legacy_id ?? 0) - (b.legacy_id ?? 0));
+  const latestContentByVendorId = new Map();
+  for (const row of contentsData ?? []) {
+    if (!row?.vendor_id || latestContentByVendorId.has(row.vendor_id)) continue;
+    latestContentByVendorId.set(row.vendor_id, row.body ?? "");
+  }
+
+  return (vendorsData ?? []).map((vendor) => {
+    const assignment = latestAssignmentByVendorId.get(vendor.id);
+    const location = assignment?.location_id
+      ? locationById.get(assignment.location_id)
+      : null;
+    const category = Array.isArray(vendor.categories)
+      ? vendor.categories[0]?.name ?? ""
+      : vendor.categories?.name ?? "";
+
+    return {
+      vendor_id: vendor.id,
+      shop_name: vendor.shop_name ?? "",
+      owner_name: vendor.owner_name ?? "",
+      category,
+      strength: vendor.strength ?? "",
+      style: vendor.style ?? "",
+      style_tags: vendor.style_tags ?? [],
+      schedule: vendor.schedule ?? [],
+      main_products: vendor.main_products ?? [],
+      products: productsByVendorId.get(vendor.id) ?? [],
+      latest_content: latestContentByVendorId.get(vendor.id) ?? "",
+      store_number: location?.store_number ?? null,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      district: location?.district ?? "",
+    };
+  });
 }
 
 async function fetchEmbeddings(apiKey, inputs) {
@@ -185,12 +167,8 @@ async function main() {
   const supabaseUrl =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is missing.");
-  }
-  if (!serviceKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing.");
-  }
+  if (!apiKey) throw new Error("OPENAI_API_KEY is missing.");
+  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is missing.");
   if (!supabaseUrl) {
     throw new Error("SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL is missing.");
   }
@@ -204,40 +182,47 @@ async function main() {
   let totalProcessed = 0;
 
   while (true) {
-    const data = await fetchRows(supabase, from, from + pageSize - 1);
+    const rows = await fetchRows(supabase, from, from + pageSize - 1);
+    if (!rows || rows.length === 0) break;
 
-    if (!data || data.length === 0) break;
-
-    const rows = data
+    const embeddingRows = rows
       .map((row) => {
         const content = buildContent(row);
-        if (!row.id || !content) return null;
-        return { id: row.id, content };
+        if (!row.vendor_id || !content) return null;
+        return {
+          vendor_id: row.vendor_id,
+          store_number: row.store_number,
+          shop_name: row.shop_name,
+          content,
+        };
       })
       .filter(Boolean);
 
-    if (rows.length === 0) {
+    if (embeddingRows.length === 0) {
       from += pageSize;
       continue;
     }
 
     const embeddings = await fetchEmbeddings(
       apiKey,
-      rows.map((row) => row.content)
+      embeddingRows.map((row) => row.content)
     );
 
-    const payload = rows.map((row, index) => ({
-      shop_id: row.legacy_id,
+    const payload = embeddingRows.map((row, index) => ({
+      vendor_id: row.vendor_id,
+      store_number: row.store_number,
+      shop_name: row.shop_name,
       content: row.content,
       embedding: embeddings[index],
+      updated_at: new Date().toISOString(),
     }));
 
-    const { error: upsertError } = await supabase
-      .from("shop_embeddings")
-      .upsert(payload, { onConflict: "shop_id" });
+    const { error } = await supabase
+      .from("vendor_embeddings")
+      .upsert(payload, { onConflict: "vendor_id" });
 
-    if (upsertError) {
-      throw new Error(`Upsert error: ${upsertError.message}`);
+    if (error) {
+      throw new Error(`Upsert error: ${error.message}`);
     }
 
     totalProcessed += payload.length;

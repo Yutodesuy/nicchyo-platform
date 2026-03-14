@@ -10,13 +10,23 @@ import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import MessageBubble from "../../consult/components/MessageBubble";
+import {
+  CONSULT_CHARACTERS,
+  CONSULT_CHARACTER_BY_ID,
+  type ConsultCharacterId,
+} from "../../consult/data/consultCharacters";
+import type {
+  ConsultAskResponse,
+  ConsultErrorCode,
+  ConsultHistoryEntry,
+} from "../../consult/types/consultConversation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 import type { Shop } from "../data/shops";
 import ShopResultCard from "../../search/components/ShopResultCard";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
-
-const PLACEHOLDER_IMAGE = "/images/obaasan_transparent.png";
+import { getShopBannerImage } from "@/lib/shopImages";
+import { saveAiMapPayload } from "@/lib/searchMapStorage";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
@@ -25,6 +35,30 @@ type PriorityMessage = {
   text: string;
   badgeTitle?: string;
   badgeIcon?: string;
+};
+
+type AskContext = { shopId?: number; shopName?: string; source?: "suggestion" | "input" };
+
+const SHOP_CONSULT_PROMPT = "このお店のおすすめやこだわりを詳しく教えて";
+
+type PendingSubmission = {
+  text: string;
+  imageFile?: File | null;
+  imagePreview?: string | null;
+  context?: AskContext;
+};
+
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  imageUrl?: string;
+  shopIds?: number[];
+  shops?: Shop[];
+  localImageUrl?: string;
+  speakerId?: ConsultCharacterId;
+  speakerName?: string;
+  followUpQuestion?: string;
 };
 
 type GrandmaChatterProps = {
@@ -36,11 +70,13 @@ type GrandmaChatterProps = {
   onAsk?: (
     text: string,
     imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
-  ) => Promise<{ reply: string; imageUrl?: string; shopIds?: number[] }>;
+    context?: AskContext,
+    history?: ConsultHistoryEntry[],
+    memorySummary?: string
+  ) => Promise<ConsultAskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
-  onSelectShop?: (shopId: number) => void;
+  onSelectShop?: (shopId: number, shop?: Shop) => void;
   fullWidth?: boolean;
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
@@ -57,6 +93,8 @@ type GrandmaChatterProps = {
   currentZoom?: number;
   enableSpeechInput?: boolean;
   variant?: "default" | "consult";
+  preferredCharacterId?: ConsultCharacterId | null;
+  onPreferredCharacterChange?: (characterId: ConsultCharacterId | null) => void;
 };
 
 export default function GrandmaChatter({
@@ -85,6 +123,8 @@ export default function GrandmaChatter({
   currentZoom,
   enableSpeechInput = false,
   variant = "default",
+  preferredCharacterId,
+  onPreferredCharacterChange,
 }: GrandmaChatterProps) {
   const isConsultVariant = variant === "consult";
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -95,23 +135,20 @@ export default function GrandmaChatter({
   );
   const [askText, setAskText] = useState("");
   const [isChatOpen, setIsChatOpen] = useState(initialOpen);
-  const [chatMessages, setChatMessages] = useState<
-    Array<{
-      id: string;
-      role: "user" | "assistant";
-      text: string;
-      imageUrl?: string;
-      shopIds?: number[];
-      localImageUrl?: string;
-    }>
-  >([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [hasUserAsked, setHasUserAsked] = useState(false);
   const [hasProcessedAutoAsk, setHasProcessedAutoAsk] = useState(false);
+  const [conversationSummary, setConversationSummary] = useState("");
+  const [activeConsultContext, setActiveConsultContext] = useState<AskContext | null>(null);
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
   const [shouldShowValidation, setShouldShowValidation] = useState(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<ConsultErrorCode | null>(null);
+  const [errorHelperQuestions, setErrorHelperQuestions] = useState<string[]>([]);
+  const [lastFailedSubmission, setLastFailedSubmission] = useState<PendingSubmission | null>(null);
   const [aiBubbleText, setAiBubbleText] = useState(
     grandmaAiInstructorLines[0] ?? "質問を入力してね。"
   );
@@ -128,6 +165,8 @@ export default function GrandmaChatter({
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [consultExampleIndex, setConsultExampleIndex] = useState(0);
+  const [consultHeroIndex, setConsultHeroIndex] = useState(0);
+  const [isPreferredCharacterPickerOpen, setIsPreferredCharacterPickerOpen] = useState(false);
   const rafRef = useRef<number | null>(null);
   const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const holdTimerRef = useRef<number | null>(null);
@@ -295,8 +334,7 @@ export default function GrandmaChatter({
   useEffect(() => {
     if (layout !== "page") return;
     if (typeof window === "undefined") return;
-    const today = new Date().toISOString().slice(0, 10);
-    const key = `nicchyo-consult-chat-${today}`;
+    const key = "nicchyo-consult-chat";
     chatStorageKeyRef.current = key;
     const saved = localStorage.getItem(key);
     if (!saved) {
@@ -305,22 +343,12 @@ export default function GrandmaChatter({
     }
     try {
       const parsed = JSON.parse(saved) as
-        | Array<{
-            id: string;
-            role: "user" | "assistant";
-            text: string;
-            imageUrl?: string;
-            shopIds?: number[];
-          }>
+        | ChatMessage[]
         | {
-            messages: Array<{
-              id: string;
-              role: "user" | "assistant";
-              text: string;
-              imageUrl?: string;
-              shopIds?: number[];
-            }>;
+            messages: ChatMessage[];
             hasUserAsked?: boolean;
+            conversationSummary?: string;
+            activeConsultContext?: AskContext | null;
           };
       const messages = Array.isArray(parsed) ? parsed : parsed.messages;
       if (Array.isArray(messages) && messages.length > 0) {
@@ -330,6 +358,12 @@ export default function GrandmaChatter({
             ? messages.some((message) => message.role === "user")
             : !!parsed.hasUserAsked || messages.some((message) => message.role === "user")
         );
+      }
+      if (!Array.isArray(parsed) && parsed.conversationSummary) {
+        setConversationSummary(parsed.conversationSummary);
+      }
+      if (!Array.isArray(parsed) && parsed.activeConsultContext) {
+        setActiveConsultContext(parsed.activeConsultContext);
       }
     } catch {
       // ignore malformed history
@@ -440,18 +474,29 @@ export default function GrandmaChatter({
       text: message.text,
       imageUrl: message.imageUrl,
       shopIds: message.shopIds,
+      shops: message.shops,
+      speakerId: message.speakerId,
+      speakerName: message.speakerName,
+      followUpQuestion: message.followUpQuestion,
     }));
     localStorage.setItem(
       chatStorageKeyRef.current,
       JSON.stringify({
         messages: serializable,
         hasUserAsked,
+        conversationSummary,
+        activeConsultContext,
       })
     );
-  }, [chatMessages, hasLoadedHistory, hasUserAsked, layout]);
+  }, [activeConsultContext, chatMessages, conversationSummary, hasLoadedHistory, hasUserAsked, layout]);
 
   useEffect(() => {
-    if (!isChatOpen || !chatScrollRef.current) return;
+    if (!isChatOpen) return;
+    if (layout === "page") {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+      return;
+    }
+    if (!chatScrollRef.current) return;
     const scrollContainer = chatScrollRef.current;
 
     // Only auto-scroll if we were already near bottom or it's a new message from user/assistant
@@ -460,11 +505,18 @@ export default function GrandmaChatter({
     if (isNearBottom || chatMessages.length > 0) {
       scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
-  }, [chatMessages, isChatOpen, aiStatus]);
+  }, [chatMessages, isChatOpen, aiStatus, layout]);
 
   useEffect(() => {
     if (autoAskText && !hasProcessedAutoAsk) {
       setHasProcessedAutoAsk(true);
+      if (autoAskContext?.shopId || autoAskContext?.shopName) {
+        setActiveConsultContext({
+          shopId: autoAskContext?.shopId,
+          shopName: autoAskContext?.shopName,
+          source: "suggestion",
+        });
+      }
       // レイアウトがpageの場合は最初から開いているので即座に、
       // floatingの場合は開いてから少し待って送信するなどの制御ができるが、
       // ここではシンプルに少し遅延させて送信する
@@ -477,6 +529,10 @@ export default function GrandmaChatter({
   }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen]);
 
   useEffect(() => {
+    if (layout === "page") {
+      setShowScrollToBottom(false);
+      return;
+    }
     const scrollContainer = chatScrollRef.current;
     if (!scrollContainer) return;
 
@@ -487,7 +543,7 @@ export default function GrandmaChatter({
 
     scrollContainer.addEventListener('scroll', handleScroll);
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [isChatOpen]);
+  }, [isChatOpen, layout]);
 
   if (!current) return null;
 
@@ -563,15 +619,35 @@ export default function GrandmaChatter({
 
   const shouldValidateInput = layout === "page";
 
+  const beginShopConsult = (shop: Shop) => {
+    const nextContext: AskContext = {
+      shopId: shop.id,
+      shopName: shop.name,
+      source: "suggestion",
+    };
+    setActiveConsultContext(nextContext);
+    void handleAskSubmit(SHOP_CONSULT_PROMPT, nextContext, true);
+  };
+
   const handleAskSubmit = async (
     text?: string,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
-    openChat?: boolean
+    context?: AskContext,
+    openChat?: boolean,
+    retrySubmission?: PendingSubmission | null
   ) => {
     if (aiStatus === "thinking") return;
     stopSpeechRecognition();
-    const value = (text ?? askText).trim();
-    if (!value && !selectedImageFile) {
+    const submission = retrySubmission ?? {
+      text: (text ?? askText).trim(),
+      imageFile: selectedImageFile,
+      imagePreview: selectedImagePreview,
+      context: context ?? activeConsultContext ?? undefined,
+    };
+    if (submission.context?.shopId || submission.context?.shopName) {
+      setActiveConsultContext(submission.context);
+    }
+    const value = submission.text;
+    if (!value && !submission.imageFile) {
       if (shouldValidateInput) {
         setShouldShowValidation(true);
       }
@@ -580,13 +656,17 @@ export default function GrandmaChatter({
     if (openChat && !isChatOpen) {
       setIsChatOpen(true);
     }
-    const imageFile = selectedImageFile;
-    const imagePreview = selectedImagePreview;
+    const imageFile = submission.imageFile ?? null;
+    const imagePreview = submission.imagePreview ?? null;
     setAskText("");
     setSelectedImageName(null);
     setSelectedImageFile(null);
     setSelectedImagePreview(null);
     setShouldShowValidation(false);
+    setErrorNotice(null);
+    setErrorCode(null);
+    setErrorHelperQuestions([]);
+    setLastFailedSubmission(null);
     if (imageInputRef.current) {
       imageInputRef.current.value = "";
     }
@@ -604,31 +684,79 @@ export default function GrandmaChatter({
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
     const requestId = ++askRequestRef.current;
+    const historyForRequest: ConsultHistoryEntry[] = chatMessages
+      .slice(-8)
+      .map((message) => ({
+        role: message.role,
+        text: message.text,
+        speakerId: message.speakerId ?? null,
+        speakerName: message.speakerName ?? null,
+      }));
     try {
       const response = onAsk
-        ? await onAsk(value, imageFile ?? undefined, context)
+        ? await onAsk(
+            value,
+            imageFile ?? undefined,
+            submission.context,
+            historyForRequest,
+            conversationSummary
+          )
         : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
-      setAiStatus("answered");
       const reply =
         response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。";
+      const isRetryableError = !!response.retryable;
+      setAiStatus(isRetryableError ? "error" : "answered");
       setAiBubbleText(reply);
       setAiImageUrl(response.imageUrl ?? null);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: reply,
-          imageUrl: response.imageUrl,
-          shopIds: response.shopIds,
-        },
-      ]);
+      setErrorNotice(response.errorMessage ?? null);
+      setErrorCode(response.errorCode ?? null);
+      setErrorHelperQuestions(response.helperQuestions ?? []);
+      setLastFailedSubmission(isRetryableError ? submission : null);
+      if (response.memorySummary) {
+        setConversationSummary(response.memorySummary);
+      }
+      const turns =
+        response.turns && response.turns.length > 0
+          ? response.turns
+          : [
+              {
+                speakerId: "nichiyosan" as const,
+                speakerName: "にちよさん",
+                text: reply,
+              },
+            ];
+      for (let index = 0; index < turns.length; index += 1) {
+        const turn = turns[index];
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}-${index}`,
+            role: "assistant",
+            text: turn.text,
+            imageUrl: index === turns.length - 1 ? response.imageUrl : undefined,
+            shopIds: index === turns.length - 1 ? response.shopIds : undefined,
+            shops: index === turns.length - 1 ? response.shops : undefined,
+            speakerId: turn.speakerId,
+            speakerName: turn.speakerName,
+            followUpQuestion:
+              index === turns.length - 1 ? response.followUpQuestion : undefined,
+          },
+        ]);
+        if (index < turns.length - 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          if (requestId !== askRequestRef.current) return;
+        }
+      }
     } catch {
       if (requestId !== askRequestRef.current) return;
       setAiStatus("error");
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
+      setErrorNotice("接続に失敗しました。少し時間をおいて、もう一度試してください。");
+      setErrorCode("system_error");
+      setErrorHelperQuestions([]);
+      setLastFailedSubmission(submission);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -651,6 +779,10 @@ export default function GrandmaChatter({
       }
       return;
     }
+    setErrorNotice(null);
+    setErrorCode(null);
+    setErrorHelperQuestions([]);
+    setLastFailedSubmission(null);
     setSelectedImageName(file.name);
     setSelectedImageFile(file);
     setSelectedImagePreview(URL.createObjectURL(file));
@@ -806,8 +938,28 @@ export default function GrandmaChatter({
   const labelClassName = "absolute top-full left-1/2 -translate-x-1/2";
   const isKeyboardOpen = isInputFocused || keyboardShift > 0;
   const hasImageReply = !!aiImageUrl;
+  const persistedSuggestedShops = useMemo(() => {
+    for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+      const message = chatMessages[index];
+      if (message.role !== "assistant") continue;
+      if (message.shops && message.shops.length > 0) {
+        return message.shops;
+      }
+      if (message.shopIds && message.shopIds.length > 0) {
+        const resolved = message.shopIds
+          .map((id) => shopLookup.get(id))
+          .filter((shop): shop is Shop => !!shop);
+        if (resolved.length > 0) {
+          return resolved;
+        }
+      }
+    }
+    return [];
+  }, [chatMessages, shopLookup]);
+  const displayedSuggestedShops =
+    persistedSuggestedShops.length > 0 ? persistedSuggestedShops : aiSuggestedShops ?? [];
   const hasSuggestedBox =
-    !!aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen;
+    displayedSuggestedShops.length > 0 && !isKeyboardOpen;
   const hasSupplement = hasSuggestedBox || hasImageReply;
   const chatLiftClassName = layout === "page"
     ? "translate-y-0"
@@ -853,8 +1005,83 @@ export default function GrandmaChatter({
     ? "🤖"
     : priorityMessage?.badgeIcon ?? current.icon ?? pickCommentIcon(current);
   const activeConsultExample = consultExampleQuestions[consultExampleIndex % consultExampleQuestions.length];
+  const activeConsultShop =
+    activeConsultContext?.shopId != null ? shopLookup.get(activeConsultContext.shopId) : undefined;
+  const consultPlaceholder = activeConsultContext?.shopName
+    ? `「${activeConsultContext.shopName}」について聞いてみる`
+    : smartContext.placeholder;
+  const activeConsultHero =
+    CONSULT_CHARACTERS[consultHeroIndex % CONSULT_CHARACTERS.length];
+  const preferredCharacter =
+    preferredCharacterId ? CONSULT_CHARACTER_BY_ID.get(preferredCharacterId) ?? null : null;
+  const isPreferredHero = !!preferredCharacterId && activeConsultHero.id === preferredCharacterId;
+  const defaultConsultSpeaker = CONSULT_CHARACTERS[0];
+  const getSpeakerCharacter = (speakerId?: ConsultCharacterId) =>
+    (speakerId ? CONSULT_CHARACTER_BY_ID.get(speakerId) : null) ?? defaultConsultSpeaker;
+  const openSuggestedShopsOnMap = (shopsToOpen: Shop[]) => {
+    if (shopsToOpen.length === 0) return;
+    saveAiMapPayload({
+      ids: shopsToOpen.map((shop) => shop.id),
+      label: "AIおすすめ",
+    });
+    router.push(`/map?ai=1&label=${encodeURIComponent("AIおすすめ")}&shop=${shopsToOpen[0].id}`);
+  };
+  const renderSuggestedShopsHeader = (suggestedShops: Shop[]) => (
+    <div className="flex items-center justify-between gap-2 px-1">
+      <span className="text-[12px] font-bold tracking-[0.08em] text-amber-800">
+        おすすめのお店
+      </span>
+      {layout === "page" && isConsultVariant ? (
+        <button
+          type="button"
+          onClick={() => openSuggestedShopsOnMap(suggestedShops)}
+          className="rounded-full border border-pink-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-pink-700 transition hover:bg-pink-50"
+        >
+          マップで確認する
+        </button>
+      ) : null}
+    </div>
+  );
+
+  useEffect(() => {
+    if (!isConsultVariant) return;
+    const timer = window.setInterval(() => {
+      setConsultHeroIndex((prev) => (prev + 1) % CONSULT_CHARACTERS.length);
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [isConsultVariant]);
+
   return (
     <div className={shellClassName}>
+      {layout === "page" && chatMessages.length > 0 && (
+        <div className="fixed right-4 top-[79px] z-[1500]">
+          <Button
+            type="button"
+            variant="outline"
+            size="default"
+            onClick={() => {
+              if (window.confirm("これまでの会話を消してもいいですか？")) {
+                setChatMessages([]);
+                setHasUserAsked(false);
+                setConversationSummary("");
+                setErrorNotice(null);
+                setErrorCode(null);
+                setErrorHelperQuestions([]);
+                setLastFailedSubmission(null);
+                setActiveConsultContext(null);
+                onClear?.();
+                if (chatStorageKeyRef.current) {
+                  localStorage.removeItem(chatStorageKeyRef.current);
+                }
+              }
+            }}
+            className="h-auto rounded-full border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm backdrop-blur"
+          >
+            最初から話す
+          </Button>
+        </div>
+      )}
+
       <div className={`${containerClassName} transition-transform duration-300 ${chatLiftClassName}`}>
         {showAvatarButton && (
           <div
@@ -884,7 +1111,7 @@ export default function GrandmaChatter({
               {isHolding && <span className="grandma-hold-glow" aria-hidden="true" />}
               <div className="absolute inset-1 overflow-hidden rounded-xl bg-transparent">
                 <img
-                  src={PLACEHOLDER_IMAGE}
+                  src={defaultConsultSpeaker.image}
                   alt="おせっかいばあちゃん"
                   className="h-full w-full scale-110 object-cover object-center select-none"
                   draggable={false}
@@ -930,163 +1157,296 @@ export default function GrandmaChatter({
             aria-label="おばあちゃんとの会話"
           >
             <div className="flex items-center justify-between gap-3 pb-3">
-              <div className={`text-sm font-semibold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>にちよさんAI</div>
+              <div className={`text-sm font-semibold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                {isConsultVariant ? "日曜市のみんな" : "にちよさんAI"}
+              </div>
               <div className="flex items-center gap-3">
                 {aiStatus !== "idle" && (
                   <Badge variant="secondary" className="text-[11px]">
                     {aiStatus === "thinking" ? "考え中…" : "続けて聞いてね"}
                   </Badge>
                 )}
-                {layout === "page" && chatMessages.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="default"
-                    onClick={() => {
-                      if (window.confirm("これまでの会話を消してもいいですか？")) {
-                        setChatMessages([]);
-                        setHasUserAsked(false);
-                        onClear?.();
-                        if (chatStorageKeyRef.current) {
-                          localStorage.removeItem(chatStorageKeyRef.current);
-                        }
-                      }
-                    }}
-                    className="h-auto rounded-full px-2 py-1 text-[10px] font-medium text-slate-500"
-                  >
-                    最初から話す
-                  </Button>
-                )}
               </div>
             </div>
-            <ScrollArea
-              ref={chatScrollRef}
-              className={`mt-2 flex flex-col gap-4 pr-1 ${
-                layout === "page"
-                  ? "h-[calc(100svh-72px-var(--safe-bottom,0px))] pb-40"
-                  : "max-h-[calc(100vh-240px)]"
-              }`}
-            >
-              <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
-                <div className={`h-32 w-32 overflow-hidden rounded-full border-4 shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
-                  <img
-                    src={PLACEHOLDER_IMAGE}
-                    alt="にちよさん"
-                    className="h-full w-full scale-110 object-cover object-center"
-                    draggable={false}
-                  />
+              <ScrollArea
+                ref={chatScrollRef}
+                className={`mt-2 flex flex-col gap-4 pr-1 ${
+                  layout === "page"
+                    ? "overflow-visible pb-60"
+                    : "max-h-[calc(100vh-240px)]"
+                }`}
+              >
+                <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
+                  <div
+                    className={`h-32 w-32 overflow-hidden rounded-[2rem] border-4 shadow-sm transition-all duration-500 ${
+                      isConsultVariant
+                        ? isPreferredHero
+                          ? "border-orange-400 bg-[var(--consult-surface)]"
+                          : "border-[var(--consult-border)] bg-[var(--consult-surface)]"
+                        : "border-amber-200 bg-amber-50"
+                    }`}
+                  >
+                    <img
+                      src={isConsultVariant ? activeConsultHero.image : defaultConsultSpeaker.image}
+                      alt={isConsultVariant ? activeConsultHero.name : "にちよさん"}
+                      className={`h-full w-full object-cover transition-all duration-500 ${
+                        isConsultVariant ? activeConsultHero.imageScale : "scale-110"
+                      }`}
+                      style={
+                        isConsultVariant
+                          ? { objectPosition: activeConsultHero.imagePosition }
+                          : undefined
+                      }
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                      {isConsultVariant ? activeConsultHero.name : "にちよさん"}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {isConsultVariant ? activeConsultHero.subtitle : "日曜市のことをなんでも聞いてね"}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>にちよさん</div>
-                  <div className="text-sm text-gray-600">日曜市のことをなんでも聞いてね</div>
-                </div>
-              </div>
 
-              {chatMessages.map((message) => (
+              {chatMessages.map((message) => {
+                const speakerCharacter = getSpeakerCharacter(message.speakerId);
+                const speakerName = message.speakerName ?? speakerCharacter.name;
+                return (
                 <div
                   key={message.id}
                   className={`flex ${
                     message.role === "user" ? "justify-end" : "justify-start items-start gap-2"
                   }`}
                 >
-                  {message.role === "assistant" && (
+                  {message.role === "assistant" && isConsultVariant ? (
+                    <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
+                      <div className="mt-1 flex-shrink-0">
+                        <div
+                          className={`h-11 w-11 overflow-hidden rounded-full border bg-amber-50 shadow-sm ring-2 ring-white ${
+                            preferredCharacterId && speakerCharacter.id === preferredCharacterId
+                              ? "border-orange-400"
+                              : "border-amber-200"
+                          }`}
+                        >
+                          <img
+                            src={speakerCharacter.image}
+                            alt={speakerName}
+                            className={`h-full w-full object-cover ${speakerCharacter.imageScale}`}
+                            style={{ objectPosition: speakerCharacter.imagePosition }}
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2 pl-1">
+                          <span className="text-base font-semibold text-slate-700">{speakerName}</span>
+                        </div>
+                        <MessageBubble
+                          role={message.role}
+                          variant="consult"
+                          className="max-w-none shadow-sm"
+                        >
+                          {message.text}
+                          {(() => {
+                            const suggestedShops =
+                              message.shops && message.shops.length > 0
+                                ? message.shops
+                                : (message.shopIds ?? [])
+                                    .map((id) => shopLookup.get(id))
+                                    .filter((shop): shop is Shop => !!shop);
+                            if (suggestedShops.length === 0) return null;
+                            return (
+                              <div className="mt-3 rounded-[1.4rem] border border-amber-200 bg-[#fffaf3] p-3">
+                                {renderSuggestedShopsHeader(suggestedShops)}
+                                <div className="mt-2 space-y-2">
+                                  {suggestedShops.map((shop) => (
+                                    <ConsultShopSuggestionCard
+                                      key={shop.id}
+                                      shop={shop}
+                                      onSelectShop={onSelectShop}
+                                      onStartConsult={
+                                        layout === "page" && isConsultVariant
+                                          ? beginShopConsult
+                                          : undefined
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          {message.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
+                              className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
+                              aria-label="写真を拡大する"
+                            >
+                              <img
+                                src={message.imageUrl}
+                                alt="案内画像"
+                                className="h-32 w-full object-cover"
+                              />
+                            </button>
+                          )}
+                        </MessageBubble>
+                        {message.followUpQuestion && (
+                          <div className="mt-2 flex flex-wrap gap-2 pl-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleAskSubmit(
+                                  message.followUpQuestion,
+                                  { source: "suggestion" },
+                                  true
+                                )
+                              }
+                              className="rounded-full border border-amber-200 bg-white/90 px-3 py-2 text-[12px] font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
+                            >
+                              {message.followUpQuestion}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {message.role === "assistant" && (
+                        <div className="flex-shrink-0">
+                          <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
+                            <img
+                              src={defaultConsultSpeaker.image}
+                              alt="にちよさん"
+                              className="h-full w-full scale-110 object-cover object-center"
+                              draggable={false}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <MessageBubble role={message.role} variant={isConsultVariant ? "consult" : "default"} className="shadow-sm">
+                        {message.text}
+                        {message.localImageUrl && (
+                          <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
+                            <img
+                              src={message.localImageUrl}
+                              alt="送信画像"
+                              className="h-28 w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        {message.role === "assistant" &&
+                          (() => {
+                            const suggestedShops =
+                              message.shops && message.shops.length > 0
+                                ? message.shops
+                                : (message.shopIds ?? [])
+                                    .map((id) => shopLookup.get(id))
+                                    .filter((shop): shop is Shop => !!shop);
+                            if (suggestedShops.length === 0) return null;
+                            return (
+                            <div className="mt-3 rounded-[1.2rem] border border-amber-200 bg-[#fffaf3] p-3">
+                              {renderSuggestedShopsHeader(suggestedShops)}
+                              <div className="mt-2 space-y-2">
+                                {suggestedShops.map((shop) => (
+                                  <ConsultShopSuggestionCard
+                                    key={shop.id}
+                                    shop={shop}
+                                    onSelectShop={onSelectShop}
+                                    onStartConsult={
+                                      layout === "page" && isConsultVariant
+                                        ? beginShopConsult
+                                        : undefined
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            );
+                          })()}
+                        {message.imageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
+                            className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
+                            aria-label="写真を拡大する"
+                          >
+                            <img
+                              src={message.imageUrl}
+                              alt="案内画像"
+                              className="h-32 w-full object-cover"
+                            />
+                          </button>
+                        )}
+                      </MessageBubble>
+                    </>
+                  )}
+                </div>
+              )})}
+              {aiStatus === "thinking" && (
+                isConsultVariant ? (
+                  <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div
+                        className={`h-11 w-11 overflow-hidden rounded-full border bg-amber-50 shadow-sm ring-2 ring-white ${
+                          preferredCharacterId && activeConsultHero.id === preferredCharacterId
+                            ? "border-orange-400"
+                            : "border-amber-200"
+                        }`}
+                      >
+                        <img
+                          src={activeConsultHero.image}
+                          alt={activeConsultHero.name}
+                          className={`h-full w-full object-cover ${activeConsultHero.imageScale}`}
+                          style={{ objectPosition: activeConsultHero.imagePosition }}
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2 pl-1">
+                        <span className="text-base font-semibold text-slate-700">{activeConsultHero.name}</span>
+                      </div>
+                      <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-[15px] text-slate-800 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                            aria-label="考え中"
+                          />
+                          <span className="text-base text-slate-600">考え中…</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-start items-start gap-2">
                     <div className="flex-shrink-0">
                       <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
                         <img
-                          src={PLACEHOLDER_IMAGE}
+                          src={defaultConsultSpeaker.image}
                           alt="にちよさん"
                           className="h-full w-full scale-110 object-cover object-center"
                           draggable={false}
                         />
                       </div>
                     </div>
-                  )}
-
-                  <MessageBubble role={message.role} variant={isConsultVariant ? "consult" : "default"} className="shadow-sm">
-                    {message.text}
-                    {message.localImageUrl && (
-                      <div className="mt-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
-                        <img
-                          src={message.localImageUrl}
-                          alt="送信画像"
-                          className="h-28 w-full object-cover"
+                    <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
+                          aria-label="考え中"
                         />
+                        <span className="text-xs text-gray-500">考え中…</span>
                       </div>
-                    )}
-                    {message.role === "assistant" &&
-                      message.shopIds &&
-                      message.shopIds.length > 0 &&
-                      shopLookup.size > 0 && (
-                        <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2">
-                          <div className="flex items-center justify-between px-1">
-                            <span className="text-xs font-bold text-orange-800">
-                              おすすめのお店 ({message.shopIds.filter((id) => shopLookup.has(id)).length}件)
-                            </span>
-                          </div>
-                          <div className="mt-2 flex gap-4 overflow-x-auto pb-1">
-                            {message.shopIds
-                              .map((id) => shopLookup.get(id))
-                              .filter(Boolean)
-                              .map((shop) => {
-                                if (!shop) return null;
-                                return (
-                                  <div key={shop.id} className="shrink-0 w-64">
-                                    <ShopResultCard
-                                      shop={shop}
-                                      isFavorite={false}
-                                      onSelectShop={() => onSelectShop?.(shop.id)}
-                                      compact
-                                    />
-                                  </div>
-                                );
-                              })
-                              .filter(Boolean)}
-                          </div>
-                        </div>
-                      )}
-                    {message.imageUrl && (
-                      <button
-                        type="button"
-                        onClick={() => onAiImageClick?.(message.imageUrl ?? "")}
-                        className="mt-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm transition hover:shadow-md"
-                        aria-label="写真を拡大する"
-                      >
-                        <img
-                          src={message.imageUrl}
-                          alt="案内画像"
-                          className="h-32 w-full object-cover"
-                        />
-                      </button>
-                    )}
-                  </MessageBubble>
-                </div>
-              ))}
-              {aiStatus === "thinking" && (
-                <div className="flex justify-start items-start gap-2">
-                  <div className="flex-shrink-0">
-                    <div className={`h-10 w-10 overflow-hidden rounded-full border shadow-sm ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-200 bg-amber-50"}`}>
-                      <img
-                        src={PLACEHOLDER_IMAGE}
-                        alt="にちよさん"
-                        className="h-full w-full scale-110 object-cover object-center"
-                        draggable={false}
-                      />
                     </div>
                   </div>
-                  <div className="relative max-w-[80%] rounded-2xl rounded-tl-sm border border-amber-100 bg-white px-4 py-3 text-sm leading-relaxed text-slate-900 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
-                        aria-label="考え中"
-                      />
-                      <span className="text-xs text-gray-500">考え中…</span>
-                    </div>
-                  </div>
-                </div>
+                )
               )}
             </ScrollArea>
-            {showScrollToBottom && (
-              <button
+              {layout !== "page" && showScrollToBottom && (
+                <button
                 type="button"
                 onClick={() => {
                   if (chatScrollRef.current) {
@@ -1155,7 +1515,7 @@ export default function GrandmaChatter({
               ) : showBubbleAvatar ? (
                 <span className="h-20 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-transparent" aria-hidden="true">
                   <img
-                    src={PLACEHOLDER_IMAGE}
+                    src={defaultConsultSpeaker.image}
                     alt=""
                     className="h-full w-full object-cover"
                     draggable={false}
@@ -1266,19 +1626,19 @@ export default function GrandmaChatter({
         </div>
       )}
 
-      <div
-        className={`w-full px-3 transition-all duration-200 ${
-          layout === "page"
-            ? "fixed left-0 right-0 z-[1405]"
-            : chatPanelLift
-        } ${
-          isChatOpen
-            ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
-            : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
-        }`}
-        style={layout === "page" ? { bottom: `${inputBottomOffset}px` } : undefined}
-        aria-hidden={!isChatOpen}
-      >
+        <div
+          className={`w-full px-3 transition-all duration-200 ${
+            layout === "page"
+              ? "sticky z-[1405]"
+              : chatPanelLift
+          } ${
+            isChatOpen
+              ? "pointer-events-auto opacity-100 max-h-[320px] mt-2"
+              : "pointer-events-none opacity-0 max-h-0 mt-0 overflow-hidden"
+          }`}
+          style={layout === "page" ? { bottom: `calc(3.5rem + var(--safe-bottom, 0px) + 0.75rem)` } : undefined}
+          aria-hidden={!isChatOpen}
+        >
         <div className="mx-auto w-full max-w-xl space-y-2" style={inputShiftStyle}>
           {aiImageUrl && !isChatOpen && (
             <button
@@ -1294,50 +1654,112 @@ export default function GrandmaChatter({
               />
             </button>
           )}
-          {aiSuggestedShops && aiSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
-            <div className={`rounded-2xl border-2 p-4 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
-              <div className="flex items-center justify-between">
+          {displayedSuggestedShops.length > 0 && !isKeyboardOpen && !isChatOpen && (
+            <div className={`rounded-[1.8rem] border p-3 shadow-sm translate-y-[5px] ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-orange-300 bg-white/95"}`}>
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className={`ai-label-playful text-lg ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
+                  <span className={`text-base font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
                   <span className="text-lg font-bold text-gray-900">提案されたお店</span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
-                  {aiSuggestedShops.length}店
-                </span>
+                {layout === "page" && isConsultVariant ? (
+                  <button
+                    type="button"
+                    onClick={() => openSuggestedShopsOnMap(displayedSuggestedShops)}
+                    className="rounded-full border border-pink-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-pink-700 transition hover:bg-pink-50"
+                  >
+                    マップで確認する
+                  </button>
+                ) : null}
               </div>
               {aiStatus === "thinking" ? (
                 <div className="mt-6 flex items-center justify-center py-4">
                   <span className="h-7 w-7 animate-spin rounded-full border-2 border-amber-300 border-t-transparent" aria-label="読み込み中" />
                 </div>
               ) : (
-                <div
-                  className={`mt-3 flex gap-3 pb-2 ${
-                    aiSuggestedShops.length > 1 ? "overflow-x-auto" : ""
-                  }`}
-                >
-                  {aiSuggestedShops.map((shop) => (
-                    <div
+                <div className="mt-3 space-y-2">
+                  {displayedSuggestedShops.map((shop) => (
+                    <ConsultShopSuggestionCard
                       key={shop.id}
-                      className={aiSuggestedShops.length === 1 ? "w-full" : "shrink-0"}
-                    >
-                      <ShopResultCard
-                        shop={shop}
-                        isFavorite={false}
-                        onSelectShop={() => onSelectShop?.(shop.id)}
-                        compact={aiSuggestedShops.length > 1}
-                      />
-                    </div>
+                      shop={shop}
+                      onSelectShop={onSelectShop}
+                      onStartConsult={
+                        layout === "page" && isConsultVariant ? beginShopConsult : undefined
+                      }
+                    />
                   ))}
                 </div>
               )}
             </div>
           )}
           <Card
-            className={`rounded-2xl border-2 p-3 ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)]" : "border-amber-300 bg-white/95"} ${
+            className={`${
+              isConsultVariant
+                ? "rounded-[18px] border border-[var(--consult-border)] bg-white/92 p-2 shadow-sm"
+                : "rounded-2xl border-2 border-amber-300 bg-white/95 p-3"
+            } ${
               isConsultVariant ? "transition-colors duration-150" : "transition-transform duration-200"
             } ${!isConsultVariant && !isChatOpen ? "scale-95" : "scale-100"}`}
           >
-            <div className="flex flex-col gap-2">
+              <div className={`flex flex-col ${isConsultVariant ? "gap-1.5" : "gap-2"}`}>
+              {layout === "page" && (activeConsultContext?.shopName || preferredCharacter) && (
+                <div className="-mx-1 overflow-x-auto pb-1">
+                  <div className="flex min-w-max items-center gap-2 px-1 whitespace-nowrap">
+                  {activeConsultContext?.shopName && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-1">
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-amber-100 bg-white">
+                        <img
+                          src={
+                            activeConsultShop
+                              ? getShopBannerImage(
+                                  activeConsultShop.category,
+                                  activeConsultShop.position ?? activeConsultShop.id
+                                )
+                              : getShopBannerImage("その他", 0)
+                          }
+                          alt={activeConsultContext.shopName}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <span className="max-w-[180px] truncate text-[12px] font-semibold text-amber-900">
+                        {activeConsultContext.shopName} を相談中
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveConsultContext(null)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 bg-white text-[13px] font-semibold leading-none text-amber-800 transition hover:bg-amber-100"
+                        aria-label="お店相談を解除"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {preferredCharacter && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/70 px-2 py-1">
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-orange-300 bg-white">
+                        <img
+                          src={preferredCharacter.image}
+                          alt={preferredCharacter.name}
+                          className={`h-full w-full object-cover ${preferredCharacter.imageScale}`}
+                          style={{ objectPosition: preferredCharacter.imagePosition }}
+                          draggable={false}
+                        />
+                      </div>
+                      <span className="max-w-[130px] truncate text-[12px] font-semibold text-orange-900">
+                        推し: {preferredCharacter.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPreferredCharacterPickerOpen(true)}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-orange-200 bg-white text-[13px] font-semibold leading-none text-orange-800 transition hover:bg-orange-100"
+                        aria-label="推しキャラを変更"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  </div>
+                </div>
+              )}
               <div
                 className={`transition-all duration-200 ${
                   showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
@@ -1345,21 +1767,35 @@ export default function GrandmaChatter({
                 aria-hidden={!showConsultExamples}
               >
                 {layout === "page" && activeConsultExample && (
-                  <button
-                    type="button"
-                    onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                    className={`group inline-flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-white hover:bg-slate-50" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
-                    aria-label={`質問例: ${activeConsultExample}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Badge variant="outline" className={`text-[10px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
-                      <span className="text-slate-600">{activeConsultExample}</span>
-                    </span>
-                    <Badge variant="secondary" className={`text-[11px] ${isConsultVariant ? "text-slate-500" : "text-amber-500"}`}>送信</Badge>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsPreferredCharacterPickerOpen(true)}
+                      className={`shrink-0 rounded-lg border px-3 py-2 text-[12px] font-semibold shadow-inner transition ${
+                        preferredCharacter
+                          ? "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100"
+                          : isConsultVariant
+                            ? "border-[var(--consult-border)] bg-slate-50/80 text-slate-600 hover:bg-white"
+                            : "border-amber-100 bg-white/80 text-amber-600 hover:border-amber-200 hover:bg-amber-50/70"
+                      }`}
+                    >
+                      {preferredCharacter ? `推し: ${preferredCharacter.name}` : "推しキャラ選択"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
+                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-[12px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
+                      aria-label={`質問例: ${activeConsultExample}`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Badge variant="outline" className={`text-[12px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>例</Badge>
+                        <span className="truncate text-slate-600">{activeConsultExample}</span>
+                      </span>
+                    </button>
+                  </div>
                 )}
               </div>
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-1.5">
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -1372,10 +1808,14 @@ export default function GrandmaChatter({
                   variant="outline"
                   size="icon"
                   onClick={() => imageInputRef.current?.click()}
-                  className="border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
+                  className={`${
+                    isConsultVariant
+                      ? "h-11 w-11 rounded-full border-[var(--consult-border)] bg-slate-50 text-lg font-semibold text-slate-600 hover:bg-white"
+                      : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
+                  }`}
                   aria-label="写真を選ぶ"
                 >
-                  +
+                  {isConsultVariant ? "＋" : "+"}
                 </Button>
                 <Textarea
                   ref={inputRef}
@@ -1383,6 +1823,10 @@ export default function GrandmaChatter({
                   onChange={(e) => {
                     const nextValue = e.target.value;
                     setAskText(nextValue);
+                    if (errorNotice) {
+                      setErrorNotice(null);
+                      setLastFailedSubmission(null);
+                    }
                     if (shouldValidateInput && nextValue.trim()) {
                       setShouldShowValidation(false);
                     }
@@ -1401,15 +1845,15 @@ export default function GrandmaChatter({
                     }
                   }}
                   disabled={aiStatus === "thinking"}
-                  rows={2}
-                  className={`min-h-[44px] max-h-28 resize-none ${
+                  rows={isConsultVariant ? 1 : 2}
+                  className={`min-h-[38px] max-h-24 resize-none ${
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "border-[var(--consult-border)] bg-white text-gray-900 focus-visible:ring-slate-400"
+                        ? "min-h-[46px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300"
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
-                  placeholder={smartContext.placeholder}
+                  placeholder={consultPlaceholder}
                 />
                 {enableSpeechInput && (
                   <Button
@@ -1421,10 +1865,10 @@ export default function GrandmaChatter({
                     className={`${
                       !isSpeechSupported || aiStatus === "thinking"
                         ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                        : isListening
-                          ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
-                          : isConsultVariant
-                            ? "border-[var(--consult-border)] bg-white text-slate-700 hover:bg-slate-50"
+                      : isListening
+                        ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
+                      : isConsultVariant
+                            ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-50 text-slate-700 hover:bg-white"
                             : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
                     }`}
                     aria-label={isListening ? "音声入力を停止" : "音声入力を開始"}
@@ -1458,8 +1902,8 @@ export default function GrandmaChatter({
                   className={`${
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                      : isConsultVariant
-                        ? "border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
+                    : isConsultVariant
+                        ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
                         : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
                   }`}
                   aria-label="メッセージを送る"
@@ -1480,23 +1924,65 @@ export default function GrandmaChatter({
                 </Button>
               </div>
               {enableSpeechInput && !isSpeechSupported && (
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[13px] text-slate-500">
                   音声入力は対応ブラウザのみ
                 </div>
               )}
               {enableSpeechInput && isListening && (
-                <Badge variant="destructive" className="w-fit gap-2 text-[11px]">
+                <Badge variant="destructive" className="w-fit gap-2 text-[12px]">
                   <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
                   音声入力中
                 </Badge>
               )}
               {selectedImageName && (
-                <div className="text-[11px] text-slate-600">
+                <div className="text-[13px] text-slate-600">
                   画像: {selectedImageName}
                 </div>
               )}
+              {errorNotice && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] text-rose-700">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{errorNotice}</span>
+                    {lastFailedSubmission && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="default"
+                        onClick={() =>
+                          handleAskSubmit(
+                            lastFailedSubmission.text,
+                            lastFailedSubmission.context,
+                            true,
+                            lastFailedSubmission
+                          )
+                        }
+                        disabled={aiStatus === "thinking"}
+                        className="h-9 rounded-full border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-700 hover:bg-rose-100"
+                      >
+                        もう一度送る
+                      </Button>
+                    )}
+                  </div>
+                  {!lastFailedSubmission && errorCode && errorCode !== "system_error" && errorHelperQuestions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {errorHelperQuestions.map((question) => (
+                        <button
+                          key={question}
+                          type="button"
+                          onClick={() =>
+                            handleAskSubmit(question, { source: "suggestion" }, true)
+                          }
+                          className="rounded-full border border-rose-200 bg-white px-3 py-2 text-[13px] font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+                        >
+                          {question}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {shouldShowValidation && (
-                <div className="text-[11px] font-semibold text-rose-500">
+                <div className="text-[13px] font-semibold text-rose-500">
                   質問内容を入力するか写真を選んでね。
                 </div>
               )}
@@ -1504,6 +1990,69 @@ export default function GrandmaChatter({
           </Card>
         </div>
       </div>
+      {layout === "page" && isPreferredCharacterPickerOpen && (
+        <div className="fixed inset-0 z-[1700] flex items-center justify-center bg-slate-900/35 px-4">
+          <div className="w-full max-w-xl rounded-[2rem] border border-amber-100 bg-white p-5 shadow-2xl lg:max-w-[1180px]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-base font-bold text-slate-900">推しキャラ選択</div>
+                <div className="text-sm text-slate-500">選んだキャラは毎回キャラ1として登場します。</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPreferredCharacterPickerOpen(false)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50"
+              >
+                閉じる
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <button
+                type="button"
+                onClick={() => {
+                  onPreferredCharacterChange?.(null);
+                  setIsPreferredCharacterPickerOpen(false);
+                }}
+                className={`rounded-[1.5rem] border p-4 text-left transition ${
+                  preferredCharacterId === null
+                    ? "border-orange-400 bg-orange-50"
+                    : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                }`}
+              >
+                <div className="text-base font-semibold text-slate-900">おまかせ</div>
+                <div className="mt-1 text-sm text-slate-500">毎回ランダムで選びます</div>
+              </button>
+                {CONSULT_CHARACTERS.map((character) => (
+                  <button
+                    key={character.id}
+                    type="button"
+                    onClick={() => {
+                      onPreferredCharacterChange?.(character.id);
+                      setIsPreferredCharacterPickerOpen(false);
+                    }}
+                    className={`rounded-[1.5rem] border p-3 text-left transition lg:min-w-[210px] ${
+                      preferredCharacterId === character.id
+                        ? "border-orange-400 bg-orange-50"
+                        : "border-slate-200 bg-white hover:bg-amber-50"
+                  }`}
+                >
+                  <div className="mx-auto h-24 w-24 overflow-hidden rounded-[1.25rem] border border-amber-100 bg-amber-50">
+                    <img
+                      src={character.image}
+                      alt={character.name}
+                      className={`h-full w-full object-cover ${character.imageScale}`}
+                      style={{ objectPosition: character.imagePosition }}
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="mt-3 text-base font-semibold text-slate-900">{character.name}</div>
+                  <div className="mt-1 text-[12px] leading-6 text-slate-500">{character.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1541,4 +2090,86 @@ function pickCommentIcon(comment: { genre: string; text: string }) {
   if (text.includes("時間") || text.includes("早め")) return "⏰";
 
   return "💬";
+}
+
+function ConsultShopSuggestionCard({
+  shop,
+  onSelectShop,
+  onStartConsult,
+}: {
+  shop: Shop;
+  onSelectShop?: (shopId: number, shop?: Shop) => void;
+  onStartConsult?: (shop: Shop) => void;
+}) {
+  const previewImage =
+    shop.images?.main ||
+    shop.images?.thumbnail ||
+    shop.images?.additional?.[0] ||
+    getShopBannerImage(shop.category, shop.position ?? shop.id);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelectShop?.(shop.id, shop)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelectShop?.(shop.id, shop);
+        }
+      }}
+      className="relative w-full cursor-pointer overflow-hidden rounded-[1.35rem] border border-amber-200 bg-white text-left shadow-sm transition hover:bg-amber-50/40"
+      aria-label={`${shop.name}のショップバナーを開く`}
+    >
+      <div className="relative h-32 w-full overflow-hidden border-b border-amber-100 bg-amber-50">
+        <img
+          src={previewImage}
+          alt={`${shop.name}の画像`}
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent px-3 pb-3 pt-6">
+          <div className="truncate text-base font-semibold text-white">{shop.name}</div>
+          <div className="mt-0.5 text-[12px] text-white/85">{shop.ownerName}</div>
+        </div>
+        <span className="absolute right-3 top-3 rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-amber-800 shadow-sm">
+          #{shop.id}
+        </span>
+      </div>
+      <div className="space-y-3 px-3 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[12px] font-medium text-amber-800">
+            {shop.category}
+          </span>
+          {shop.products.slice(0, 2).map((product) => (
+            <span
+              key={`${shop.id}-${product}`}
+              className="rounded-full border border-amber-100 bg-amber-50/70 px-2.5 py-1 text-[11px] text-slate-600"
+            >
+              {product}
+            </span>
+          ))}
+        </div>
+        <div className="line-clamp-2 text-[13px] leading-6 text-slate-600">
+          {shop.products.join("・")}
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[12px] font-medium text-slate-500">
+            タップでお店の詳細を見る
+          </span>
+          {onStartConsult && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartConsult(shop);
+              }}
+              className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
+            >
+              このお店について詳しく
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

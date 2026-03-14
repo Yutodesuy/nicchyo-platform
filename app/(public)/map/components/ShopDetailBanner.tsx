@@ -228,6 +228,9 @@ export default function ShopDetailBanner({
   }, [router]);
 
   const isKotodute = variant === "kotodute";
+  const consultHref = `/consult?shopId=${shop.id}&shopName=${encodeURIComponent(
+    shop.name
+  )}&q=${encodeURIComponent("このお店のおすすめやこだわりを詳しく教えて")}`;
   const today = new Date();
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];
@@ -378,13 +381,13 @@ export default function ShopDetailBanner({
 
   return (
     <div
-      className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30"
+      className="fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-start md:bg-transparent"
       style={{ right: "var(--desktop-menu-offset, 0px)" }}
     >
-      <div className="absolute right-6 top-6 z-[2105] flex items-center gap-2">
+      <div className="fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto md:left-[476px] md:right-auto md:top-4">
         <button
           onClick={onClose}
-          className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-3xl font-bold text-slate-700 shadow transition-transform hover:scale-110"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-3xl font-bold text-slate-700 shadow-lg backdrop-blur transition-transform hover:scale-110"
           type="button"
           aria-label="閉じる"
         >
@@ -393,19 +396,19 @@ export default function ShopDetailBanner({
       </div>
       <div
         ref={scrollContainerRef}
-        className={`h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl ${
+        className={`relative h-full w-full max-w-none overflow-y-auto bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:w-[540px] md:max-w-[540px] md:rounded-r-[30px] md:border-r md:border-slate-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-[18px_0_48px_rgba(15,23,42,0.14)] ${
           originRect ? "shop-banner-animate" : ""
         }`}
         style={bannerStyle}
       >
         {/* 写真 */}
-        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative">
+        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative md:mx-0 md:mt-0 md:rounded-[26px] md:border md:border-slate-200">
           <Image
             src={bannerImage}
             alt={`${shop.name}の写真`}
             width={960}
             height={640}
-            className="h-56 w-full object-cover object-center md:h-72"
+            className="h-56 w-full object-cover object-center md:h-64"
             priority
             onError={(e) => {
               e.currentTarget.style.display = "none";
@@ -414,12 +417,20 @@ export default function ShopDetailBanner({
         </div>
 
         {/* ヘッダー */}
-        <div className="mt-6 flex items-start justify-between">
+        <div className="mt-6 flex items-start justify-between md:mt-5">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis ${shopNameSizeClass}`}>
                 {shop.name}
               </h2>
+              {!isKotodute && (
+                <Link
+                  href={consultHref}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100"
+                >
+                  AIに詳しく聞く
+                </Link>
+              )}
               {!isKotodute && canEditShop && (
                 <button
                   type="button"
