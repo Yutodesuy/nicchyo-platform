@@ -9,17 +9,6 @@ import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
 import NavigationBar from "@/app/components/NavigationBar";
 
-type CardSize = "xl" | "lg" | "md" | "sm" | "xs" | "xxs";
-
-const CARD_SIZE_STYLES: Record<CardSize, { minHeight: string; titleClass: string; iconSize: number }> = {
-  xl:  { minHeight: "220px", titleClass: "text-4xl",   iconSize: 40 },
-  lg:  { minHeight: "185px", titleClass: "text-3xl",   iconSize: 32 },
-  md:  { minHeight: "162px", titleClass: "text-2xl",   iconSize: 28 },
-  sm:  { minHeight: "145px", titleClass: "text-xl",    iconSize: 24 },
-  xs:  { minHeight: "128px", titleClass: "text-lg",    iconSize: 22 },
-  xxs: { minHeight: "112px", titleClass: "text-base",  iconSize: 20 },
-};
-
 const MENU_ITEMS: {
   title: string;
   description: string;
@@ -27,7 +16,7 @@ const MENU_ITEMS: {
   accent: string;
   icon: React.ElementType;
   image: string;
-  size: CardSize;
+  badge?: string;
 }[] = [
   {
     title: "最新情報の発信",
@@ -36,7 +25,7 @@ const MENU_ITEMS: {
     accent: "from-amber-500/40 via-amber-100/70 to-white",
     icon: Megaphone,
     image: "/images/home/posters/HomePagePoster3.jpeg",
-    size: "xl",
+    badge: "毎週やろう",
   },
   {
     title: "お店の分析",
@@ -45,7 +34,7 @@ const MENU_ITEMS: {
     accent: "from-violet-400/40 via-violet-100/70 to-white",
     icon: BarChart2,
     image: "/images/home/posters/HomePagePoster6.jpeg",
-    size: "lg",
+    badge: "定期的に見よう",
   },
   {
     title: "出店情報の更新",
@@ -54,7 +43,7 @@ const MENU_ITEMS: {
     accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
     image: "/images/home/posters/HomePagePoster2.png",
-    size: "md",
+    badge: "登録しておこう",
   },
   {
     title: "AIばあちゃんに教える",
@@ -63,7 +52,7 @@ const MENU_ITEMS: {
     accent: "from-rose-400/40 via-rose-100/70 to-white",
     icon: Sparkles,
     image: "/images/home/posters/HomePagePoster2.png",
-    size: "sm",
+    badge: "教えてみよう",
   },
   {
     title: "使い方ガイド",
@@ -72,7 +61,6 @@ const MENU_ITEMS: {
     accent: "from-sky-400/30 via-sky-100/70 to-white",
     icon: BookOpen,
     image: "/images/home/posters/HomePagePoster6.jpeg",
-    size: "xs",
   },
   {
     title: "アカウント設定",
@@ -81,7 +69,6 @@ const MENU_ITEMS: {
     accent: "from-slate-400/30 via-slate-100/70 to-white",
     icon: Settings,
     image: "/images/home/posters/HomePagePoster3.jpeg",
-    size: "xxs",
   },
 ];
 
@@ -202,10 +189,9 @@ export default function MyShopPage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-4 md:grid md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-3">
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const { minHeight, titleClass, iconSize } = CARD_SIZE_STYLES[item.size];
                 return (
                   <Link
                     key={item.href}
@@ -219,17 +205,21 @@ export default function MyShopPage() {
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
                     <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" aria-hidden="true" />
-                    <div
-                      className="relative flex h-full flex-col gap-3 px-6 py-5"
-                      style={{ minHeight }}
-                    >
-                      <div className="flex items-center justify-end">
+                    <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
+                      <div className="flex items-center justify-between">
+                        {item.badge ? (
+                          <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm border border-white/70">
+                            {item.badge}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
                         <span className="rounded-3xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-md">
-                          <Icon size={iconSize} />
+                          <Icon size={32} />
                         </span>
                       </div>
                       <div className="text-center">
-                        <div className={`${titleClass} font-semibold text-slate-900`}>
+                        <div className="text-3xl font-semibold text-slate-900 md:text-[32px]">
                           {item.title}
                         </div>
                       </div>
