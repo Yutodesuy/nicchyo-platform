@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -8,7 +9,26 @@ import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
 import NavigationBar from "@/app/components/NavigationBar";
 
-const MENU_ITEMS = [
+type CardSize = "xl" | "lg" | "md" | "sm" | "xs" | "xxs";
+
+const CARD_SIZE_STYLES: Record<CardSize, { minHeight: string; titleClass: string; iconSize: number }> = {
+  xl:  { minHeight: "220px", titleClass: "text-4xl",   iconSize: 40 },
+  lg:  { minHeight: "185px", titleClass: "text-3xl",   iconSize: 32 },
+  md:  { minHeight: "162px", titleClass: "text-2xl",   iconSize: 28 },
+  sm:  { minHeight: "145px", titleClass: "text-xl",    iconSize: 24 },
+  xs:  { minHeight: "128px", titleClass: "text-lg",    iconSize: 22 },
+  xxs: { minHeight: "112px", titleClass: "text-base",  iconSize: 20 },
+};
+
+const MENU_ITEMS: {
+  title: string;
+  description: string;
+  href: string;
+  accent: string;
+  icon: React.ElementType;
+  image: string;
+  size: CardSize;
+}[] = [
   {
     title: "最新情報の発信",
     description: "今日のおすすめ・残り数量など",
@@ -16,6 +36,16 @@ const MENU_ITEMS = [
     accent: "from-amber-500/40 via-amber-100/70 to-white",
     icon: Megaphone,
     image: "/images/home/posters/HomePagePoster3.jpeg",
+    size: "xl",
+  },
+  {
+    title: "お店の分析",
+    description: "閲覧数・人気商品・時間帯分析",
+    href: "/vendor/analytics",
+    accent: "from-violet-400/40 via-violet-100/70 to-white",
+    icon: BarChart2,
+    image: "/images/home/posters/HomePagePoster6.jpeg",
+    size: "lg",
   },
   {
     title: "出店情報の更新",
@@ -24,14 +54,7 @@ const MENU_ITEMS = [
     accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
     image: "/images/home/posters/HomePagePoster2.png",
-  },
-  {
-    title: "アナリティクス",
-    description: "閲覧数・人気商品・時間帯分析",
-    href: "/vendor/analytics",
-    accent: "from-violet-400/40 via-violet-100/70 to-white",
-    icon: BarChart2,
-    image: "/images/home/posters/HomePagePoster6.jpeg",
+    size: "md",
   },
   {
     title: "AIばあちゃんに教える",
@@ -40,6 +63,7 @@ const MENU_ITEMS = [
     accent: "from-rose-400/40 via-rose-100/70 to-white",
     icon: Sparkles,
     image: "/images/home/posters/HomePagePoster2.png",
+    size: "sm",
   },
   {
     title: "使い方ガイド",
@@ -48,6 +72,7 @@ const MENU_ITEMS = [
     accent: "from-sky-400/30 via-sky-100/70 to-white",
     icon: BookOpen,
     image: "/images/home/posters/HomePagePoster6.jpeg",
+    size: "xs",
   },
   {
     title: "アカウント設定",
@@ -56,6 +81,7 @@ const MENU_ITEMS = [
     accent: "from-slate-400/30 via-slate-100/70 to-white",
     icon: Settings,
     image: "/images/home/posters/HomePagePoster3.jpeg",
+    size: "xxs",
   },
 ];
 
@@ -99,9 +125,6 @@ export default function MyShopPage() {
       <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm md:hidden">
         <div className="flex items-center">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-600">
-              Vendor Console
-            </p>
             <h1 className="text-xl font-bold text-slate-900">出店者メニュー</h1>
           </div>
         </div>
@@ -111,10 +134,7 @@ export default function MyShopPage() {
         {/* デスクトップ用ヘッダー */}
         <div className="hidden md:block">
           <div className="rounded-[32px] border border-amber-100 bg-white/95 px-6 py-7 text-center shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-700">
-              Vendor Console
-            </p>
-            <h1 className="mt-2 text-4xl font-bold text-slate-900 md:text-5xl">
+            <h1 className="text-4xl font-bold text-slate-900 md:text-5xl">
               出店者メニュー
             </h1>
           </div>
@@ -144,16 +164,13 @@ export default function MyShopPage() {
             {showOnboarding && (
               <div className="mb-5 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-600">Setup</p>
-                    <p className="text-base font-bold text-slate-900">お店の初期設定</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                  <p className="text-lg font-bold text-slate-900">はじめに設定しましょう</p>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
                     {completedCount} / {setupSteps!.length} 完了
                   </span>
                 </div>
                 {/* プログレスバー */}
-                <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
                     className="h-full rounded-full bg-emerald-400 transition-all"
                     style={{ width: `${(completedCount / setupSteps!.length) * 100}%` }}
@@ -164,20 +181,20 @@ export default function MyShopPage() {
                     <li key={step.label}>
                       <Link
                         href={step.href}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+                        className={`flex items-center gap-3 rounded-xl px-4 py-3.5 transition ${
                           step.done
                             ? "bg-slate-50 text-slate-400"
                             : "bg-emerald-50 text-slate-700 hover:bg-emerald-100"
                         }`}
                       >
                         <CheckCircle2
-                          size={16}
+                          size={22}
                           className={`flex-shrink-0 ${step.done ? "text-emerald-400" : "text-slate-300"}`}
                         />
-                        <span className={`flex-1 text-sm font-medium ${step.done ? "line-through" : ""}`}>
+                        <span className={`flex-1 text-base font-medium ${step.done ? "line-through" : ""}`}>
                           {step.label}
                         </span>
-                        {!step.done && <ChevronRight size={14} className="flex-shrink-0 text-slate-400" />}
+                        {!step.done && <ChevronRight size={18} className="flex-shrink-0 text-slate-400" />}
                       </Link>
                     </li>
                   ))}
@@ -185,9 +202,10 @@ export default function MyShopPage() {
               </div>
             )}
 
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="flex flex-col gap-4 md:grid md:grid-cols-3">
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon;
+                const { minHeight, titleClass, iconSize } = CARD_SIZE_STYLES[item.size];
                 return (
                   <Link
                     key={item.href}
@@ -201,14 +219,17 @@ export default function MyShopPage() {
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
                     <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" aria-hidden="true" />
-                    <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
+                    <div
+                      className="relative flex h-full flex-col gap-3 px-6 py-5"
+                      style={{ minHeight }}
+                    >
                       <div className="flex items-center justify-end">
                         <span className="rounded-3xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-md">
-                          <Icon size={32} />
+                          <Icon size={iconSize} />
                         </span>
                       </div>
                       <div className="text-center">
-                        <div className="text-3xl font-semibold text-slate-900 md:text-[32px]">
+                        <div className={`${titleClass} font-semibold text-slate-900`}>
                           {item.title}
                         </div>
                       </div>
