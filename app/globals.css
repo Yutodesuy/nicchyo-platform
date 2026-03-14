@@ -607,8 +607,10 @@ body.shop-banner-open .navigation-bar {
   display: none;
 }
 
-body.shop-banner-open .hamburger-button.is-closed {
-  display: none;
+@media (max-width: 1023px) {
+  body.shop-banner-open .hamburger-button.is-closed {
+    display: none;
+  }
 }
 
 body.home-poster-zoom-open .hamburger-button {
