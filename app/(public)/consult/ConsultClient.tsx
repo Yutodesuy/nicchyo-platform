@@ -163,9 +163,9 @@ export default function ConsultClient() {
       className="relative min-h-screen bg-[var(--consult-bg)]"
     >
       <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />
-      <main className="relative z-10 flex w-full items-start justify-center px-3 pb-24 pt-6">
-        <div className="flex w-full max-w-5xl flex-col gap-3">
-          <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+      <main className="relative z-10 flex w-full items-start justify-center px-3 pb-16 pt-4">
+        <div className="flex w-full max-w-5xl flex-col gap-2.5">
+          <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-4 text-center shadow-sm">
             <p className="text-lg font-semibold uppercase tracking-[0.14em] text-amber-700">
               Consult
             </p>
