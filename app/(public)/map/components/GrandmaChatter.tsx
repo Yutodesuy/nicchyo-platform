@@ -1677,76 +1677,68 @@ export default function GrandmaChatter({
           <Card
             className={`${
               isConsultVariant
-                ? "rounded-[20px] border border-[var(--consult-border)] bg-white/92 p-2.5 shadow-sm"
+                ? "rounded-[18px] border border-[var(--consult-border)] bg-white/92 p-2 shadow-sm"
                 : "rounded-2xl border-2 border-amber-300 bg-white/95 p-3"
             } ${
               isConsultVariant ? "transition-colors duration-150" : "transition-transform duration-200"
             } ${!isConsultVariant && !isChatOpen ? "scale-95" : "scale-100"}`}
           >
               <div className={`flex flex-col ${isConsultVariant ? "gap-1.5" : "gap-2"}`}>
-              {layout === "page" && activeConsultContext?.shopName && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-amber-100 bg-white">
-                      <img
-                        src={
-                          activeConsultShop
-                            ? getShopBannerImage(
-                                activeConsultShop.category,
-                                activeConsultShop.position ?? activeConsultShop.id
-                              )
-                            : getShopBannerImage("その他", 0)
-                        }
-                        alt={activeConsultContext.shopName}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold tracking-[0.1em] text-amber-700">
-                        このお店について相談中
+              {layout === "page" && (activeConsultContext?.shopName || preferredCharacter) && (
+                <div className="-mx-1 overflow-x-auto pb-1">
+                  <div className="flex min-w-max items-center gap-2 px-1 whitespace-nowrap">
+                  {activeConsultContext?.shopName && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50/80 px-2 py-1">
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-amber-100 bg-white">
+                        <img
+                          src={
+                            activeConsultShop
+                              ? getShopBannerImage(
+                                  activeConsultShop.category,
+                                  activeConsultShop.position ?? activeConsultShop.id
+                                )
+                              : getShopBannerImage("その他", 0)
+                          }
+                          alt={activeConsultContext.shopName}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {activeConsultContext.shopName}
-                      </div>
+                      <span className="max-w-[140px] truncate text-[10px] font-semibold text-amber-900">
+                        {activeConsultContext.shopName} を相談中
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveConsultContext(null)}
+                        className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                      >
+                        全体へ戻る
+                      </button>
                     </div>
+                  )}
+                  {preferredCharacter && (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/70 px-2 py-1">
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-orange-300 bg-white">
+                        <img
+                          src={preferredCharacter.image}
+                          alt={preferredCharacter.name}
+                          className={`h-full w-full object-cover ${preferredCharacter.imageScale}`}
+                          style={{ objectPosition: preferredCharacter.imagePosition }}
+                          draggable={false}
+                        />
+                      </div>
+                      <span className="max-w-[110px] truncate text-[10px] font-semibold text-orange-900">
+                        推し: {preferredCharacter.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPreferredCharacterPickerOpen(true)}
+                        className="rounded-full border border-orange-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-orange-800 transition hover:bg-orange-100"
+                      >
+                        変更
+                      </button>
+                    </div>
+                  )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveConsultContext(null)}
-                    className="shrink-0 rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
-                  >
-                    市場全体に戻る
-                  </button>
-                </div>
-              )}
-              {layout === "page" && preferredCharacter && (
-                <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-orange-300 bg-white">
-                      <img
-                        src={preferredCharacter.image}
-                        alt={preferredCharacter.name}
-                        className={`h-full w-full object-cover ${preferredCharacter.imageScale}`}
-                        style={{ objectPosition: preferredCharacter.imagePosition }}
-                        draggable={false}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold tracking-[0.1em] text-orange-700">
-                        推しキャラ
-                      </div>
-                      <div className="truncate text-sm font-semibold text-slate-900">
-                        {preferredCharacter.name}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsPreferredCharacterPickerOpen(true)}
-                    className="shrink-0 rounded-full border border-orange-200 bg-white px-3 py-1 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100"
-                  >
-                    変更
-                  </button>
                 </div>
               )}
               <div
@@ -1756,11 +1748,11 @@ export default function GrandmaChatter({
                 aria-hidden={!showConsultExamples}
               >
                 {layout === "page" && activeConsultExample && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setIsPreferredCharacterPickerOpen(true)}
-                      className={`shrink-0 rounded-xl border px-3 py-1.5 text-[11px] font-semibold shadow-inner transition ${
+                      className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-semibold shadow-inner transition ${
                         preferredCharacter
                           ? "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100"
                           : isConsultVariant
@@ -1773,7 +1765,7 @@ export default function GrandmaChatter({
                     <button
                       type="button"
                       onClick={() => handleAskSubmit(activeConsultExample, { source: "suggestion" })}
-                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-left text-[11px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
+                      className={`group inline-flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2.5 py-1 text-left text-[10px] text-slate-500 shadow-inner transition ${isConsultVariant ? "border-[var(--consult-border)] bg-slate-50/80 hover:bg-white" : "border-amber-100 bg-white/80 hover:border-amber-200 hover:bg-amber-50/70"}` }
                       aria-label={`質問例: ${activeConsultExample}`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
@@ -1784,7 +1776,7 @@ export default function GrandmaChatter({
                   </div>
                 )}
               </div>
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-1.5">
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -1799,7 +1791,7 @@ export default function GrandmaChatter({
                   onClick={() => imageInputRef.current?.click()}
                   className={`${
                     isConsultVariant
-                      ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-50 text-base font-semibold text-slate-600 hover:bg-white"
+                      ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-50 text-sm font-semibold text-slate-600 hover:bg-white"
                       : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
                   }`}
                   aria-label="写真を選ぶ"
@@ -1835,11 +1827,11 @@ export default function GrandmaChatter({
                   }}
                   disabled={aiStatus === "thinking"}
                   rows={isConsultVariant ? 1 : 2}
-                  className={`min-h-[44px] max-h-28 resize-none ${
+                  className={`min-h-[38px] max-h-24 resize-none ${
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "min-h-[40px] rounded-[18px] border-[var(--consult-border)] bg-white px-4 py-2 text-[14px] text-gray-900 focus-visible:ring-slate-300"
+                        ? "min-h-[38px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-2 text-[13px] text-gray-900 focus-visible:ring-slate-300"
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={consultPlaceholder}
@@ -1857,7 +1849,7 @@ export default function GrandmaChatter({
                       : isListening
                         ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
                       : isConsultVariant
-                            ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-50 text-slate-700 hover:bg-white"
+                            ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-50 text-slate-700 hover:bg-white"
                             : "border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
                     }`}
                     aria-label={isListening ? "音声入力を停止" : "音声入力を開始"}
@@ -1892,7 +1884,7 @@ export default function GrandmaChatter({
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                     : isConsultVariant
-                        ? "h-10 w-10 rounded-full border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
+                        ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
                         : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
                   }`}
                   aria-label="メッセージを送る"
