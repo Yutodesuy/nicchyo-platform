@@ -661,26 +661,28 @@ export default function ShopDetailBanner({
             {!isKotodute && shop.category === "食材" && suggestedRecipes.length > 0 && (
               <div className="mt-6 border-t border-slate-200 pt-6">
                 <p className="text-base font-semibold text-slate-500">この食材で作れるレシピ</p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <div className="mt-3 space-y-3">
                   {suggestedRecipes.map((recipe) => (
                     <Link
                       key={recipe.id}
                       href={`/recipes/${recipe.id}`}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800 shadow-sm transition hover:bg-slate-50"
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800 shadow-sm transition hover:bg-slate-50"
                     >
                       {recipe.heroImage && (
-                        <div className="mb-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
                           <Image
                             src={recipe.heroImage}
                             alt={`${recipe.title}の写真`}
                             width={640}
                             height={360}
-                            className="h-32 w-full object-cover"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                       )}
-                      <p className="font-semibold text-slate-900">{recipe.title}</p>
-                      <p className="mt-1 text-base text-slate-600">{recipe.description}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-1 font-semibold text-slate-900">{recipe.title}</p>
+                        <p className="mt-1 line-clamp-2 text-base text-slate-600">{recipe.description}</p>
+                      </div>
                     </Link>
                   ))}
                 </div>

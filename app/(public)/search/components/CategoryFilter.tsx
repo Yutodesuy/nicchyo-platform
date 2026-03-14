@@ -34,7 +34,7 @@ export default function CategoryFilter({
           aria-label="すべてのカテゴリーを表示"
           aria-pressed={selectedCategory === null}
         >
-          すべて
+          リセット
         </button>
         {categories.map((cat) => (
           <button
