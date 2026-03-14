@@ -371,7 +371,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                   <span className="text-base" aria-hidden>📢</span>
                   <h3 className="text-sm font-bold tracking-wider uppercase">該当する最新情報</h3>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="grid gap-3">
                   {filteredLatestPosts.map(({ shop, post }, index) => (
                     <button
                       key={`${shop.id}-${post.createdAt}-${index}`}
@@ -433,7 +433,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                   <span className="text-base" aria-hidden>📢</span>
                   <h3 className="text-sm font-bold tracking-wider uppercase">最新情報はコチラ！</h3>
                 </div>
-                <div className="grid gap-3 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="grid gap-3">
                   {latestPosts.map(({ shop, post }, index) => (
                     <button
                       key={`${shop.id}-${post.createdAt}-${index}`}
