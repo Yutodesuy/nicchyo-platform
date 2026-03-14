@@ -204,9 +204,14 @@ export default function MyShopPage() {
                 <div>
                   <p className="text-xs text-amber-700">今週のお店の閲覧数</p>
                   {weeklyViews !== null ? (
-                    <p className="text-2xl font-bold text-slate-900">
-                      {weeklyViews.toLocaleString()}<span className="ml-1 text-sm font-normal text-slate-500">回</span>
-                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-bold text-slate-900">
+                        {weeklyViews.toLocaleString()}<span className="ml-1 text-sm font-normal text-slate-500">回</span>
+                      </p>
+                      {weeklyViews === 0 && (
+                        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-500">集計中</span>
+                      )}
+                    </div>
                   ) : (
                     <div className="mt-1 h-7 w-20 animate-pulse rounded-lg bg-amber-100" />
                   )}
