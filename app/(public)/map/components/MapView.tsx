@@ -232,6 +232,7 @@ type MapViewProps = {
   >;
   onZoomChange?: (zoom: number) => void;
   suppressInitialLocationFocus?: boolean;
+  onShopSelect?: (shop: Shop) => void;
 };
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
@@ -363,6 +364,7 @@ const MapView = memo(function MapView({
   attendanceEstimates,
   onZoomChange,
   suppressInitialLocationFocus = false,
+  onShopSelect,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -635,6 +637,12 @@ const MapView = memo(function MapView({
 
     if (viewMode.mode === ViewMode.DETAIL) {
       // 詳細モード: 詳細バナーを表示
+      if (onShopSelect) {
+        onShopSelect(clickedShop);
+        setSelectedShop(null);
+        setShopBannerOrigin(null);
+        return;
+      }
       if (typeof document !== "undefined") {
         document.body.classList.add("shop-banner-open");
       }
@@ -679,7 +687,7 @@ const MapView = memo(function MapView({
         duration: 0.75,
       });
     }
-  }, [shops]);
+  }, [onShopSelect, shops]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
