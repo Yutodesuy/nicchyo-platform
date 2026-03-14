@@ -1726,9 +1726,10 @@ export default function GrandmaChatter({
                       <button
                         type="button"
                         onClick={() => setActiveConsultContext(null)}
-                        className="rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-amber-200 bg-white text-[13px] font-semibold leading-none text-amber-800 transition hover:bg-amber-100"
+                        aria-label="お店相談を解除"
                       >
-                        全体へ戻る
+                        ×
                       </button>
                     </div>
                   )}
@@ -1749,9 +1750,10 @@ export default function GrandmaChatter({
                       <button
                         type="button"
                         onClick={() => setIsPreferredCharacterPickerOpen(true)}
-                        className="rounded-full border border-orange-200 bg-white px-3 py-1 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-orange-200 bg-white text-[13px] font-semibold leading-none text-orange-800 transition hover:bg-orange-100"
+                        aria-label="推しキャラを変更"
                       >
-                        変更
+                        ×
                       </button>
                     </div>
                   )}
@@ -1786,7 +1788,7 @@ export default function GrandmaChatter({
                       aria-label={`質問例: ${activeConsultExample}`}
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <Badge variant="outline" className={`text-[12px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>質問例</Badge>
+                        <Badge variant="outline" className={`text-[12px] font-semibold ${isConsultVariant ? "text-slate-600" : "text-amber-600"}`}>例</Badge>
                         <span className="truncate text-slate-600">{activeConsultExample}</span>
                       </span>
                     </button>
