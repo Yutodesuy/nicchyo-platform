@@ -99,23 +99,17 @@ function ShopResultCard({
         </div>
       </div>
 
-      <div className={`${compact ? "mt-1.5" : "mt-3"} flex gap-2`}>
-        <div className="flex-1 overflow-hidden rounded-lg border border-amber-100 bg-white">
-          <img
-            src={previewImage}
-            alt={`${shop.name}の画像`}
-            className={`${compact ? "h-20" : "h-28"} w-full object-contain bg-white`}
-          />
-        </div>
-        <div
-          className={`flex-1 rounded-lg border border-amber-100 bg-white ${
-            compact ? "h-20 p-2" : "p-3"
-          }`}
-        >
+      <div className={`${compact ? "mt-1.5" : "mt-3"} overflow-hidden rounded-xl border border-amber-100 bg-white`}>
+        <img
+          src={previewImage}
+          alt={`${shop.name}の画像`}
+          className={`${compact ? "h-24" : "h-40"} w-full object-cover bg-white`}
+        />
+        <div className={`${compact ? "p-2" : "p-3"}`}>
           <p className={`${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
             {shop.category}
           </p>
-          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm"} text-gray-700`}>
+          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm leading-6"} text-gray-700`}>
             取り扱い: {shop.products.slice(0, 4).join("・")}
             {shop.products.length > 4 && "..."}
           </p>

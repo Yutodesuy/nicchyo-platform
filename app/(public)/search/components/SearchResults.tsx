@@ -83,7 +83,7 @@ export default function SearchResults({
         )}
 
         {/* 検索結果グリッド */}
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 space-y-3">
           {shops.map((shop) => (
             <ShopResultCard
               key={shop.id}
