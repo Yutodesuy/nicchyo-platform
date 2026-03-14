@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
-import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
@@ -226,6 +226,22 @@ export default function MapPageClient({
       setSearchMarkerPayload(payload);
     } else if (labelParam) {
       setSearchMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("ai");
+    if (!enabled) {
+      setAiMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "AIおすすめ";
+    const payload = loadAiMapPayload();
+    if (payload) {
+      setAiMarkerPayload(payload);
+    } else {
+      setAiMarkerPayload({ ids: [], label: labelParam });
     }
   }, [searchParams, searchParamsKey]);
 

@@ -26,6 +26,7 @@ import type { Shop } from "../data/shops";
 import ShopResultCard from "../../search/components/ShopResultCard";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
 import { getShopBannerImage } from "@/lib/shopImages";
+import { saveAiMapPayload } from "@/lib/searchMapStorage";
 const HOLD_MS = 250;
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
@@ -1017,6 +1018,35 @@ export default function GrandmaChatter({
   const defaultConsultSpeaker = CONSULT_CHARACTERS[0];
   const getSpeakerCharacter = (speakerId?: ConsultCharacterId) =>
     (speakerId ? CONSULT_CHARACTER_BY_ID.get(speakerId) : null) ?? defaultConsultSpeaker;
+  const openSuggestedShopsOnMap = (shopsToOpen: Shop[]) => {
+    if (shopsToOpen.length === 0) return;
+    saveAiMapPayload({
+      ids: shopsToOpen.map((shop) => shop.id),
+      label: "AIおすすめ",
+    });
+    router.push(`/map?ai=1&label=${encodeURIComponent("AIおすすめ")}&shop=${shopsToOpen[0].id}`);
+  };
+  const renderSuggestedShopsHeader = (suggestedShops: Shop[]) => (
+    <div className="flex items-center justify-between gap-2 px-1">
+      <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
+        おすすめのお店
+      </span>
+      <div className="flex items-center gap-2">
+        {layout === "page" && isConsultVariant && (
+          <button
+            type="button"
+            onClick={() => openSuggestedShopsOnMap(suggestedShops)}
+            className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+          >
+            マップで確認する
+          </button>
+        )}
+        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
+          {suggestedShops.length}件
+        </span>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     if (!isConsultVariant) return;
@@ -1234,14 +1264,7 @@ export default function GrandmaChatter({
                             if (suggestedShops.length === 0) return null;
                             return (
                               <div className="mt-3 rounded-[1.4rem] border border-amber-200 bg-[#fffaf3] p-3">
-                                <div className="flex items-center justify-between gap-2 px-1">
-                                  <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
-                                    おすすめのお店
-                                  </span>
-                                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
-                                    {suggestedShops.length}件
-                                  </span>
-                                </div>
+                                {renderSuggestedShopsHeader(suggestedShops)}
                                 <div className="mt-2 space-y-2">
                                   {suggestedShops.map((shop) => (
                                     <ConsultShopSuggestionCard
@@ -1330,14 +1353,7 @@ export default function GrandmaChatter({
                             if (suggestedShops.length === 0) return null;
                             return (
                             <div className="mt-3 rounded-[1.2rem] border border-amber-200 bg-[#fffaf3] p-3">
-                              <div className="flex items-center justify-between gap-2 px-1">
-                                <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
-                                  おすすめのお店
-                                </span>
-                                <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
-                                  {suggestedShops.length}件
-                                </span>
-                              </div>
+                              {renderSuggestedShopsHeader(suggestedShops)}
                               <div className="mt-2 space-y-2">
                                 {suggestedShops.map((shop) => (
                                   <ConsultShopSuggestionCard
@@ -1650,9 +1666,20 @@ export default function GrandmaChatter({
                   <span className={`text-sm font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
                   <span className="text-base font-bold text-gray-900">提案されたお店</span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
-                  {displayedSuggestedShops.length}店
-                </span>
+                <div className="flex items-center gap-2">
+                  {layout === "page" && isConsultVariant && (
+                    <button
+                      type="button"
+                      onClick={() => openSuggestedShopsOnMap(displayedSuggestedShops)}
+                      className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+                    >
+                      マップで確認する
+                    </button>
+                  )}
+                  <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
+                    {displayedSuggestedShops.length}店
+                  </span>
+                </div>
               </div>
               {aiStatus === "thinking" ? (
                 <div className="mt-6 flex items-center justify-center py-4">
