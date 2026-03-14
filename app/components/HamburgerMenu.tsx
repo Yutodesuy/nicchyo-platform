@@ -331,7 +331,7 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="store-edit" className={`h-5 w-5 ${isActive('/vendor/store') ? 'text-white' : 'text-amber-600'}`} />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">店舗情報の更新</p>
+                            <p className="text-sm font-medium">出店情報の更新</p>
                             <p className={`text-xs ${isActive('/vendor/store') ? 'text-white/80' : 'text-gray-500'}`}>営業時間・商品・SNSなど</p>
                           </div>
                         </Link>
@@ -344,7 +344,7 @@ export default function HamburgerMenu() {
                         >
                           <MenuIcon name="chart" className={`h-5 w-5 ${isActive('/vendor/analytics') ? 'text-white' : 'text-amber-600'}`} />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">アナリティクス</p>
+                            <p className="text-sm font-medium">お店の分析</p>
                             <p className={`text-xs ${isActive('/vendor/analytics') ? 'text-white/80' : 'text-gray-500'}`}>閲覧数・商品・AI分析</p>
                           </div>
                         </Link>
