@@ -2152,8 +2152,8 @@ function ConsultShopSuggestionCard({
         <div className="line-clamp-2 text-[13px] leading-6 text-slate-600">
           {shop.products.join("・")}
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[12px] font-medium text-slate-500">
+        <div className="flex items-center justify-end gap-3 sm:justify-between">
+          <span className="hidden text-[12px] font-medium text-slate-500 sm:inline">
             タップでお店の詳細を見る
           </span>
           {onStartConsult && (
