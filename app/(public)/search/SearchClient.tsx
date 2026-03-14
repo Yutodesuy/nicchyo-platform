@@ -233,8 +233,8 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
   const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
   const shouldShowMapButton = category !== null || hasNameResults;
   const desktopSearchShopIds = useMemo(
-    () => filteredShops.map((shop) => shop.id),
-    [filteredShops]
+    () => (hasQuery ? filteredShops.map((shop) => shop.id) : undefined),
+    [filteredShops, hasQuery]
   );
 
   useEffect(() => {
