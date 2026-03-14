@@ -103,12 +103,38 @@ type StructuredConsultResponse = {
   followUpQuestion: string;
 };
 
-const CONSULT_CONVERSATION_PATTERNS = [
-  "構成1: キャラ1が回答し、キャラ2がそこから自然に出てくる疑問を投げ、キャラ1が補足し、最後にキャラ2が納得と感想で締める。",
-  "構成2: キャラ1が回答し、キャラ2が別視点の答えを足し、キャラ1が共感し、最後にキャラ2がユーザーへやさしく声を掛ける。",
-  "構成3: キャラ1が回答し、キャラ2がやさしく反対側の意見や注意点を述べ、キャラ1が納得し、最後にキャラ2が整理して締める。",
-  "構成4: キャラ1が回答し、キャラ2が共感し、キャラ1が新たな意見を足し、最後にキャラ2がキャラ1とユーザーの両方を受けてまとめる。",
-] as const;
+type ConversationPattern = {
+  id: "pattern1" | "pattern2" | "pattern3" | "pattern4" | "all_cast";
+  instruction: string;
+  turnCount: number;
+};
+
+const CONSULT_CONVERSATION_PATTERNS: ConversationPattern[] = [
+  {
+    id: "pattern1",
+    instruction:
+      "構成1: キャラ1が回答し、キャラ2がそこから自然に出てくる疑問を投げ、キャラ1が補足し、最後にキャラ2が納得と感想で締める。",
+    turnCount: 4,
+  },
+  {
+    id: "pattern2",
+    instruction:
+      "構成2: キャラ1が回答し、キャラ2が別視点の答えを足し、キャラ1が共感し、最後にキャラ2がユーザーへやさしく声を掛ける。",
+    turnCount: 4,
+  },
+  {
+    id: "pattern3",
+    instruction:
+      "構成3: キャラ1が回答し、キャラ2がやさしく反対側の意見や注意点を述べ、キャラ1が納得し、最後にキャラ2が整理して締める。",
+    turnCount: 4,
+  },
+  {
+    id: "pattern4",
+    instruction:
+      "構成4: キャラ1が回答し、キャラ2が共感し、キャラ1が新たな意見を足し、最後にキャラ2がキャラ1とユーザーの両方を受けてまとめる。",
+    turnCount: 4,
+  },
+];
 
 const CHOME_VALUES = new Set([
   "一丁目",
@@ -752,7 +778,7 @@ function sortShopIdsByDistance(
     .map((item) => item.id);
 }
 
-function buildResponseSchema(characters: ConsultCharacter[]) {
+function buildResponseSchema(characters: ConsultCharacter[], pattern: ConversationPattern) {
   return {
     type: "json_schema",
     json_schema: {
@@ -764,8 +790,8 @@ function buildResponseSchema(characters: ConsultCharacter[]) {
           summary: { type: "string" },
           turns: {
             type: "array",
-            minItems: 1,
-            maxItems: 4,
+            minItems: pattern.turnCount,
+            maxItems: pattern.turnCount,
             items: {
               type: "object",
               additionalProperties: false,
@@ -795,12 +821,58 @@ function buildResponseSchema(characters: ConsultCharacter[]) {
   } as const;
 }
 
-function pickConversationPattern(characters: ConsultCharacter[]) {
+function pickConversationPattern(characters: ConsultCharacter[]): ConversationPattern {
   if (characters.length >= 4) {
-    return "全員会話: 選ばれた全員が1発話ずつ話し、前の発話を軽く受けながらそれぞれの言い方で答える。";
+    return {
+      id: "all_cast",
+      instruction:
+        "全員会話: 選ばれた全員が1発話ずつ話し、前の発話を軽く受けながらそれぞれの言い方で答える。",
+      turnCount: 4,
+    };
   }
   const index = Math.floor(Math.random() * CONSULT_CONVERSATION_PATTERNS.length);
   return CONSULT_CONVERSATION_PATTERNS[index];
+}
+
+function buildConversationPatternPrompt(
+  characters: ConsultCharacter[],
+  pattern: ConversationPattern
+) {
+  const speakerOrder =
+    characters.length >= 4
+      ? characters.map((character) => character.name).join(" → ")
+      : `${characters[0]?.name} → ${characters[1]?.name} → ${characters[0]?.name} → ${characters[1]?.name}`;
+  return [
+    pattern.instruction,
+    `発話数は必ず${pattern.turnCount}つ。`,
+    `発話順は必ず ${speakerOrder}。`,
+  ].join("\n");
+}
+
+function isValidFollowUpQuestion(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (trimmed.length < 8 || trimmed.length > 40) return false;
+  if (!/[？?]$/.test(trimmed)) return false;
+  if (/(してみる|どうかな|どう？|気になる|行ってみる)/.test(trimmed)) return false;
+  return true;
+}
+
+function buildFallbackFollowUpQuestion(
+  question: string,
+  targetShopName: string | null,
+  shopCount: number
+) {
+  if (targetShopName) {
+    return `${targetShopName}でいちばん人気の商品は？`;
+  }
+  if (/(季節|旬|食材|野菜|果物)/.test(question)) {
+    return "今の季節なら何を最初に見ればいい？";
+  }
+  if (shopCount > 0) {
+    return "この中でいちばん人気のお店は？";
+  }
+  return "はじめて行くならどこから回るのがおすすめ？";
 }
 
 export async function POST(request: Request) {
@@ -1072,13 +1144,13 @@ export async function POST(request: Request) {
         model: "gpt-4o-mini",
         temperature: 0.7,
         max_tokens: 500,
-        response_format: buildResponseSchema(selectedCharacters),
+        response_format: buildResponseSchema(selectedCharacters, conversationPattern),
         messages: [
           {
             role: "system",
             content: buildGrandmaAiSystemPrompt(
               selectedCharacters,
-              conversationPattern
+              buildConversationPatternPrompt(selectedCharacters, conversationPattern)
             ),
           },
           {
@@ -1170,13 +1242,17 @@ export async function POST(request: Request) {
       supabase.from("ai_consult_logs").insert(logs).then(() => {});
     }
 
+    const followUpQuestion = isValidFollowUpQuestion(structured.followUpQuestion ?? "")
+      ? structured.followUpQuestion.trim()
+      : buildFallbackFollowUpQuestion(text, targetShopName, finalRecommendedShops.length);
+
     const response: ConsultAskResponse = {
       reply,
       imageUrl: structured.imageUrl ?? undefined,
       shopIds: finalRecommendedShops.map((shop) => shop.id),
       shops: finalRecommendedShops,
       turns,
-      followUpQuestion: structured.followUpQuestion?.trim() || undefined,
+      followUpQuestion,
       memorySummary: structured.summary?.trim() || memorySummary,
       retryable: false,
     };

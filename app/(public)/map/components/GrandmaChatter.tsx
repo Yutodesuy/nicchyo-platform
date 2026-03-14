@@ -1715,7 +1715,37 @@ export default function GrandmaChatter({
                     onClick={() => setActiveConsultContext(null)}
                     className="shrink-0 rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
                   >
-                    解除
+                    市場全体に戻る
+                  </button>
+                </div>
+              )}
+              {layout === "page" && preferredCharacter && (
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-orange-200 bg-orange-50/70 px-3 py-2">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-orange-300 bg-white">
+                      <img
+                        src={preferredCharacter.image}
+                        alt={preferredCharacter.name}
+                        className={`h-full w-full object-cover ${preferredCharacter.imageScale}`}
+                        style={{ objectPosition: preferredCharacter.imagePosition }}
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-bold tracking-[0.1em] text-orange-700">
+                        推しキャラ
+                      </div>
+                      <div className="truncate text-sm font-semibold text-slate-900">
+                        {preferredCharacter.name}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPreferredCharacterPickerOpen(true)}
+                    className="shrink-0 rounded-full border border-orange-200 bg-white px-3 py-1 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100"
+                  >
+                    変更
                   </button>
                 </div>
               )}
@@ -1738,7 +1768,7 @@ export default function GrandmaChatter({
                             : "border-amber-100 bg-white/80 text-amber-600 hover:border-amber-200 hover:bg-amber-50/70"
                       }`}
                     >
-                      推しキャラ選択
+                      {preferredCharacter ? `推し: ${preferredCharacter.name}` : "推しキャラ選択"}
                     </button>
                     <button
                       type="button"
