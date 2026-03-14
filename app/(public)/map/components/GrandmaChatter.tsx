@@ -76,7 +76,7 @@ type GrandmaChatterProps = {
   ) => Promise<ConsultAskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
-  onSelectShop?: (shopId: number) => void;
+  onSelectShop?: (shopId: number, shop?: Shop) => void;
   fullWidth?: boolean;
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
@@ -2096,7 +2096,7 @@ function ConsultShopSuggestionCard({
   onStartConsult,
 }: {
   shop: Shop;
-  onSelectShop?: (shopId: number) => void;
+  onSelectShop?: (shopId: number, shop?: Shop) => void;
   onStartConsult?: (shop: Shop) => void;
 }) {
   const previewImage =
@@ -2109,11 +2109,11 @@ function ConsultShopSuggestionCard({
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onSelectShop?.(shop.id)}
+      onClick={() => onSelectShop?.(shop.id, shop)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelectShop?.(shop.id);
+          onSelectShop?.(shop.id, shop);
         }
       }}
       className="relative w-full cursor-pointer rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"

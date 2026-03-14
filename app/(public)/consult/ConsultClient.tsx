@@ -186,8 +186,9 @@ export default function ConsultClient() {
             onAsk={handleGrandmaAsk}
             allShops={knownShops}
             aiSuggestedShops={aiSuggestedShops}
-            onSelectShop={(shopId) => {
-              const shop = knownShops.find((item) => item.id === shopId);
+            onSelectShop={(shopId, shopFromCard) => {
+              const shop =
+                shopFromCard ?? knownShops.find((item) => item.id === shopId) ?? null;
               if (shop) {
                 setSelectedShop(shop);
               }
