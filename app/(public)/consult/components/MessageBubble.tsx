@@ -32,6 +32,7 @@ export default function MessageBubble({
             : "rounded-tl-sm border border-amber-100 bg-white text-slate-900",
         isConsultUser ? "ring-1 ring-amber-300/60" : "",
         isConsultAssistant ? "pl-5 pr-5 before:absolute before:bottom-4 before:left-2 before:top-4 before:w-1 before:rounded-full before:bg-gradient-to-b before:from-amber-300 before:to-orange-300 after:absolute after:right-4 after:top-3 after:text-3xl after:leading-none after:text-amber-200/70 after:content-['”']" : "",
+        isConsult ? "text-[15px] leading-7 md:text-base" : "",
         className
       )}
     >

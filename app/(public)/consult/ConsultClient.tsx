@@ -166,14 +166,14 @@ export default function ConsultClient() {
       <main className="relative z-10 flex w-full items-start justify-center px-3 pb-24 pt-6">
         <div className="flex w-full max-w-5xl flex-col gap-3">
           <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
-            <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
+            <p className="text-lg font-semibold uppercase tracking-[0.14em] text-amber-700">
               Consult
             </p>
-            <h1 className="mt-1 text-2xl font-bold text-gray-900">にちよさんに相談する</h1>
-            <p className="mt-1 text-sm text-gray-700">
+            <h1 className="mt-1 text-3xl font-bold text-gray-900">にちよさんに相談する</h1>
+            <p className="mt-1 text-base text-gray-700">
               お店探し、回り方、旬のもの、写真つきの質問までまとめて相談できます。
             </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs text-slate-600">
+            <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm text-slate-600">
                 <span className="rounded-full bg-white px-3 py-1 shadow-sm">音声入力OK</span>
                 <span className="rounded-full bg-white px-3 py-1 shadow-sm">写真相談OK</span>
             </div>
