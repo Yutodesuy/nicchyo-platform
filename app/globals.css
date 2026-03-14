@@ -613,6 +613,10 @@ body.shop-banner-open .navigation-bar {
   }
 }
 
+body.search-inline-shop-banner-open .hamburger-button {
+  display: none;
+}
+
 body.home-poster-zoom-open .hamburger-button {
   display: none;
 }
