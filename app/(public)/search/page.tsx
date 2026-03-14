@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import SearchClient from "./SearchClient";
 import type { Shop } from "../map/data/shops";
 import { fetchShopsFromDb } from "../map/services/shopDb";
+import type { Landmark } from "../map/types/landmark";
+import { fetchLandmarksFromDb } from "../map/services/landmarksDb";
 
 export const metadata: Metadata = {
   title: "店舗検索 | nicchyo",
@@ -20,7 +22,17 @@ async function loadShops(): Promise<Shop[]> {
   }
 }
 
+async function loadLandmarks(): Promise<Landmark[]> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    return await fetchLandmarksFromDb(supabase);
+  } catch {
+    return [];
+  }
+}
+
 export default async function SearchPage() {
-  const shops = await loadShops();
-  return <SearchClient shops={shops} />;
+  const [shops, landmarks] = await Promise.all([loadShops(), loadLandmarks()]);
+  return <SearchClient shops={shops} landmarks={landmarks} />;
 }
