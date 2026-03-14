@@ -603,14 +603,8 @@ body.grandma-chat-open .leaflet-container {
   display: none !important;
 }
 
-body.shop-banner-open .navigation-bar {
+body.shop-banner-open .hamburger-button {
   display: none;
-}
-
-@media (max-width: 1023px) {
-  body.shop-banner-open .hamburger-button.is-closed {
-    display: none;
-  }
 }
 
 body.search-inline-shop-banner-open .hamburger-button {

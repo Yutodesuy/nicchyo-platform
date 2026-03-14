@@ -205,7 +205,7 @@ export default function ConsultClient() {
         </div>
       </main>
       {selectedShop && <ShopDetailBanner shop={selectedShop} onClose={() => setSelectedShop(null)} />}
-      {!selectedShop && <NavigationBar activeHref="/consult" />}
+      <NavigationBar activeHref="/consult" />
     </div>
   );
 }
