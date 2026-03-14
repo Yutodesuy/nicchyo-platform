@@ -264,18 +264,18 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
   }, [canNavigate, handleSelectByOffset]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white text-gray-900 pb-24">
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24 text-gray-900 lg:pb-0">
       {/* メインコンテンツ */}
-      <main className="flex-1 pb-32 pt-4">
-        <section className="mx-auto flex max-w-[1400px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)] lg:items-start lg:gap-6">
+      <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
+        <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
           <div className="hidden lg:sticky lg:top-4 lg:block">
-            <div className="overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
-              <div className="mb-3 rounded-2xl border border-amber-100 bg-white/95 px-5 py-4">
-                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">Search Map</p>
-                <h2 className="mt-1 text-xl font-bold text-gray-900">検索結果を地図で確認</h2>
-                <p className="mt-1 text-sm text-gray-700">左のマップで位置を見ながら、右でお店を探せます。</p>
+            <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
+              <div className="mb-3 shrink-0 rounded-2xl border border-amber-100 bg-white/95 px-5 py-4 text-center shadow-sm">
+                <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
+                <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
+                <p className="mt-1 text-sm text-gray-700">マップを見ながらお店を探せます</p>
               </div>
-              <div className="h-[calc(100vh-10rem)] overflow-hidden rounded-[1.6rem] border border-amber-100">
+              <div className="min-h-0 flex-1 overflow-hidden rounded-[1.6rem] border border-amber-100">
                 <MapView
                   shops={shops}
                   landmarks={landmarks}
@@ -290,14 +290,20 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
-            <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
+            <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm lg:hidden">
               <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
               <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
               <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
             </div>
 
             {/* 検索フォーム */}
-            <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+            <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
+              <div className="mb-4 hidden lg:block">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+                  Search Controls
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">条件を選んで絞り込む</h3>
+              </div>
 
               {/* テキスト検索 */}
               <div className="mt-1">
@@ -325,79 +331,79 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                     💡 ヒント: カテゴリーとキーワードを組み合わせて絞り込めます
                   </p>
 
-                  {filteredLatestPosts.length > 0 && (
-                    <div className="mt-6 rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
-                      <div className="mb-3 flex items-center gap-2 text-amber-800">
-                        <span className="text-base" aria-hidden>📢</span>
-                        <h3 className="text-sm font-bold tracking-wider uppercase">該当する最新情報</h3>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {filteredLatestPosts.map(({ shop, post }, index) => (
-                          <button
-                            key={`${shop.id}-${post.createdAt}-${index}`}
-                            type="button"
-                            onClick={() => setSelectedShop(shop)}
-                            className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
-                          >
-                            <div className="flex gap-3">
-                              {post.imageUrl ? (
-                                <img
-                                  src={post.imageUrl}
-                                  alt=""
-                                  className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                                />
-                              ) : null}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-3">
-                                  <p className="line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
-                                  <span className="shrink-0 text-[11px] font-semibold text-amber-700">
-                                    {formatDeadlineLabel(post.expiresAt)}
-                                  </span>
-                                </div>
-                                <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">
-                                  {post.text}
-                                </p>
-                                <p className="mt-2 text-right text-[11px] font-medium text-slate-500">
-                                  {formatPostCreatedAt(post.createdAt)}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-6">
-                      {/* 検索結果 */}
-                      <SearchResults
-                          shops={pagedShops}
-                          totalCount={filteredShops.length}
-                          currentPage={currentPage}
-                          totalPages={totalPages}
-                          hasQuery={hasQuery}
-                          categories={categories}
-                          onCategoryClick={handleSuggestionClick}
-                          favoriteShopIds={favoriteShopIds}
-                          onPageSelect={handlePageSelect}
-                          onToggleFavorite={handleToggleFavorite}
-                          onSelectShop={setSelectedShop}
-                          onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
-                          mapLabel={searchLabel}
-                          enableSearchMapHighlight
-                      />
-                  </div>
                 </div>
               )}
             </div>
 
+            {hasQuery && filteredLatestPosts.length > 0 && (
+              <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
+                <div className="mb-3 flex items-center gap-2 text-amber-800">
+                  <span className="text-base" aria-hidden>📢</span>
+                  <h3 className="text-sm font-bold tracking-wider uppercase">該当する最新情報</h3>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-1 xl:grid-cols-2">
+                  {filteredLatestPosts.map(({ shop, post }, index) => (
+                    <button
+                      key={`${shop.id}-${post.createdAt}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedShop(shop)}
+                      className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50 hover:shadow-md"
+                    >
+                      <div className="flex gap-3">
+                        {post.imageUrl ? (
+                          <img
+                            src={post.imageUrl}
+                            alt=""
+                            className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
+                            <span className="shrink-0 text-[11px] font-semibold text-amber-700">
+                              {formatDeadlineLabel(post.expiresAt)}
+                            </span>
+                          </div>
+                          <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-700">
+                            {post.text}
+                          </p>
+                          <p className="mt-2 text-right text-[11px] font-medium text-slate-500">
+                            {formatPostCreatedAt(post.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {hasQuery && (
+              <SearchResults
+                shops={pagedShops}
+                totalCount={filteredShops.length}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                hasQuery={hasQuery}
+                categories={categories}
+                onCategoryClick={handleSuggestionClick}
+                favoriteShopIds={favoriteShopIds}
+                onPageSelect={handlePageSelect}
+                onToggleFavorite={handleToggleFavorite}
+                onSelectShop={setSelectedShop}
+                onOpenMap={shouldShowMapButton ? handleOpenMap : undefined}
+                mapLabel={searchLabel}
+                enableSearchMapHighlight
+              />
+            )}
+
             {!hasQuery && latestPosts.length > 0 && (
-              <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-5 shadow-sm">
+              <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-amber-800">
                   <span className="text-base" aria-hidden>📢</span>
                   <h3 className="text-sm font-bold tracking-wider uppercase">最新情報はコチラ！</h3>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3 lg:grid-cols-1 xl:grid-cols-2">
                   {latestPosts.map(({ shop, post }, index) => (
                     <button
                       key={`${shop.id}-${post.createdAt}-${index}`}
