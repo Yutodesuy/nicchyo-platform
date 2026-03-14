@@ -1172,7 +1172,7 @@ export default function GrandmaChatter({
                 ref={chatScrollRef}
                 className={`mt-2 flex flex-col gap-4 pr-1 ${
                   layout === "page"
-                    ? "overflow-visible pb-60"
+                    ? "overflow-visible pb-52"
                     : "max-h-[calc(100vh-240px)]"
                 }`}
               >
