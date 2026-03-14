@@ -102,6 +102,7 @@ export default function MapPageClient({
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
+  const isAiFocusMode = searchParams?.get("ai") === "1";
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
@@ -627,6 +628,7 @@ export default function MapPageClient({
               shops={shops}
               landmarks={landmarks}
               initialShopId={initialShopId}
+              openInitialShopBanner={!isAiFocusMode}
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
@@ -648,6 +650,7 @@ export default function MapPageClient({
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
+              suppressInitialLocationFocus={isAiFocusMode}
             />
             {showGrandma && (
               <>
