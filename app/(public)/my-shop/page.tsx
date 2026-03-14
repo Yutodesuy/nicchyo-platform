@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import React from "react";
+import { useEffect, useState, type ElementType } from "react";
 import Link from "next/link";
 import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen, Eye } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -15,7 +14,7 @@ const MENU_ITEMS: {
   description: string;
   href: string;
   accent: string;
-  icon: React.ElementType;
+  icon: ElementType;
   image: string;
   badge?: string;
 }[] = [
@@ -194,26 +193,30 @@ export default function MyShopPage() {
             )}
 
             {/* 閲覧数バナー */}
-            {weeklyViews !== null && (
-              <Link
-                href="/vendor/analytics"
-                className="mb-5 flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white px-5 py-4 shadow-sm transition hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
-                    <Eye size={20} className="text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-amber-700">今週のお店の閲覧数</p>
-                    <p className="text-2xl font-bold text-slate-900">{weeklyViews.toLocaleString()}<span className="ml-1 text-sm font-normal text-slate-500">回</span></p>
-                  </div>
+            <Link
+              href="/vendor/analytics"
+              className="mb-5 flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white px-5 py-4 shadow-sm transition hover:shadow-md"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+                  <Eye size={20} className="text-amber-600" />
                 </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-                  詳しく見る
-                  <ChevronRight size={14} />
+                <div>
+                  <p className="text-xs text-amber-700">今週のお店の閲覧数</p>
+                  {weeklyViews !== null ? (
+                    <p className="text-2xl font-bold text-slate-900">
+                      {weeklyViews.toLocaleString()}<span className="ml-1 text-sm font-normal text-slate-500">回</span>
+                    </p>
+                  ) : (
+                    <div className="mt-1 h-7 w-20 animate-pulse rounded-lg bg-amber-100" />
+                  )}
                 </div>
-              </Link>
-            )}
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-700">
+                詳しく見る
+                <ChevronRight size={16} />
+              </div>
+            </Link>
 
             <div className="grid gap-5 md:grid-cols-3">
               {MENU_ITEMS.map((item) => {
