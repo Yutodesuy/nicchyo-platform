@@ -2118,46 +2118,56 @@ function ConsultShopSuggestionCard({
           onSelectShop?.(shop.id, shop);
         }
       }}
-      className="relative w-full cursor-pointer rounded-2xl border border-amber-200 bg-white px-3 py-3 text-left shadow-sm transition hover:bg-amber-50/60"
+      className="relative w-full cursor-pointer overflow-hidden rounded-[1.35rem] border border-amber-200 bg-white text-left shadow-sm transition hover:bg-amber-50/40"
       aria-label={`${shop.name}のショップバナーを開く`}
     >
-      <div className="flex items-start gap-3">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-amber-100 bg-amber-50">
-          <img
-            src={previewImage}
-            alt={`${shop.name}の画像`}
-            className="h-full w-full object-cover"
-          />
+      <div className="relative h-32 w-full overflow-hidden border-b border-amber-100 bg-amber-50">
+        <img
+          src={previewImage}
+          alt={`${shop.name}の画像`}
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent px-3 pb-3 pt-6">
+          <div className="truncate text-base font-semibold text-white">{shop.name}</div>
+          <div className="mt-0.5 text-[12px] text-white/85">{shop.ownerName}</div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="truncate text-base font-semibold text-slate-900">{shop.name}</div>
-              <div className="mt-0.5 text-[12px] text-slate-500">{shop.ownerName}</div>
-            </div>
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-              #{shop.id}
+        <span className="absolute right-3 top-3 rounded-full bg-white/92 px-2.5 py-1 text-[11px] font-semibold text-amber-800 shadow-sm">
+          #{shop.id}
+        </span>
+      </div>
+      <div className="space-y-3 px-3 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[12px] font-medium text-amber-800">
+            {shop.category}
+          </span>
+          {shop.products.slice(0, 2).map((product) => (
+            <span
+              key={`${shop.id}-${product}`}
+              className="rounded-full border border-amber-100 bg-amber-50/70 px-2.5 py-1 text-[11px] text-slate-600"
+            >
+              {product}
             </span>
-          </div>
-          <div className="mt-2 text-[12px] font-medium text-amber-700">{shop.category}</div>
-          <div className="mt-1 line-clamp-2 text-[12px] leading-6 text-slate-600">
-            {shop.products.slice(0, 3).join("・")}
-            {shop.products.length > 3 && " ほか"}
-          </div>
-          <div className="mt-2 flex justify-end">
-            {onStartConsult && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onStartConsult(shop);
-                }}
-                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
-              >
-                このお店について詳しく
-              </button>
-            )}
-          </div>
+          ))}
+        </div>
+        <div className="line-clamp-2 text-[13px] leading-6 text-slate-600">
+          {shop.products.join("・")}
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[12px] font-medium text-slate-500">
+            タップでお店の詳細を見る
+          </span>
+          {onStartConsult && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onStartConsult(shop);
+              }}
+              className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-100"
+            >
+              このお店について詳しく
+            </button>
+          )}
         </div>
       </div>
     </div>
