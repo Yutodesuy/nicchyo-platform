@@ -237,13 +237,13 @@ export default function MyShopPage() {
                     <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
                       <div className="flex items-center justify-between">
                         {item.badge ? (
-                          <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm border border-white/70">
+                          <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
                             {item.badge}
                           </span>
                         ) : (
                           <span />
                         )}
-                        <span className="rounded-3xl border border-white/70 bg-white/80 p-3 text-slate-700 shadow-md">
+                        <span className="rounded-3xl border border-white/70 bg-white/90 p-3 text-slate-700 shadow-md">
                           <Icon size={32} />
                         </span>
                       </div>
