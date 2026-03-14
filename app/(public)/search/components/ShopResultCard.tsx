@@ -50,7 +50,7 @@ function ShopResultCard({
   return (
     <div
       className={`cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50 ${
-        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-4 py-3"
+        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-3.5 py-2"
       }`}
       role="button"
       tabIndex={0}
@@ -99,17 +99,17 @@ function ShopResultCard({
         </div>
       </div>
 
-      <div className={`${compact ? "mt-1.5" : "mt-3"} overflow-hidden rounded-xl border border-amber-100 bg-white`}>
+      <div className={`${compact ? "mt-1.5" : "mt-2"} flex gap-3 overflow-hidden rounded-xl border border-amber-100 bg-white p-2.5`}>
         <img
           src={previewImage}
           alt={`${shop.name}の画像`}
-          className={`${compact ? "h-24" : "h-40"} w-full object-cover bg-white`}
+          className={`${compact ? "h-20 w-20" : "h-24 w-28 sm:w-32"} shrink-0 rounded-lg object-cover bg-white`}
         />
-        <div className={`${compact ? "p-2" : "p-3"}`}>
+        <div className="min-w-0 flex-1">
           <p className={`${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
             {shop.category}
           </p>
-          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm leading-6"} text-gray-700`}>
+          <p className={`${compact ? "mt-1 text-[11px]" : "mt-1.5 text-sm leading-5"} line-clamp-2 text-gray-700`}>
             取り扱い: {shop.products.slice(0, 4).join("・")}
             {shop.products.length > 4 && "..."}
           </p>
@@ -119,8 +119,8 @@ function ShopResultCard({
       <Link
         href={mapHref}
         onClick={handleOpenMap}
-        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
-          compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
+        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 lg:hidden ${
+          compact ? "mt-2 text-[10px]" : "mt-2 text-xs"
         }`}
       >
         地図で見る →

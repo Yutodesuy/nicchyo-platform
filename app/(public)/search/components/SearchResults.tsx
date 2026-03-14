@@ -57,14 +57,14 @@ export default function SearchResults({
 
   return (
     <>
-      <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm pb-16 md:pb-4">
+      <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm pb-16 md:pb-5">
         {/* ヘッダー: タイトルと結果件数 */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
               検索結果
             </p>
-            <h2 className="text-lg font-bold text-gray-900">お店一覧</h2>
+            <h2 className="text-xl font-bold text-gray-900">お店一覧</h2>
           </div>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
             {totalCount}件
@@ -76,7 +76,7 @@ export default function SearchResults({
           <button
             type="button"
             onClick={onOpenMap}
-            className="mt-4 hidden w-full md:block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+            className="mt-4 hidden w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
           >
             マップで見る{mapLabel ? `（${mapLabel}）` : ''}
           </button>

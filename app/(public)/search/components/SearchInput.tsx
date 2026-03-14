@@ -39,7 +39,7 @@ export default function SearchInput({ value, onChange, placeholder }: SearchInpu
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         placeholder={placeholder || 'お店の名前や商品で検索（例：レタス、野菜）'}
-        className="w-full rounded-lg border border-orange-100 py-2 pl-10 pr-10 text-sm text-gray-800 shadow-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        className="w-full rounded-xl border border-orange-100 py-3 pl-10 pr-10 text-sm text-gray-800 shadow-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
         aria-label="お店を検索"
       />
       {localValue && (
