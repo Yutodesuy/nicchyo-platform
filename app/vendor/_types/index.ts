@@ -29,6 +29,12 @@ export type Store = {
   payment_methods: PaymentMethod[];
   rain_policy: RainPolicy;
   schedule: string[];
+  shop_image_url?: string;
+  sns_instagram?: string;
+  sns_x?: string;
+  sns_hp?: string;
+  business_hours_start?: string;
+  business_hours_end?: string;
 };
 
 export type VendorAnalytics = {
