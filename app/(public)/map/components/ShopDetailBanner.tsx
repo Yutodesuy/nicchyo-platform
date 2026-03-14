@@ -388,7 +388,7 @@ export default function ShopDetailBanner({
       className={
         isInline
           ? "relative min-h-[calc(100vh-7.5rem)]"
-          : "fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-start md:bg-transparent"
+          : "fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-end md:bg-transparent"
       }
       style={isInline ? undefined : { right: "var(--desktop-menu-offset, 0px)" }}
     >
@@ -396,7 +396,12 @@ export default function ShopDetailBanner({
         className={
           isInline
             ? "absolute right-4 top-4 z-20 flex items-center gap-2"
-            : "fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto md:left-[476px] md:right-auto md:top-4"
+            : "fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto"
+        }
+        style={
+          isInline
+            ? undefined
+            : { right: "calc(var(--desktop-menu-offset, 0px) + 1rem)" }
         }
       >
         <button
@@ -412,8 +417,8 @@ export default function ShopDetailBanner({
         ref={scrollContainerRef}
         className={`relative w-full overflow-y-auto ${
           isInline
-            ? "h-[calc(100vh-7.5rem)] rounded-[1.75rem] border border-amber-200 bg-white/96 px-5 pb-16 pt-5 shadow-sm"
-            : "h-full max-w-none bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:w-[540px] md:max-w-[540px] md:rounded-r-[30px] md:border-r md:border-slate-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-[18px_0_48px_rgba(15,23,42,0.14)]"
+            ? "h-[calc(100vh-3.5rem)] border-l border-amber-200 bg-white/96 px-5 pb-16 pt-5 shadow-sm"
+            : "h-full max-w-none bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:h-[calc(100vh-3.5rem)] md:w-[540px] md:max-w-[540px] md:border-l md:border-amber-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-sm"
         } ${originRect && !isInline ? "shop-banner-animate" : ""}`}
         style={isInline ? undefined : bannerStyle}
       >
