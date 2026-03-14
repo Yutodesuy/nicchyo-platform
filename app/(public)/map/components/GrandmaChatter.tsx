@@ -1031,20 +1031,15 @@ export default function GrandmaChatter({
       <span className="text-[11px] font-bold tracking-[0.08em] text-amber-800">
         おすすめのお店
       </span>
-      <div className="flex items-center gap-2">
-        {layout === "page" && isConsultVariant && (
-          <button
-            type="button"
-            onClick={() => openSuggestedShopsOnMap(suggestedShops)}
-            className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
-          >
-            マップで確認する
-          </button>
-        )}
-        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500">
-          {suggestedShops.length}件
-        </span>
-      </div>
+      {layout === "page" && isConsultVariant ? (
+        <button
+          type="button"
+          onClick={() => openSuggestedShopsOnMap(suggestedShops)}
+          className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+        >
+          マップで確認する
+        </button>
+      ) : null}
     </div>
   );
 
@@ -1666,20 +1661,15 @@ export default function GrandmaChatter({
                   <span className={`text-sm font-bold tracking-[0.12em] ${isConsultVariant ? "text-slate-600" : "text-pink-600"}`}>AIおすすめ</span>
                   <span className="text-base font-bold text-gray-900">提案されたお店</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {layout === "page" && isConsultVariant && (
-                    <button
-                      type="button"
-                      onClick={() => openSuggestedShopsOnMap(displayedSuggestedShops)}
-                      className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
-                    >
-                      マップで確認する
-                    </button>
-                  )}
-                  <span className={`rounded-full px-3 py-1 text-[11px] font-semibold border ${isConsultVariant ? "bg-slate-100 text-slate-700 border-[var(--consult-border)]" : "bg-amber-50 text-amber-800 border-amber-100"}`}>
-                    {displayedSuggestedShops.length}店
-                  </span>
-                </div>
+                {layout === "page" && isConsultVariant ? (
+                  <button
+                    type="button"
+                    onClick={() => openSuggestedShopsOnMap(displayedSuggestedShops)}
+                    className="rounded-full border border-pink-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-pink-700 transition hover:bg-pink-50"
+                  >
+                    マップで確認する
+                  </button>
+                ) : null}
               </div>
               {aiStatus === "thinking" ? (
                 <div className="mt-6 flex items-center justify-center py-4">
