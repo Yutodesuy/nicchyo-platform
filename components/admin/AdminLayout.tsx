@@ -1,27 +1,28 @@
 /**
  * 管理者用レイアウト
- * サイドバー付きの2カラムレイアウト
+ * 管理画面共通レイアウト
  */
 
 "use client";
 
 import React from "react";
-import { AdminSidebar } from "./AdminSidebar";
+import NavigationBar from "@/app/components/NavigationBar";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  withBottomPadding?: boolean;
+  showNavigationBar?: boolean;
 }
 
-export const AdminLayout = React.memo(function AdminLayout({ children }: AdminLayoutProps) {
+export const AdminLayout = React.memo(function AdminLayout({
+  children,
+  withBottomPadding = true,
+  showNavigationBar = true,
+}: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* サイドバー */}
-      <AdminSidebar />
-
-      {/* メインコンテンツ */}
-      <div className="lg:pl-64">
-        <main className="min-h-screen">{children}</main>
-      </div>
+      <main className={`min-h-screen ${withBottomPadding ? "pb-24" : ""}`}>{children}</main>
+      {showNavigationBar ? <NavigationBar /> : null}
     </div>
   );
 });

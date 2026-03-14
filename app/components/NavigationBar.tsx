@@ -32,7 +32,7 @@ export default function NavigationBar({
 
   // 管理者の場合は管理者ダッシュボードを追加
   const navItems = permissions.isSuperAdmin
-    ? [...baseNavItems, { name: "管理", href: "/admin", icon: "admin" as const }]
+    ? [...baseNavItems, { name: "管理", href: "/admin/dashboard", icon: "admin" as const }]
     : baseNavItems;
 
   return (
