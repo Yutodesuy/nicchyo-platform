@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import React from "react";
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen } from "lucide-react";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen, Eye } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
+import { fetchVendorAnalytics } from "@/app/vendor/_services/analyticsService";
 import NavigationBar from "@/app/components/NavigationBar";
 
 const MENU_ITEMS: {
@@ -83,9 +84,12 @@ export default function MyShopPage() {
   const canAccess = !isLoading && isLoggedIn;
 
   const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
+  const [weeklyViews, setWeeklyViews] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    fetchVendorAnalytics(user.id).then((a) => setWeeklyViews(a.thisWeek.views)).catch(() => {});
+
     Promise.all([fetchVendorStore(user.id), fetchVendorPosts(user.id)]).then(([store, posts]) => {
       if (!store) return;
       const steps: SetupStep[] = [
@@ -187,6 +191,28 @@ export default function MyShopPage() {
                   ))}
                 </ul>
               </div>
+            )}
+
+            {/* 閲覧数バナー */}
+            {weeklyViews !== null && (
+              <Link
+                href="/vendor/analytics"
+                className="mb-5 flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white px-5 py-4 shadow-sm transition hover:shadow-md"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100">
+                    <Eye size={20} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-amber-700">今週のお店の閲覧数</p>
+                    <p className="text-2xl font-bold text-slate-900">{weeklyViews.toLocaleString()}<span className="ml-1 text-sm font-normal text-slate-500">回</span></p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                  詳しく見る
+                  <ChevronRight size={14} />
+                </div>
+              </Link>
             )}
 
             <div className="grid gap-5 md:grid-cols-3">
