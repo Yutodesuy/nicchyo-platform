@@ -32,7 +32,7 @@ const GUIDE_SECTIONS = [
   {
     icon: BarChart2,
     color: "bg-violet-100 text-violet-600",
-    title: "アナリティクス",
+    title: "お店の分析",
     href: "/vendor/analytics",
     description: "店舗の閲覧数・クリック数を先週と比較できます。時間帯別・商品別の分析も確認できます。",
     tips: [
@@ -81,7 +81,6 @@ export default function VendorHelpPage() {
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Help</p>
             <h1 className="text-xl font-bold text-slate-900">使い方ガイド</h1>
           </div>
         </div>
