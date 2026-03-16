@@ -21,9 +21,14 @@ const INITIAL_ZOOM_LEVEL = 19;
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
   isTracking?: boolean;
+  suppressInitialFocus?: boolean;
 }
 
-export default function UserLocationMarker({ onLocationUpdate, isTracking }: UserLocationMarkerProps) {
+export default function UserLocationMarker({
+  onLocationUpdate,
+  isTracking,
+  suppressInitialFocus = false,
+}: UserLocationMarkerProps) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const arrowRef = useRef<HTMLDivElement | null>(null);
@@ -253,10 +258,12 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
           // 初回位置取得時はマップをその位置に移動
           if (isFirstLocationRef.current) {
             isFirstLocationRef.current = false;
-            map.flyTo(displayPosition, INITIAL_ZOOM_LEVEL, {
-              animate: true,
-              duration: 1.0,
-            });
+            if (!suppressInitialFocus) {
+              map.flyTo(displayPosition, INITIAL_ZOOM_LEVEL, {
+                animate: true,
+                duration: 1.0,
+              });
+            }
           } else if (isTrackingRef.current) {
             // Tracking enabled: Center map on user
             map.panTo(displayPosition, { animate: true, duration: 0.5 });
@@ -322,7 +329,7 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
         markerRef.current = null;
       }
     };
-  }, [map]);
+  }, [map, suppressInitialFocus]);
 
   return null;
 }

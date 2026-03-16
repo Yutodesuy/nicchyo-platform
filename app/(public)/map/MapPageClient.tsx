@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
-import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
@@ -102,6 +102,7 @@ export default function MapPageClient({
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
+  const isAiFocusMode = searchParams?.get("ai") === "1";
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
@@ -230,6 +231,22 @@ export default function MapPageClient({
   }, [searchParams, searchParamsKey]);
 
   useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("ai");
+    if (!enabled) {
+      setAiMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "AIおすすめ";
+    const payload = loadAiMapPayload();
+    if (payload) {
+      setAiMarkerPayload(payload);
+    } else {
+      setAiMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
+
+  useEffect(() => {
     if (!permissions.isVendor || !vendorShopId) return;
     if (!vendorShop) return;
     const key = `nicchyo-vendor-prompt-${vendorShopId}`;
@@ -300,7 +317,9 @@ export default function MapPageClient({
   const handleGrandmaAsk = useCallback(async (
     text: string,
     imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" }
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
+    _history?: Array<{ role: "user" | "assistant"; text: string }>,
+    _memorySummary?: string
   ) => {
     try {
       const useForm = !!imageFile;
@@ -609,6 +628,7 @@ export default function MapPageClient({
               shops={shops}
               landmarks={landmarks}
               initialShopId={initialShopId}
+              openInitialShopBanner={!isAiFocusMode}
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
@@ -630,6 +650,7 @@ export default function MapPageClient({
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
+              suppressInitialLocationFocus={isAiFocusMode}
             />
             {showGrandma && (
               <>

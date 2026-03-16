@@ -16,7 +16,7 @@ export default function CategoryFilter({
   categories,
 }: CategoryFilterProps) {
   return (
-    <div className="mt-3" role="group" aria-label="カテゴリーで絞り込み">
+    <div className="mt-4" role="group" aria-label="カテゴリーで絞り込み">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
           カテゴリー
@@ -34,7 +34,7 @@ export default function CategoryFilter({
           aria-label="すべてのカテゴリーを表示"
           aria-pressed={selectedCategory === null}
         >
-          すべて
+          リセット
         </button>
         {categories.map((cat) => (
           <button
