@@ -32,6 +32,33 @@ function fmtMinutes(sec: number) {
   return `${m}分${s}秒`;
 }
 
+// パスを人間が読みやすいラベルに変換
+const PATH_LABELS: Record<string, string> = {
+  "/": "トップページ",
+  "/map": "マップ",
+  "/consult": "AIばあちゃん相談",
+  "/my-shop": "マイショップ（出店者）",
+  "/vendor/account": "出店者アカウント",
+  "/vendor/menu": "出店者メニュー",
+  "/vendor/kotodute": "ことづて（出店者）",
+  "/login": "ログイン",
+};
+
+function pathLabel(path: string): { label: string; sub: string } {
+  if (PATH_LABELS[path]) return { label: PATH_LABELS[path], sub: path };
+
+  // /shop/[id] 系
+  if (/^\/shop\//.test(path)) return { label: "店舗詳細ページ", sub: path };
+  // /vendor/ 系
+  if (/^\/vendor\//.test(path)) return { label: `出店者ページ（${path.replace("/vendor/", "")})`, sub: path };
+  // /admin/ 系
+  if (/^\/admin\//.test(path)) return { label: `管理画面（${path.replace("/admin/", "")})`, sub: path };
+  // /moderator/ 系
+  if (/^\/moderator/.test(path)) return { label: `モデレーター（${path.replace("/moderator/", "") || "ダッシュボード"})`, sub: path };
+
+  return { label: path, sub: "" };
+}
+
 // ---- types ----
 type PageAnalyticsRow = { visit_date: string; visitor_key: string; path: string; duration_seconds: number | null; user_role: string | null };
 type ShopViewRow = { vendor_id: string; source: string; vendors: { shop_name: string | null } | null };
@@ -223,23 +250,31 @@ export default async function AdminAnalyticsPage() {
               <p className="py-8 text-center text-sm text-slate-400">データがありません</p>
             ) : (
               <div className="space-y-3">
-                {topPages.map((p, i) => (
-                  <div key={p.path}>
-                    <div className="mb-1 flex items-center justify-between">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="w-5 text-xs font-semibold text-slate-400">{i + 1}.</span>
-                        <span className="truncate text-sm font-medium text-slate-800">{p.path}</span>
+                {topPages.map((p, i) => {
+                  const { label, sub } = pathLabel(p.path);
+                  return (
+                    <div key={p.path}>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="w-5 shrink-0 text-xs font-semibold text-slate-400">{i + 1}.</span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-slate-800">{label}</p>
+                            {sub && sub !== label && (
+                              <p className="truncate text-xs text-slate-400">{sub}</p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-sm text-slate-500">{p.visitors.toLocaleString()}</span>
                       </div>
-                      <span className="ml-2 shrink-0 text-sm text-slate-500">{p.visitors.toLocaleString()}</span>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-indigo-600"
+                          style={{ width: `${(p.visitors / maxPageVisitors) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-indigo-600"
-                        style={{ width: `${(p.visitors / maxPageVisitors) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>
