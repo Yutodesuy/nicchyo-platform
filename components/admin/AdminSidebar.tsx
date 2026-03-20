@@ -40,6 +40,12 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       show: permissions.isSuperAdmin,
     },
     {
+      label: "アナリティクス",
+      href: "/admin/analytics",
+      icon: "📈",
+      show: permissions.isSuperAdmin,
+    },
+    {
       label: "マップ編集",
       href: "/admin/map-edit",
       icon: "🗺️",
@@ -52,10 +58,22 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       show: permissions.isSuperAdmin,
     },
     {
+      label: "コンテンツ管理",
+      href: "/admin/content",
+      icon: "📝",
+      show: permissions.isSuperAdmin,
+    },
+    {
       label: "ことづて管理",
       href: "/admin/kotodute",
       icon: "💬",
       show: permissions.canModerateContent,
+    },
+    {
+      label: "監査ログ",
+      href: "/admin/audit-logs",
+      icon: "🔍",
+      show: permissions.isSuperAdmin,
     },
     {
       label: "通知",
