@@ -533,9 +533,9 @@ export default async function AdminDashboardPage() {
             eyebrow="Traffic"
             title="サイト全体の訪問者推移"
             legendLabel="全体"
-            dotClassName="bg-slate-700"
+            dotClassName="bg-indigo-600"
             panelClassName="bg-slate-50"
-            barClassName="bg-slate-700"
+            barClassName="bg-indigo-600"
             seriesByGranularity={trafficSeriesByGranularity}
           />
 
@@ -543,9 +543,9 @@ export default async function AdminDashboardPage() {
             eyebrow="Vendor Traffic"
             title="出店者ロールの訪問者推移"
             legendLabel="出店者のみ"
-            dotClassName="bg-slate-400"
+            dotClassName="bg-emerald-600"
             panelClassName="bg-slate-50"
-            barClassName="bg-slate-400"
+            barClassName="bg-emerald-600"
             seriesByGranularity={vendorTrafficSeriesByGranularity}
           />
 
@@ -563,11 +563,11 @@ export default async function AdminDashboardPage() {
                 <p className="text-sm text-gray-500">平均 {formatMinutes(webAverageStayMinutes)}</p>
                 <div className="mt-2 flex items-center justify-end gap-4 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
                     全体
                   </span>
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
                     出店者のみ
                   </span>
                 </div>
@@ -597,7 +597,7 @@ export default async function AdminDashboardPage() {
                     <div key={item.date} className="flex h-full flex-1 items-end gap-0.5">
                       <div className="flex h-full flex-1 flex-col justify-end">
                         <div
-                          className="w-full rounded-t bg-slate-600"
+                          className="w-full rounded-t bg-indigo-600"
                           style={{
                             height: `${Math.max((item.averageMinutes / durationMax) * 100, item.averageMinutes > 0 ? 5 : 0)}%`,
                           }}
@@ -605,7 +605,7 @@ export default async function AdminDashboardPage() {
                       </div>
                       <div className="flex h-full flex-1 flex-col justify-end">
                         <div
-                          className="w-full rounded-t bg-slate-400"
+                          className="w-full rounded-t bg-emerald-600"
                           style={{
                             height: `${Math.max((item.vendorAverageMinutes / durationMax) * 100, item.vendorAverageMinutes > 0 ? 5 : 0)}%`,
                           }}
