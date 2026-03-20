@@ -359,7 +359,7 @@ export function ModeratorKotoduteContent() {
               onClick={handleExportCSV}
               isLoading={isExporting}
               loadingText="出力中..."
-              className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
+              className="rounded-lg bg-slate-700 px-4 py-2 text-white hover:bg-slate-800 text-sm"
               aria-label="CSVファイルをエクスポート"
             >
               CSV出力
@@ -368,7 +368,7 @@ export function ModeratorKotoduteContent() {
               onClick={handleExportJSON}
               isLoading={isExporting}
               loadingText="出力中..."
-              className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
+              className="rounded-lg bg-slate-600 px-4 py-2 text-white hover:bg-slate-700 text-sm"
               aria-label="JSONファイルをエクスポート"
             >
               JSON出力
@@ -381,25 +381,25 @@ export function ModeratorKotoduteContent() {
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* 統計カード */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-5 mb-6">
-          <div className="rounded-lg bg-white p-4 shadow">
-            <p className="text-sm text-gray-600">総投稿数</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
+          <div className="rounded-lg bg-white border border-slate-200 p-4 shadow-sm">
+            <p className="text-sm text-slate-500">総投稿数</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800">{stats.total}</p>
           </div>
-          <div className="rounded-lg bg-blue-50 p-4 shadow">
-            <p className="text-sm text-blue-600">公開中</p>
-            <p className="mt-1 text-2xl font-bold text-blue-600">{stats.published}</p>
+          <div className="rounded-lg bg-white border border-slate-200 p-4 shadow-sm">
+            <p className="text-sm text-slate-500">公開中</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-700">{stats.published}</p>
           </div>
-          <div className="rounded-lg bg-red-50 p-4 shadow">
-            <p className="text-sm text-red-600">要確認</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">{stats.flagged}</p>
+          <div className="rounded-lg bg-white border border-slate-200 p-4 shadow-sm">
+            <p className="text-sm text-slate-500">要確認</p>
+            <p className="mt-1 text-2xl font-bold text-rose-700">{stats.flagged}</p>
           </div>
-          <div className="rounded-lg bg-orange-50 p-4 shadow">
-            <p className="text-sm text-orange-600">非公開</p>
-            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.hidden}</p>
+          <div className="rounded-lg bg-white border border-slate-200 p-4 shadow-sm">
+            <p className="text-sm text-slate-500">非公開</p>
+            <p className="mt-1 text-2xl font-bold text-amber-700">{stats.hidden}</p>
           </div>
-          <div className="rounded-lg bg-purple-50 p-4 shadow">
-            <p className="text-sm text-purple-600">確認が必要</p>
-            <p className="mt-1 text-2xl font-bold text-purple-600">{stats.needsReview}</p>
+          <div className="rounded-lg bg-white border border-slate-200 p-4 shadow-sm">
+            <p className="text-sm text-slate-500">確認が必要</p>
+            <p className="mt-1 text-2xl font-bold text-violet-700">{stats.needsReview}</p>
           </div>
         </div>
 
@@ -415,8 +415,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setFilter("all")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                   filter === "all"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-slate-800 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
                 aria-label="すべてのことづてを表示"
               >
@@ -426,8 +426,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setFilter("flagged")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                   filter === "flagged"
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-rose-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
                 aria-label="要確認のことづてを表示"
               >
@@ -437,8 +437,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setFilter("published")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                   filter === "published"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-emerald-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
                 aria-label="公開中のことづてを表示"
               >
@@ -448,8 +448,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setFilter("hidden")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                   filter === "hidden"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-amber-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
                 aria-label="非公開のことづてを表示"
               >
@@ -459,8 +459,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setFilter("deleted")}
                 className={`rounded-lg px-4 py-2 text-sm font-medium ${
                   filter === "deleted"
-                    ? "bg-gray-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-slate-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
                 aria-label="削除済みのことづてを表示"
               >
@@ -473,7 +473,7 @@ export function ModeratorKotoduteContent() {
               placeholder="内容・投稿者・店舗名で検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-purple-500 focus:outline-none"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm focus:border-slate-500 focus:outline-none"
               aria-label="内容、投稿者、または店舗名で検索"
             />
           </div>
@@ -488,8 +488,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setShopFilter("all")}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                   shopFilter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-slate-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 すべて ({dummyKotodute.length})
@@ -500,8 +500,8 @@ export function ModeratorKotoduteContent() {
                   onClick={() => setShopFilter(shop)}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                     shopFilter === shop
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-slate-700 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
                   {shop} ({shopStats[shop] || 0})
@@ -520,8 +520,8 @@ export function ModeratorKotoduteContent() {
                 onClick={() => setTagFilter("all")}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                   tagFilter === "all"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-slate-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 すべて
@@ -532,8 +532,8 @@ export function ModeratorKotoduteContent() {
                   onClick={() => setTagFilter(tag)}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
                     tagFilter === tag
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-slate-700 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
                   #{tag} ({tagStats[tag] || 0})
@@ -545,15 +545,15 @@ export function ModeratorKotoduteContent() {
 
         {/* 一括操作ツールバー */}
         {selectedKotoduteIds.length > 0 && (
-          <div className="mb-6 rounded-lg bg-purple-50 border border-purple-200 p-4 shadow">
+          <div className="mb-6 rounded-lg bg-slate-50 border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-purple-900">
+                <span className="text-sm font-medium text-slate-800">
                   {selectedKotoduteIds.length}件選択中
                 </span>
                 <button
                   onClick={() => setSelectedKotoduteIds([])}
-                  className="text-sm text-purple-600 hover:text-purple-800"
+                  className="text-sm text-slate-500 hover:text-slate-700"
                   aria-label="選択を解除"
                 >
                   選択解除
@@ -564,7 +564,7 @@ export function ModeratorKotoduteContent() {
                   onClick={handleBulkPublish}
                   isLoading={bulkLoading}
                   loadingText="処理中..."
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
                   aria-label="選択したことづてを一括公開"
                 >
                   一括公開
@@ -573,7 +573,7 @@ export function ModeratorKotoduteContent() {
                   onClick={handleBulkHide}
                   isLoading={bulkLoading}
                   loadingText="処理中..."
-                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
                   aria-label="選択したことづてを一括非公開"
                 >
                   一括非公開
@@ -582,7 +582,7 @@ export function ModeratorKotoduteContent() {
                   onClick={handleBulkDelete}
                   isLoading={bulkLoading}
                   loadingText="削除中..."
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                  className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800"
                   aria-label="選択したことづてを一括削除"
                 >
                   一括削除
@@ -637,7 +637,7 @@ export function ModeratorKotoduteContent() {
                           type="checkbox"
                           checked={selectedKotoduteIds.includes(kotodute.id)}
                           onChange={() => handleSelectKotodute(kotodute.id)}
-                          className="h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0 mt-1"
+                          className="h-5 w-5 rounded border-slate-300 text-slate-700 focus:ring-slate-500 flex-shrink-0 mt-1"
                           aria-label={`投稿「${kotodute.content.substring(0, 20)}...」を選択`}
                         />
 
@@ -645,8 +645,8 @@ export function ModeratorKotoduteContent() {
                         <div className="flex-1">
                           {/* ヘッダー情報 */}
                           <div className="flex items-center gap-3 mb-3">
-                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-purple-100 flex items-center justify-center">
-                              <span className="text-purple-600 text-xl" aria-hidden="true">
+                            <div className="h-10 w-10 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
+                              <span className="text-slate-500 text-xl" aria-hidden="true">
                                 👤
                               </span>
                             </div>
@@ -700,19 +700,19 @@ export function ModeratorKotoduteContent() {
                       {kotodute.status === "flagged" && (
                         <>
                           <button
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
                             aria-label="問題なしとして公開を維持"
                           >
                             ✓ 問題なし
                           </button>
                           <button
-                            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
                             aria-label="投稿を非公開にする"
                           >
                             🔒 非公開
                           </button>
                           <button
-                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                            className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800"
                             aria-label="投稿を削除"
                           >
                             🗑️ 削除
@@ -722,13 +722,13 @@ export function ModeratorKotoduteContent() {
                       {kotodute.status === "published" && (
                         <>
                           <button
-                            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
                             aria-label="投稿を非公開にする"
                           >
                             🔒 非公開
                           </button>
                           <button
-                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                            className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800"
                             aria-label="投稿を削除"
                           >
                             🗑️ 削除
@@ -738,13 +738,13 @@ export function ModeratorKotoduteContent() {
                       {kotodute.status === "hidden" && (
                         <>
                           <button
-                            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                            className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
                             aria-label="投稿を公開する"
                           >
                             ✓ 公開
                           </button>
                           <button
-                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                            className="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white hover:bg-rose-800"
                             aria-label="投稿を削除"
                           >
                             🗑️ 削除
@@ -753,21 +753,21 @@ export function ModeratorKotoduteContent() {
                       )}
                       {kotodute.status === "deleted" && (
                         <button
-                          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                          className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
                           aria-label="投稿を復元"
                         >
                           ↺ 復元
                         </button>
                       )}
                       <button
-                        className="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+                        className="rounded-lg bg-slate-500 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
                         aria-label="投稿を編集"
                       >
                         ✏️ 編集
                       </button>
                       <button
                         onClick={() => setSelectedKotodute(kotodute)}
-                        className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
+                        className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
                         aria-label="投稿の詳細を表示"
                       >
                         詳細

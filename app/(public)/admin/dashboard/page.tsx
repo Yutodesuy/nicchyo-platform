@@ -631,7 +631,7 @@ export default async function AdminDashboardPage() {
           <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="url-summary">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
                   URL Analytics
                 </p>
                 <h2 id="url-summary" className="mt-2 text-xl font-bold text-gray-900">
