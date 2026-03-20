@@ -40,7 +40,6 @@ const MENU_ITEMS: {
     accent: "from-emerald-400/40 via-emerald-100/70 to-white",
     icon: Store,
     image: "/images/home/posters/HomePagePoster2.png",
-    badge: "登録しておこう",
   },
   {
     title: "AIばあちゃんに教える",
@@ -49,7 +48,6 @@ const MENU_ITEMS: {
     accent: "from-rose-400/40 via-rose-100/70 to-white",
     icon: Sparkles,
     image: "/images/home/posters/HomePagePoster2.png",
-    badge: "教えてみよう",
   },
   {
     title: "使い方ガイド",
