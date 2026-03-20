@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getRoleTheme } from "@/lib/theme/roleTheme";
+import { useAdminNotifications } from "@/lib/hooks/useAdminNotifications";
 
 interface NavItem {
   label: string;
@@ -29,6 +30,7 @@ export const AdminSidebar = React.memo(function AdminSidebar({
   const { user, permissions } = useAuth();
   const pathname = usePathname();
   const theme = getRoleTheme(user?.role);
+  const { unreadCount } = useAdminNotifications(permissions.isSuperAdmin || permissions.canModerateContent);
 
   const navItems: NavItem[] = [
     {
@@ -60,6 +62,13 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       href: "/admin/applications",
       icon: "📝",
       show: permissions.isSuperAdmin,
+    },
+    {
+      label: "通知",
+      href: "/admin/notifications",
+      icon: "🔔",
+      badge: unreadCount > 0 ? unreadCount : undefined,
+      show: permissions.isSuperAdmin || permissions.canModerateContent,
     },
     {
       label: "設定",
