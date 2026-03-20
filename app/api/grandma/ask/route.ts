@@ -94,6 +94,7 @@ type ParsedRequest = {
   history: ConsultHistoryEntry[];
   memorySummary: string;
   preferredCharacterId: ConsultCharacterId | null;
+  visitorKey: string | null;
 };
 
 type StructuredConsultResponse = {
@@ -328,6 +329,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
   let history: ConsultHistoryEntry[] = [];
   let memorySummary = "";
   let preferredCharacterId: ConsultCharacterId | null = null;
+  let visitorKey: string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
@@ -363,6 +365,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       const value = String(form.get("preferredCharacterId")).trim() as ConsultCharacterId;
       preferredCharacterId = CONSULT_CHARACTER_BY_ID.has(value) ? value : null;
     }
+    if (typeof form.get("visitorKey") === "string") {
+      const vk = String(form.get("visitorKey")).trim();
+      visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
+    }
     const formImage = form.get("image");
     if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
       const imageFile = formImage as File;
@@ -380,6 +386,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       history?: ConsultHistoryEntry[];
       memorySummary?: string;
       preferredCharacterId?: ConsultCharacterId | null;
+      visitorKey?: string | null;
     };
     text = payload.text ?? "";
     location = payload.location ?? null;
@@ -394,6 +401,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId)
         ? payload.preferredCharacterId
         : null;
+    if (typeof payload.visitorKey === "string") {
+      const vk = payload.visitorKey.trim();
+      visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
+    }
   }
 
   return {
@@ -405,6 +416,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
     history,
     memorySummary,
     preferredCharacterId,
+    visitorKey,
   };
 }
 
@@ -879,37 +891,63 @@ function buildFallbackFollowUpQuestion(
 async function handleAbuseDetection(
   supabase: SupabaseClient,
   ip: string,
-  text: string
+  text: string,
+  visitorKey?: string
 ): Promise<"blocked" | "rate_limited" | "ok"> {
-  // ① ブロックリスト確認
-  const { data: blockData } = await supabase
+  // ① ブロックリスト確認（IP または visitor_key でブロック）
+  const blockQuery = supabase
     .from("ai_abuse_blocks")
     .select("id")
-    .eq("ip_address", ip)
     .eq("is_active", true)
     .limit(1);
+
+  const orConditions = [`ip_address.eq.${ip}`];
+  if (visitorKey) orConditions.push(`visitor_key.eq.${visitorKey}`);
+
+  const { data: blockData } = await blockQuery.or(orConditions.join(","));
   if (blockData && blockData.length > 0) return "blocked";
 
-  // ② レートリミット確認（直近1時間のai_consult_logsを使用）
+  // ② レートリミット確認（IP と visitor_key の両方をチェック、厳しい方を採用）
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count } = await supabase
-    .from("ai_consult_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("ip_address", ip)
-    .gte("created_at", oneHourAgo);
-  if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
+
+  const [ipCountRes, visitorCountRes] = await Promise.all([
+    supabase
+      .from("ai_consult_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_address", ip)
+      .gte("created_at", oneHourAgo),
+    visitorKey
+      ? supabase
+          .from("ai_consult_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("visitor_key", visitorKey)
+          .gte("created_at", oneHourAgo)
+      : Promise.resolve({ count: 0 }),
+  ]);
+
+  const ipCount = ipCountRes.count ?? 0;
+  const visitorCount = visitorKey ? (visitorCountRes.count ?? 0) : 0;
+  const maxCount = Math.max(ipCount, visitorCount);
+  const countLabel = visitorCount > ipCount ? `visitor_key:${visitorKey}` : `IP:${ip}`;
+
+  if (maxCount >= RATE_LIMIT_PER_HOUR) {
     await supabase.from("ai_abuse_events").insert({
       ip_address: ip,
+      visitor_key: visitorKey ?? null,
       event_type: "rate_limit",
-      message: `1時間に${count}回のリクエスト`,
+      message: `1時間に${maxCount}回のリクエスト（${countLabel}）`,
       severity: 2,
       blocked: true,
     });
-    await supabase.from("ai_abuse_blocks").insert({ ip_address: ip, reason: "レートリミット超過" });
+    await supabase.from("ai_abuse_blocks").insert({
+      ip_address: ip,
+      visitor_key: visitorKey ?? null,
+      reason: "レートリミット超過",
+    });
     await supabase.from("admin_notifications").insert({
       type: "ai_abuse",
       title: "AIレートリミット超過でブロック",
-      body: `IP: ${ip} が1時間に${count}回リクエスト`,
+      body: `${countLabel} が1時間に${maxCount}回リクエスト`,
       link: "/admin/audit-logs",
     });
     return "rate_limited";
@@ -921,17 +959,22 @@ async function handleAbuseDetection(
     const shouldBlock = abuse.severity >= 3;
     await supabase.from("ai_abuse_events").insert({
       ip_address: ip,
+      visitor_key: visitorKey ?? null,
       event_type: abuse.type,
       message: text.slice(0, 200),
       severity: abuse.severity,
       blocked: shouldBlock,
     });
     if (shouldBlock) {
-      await supabase.from("ai_abuse_blocks").insert({ ip_address: ip, reason: abuse.reason });
+      await supabase.from("ai_abuse_blocks").insert({
+        ip_address: ip,
+        visitor_key: visitorKey ?? null,
+        reason: abuse.reason,
+      });
       await supabase.from("admin_notifications").insert({
         type: "ai_abuse",
         title: `AI不正アクセスをブロック（${abuse.type}）`,
-        body: `IP: ${ip} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
+        body: `IP: ${ip} | visitor: ${visitorKey ?? "不明"} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
         link: "/admin/audit-logs",
       });
       return "blocked";
@@ -952,6 +995,7 @@ export async function POST(request: Request) {
       history,
       memorySummary,
       preferredCharacterId,
+      visitorKey,
     } = await parseRequest(request);
     const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
@@ -968,7 +1012,7 @@ export async function POST(request: Request) {
       const secClient = createClient(supabaseUrl, serviceRoleKey);
       const forwardedFor = request.headers.get("x-forwarded-for");
       const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "unknown";
-      const abuseResult = await handleAbuseDetection(secClient, ip, text);
+      const abuseResult = await handleAbuseDetection(secClient, ip, text, visitorKey ?? undefined);
       if (abuseResult === "blocked") {
         return NextResponse.json(
           buildErrorResponse(
@@ -1334,6 +1378,7 @@ export async function POST(request: Request) {
         location_type: locationType,
         is_recommendation: true,
         ip_address: logIp,
+        visitor_key: visitorKey ?? null,
       }));
       supabase.from("ai_consult_logs").insert(logs).then(() => {});
     } else {
@@ -1346,6 +1391,7 @@ export async function POST(request: Request) {
         location_type: locationType,
         is_recommendation: false,
         ip_address: logIp,
+        visitor_key: visitorKey ?? null,
       }).then(() => {});
     }
 
