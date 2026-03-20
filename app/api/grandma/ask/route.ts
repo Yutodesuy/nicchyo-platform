@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildGrandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
+import { detectAbuse, RATE_LIMIT_PER_HOUR } from "@/lib/security/abuseDetector";
 import {
   CONSULT_CHARACTER_BY_ID,
   pickConsultCharacters,
@@ -875,6 +876,71 @@ function buildFallbackFollowUpQuestion(
   return "はじめて行くならどこから回るのがおすすめ？";
 }
 
+async function handleAbuseDetection(
+  supabase: SupabaseClient,
+  ip: string,
+  text: string
+): Promise<"blocked" | "rate_limited" | "ok"> {
+  // ① ブロックリスト確認
+  const { data: blockData } = await supabase
+    .from("ai_abuse_blocks")
+    .select("id")
+    .eq("ip_address", ip)
+    .eq("is_active", true)
+    .limit(1);
+  if (blockData && blockData.length > 0) return "blocked";
+
+  // ② レートリミット確認（直近1時間のai_consult_logsを使用）
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from("ai_consult_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("ip_address", ip)
+    .gte("created_at", oneHourAgo);
+  if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
+    await supabase.from("ai_abuse_events").insert({
+      ip_address: ip,
+      event_type: "rate_limit",
+      message: `1時間に${count}回のリクエスト`,
+      severity: 2,
+      blocked: true,
+    });
+    await supabase.from("ai_abuse_blocks").insert({ ip_address: ip, reason: "レートリミット超過" });
+    await supabase.from("admin_notifications").insert({
+      type: "ai_abuse",
+      title: "AIレートリミット超過でブロック",
+      body: `IP: ${ip} が1時間に${count}回リクエスト`,
+      link: "/admin/audit-logs",
+    });
+    return "rate_limited";
+  }
+
+  // ③ 不正パターン検知
+  const abuse = detectAbuse(text);
+  if (abuse) {
+    const shouldBlock = abuse.severity >= 3;
+    await supabase.from("ai_abuse_events").insert({
+      ip_address: ip,
+      event_type: abuse.type,
+      message: text.slice(0, 200),
+      severity: abuse.severity,
+      blocked: shouldBlock,
+    });
+    if (shouldBlock) {
+      await supabase.from("ai_abuse_blocks").insert({ ip_address: ip, reason: abuse.reason });
+      await supabase.from("admin_notifications").insert({
+        type: "ai_abuse",
+        title: `AI不正アクセスをブロック（${abuse.type}）`,
+        body: `IP: ${ip} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
+        link: "/admin/audit-logs",
+      });
+      return "blocked";
+    }
+  }
+
+  return "ok";
+}
+
 export async function POST(request: Request) {
   try {
     const {
@@ -894,6 +960,36 @@ export async function POST(request: Request) {
 
     const normalized = question.replace(/\s+/g, "");
     const selectedCharacters = pickConsultCharacters(preferredCharacterId);
+
+    // セキュリティチェック（環境変数が揃っている場合のみ実行）
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceRoleKey) {
+      const secClient = createClient(supabaseUrl, serviceRoleKey);
+      const forwardedFor = request.headers.get("x-forwarded-for");
+      const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "unknown";
+      const abuseResult = await handleAbuseDetection(secClient, ip, text);
+      if (abuseResult === "blocked") {
+        return NextResponse.json(
+          buildErrorResponse(
+            "unsupported_request",
+            selectedCharacters,
+            "申し訳ありませんが、このアクセスはご利用いただけません。"
+          ),
+          { status: 403 }
+        );
+      }
+      if (abuseResult === "rate_limited") {
+        return NextResponse.json(
+          buildErrorResponse(
+            "unsupported_request",
+            selectedCharacters,
+            "1時間のご利用上限に達しました。しばらくしてからまた聞いてみてね。"
+          ),
+          { status: 429 }
+        );
+      }
+    }
     const conversationPattern = pickConversationPattern(selectedCharacters);
     if (normalized.includes("おばあちゃんは何者") || normalized.includes("おばあちゃん何者")) {
       return NextResponse.json({
@@ -919,8 +1015,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!supabaseUrl || !serviceRoleKey || !openaiKey) {
       return NextResponse.json(
@@ -1230,6 +1324,7 @@ export async function POST(request: Request) {
           .filter((value): value is string => !!value)
       )
     );
+    const logIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
     if (logVendorIds.length > 0) {
       const logs = logVendorIds.map((vendorId) => ({
         store_id: vendorId,
@@ -1238,8 +1333,20 @@ export async function POST(request: Request) {
         keywords,
         location_type: locationType,
         is_recommendation: true,
+        ip_address: logIp,
       }));
       supabase.from("ai_consult_logs").insert(logs).then(() => {});
+    } else {
+      // 店舗紹介なしでも IP ログを残す（レートリミット計算用）
+      supabase.from("ai_consult_logs").insert({
+        store_id: null,
+        question_text: text || "(画像のみ)",
+        intent_category: intentCategory,
+        keywords,
+        location_type: locationType,
+        is_recommendation: false,
+        ip_address: logIp,
+      }).then(() => {});
     }
 
     const followUpQuestion = isValidFollowUpQuestion(structured.followUpQuestion ?? "")
