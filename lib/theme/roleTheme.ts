@@ -57,14 +57,14 @@ export const ROLE_THEMES: Record<UserRole, RoleTheme> = {
    * - 警告色にならないよう rose を混ぜて柔らかく調整
    */
   super_admin: {
-    headerBg: 'bg-slate-900',
+    headerBg: 'bg-gradient-to-r from-red-700 via-rose-600 to-red-700',
     headerText: 'text-white',
     accent: {
-      bg: 'bg-rose-50',
-      text: 'text-rose-900',
-      hoverBg: 'hover:bg-rose-100',
+      bg: 'bg-red-600',
+      text: 'text-white',
+      hoverBg: 'hover:bg-red-700',
     },
-    description: '管理者テーマ（ダーク系・公的管理者）',
+    description: '管理者テーマ（赤系・公的管理者）',
   },
 
   /**
@@ -110,14 +110,14 @@ export const ROLE_THEMES: Record<UserRole, RoleTheme> = {
    * - 管理者とは区別される柔らかい印象
    */
   moderator: {
-    headerBg: 'bg-slate-800',
+    headerBg: 'bg-gradient-to-r from-purple-700 via-purple-600 to-purple-700',
     headerText: 'text-white',
     accent: {
-      bg: 'bg-violet-50',
-      text: 'text-violet-900',
-      hoverBg: 'hover:bg-violet-100',
+      bg: 'bg-purple-600',
+      text: 'text-white',
+      hoverBg: 'hover:bg-purple-700',
     },
-    description: 'モデレーターテーマ（ダーク系・コンテンツ管理）',
+    description: 'モデレーターテーマ（パープル系・コンテンツ管理）',
   },
 };
 
