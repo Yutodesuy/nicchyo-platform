@@ -271,8 +271,9 @@ export default function VendorPostNewPage() {
       {/* ヘッダー */}
       <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Link href="/my-shop" className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50">
-            <ArrowLeft size={18} />
+          <Link href="/my-shop" className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50">
+            <ArrowLeft size={16} />
+            ホーム
           </Link>
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Post</p>
