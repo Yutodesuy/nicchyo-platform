@@ -23,53 +23,53 @@ const statusConfig: Record<
 > = {
   active: {
     label: "稼働中",
-    className: "bg-green-100 text-green-800",
+    className: "bg-emerald-600 text-white",
     icon: "✓",
   },
   approved: {
     label: "承認済み",
-    className: "bg-green-100 text-green-800",
+    className: "bg-emerald-600 text-white",
     icon: "✓",
   },
   pending: {
     label: "承認待ち",
-    className: "bg-orange-100 text-orange-800",
+    className: "bg-amber-600 text-white",
     icon: "⏳",
   },
   suspended: {
     label: "停止中",
-    className: "bg-red-100 text-red-800",
+    className: "bg-rose-700 text-white",
     icon: "⏸",
   },
   rejected: {
     label: "却下",
-    className: "bg-red-100 text-red-800",
+    className: "bg-rose-700 text-white",
     icon: "✕",
   },
   reported: {
     label: "報告あり",
-    className: "bg-purple-100 text-purple-800",
+    className: "bg-violet-600 text-white",
     icon: "🚨",
   },
   published: {
     label: "公開中",
-    className: "bg-blue-100 text-blue-800",
+    className: "bg-emerald-600 text-white",
     icon: "✓",
   },
   flagged: {
     label: "要確認",
-    className: "bg-red-100 text-red-800",
-    icon: "⚠️",
+    className: "bg-rose-700 text-white",
+    icon: "⚠",
   },
   hidden: {
     label: "非公開",
-    className: "bg-orange-100 text-orange-800",
+    className: "bg-amber-600 text-white",
     icon: "🔒",
   },
   deleted: {
     label: "削除済み",
-    className: "bg-gray-100 text-gray-800",
-    icon: "🗑️",
+    className: "bg-slate-500 text-white",
+    icon: "✕",
   },
 };
 
