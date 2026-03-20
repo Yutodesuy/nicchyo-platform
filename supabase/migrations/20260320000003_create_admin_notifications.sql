@@ -40,25 +40,6 @@ CREATE POLICY "admin_notifications_update_admin"
     )
   );
 
--- 出店申請が追加されたら自動通知
-CREATE OR REPLACE FUNCTION notify_new_vendor_application()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO admin_notifications (type, title, body, link)
-  VALUES (
-    'new_application',
-    '新しい出店申請があります',
-    NEW.shop_name || '（' || NEW.owner_name || '）',
-    '/admin/applications'
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER vendor_applications_notify_trigger
-  AFTER INSERT ON vendor_applications
-  FOR EACH ROW EXECUTE FUNCTION notify_new_vendor_application();
-
 -- ことづてが通報されたら自動通知（report_countが1になった時）
 CREATE OR REPLACE FUNCTION notify_kotodute_reported()
 RETURNS trigger AS $$
