@@ -46,6 +46,20 @@ export default function NotificationsPage() {
 
       <div className="mx-auto max-w-3xl px-4 py-8 pb-20">
 
+        {/* TODO: メール通知未実装バナー */}
+        <div className="mb-6 rounded-xl border border-yellow-300 bg-yellow-50 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-yellow-800">メール通知が未実装です</p>
+              <p className="mt-1 text-sm text-yellow-700">
+                現在、通知はこの画面内のみに表示されます。緊急時に管理者のメールアドレスへ自動送信する機能は未実装です。
+                実装には Resend などのメール送信サービスが必要です。
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* ヘッダーアクション */}
         {unreadCount > 0 && (
           <div className="mb-4 flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-5 py-3">
