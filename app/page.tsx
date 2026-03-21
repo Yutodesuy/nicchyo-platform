@@ -257,8 +257,8 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.05),rgba(247,241,232,0.94))]" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 md:px-10 lg:py-12">
-          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10">
+        <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:py-16">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -282,7 +282,7 @@ export default function HomePage() {
                 相談して、歩き出す。
               </p>
 
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={handleMapClick}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white shadow-[0_18px_45px_rgba(184,92,34,0.24)] transition hover:-translate-y-0.5 hover:bg-[#a24f1c] active:scale-[0.98]"
@@ -300,7 +300,7 @@ export default function HomePage() {
                 </button>
               </div>
 
-              <div className="mt-5 max-w-sm">
+              <div className="mt-8 max-w-sm">
                 <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-center backdrop-blur-sm">
                   <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
                     今週の訪問者数
@@ -329,7 +329,7 @@ export default function HomePage() {
                 className="rounded-[2rem] border border-white/60 bg-white/72 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm"
               >
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                     <div className="mx-auto h-44 w-36 shrink-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-amber-100 to-orange-50 sm:mx-0 sm:h-48 sm:w-40">
                       <img
                         src={activeSpeaker.image}
@@ -341,10 +341,10 @@ export default function HomePage() {
 
                     <div className="min-w-0 text-center sm:text-left">
                       <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">案内役</p>
-                      <h2 className="mt-2 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
+                      <h2 className="mt-3 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
                         {activeSpeaker.name}
                       </h2>
-                      <p className="mt-2 text-sm leading-7 text-stone-700">
+                      <p className="mt-3 text-sm leading-7 text-stone-700">
                         {activeSpeaker.subtitle}
                       </p>
 
@@ -353,12 +353,12 @@ export default function HomePage() {
                         initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.24, ease: "easeOut" }}
-                        className="mt-4 rounded-[1.4rem] bg-[#fffaf4] px-4 py-3 text-left"
+                        className="mt-6 rounded-[1.4rem] bg-[#fffaf4] px-4 py-4 text-left"
                       >
                         <p className="text-lg leading-8 text-stone-700">{activeSpeech.line}</p>
                       </motion.div>
 
-                      <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+                      <div className="mt-6 flex flex-wrap justify-center gap-2 sm:justify-start">
                         <button
                           type="button"
                           onClick={() =>
@@ -372,11 +372,11 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="rounded-[1.4rem] bg-[#fffaf4] px-3 py-3">
+                  <div className="rounded-[1.4rem] bg-[#fffaf4] px-3 py-4">
                     <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
                       相談相手をえらぶ
                     </p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {heroSpeeches.map((speech, index) => {
                         const speaker = CONSULT_CHARACTERS.find(
                           (character) => character.id === speech.characterId
@@ -424,13 +424,13 @@ export default function HomePage() {
       </section>
 
       <motion.section
-        className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10"
+        className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.18 }}
       >
-        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
           <motion.div variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">
               はじめての日曜市で
@@ -458,7 +458,7 @@ export default function HomePage() {
       </motion.section>
 
       <motion.section
-        className="bg-[#fffaf4] px-4 py-14 sm:px-6 md:px-10"
+        className="bg-[#fffaf4] px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
@@ -476,7 +476,7 @@ export default function HomePage() {
             </h2>
           </motion.div>
 
-          <motion.div className="mt-8 grid gap-5 md:grid-cols-3" variants={staggerVariants}>
+          <motion.div className="mt-10 grid gap-6 md:grid-cols-3" variants={staggerVariants}>
             {actionCards.map(({ icon: Icon, title, body }) => (
               <motion.article
                 key={title}
@@ -495,7 +495,7 @@ export default function HomePage() {
       </motion.section>
 
       <motion.section
-        className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10"
+        className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
@@ -503,7 +503,7 @@ export default function HomePage() {
       >
         <motion.div
           variants={revealVariants}
-          className="rounded-[2rem] border border-[#ead8c0] bg-white p-5 shadow-[0_18px_48px_rgba(102,58,20,0.08)]"
+          className="rounded-[2rem] border border-[#ead8c0] bg-white p-6 shadow-[0_18px_48px_rgba(102,58,20,0.08)]"
         >
           <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
@@ -511,13 +511,13 @@ export default function HomePage() {
             <br />
             ここで待っています。
           </h2>
-          <p className="mt-3 text-lg leading-8 text-stone-700">
+          <p className="mt-4 text-lg leading-8 text-stone-700">
             気になる相手を選んで、
             <br />
             そのまま相談できます。
           </p>
 
-          <motion.div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4" variants={staggerVariants}>
+          <motion.div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4" variants={staggerVariants}>
             {CONSULT_CHARACTERS.map((character) => (
               <motion.div
                 key={character.id}
@@ -548,13 +548,13 @@ export default function HomePage() {
       </motion.section>
 
       <motion.section
-        className="bg-[#efe1ce] px-4 py-14 sm:px-6 md:px-10"
+        className="bg-[#efe1ce] px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.18 }}
       >
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_0.95fr]">
+        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_0.95fr]">
           <motion.div variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#8d4e22]">nicchyoについて</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
@@ -590,14 +590,14 @@ export default function HomePage() {
       </motion.section>
 
       <motion.section
-        className="px-4 py-16 sm:px-6 md:px-10"
+        className="px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={revealVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
       >
-        <div className="mx-auto max-w-5xl rounded-[2.5rem] bg-[#4b2a13] px-6 py-10 text-white shadow-[0_35px_100px_rgba(75,42,19,0.28)] md:px-8 md:py-12">
-          <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+        <div className="mx-auto max-w-5xl rounded-[2.5rem] bg-[#4b2a13] px-6 py-12 text-white shadow-[0_35px_100px_rgba(75,42,19,0.28)] md:px-8 md:py-14">
+          <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
             <div className="mx-auto w-full max-w-xs">
               <motion.div
                 animate={shouldReduceMotion ? undefined : { rotate: [0, -1.2, 0, 1.2, 0] }}
