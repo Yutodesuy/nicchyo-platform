@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -20,41 +20,48 @@ type HomeSummary = {
   weeklyVisitorTotal: number | null;
 };
 
-const primaryCharacter = CONSULT_CHARACTERS[0];
-
-const supportCharacters = CONSULT_CHARACTERS.slice(1);
 const PREFERRED_CHARACTER_STORAGE_KEY = "nicchyo-consult-preferred-character";
+
+const primaryCharacter = CONSULT_CHARACTERS[0];
 
 const heroSpeeches = [
   {
     characterId: "nichiyosan",
     line: "迷ったら、まず一緒に見てみようかね。",
+    prompt: "はじめての日曜市なんだけど、どこから歩けばいい？",
+    chip: "回り方を相談",
   },
   {
     characterId: "yoichisan",
-    line: "見どころも、おすすめも、ゆっくり案内するよ。",
+    line: "おすすめの見どころを、落ち着いて案内するよ。",
+    prompt: "日曜市の見どころを教えて",
+    chip: "見どころを聞く",
   },
   {
     characterId: "miraikun",
-    line: "食べたいものがあるなら、検索からでOK。",
+    line: "食べたいものがあるなら、検索からでもOK。",
+    prompt: "食べ歩きにおすすめのお店を教えて",
+    chip: "おすすめを聞く",
   },
   {
     characterId: "yosakochan",
     line: "なんとなく気になるだけでも、相談してみよっ。",
+    prompt: "はじめてでも寄りやすいお店を教えて",
+    chip: "気軽に相談",
   },
 ] as const;
 
 const problemCards = [
-  "どこから歩けばいいかわからない",
-  "気になるお店の探し方がわからない",
-  "聞きたいけど、ちょっと緊張する",
+  "広くて、どこから歩けばいいかわからない",
+  "気になるものはあるのに、探し方がわからない",
+  "人に聞きたいけど、最初のひと声が少し緊張する",
 ];
 
-const valueCards = [
+const actionCards = [
   {
     icon: MapPin,
-    title: "まず、全体を見る",
-    body: "市の広さと位置が、すぐわかる。",
+    title: "まず、マップを見る",
+    body: "市の広さと現在地をつかむ。",
   },
   {
     icon: Search,
@@ -64,33 +71,41 @@ const valueCards = [
   {
     icon: MessageCircle,
     title: "迷ったら相談する",
-    body: "言葉にしにくくても、大丈夫。",
-  },
-];
-
-const flowSteps = [
-  {
-    icon: Search,
-    title: "検索する",
-    body: "店やカテゴリから探す。",
-  },
-  {
-    icon: Sparkles,
-    title: "相談する",
-    body: "迷いを、ひとこと話す。",
-  },
-  {
-    icon: Store,
-    title: "現地で会話する",
-    body: "気になった店で、立ち止まる。",
+    body: "言葉にしにくくても大丈夫。",
   },
 ];
 
 const trustPoints = [
-  "高知高専の学生主体で企画・改善を継続",
-  "高知市や出店者との対話を重ねて設計",
-  "効率化よりも、安心して歩き始められる体験を優先",
+  "高知高専の学生が、現地の声を聞きながら育てています。",
+  "高知市や出店者との対話を重ねて設計しています。",
+  "効率よりも、安心して歩き出せることを大切にしています。",
 ];
+
+function createRevealVariants(reduceMotion: boolean) {
+  return {
+    hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: reduceMotion ? 0.16 : 0.52,
+        ease: "easeOut",
+      },
+    },
+  };
+}
+
+function createStaggerVariants(reduceMotion: boolean) {
+  return {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: reduceMotion ? 0 : 0.1,
+        delayChildren: reduceMotion ? 0 : 0.04,
+      },
+    },
+  };
+}
 
 function CharacterPortrait({
   image,
@@ -106,7 +121,9 @@ function CharacterPortrait({
   className?: string;
 }) {
   return (
-    <div className={`relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-amber-100 via-orange-50 to-white ${className}`}>
+    <div
+      className={`relative overflow-hidden rounded-[1.6rem] bg-gradient-to-b from-amber-100 via-orange-50 to-white ${className}`}
+    >
       <div className="absolute inset-x-4 top-4 h-12 rounded-full bg-white/65 blur-xl" aria-hidden="true" />
       <img
         src={image}
@@ -118,39 +135,19 @@ function CharacterPortrait({
   );
 }
 
-function createRevealVariants(shouldReduceMotion: boolean) {
-  return {
-    hidden: {
-      opacity: 0,
-      y: shouldReduceMotion ? 0 : 24,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: shouldReduceMotion ? 0.18 : 0.55,
-        ease: "easeOut",
-      },
-    },
-  };
-}
-
-function createStaggerVariants(shouldReduceMotion: boolean) {
-  return {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: shouldReduceMotion ? 0 : 0.12,
-        delayChildren: shouldReduceMotion ? 0 : 0.05,
-      },
-    },
-  };
-}
-
 export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
   const shouldReduceMotion = useReducedMotion();
+  const revealVariants = useMemo(
+    () => createRevealVariants(shouldReduceMotion),
+    [shouldReduceMotion]
+  );
+  const staggerVariants = useMemo(
+    () => createStaggerVariants(shouldReduceMotion),
+    [shouldReduceMotion]
+  );
+
   const [loaded, setLoaded] = useState(false);
   const [summary, setSummary] = useState<HomeSummary>({
     categoryCount: null,
@@ -175,9 +172,7 @@ export default function HomePage() {
     void fetch(endpoint, {
       method: "POST",
       keepalive: true,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
   }, [loaded]);
 
@@ -196,8 +191,10 @@ export default function HomePage() {
           cache: "no-store",
         });
         if (!response.ok) return;
+
         const payload = (await response.json()) as Partial<HomeSummary> & { ok?: boolean };
         if (!payload.ok || cancelled) return;
+
         setSummary({
           categoryCount:
             typeof payload.categoryCount === "number" ? payload.categoryCount : null,
@@ -220,7 +217,7 @@ export default function HomePage() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setActiveSpeechIndex((prev) => (prev + 1) % heroSpeeches.length);
-    }, 3400);
+    }, 3600);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -235,195 +232,194 @@ export default function HomePage() {
     router.push("/consult");
   };
 
-  const handleCharacterConsultClick = (characterId: string) => {
+  const handleCharacterConsultClick = (characterId: string, prompt?: string) => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(PREFERRED_CHARACTER_STORAGE_KEY, characterId);
     }
-    router.push("/consult");
+    const query = prompt ? `?q=${encodeURIComponent(prompt)}` : "";
+    router.push(`/consult${query}`);
   };
 
   const activeSpeech = heroSpeeches[activeSpeechIndex];
   const activeSpeaker =
     CONSULT_CHARACTERS.find((character) => character.id === activeSpeech.characterId) ??
     primaryCharacter;
-  const revealVariants = createRevealVariants(shouldReduceMotion);
-  const staggerVariants = createStaggerVariants(shouldReduceMotion);
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
-      <section className="relative overflow-hidden border-b border-amber-100 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(247,241,232,0.82)_46%,_rgba(234,208,167,0.5)_100%)]">
+      <section className="relative overflow-hidden border-b border-amber-100 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(247,241,232,0.86)_48%,_rgba(235,208,166,0.45)_100%)]">
         <div className="absolute inset-0">
           <img
             src="/images/home-hero.jpg"
             alt="高知の日曜市を歩く風景"
-            className="h-full w-full object-cover object-center opacity-20"
+            className="h-full w-full object-cover object-center opacity-15"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.06),rgba(247,241,232,0.92))]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.05),rgba(247,241,232,0.94))]" />
         </div>
 
-        <div className="relative mx-auto grid min-h-[100svh] max-w-6xl gap-6 px-4 py-6 sm:px-6 md:px-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:gap-10 lg:py-14">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            className="order-1"
-          >
-            <div className="inline-flex items-center rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold tracking-[0.16em] text-amber-800 backdrop-blur-sm">
-              AIと歩く日曜市ガイド
-            </div>
-
-            <h1 className="mt-4 text-[2.4rem] font-bold leading-tight text-[#40230e] sm:text-[3rem] md:text-7xl">
-              はじめてでも、
-              <br />
-              迷わず歩き出せる。
-              <br />
-              nicchyoの日曜市マップ。
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
-              地図で見つける。
-              <br />
-              相談して、歩き出す。
-            </p>
-
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={handleMapClick}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white shadow-[0_18px_45px_rgba(184,92,34,0.25)] transition hover:-translate-y-0.5 hover:bg-[#a24f1c] active:scale-[0.98]"
-              >
-                マップを見る
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <button
-                onClick={handleConsultClick}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d8b896] bg-white/80 px-7 py-4 text-base font-semibold text-[#6f3a16] backdrop-blur-sm transition hover:bg-white"
-              >
-                AIキャラに相談する
-              </button>
-            </div>
-
-            <div className="mt-5 rounded-[1.75rem] border border-white/60 bg-white/75 p-3 shadow-[0_16px_40px_rgba(102,58,20,0.1)] backdrop-blur-sm">
-              <div className="flex items-center gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-b from-amber-100 to-orange-50">
-                  <img
-                    src={activeSpeaker.image}
-                    alt={activeSpeaker.name}
-                    className={`h-full w-full object-cover ${activeSpeaker.imageScale}`}
-                    style={{ objectPosition: activeSpeaker.imagePosition }}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-base font-bold text-[#5b3015]">{activeSpeaker.name}</p>
-                  <p className="text-sm text-stone-500">{activeSpeaker.subtitle}</p>
-                </div>
-              </div>
-              <motion.div
-                key={`${activeSpeaker.id}-${activeSpeechIndex}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, ease: "easeOut" }}
-                className="mt-3 rounded-[1.4rem] bg-[#fffaf4] px-4 py-3"
-              >
-                <p className="text-lg leading-8 text-stone-700 md:text-xl">{activeSpeech.line}</p>
-              </motion.div>
-              <div className="mt-3 flex gap-2">
-                {heroSpeeches.map((speech, index) => (
-                  <button
-                    key={`${speech.characterId}-${index}`}
-                    type="button"
-                    aria-label={`${index + 1}つ目のセリフを表示`}
-                    onClick={() => setActiveSpeechIndex(index)}
-                    className={`h-2.5 rounded-full transition ${
-                      index === activeSpeechIndex ? "w-6 bg-amber-500" : "w-2.5 bg-amber-200"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-center backdrop-blur-sm">
-                <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">出店カテゴリ</p>
-                <p className="mt-2 text-2xl font-bold text-[#4c2810]">
-                  {summary.categoryCount !== null ? summary.categoryCount.toLocaleString() : "--"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-center backdrop-blur-sm">
-                <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">今週の訪問者数</p>
-                <p className="mt-2 text-2xl font-bold text-[#4c2810]">
-                  {summary.weeklyVisitorTotal !== null
-                    ? `${summary.weeklyVisitorTotal.toLocaleString()}人`
-                    : "--"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-center backdrop-blur-sm">
-                <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">相談導線</p>
-                <p className="mt-2 text-2xl font-bold text-[#4c2810]">4人</p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.08, ease: "easeOut" }}
-            className="order-2"
-          >
+        <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 md:px-10 lg:py-12">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10">
             <motion.div
-              animate={
-                shouldReduceMotion
-                  ? undefined
-                  : {
-                      y: [0, -6, 0],
-                    }
-              }
-              transition={
-                shouldReduceMotion
-                  ? undefined
-                  : {
-                      duration: 4.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }
-              }
-              className="rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, ease: "easeOut" }}
             >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="mx-auto h-44 w-36 shrink-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-amber-100 to-orange-50 sm:mx-0 sm:h-48 sm:w-40">
-                  <img
-                    src={primaryCharacter.image}
-                    alt={primaryCharacter.name}
-                    className={`h-full w-full object-cover ${primaryCharacter.imageScale}`}
-                    style={{ objectPosition: primaryCharacter.imagePosition }}
-                  />
-                </div>
-                <div className="min-w-0 text-center sm:text-left">
-                  <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">案内役</p>
-                  <h2 className="mt-2 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
-                    {primaryCharacter.name}
-                  </h2>
-                  <p className="mt-2 text-base leading-7 text-stone-700 sm:text-sm">
-                    {primaryCharacter.subtitle}
+              <div className="inline-flex items-center rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold tracking-[0.14em] text-amber-800 backdrop-blur-sm">
+                高知・日曜市の入口
+              </div>
+
+              <h1 className="mt-4 text-[2.45rem] font-bold leading-tight text-[#40230e] sm:text-[3rem] md:text-[4.6rem]">
+                はじめてでも、
+                <br />
+                迷わず歩き出せる。
+                <br />
+                nicchyoの日曜市マップ。
+              </h1>
+
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
+                地図で見つける。
+                <br />
+                相談して、歩き出す。
+              </p>
+
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleMapClick}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white shadow-[0_18px_45px_rgba(184,92,34,0.24)] transition hover:-translate-y-0.5 hover:bg-[#a24f1c] active:scale-[0.98]"
+                >
+                  マップを見る
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={() =>
+                    handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d8b896] bg-white/80 px-7 py-4 text-base font-semibold text-[#6f3a16] backdrop-blur-sm transition hover:bg-white"
+                >
+                  相談してみる
+                </button>
+              </div>
+
+              <div className="mt-5 max-w-sm">
+                <div className="rounded-2xl border border-white/70 bg-white/75 p-4 text-center backdrop-blur-sm">
+                  <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
+                    今週の訪問者数
                   </p>
-                  <div className="mt-4 rounded-[1.4rem] bg-[#fffaf4] px-4 py-3 text-left">
-                    <p className="text-lg leading-8 text-stone-700">
-                      正解はなくていいき。
-                      <br />
-                      まずは安心して歩こうかね。
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCharacterConsultClick(primaryCharacter.id)}
-                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-full border border-[#d8b896] bg-white px-5 py-3 text-sm font-semibold text-[#6f3a16] transition hover:bg-amber-50"
-                  >
-                    にちよさんに相談する
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                  <p className="mt-2 text-2xl font-bold text-[#4c2810]">
+                    {summary.weeklyVisitorTotal !== null
+                      ? `${summary.weeklyVisitorTotal.toLocaleString()}人`
+                      : "--"}
+                  </p>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.75, delay: 0.08, ease: "easeOut" }}
+            >
+              <motion.div
+                animate={shouldReduceMotion ? undefined : { y: [0, -6, 0] }}
+                transition={
+                  shouldReduceMotion
+                    ? undefined
+                    : { duration: 4.8, repeat: Infinity, ease: "easeInOut" }
+                }
+                className="rounded-[2rem] border border-white/60 bg-white/72 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm"
+              >
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="mx-auto h-44 w-36 shrink-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-amber-100 to-orange-50 sm:mx-0 sm:h-48 sm:w-40">
+                      <img
+                        src={activeSpeaker.image}
+                        alt={activeSpeaker.name}
+                        className={`h-full w-full object-cover ${activeSpeaker.imageScale}`}
+                        style={{ objectPosition: activeSpeaker.imagePosition }}
+                      />
+                    </div>
+
+                    <div className="min-w-0 text-center sm:text-left">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">案内役</p>
+                      <h2 className="mt-2 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
+                        {activeSpeaker.name}
+                      </h2>
+                      <p className="mt-2 text-sm leading-7 text-stone-700">
+                        {activeSpeaker.subtitle}
+                      </p>
+
+                      <motion.div
+                        key={`${activeSpeaker.id}-${activeSpeechIndex}`}
+                        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.24, ease: "easeOut" }}
+                        className="mt-4 rounded-[1.4rem] bg-[#fffaf4] px-4 py-3 text-left"
+                      >
+                        <p className="text-lg leading-8 text-stone-700">{activeSpeech.line}</p>
+                      </motion.div>
+
+                      <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
+                          }
+                          className="rounded-full bg-[#b85c22] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#a24f1c]"
+                        >
+                          {activeSpeech.chip}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.4rem] bg-[#fffaf4] px-3 py-3">
+                    <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
+                      相談相手をえらぶ
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {heroSpeeches.map((speech, index) => {
+                        const speaker = CONSULT_CHARACTERS.find(
+                          (character) => character.id === speech.characterId
+                        );
+                        if (!speaker) return null;
+
+                        const isActive = index === activeSpeechIndex;
+                        return (
+                          <button
+                            key={`${speech.characterId}-${index}`}
+                            type="button"
+                            onClick={() => setActiveSpeechIndex(index)}
+                            className={`flex items-center gap-2 rounded-2xl border px-2 py-2 text-left transition ${
+                              isActive
+                                ? "border-amber-300 bg-white shadow-sm"
+                                : "border-transparent bg-white/70 hover:border-amber-200"
+                            }`}
+                          >
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-amber-100 to-orange-50">
+                              <img
+                                src={speaker.image}
+                                alt={speaker.name}
+                                className={`h-full w-full object-cover ${speaker.imageScale}`}
+                                style={{ objectPosition: speaker.imagePosition }}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-[#5b3015]">
+                                {speaker.name}
+                              </p>
+                              <p className="line-clamp-2 text-[11px] leading-4 text-stone-500">
+                                {speech.chip}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -432,11 +428,13 @@ export default function HomePage() {
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
+        viewport={{ once: true, amount: 0.18 }}
       >
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <motion.div className="py-2" variants={revealVariants}>
-            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">はじめての日曜市で</p>
+          <motion.div variants={revealVariants}>
+            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">
+              はじめての日曜市で
+            </p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-5xl">
               こんなふうに迷ったとき、
               <br />
@@ -464,20 +462,22 @@ export default function HomePage() {
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
-        viewport={{ once: true, amount: 0.18 }}
+        viewport={{ once: true, amount: 0.16 }}
       >
         <div className="mx-auto max-w-6xl">
           <motion.div className="max-w-3xl" variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">できること</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
-              AIキャラが、検索と会話の
+              見つける。
               <br />
-              あいだをつなぐ。
+              聞ける。
+              <br />
+              歩き出せる。
             </h2>
           </motion.div>
 
           <motion.div className="mt-8 grid gap-5 md:grid-cols-3" variants={staggerVariants}>
-            {valueCards.map(({ icon: Icon, title, body }) => (
+            {actionCards.map(({ icon: Icon, title, body }) => (
               <motion.article
                 key={title}
                 variants={revealVariants}
@@ -501,87 +501,50 @@ export default function HomePage() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.16 }}
       >
-        <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
-          <motion.div
-            variants={revealVariants}
-            className="rounded-[2rem] bg-[#4b2a13] p-6 text-white shadow-[0_28px_80px_rgba(75,42,19,0.26)] md:p-8"
-          >
-            <p className="text-sm font-semibold tracking-[0.16em] text-[#f4c899]">使い方</p>
-            <h2 className="mt-3 text-4xl font-bold leading-tight md:text-5xl">
-              検索から始めてもいい。
-              <br />
-              キャラから始めてもいい。
-            </h2>
-            <p className="mt-4 text-lg leading-8 text-white/80 md:text-2xl md:leading-10">
-              探してもいい。
-              <br />
-              話しかけてもいい。
-            </p>
+        <motion.div
+          variants={revealVariants}
+          className="rounded-[2rem] border border-[#ead8c0] bg-white p-5 shadow-[0_18px_48px_rgba(102,58,20,0.08)]"
+        >
+          <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
+          <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
+            キャラたちは、
+            <br />
+            ここで待っています。
+          </h2>
+          <p className="mt-3 text-lg leading-8 text-stone-700">
+            気になる相手を選んで、
+            <br />
+            そのまま相談できます。
+          </p>
 
-            <motion.div className="mt-6 grid gap-3 sm:grid-cols-2" variants={staggerVariants}>
-              {flowSteps.map(({ icon: Icon, title, body }, index) => (
-                <motion.div key={title} variants={revealVariants} className="rounded-2xl bg-white/10 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-[#ffd8b1]">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold tracking-[0.14em] text-[#f4c899]">
-                        STEP {index + 1}
-                      </p>
-                      <h3 className="mt-1 text-2xl font-bold">{title}</h3>
-                      <p className="mt-2 text-lg leading-7 text-white/75">{body}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            variants={revealVariants}
-            className="rounded-[2rem] border border-[#ead8c0] bg-white p-5 shadow-[0_18px_48px_rgba(102,58,20,0.08)]"
-          >
-            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
-            <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
-              キャラたちは、
-              <br />
-              ここで待っています。
-            </h2>
-            <p className="mt-3 text-lg leading-8 text-stone-700">
-              気になる相手を選んで、
-              <br />
-              そのまま相談できます。
-            </p>
-            <motion.div className="mt-5 grid grid-cols-2 gap-3" variants={staggerVariants}>
-              {CONSULT_CHARACTERS.map((character) => (
-                <motion.div
-                  key={character.id}
-                  variants={revealVariants}
-                  className="rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-3"
+          <motion.div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4" variants={staggerVariants}>
+            {CONSULT_CHARACTERS.map((character) => (
+              <motion.div
+                key={character.id}
+                variants={revealVariants}
+                className="rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-3"
+              >
+                <CharacterPortrait
+                  image={character.image}
+                  name={character.name}
+                  imageScale={character.imageScale}
+                  imagePosition={character.imagePosition}
+                  className="h-40"
+                />
+                <p className="mt-3 text-lg font-bold text-[#5b3015]">{character.name}</p>
+                <p className="mt-1 text-sm leading-7 text-stone-600">{character.personality}</p>
+                <button
+                  type="button"
+                  onClick={() => handleCharacterConsultClick(character.id)}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-amber-700"
                 >
-                  <CharacterPortrait
-                    image={character.image}
-                    name={character.name}
-                    imageScale={character.imageScale}
-                    imagePosition={character.imagePosition}
-                    className="h-40"
-                  />
-                  <p className="mt-3 text-lg font-bold text-[#5b3015]">{character.name}</p>
-                  <p className="mt-1 text-sm leading-7 text-stone-600">{character.personality}</p>
-                  <button
-                    type="button"
-                    onClick={() => handleCharacterConsultClick(character.id)}
-                    className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-amber-700"
-                  >
-                    このキャラに相談する
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </motion.div>
-              ))}
-            </motion.div>
+                  このキャラに相談する
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </motion.div>
+            ))}
           </motion.div>
-        </div>
+        </motion.div>
       </motion.section>
 
       <motion.section
@@ -634,24 +597,14 @@ export default function HomePage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="mx-auto max-w-5xl rounded-[2.5rem] bg-[#4b2a13] px-6 py-10 text-white shadow-[0_35px_100px_rgba(75,42,19,0.28)] md:px-8 md:py-12">
-          <div className="grid gap-6 md:grid-cols-[0.95fr_1.05fr] md:items-center">
+          <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-center">
             <div className="mx-auto w-full max-w-xs">
               <motion.div
-                animate={
-                  shouldReduceMotion
-                    ? undefined
-                    : {
-                        rotate: [0, -1.5, 0, 1.5, 0],
-                      }
-                }
+                animate={shouldReduceMotion ? undefined : { rotate: [0, -1.2, 0, 1.2, 0] }}
                 transition={
                   shouldReduceMotion
                     ? undefined
-                    : {
-                        duration: 7,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }
+                    : { duration: 7, repeat: Infinity, ease: "easeInOut" }
                 }
               >
                 <CharacterPortrait
@@ -665,16 +618,18 @@ export default function HomePage() {
             </div>
 
             <div className="text-center md:text-left">
-              <p className="text-sm font-semibold tracking-[0.16em] text-[#f0c694]">日曜市へ出かける前に</p>
+              <p className="text-sm font-semibold tracking-[0.16em] text-[#f0c694]">
+                日曜市へ出かける前に
+              </p>
               <h2 className="mt-3 text-4xl font-bold leading-tight md:text-6xl">
-                さあ、日曜市へ。
+                まずは、マップを開く。
                 <br />
-                迷ったら、まず相談。
+                それでも迷ったら、相談する。
               </h2>
               <p className="mt-4 text-lg leading-8 text-white/80 md:text-2xl md:leading-10">
-                マップでもいい。
+                ひとりで迷い続けなくていい。
                 <br />
-                相談からでもいい。
+                nicchyoが入口になります。
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row md:justify-start">
