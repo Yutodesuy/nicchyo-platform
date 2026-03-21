@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronRight,
   MapPin,
@@ -118,9 +118,39 @@ function CharacterPortrait({
   );
 }
 
+function createRevealVariants(shouldReduceMotion: boolean) {
+  return {
+    hidden: {
+      opacity: 0,
+      y: shouldReduceMotion ? 0 : 24,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: shouldReduceMotion ? 0.18 : 0.55,
+        ease: "easeOut",
+      },
+    },
+  };
+}
+
+function createStaggerVariants(shouldReduceMotion: boolean) {
+  return {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: shouldReduceMotion ? 0 : 0.12,
+        delayChildren: shouldReduceMotion ? 0 : 0.05,
+      },
+    },
+  };
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { startMapLoading } = useMapLoading();
+  const shouldReduceMotion = useReducedMotion();
   const [loaded, setLoaded] = useState(false);
   const [summary, setSummary] = useState<HomeSummary>({
     categoryCount: null,
@@ -216,6 +246,8 @@ export default function HomePage() {
   const activeSpeaker =
     CONSULT_CHARACTERS.find((character) => character.id === activeSpeech.characterId) ??
     primaryCharacter;
+  const revealVariants = createRevealVariants(shouldReduceMotion);
+  const staggerVariants = createStaggerVariants(shouldReduceMotion);
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
@@ -337,7 +369,25 @@ export default function HomePage() {
             transition={{ duration: 0.8, delay: 0.08, ease: "easeOut" }}
             className="order-2"
           >
-            <div className="rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm">
+            <motion.div
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : {
+                      y: [0, -6, 0],
+                    }
+              }
+              transition={
+                shouldReduceMotion
+                  ? undefined
+                  : {
+                      duration: 4.6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }
+              }
+              className="rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="mx-auto h-44 w-36 shrink-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-amber-100 to-orange-50 sm:mx-0 sm:h-48 sm:w-40">
                   <img
@@ -372,51 +422,65 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10">
+      <motion.section
+        className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10"
+        variants={staggerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
         <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="py-2">
+          <motion.div className="py-2" variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">はじめての日曜市で</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-5xl">
               こんなふうに迷ったとき、
               <br />
               nicchyoが入口になります。
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <motion.div className="grid gap-3 sm:grid-cols-3" variants={staggerVariants}>
             {problemCards.map((item) => (
-              <div
+              <motion.div
                 key={item}
+                variants={revealVariants}
                 className="rounded-[1.75rem] border border-[#f0e0cb] bg-[#fffaf4] p-5 shadow-sm"
               >
                 <ShieldCheck className="h-6 w-6 text-[#b85c22]" />
                 <p className="mt-4 text-lg leading-8 text-stone-700">{item}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="bg-[#fffaf4] px-4 py-14 sm:px-6 md:px-10">
+      <motion.section
+        className="bg-[#fffaf4] px-4 py-14 sm:px-6 md:px-10"
+        variants={staggerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.18 }}
+      >
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-3xl">
+          <motion.div className="max-w-3xl" variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">できること</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
               AIキャラが、検索と会話の
               <br />
               あいだをつなぐ。
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
+          <motion.div className="mt-8 grid gap-5 md:grid-cols-3" variants={staggerVariants}>
             {valueCards.map(({ icon: Icon, title, body }) => (
-              <article
+              <motion.article
                 key={title}
+                variants={revealVariants}
                 className="rounded-[2rem] border border-[#ecd8bf] bg-white p-6 shadow-[0_20px_60px_rgba(102,58,20,0.06)]"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7e0c1] text-[#a24f1c]">
@@ -424,15 +488,24 @@ export default function HomePage() {
                 </div>
                 <h3 className="mt-5 text-2xl font-bold text-[#4c2810]">{title}</h3>
                 <p className="mt-3 text-lg leading-8 text-stone-700">{body}</p>
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10">
+      <motion.section
+        className="mx-auto max-w-6xl px-4 py-14 sm:px-6 md:px-10"
+        variants={staggerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.16 }}
+      >
         <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
-          <div className="rounded-[2rem] bg-[#4b2a13] p-6 text-white shadow-[0_28px_80px_rgba(75,42,19,0.26)] md:p-8">
+          <motion.div
+            variants={revealVariants}
+            className="rounded-[2rem] bg-[#4b2a13] p-6 text-white shadow-[0_28px_80px_rgba(75,42,19,0.26)] md:p-8"
+          >
             <p className="text-sm font-semibold tracking-[0.16em] text-[#f4c899]">使い方</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight md:text-5xl">
               検索から始めてもいい。
@@ -445,9 +518,9 @@ export default function HomePage() {
               話しかけてもいい。
             </p>
 
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <motion.div className="mt-6 grid gap-3 sm:grid-cols-2" variants={staggerVariants}>
               {flowSteps.map(({ icon: Icon, title, body }, index) => (
-                <div key={title} className="rounded-2xl bg-white/10 p-4">
+                <motion.div key={title} variants={revealVariants} className="rounded-2xl bg-white/10 p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-[#ffd8b1]">
                       <Icon className="h-5 w-5" />
@@ -460,12 +533,15 @@ export default function HomePage() {
                       <p className="mt-2 text-lg leading-7 text-white/75">{body}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="rounded-[2rem] border border-[#ead8c0] bg-white p-5 shadow-[0_18px_48px_rgba(102,58,20,0.08)]">
+          <motion.div
+            variants={revealVariants}
+            className="rounded-[2rem] border border-[#ead8c0] bg-white p-5 shadow-[0_18px_48px_rgba(102,58,20,0.08)]"
+          >
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
             <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
               キャラたちは、
@@ -477,10 +553,11 @@ export default function HomePage() {
               <br />
               そのまま相談できます。
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <motion.div className="mt-5 grid grid-cols-2 gap-3" variants={staggerVariants}>
               {CONSULT_CHARACTERS.map((character) => (
-                <div
+                <motion.div
                   key={character.id}
+                  variants={revealVariants}
                   className="rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-3"
                 >
                   <CharacterPortrait
@@ -500,16 +577,22 @@ export default function HomePage() {
                     このキャラに相談する
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                </div>
+                </motion.div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="bg-[#efe1ce] px-4 py-14 sm:px-6 md:px-10">
+      <motion.section
+        className="bg-[#efe1ce] px-4 py-14 sm:px-6 md:px-10"
+        variants={staggerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.18 }}
+      >
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_0.95fr]">
-          <div>
+          <motion.div variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#8d4e22]">nicchyoについて</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
               急がせない。
@@ -521,35 +604,64 @@ export default function HomePage() {
               <br />
               情報より、歩きやすさ。
             </p>
-          </div>
+          </motion.div>
 
-          <div className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm">
+          <motion.div
+            variants={revealVariants}
+            className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm"
+          >
             <p className="text-lg font-bold text-[#5b3015]">信頼できる理由</p>
-            <div className="mt-5 space-y-3">
+            <motion.div className="mt-5 space-y-3" variants={staggerVariants}>
               {trustPoints.map((item) => (
-                <div
+                <motion.div
                   key={item}
+                  variants={revealVariants}
                   className="rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4 text-lg leading-8 text-stone-700"
                 >
                   {item}
-                </div>
+                </motion.div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="px-4 py-16 sm:px-6 md:px-10">
+      <motion.section
+        className="px-4 py-16 sm:px-6 md:px-10"
+        variants={revealVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+      >
         <div className="mx-auto max-w-5xl rounded-[2.5rem] bg-[#4b2a13] px-6 py-10 text-white shadow-[0_35px_100px_rgba(75,42,19,0.28)] md:px-8 md:py-12">
           <div className="grid gap-6 md:grid-cols-[0.95fr_1.05fr] md:items-center">
             <div className="mx-auto w-full max-w-xs">
-              <CharacterPortrait
-                image={primaryCharacter.image}
-                name={primaryCharacter.name}
-                imageScale={primaryCharacter.imageScale}
-                imagePosition={primaryCharacter.imagePosition}
-                className="h-72 border border-white/10 bg-white/10"
-              />
+              <motion.div
+                animate={
+                  shouldReduceMotion
+                    ? undefined
+                    : {
+                        rotate: [0, -1.5, 0, 1.5, 0],
+                      }
+                }
+                transition={
+                  shouldReduceMotion
+                    ? undefined
+                    : {
+                        duration: 7,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }
+                }
+              >
+                <CharacterPortrait
+                  image={primaryCharacter.image}
+                  name={primaryCharacter.name}
+                  imageScale={primaryCharacter.imageScale}
+                  imagePosition={primaryCharacter.imagePosition}
+                  className="h-72 border border-white/10 bg-white/10"
+                />
+              </motion.div>
             </div>
 
             <div className="text-center md:text-left">
@@ -583,7 +695,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
     </main>
   );
 }
