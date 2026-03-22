@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronRight,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMapLoading } from "./components/MapLoadingProvider";
 import { CONSULT_CHARACTERS } from "./(public)/consult/data/consultCharacters";
+import { getActivitiesSortedDesc } from "./data/activities";
 
 type HomeSummary = {
   categoryCount: number | null;
@@ -74,37 +76,6 @@ const actionCards = [
     body: "言葉にしにくくても大丈夫。",
   },
 ];
-
-const trustPoints = [
-  {
-    date: "2025年7月15日",
-    title: "第1回高知市商業振興課街路市担当との会談",
-  },
-  {
-    date: "2025年9月30日",
-    title: "第2回高知市商業振興課街路市担当との会談",
-  },
-  {
-    date: "2025年10月19日",
-    title: "日曜市での来訪者アンケートを実施",
-    note: "133人に実施",
-  },
-  {
-    date: "2026年2月28日",
-    title: "こうちNPOアワード2025「ワカモノ未来賞」受賞",
-  },
-  {
-    date: "2026年3月17日",
-    title: "第2回高知市商業振興課街路市担当との会談",
-  },
-] as const;
-
-function parseJapaneseDateToNumber(value: string) {
-  const match = value.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-  if (!match) return 0;
-  const [, year, month, day] = match;
-  return Number(`${year}${month.padStart(2, "0")}${day.padStart(2, "0")}`);
-}
 
 const characterCardDescriptions: Record<string, string> = {
   nichiyosan: "やさしく案内してくれる。",
@@ -186,7 +157,6 @@ export default function HomePage() {
     weeklyVisitorTotal: null,
   });
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(0);
-  const [showAllTrustPoints, setShowAllTrustPoints] = useState(false);
   const [isMapLaunching, setIsMapLaunching] = useState(false);
 
   useEffect(() => {
@@ -281,15 +251,10 @@ export default function HomePage() {
     CONSULT_CHARACTERS.find((character) => character.id === activeSpeech.characterId) ??
     primaryCharacter;
   const sortedTrustPoints = useMemo(
-    () =>
-      [...trustPoints].sort(
-        (a, b) => parseJapaneseDateToNumber(b.date) - parseJapaneseDateToNumber(a.date)
-      ),
+    () => getActivitiesSortedDesc(),
     []
   );
-  const visibleTrustPoints = showAllTrustPoints
-    ? sortedTrustPoints
-    : sortedTrustPoints.slice(0, 5);
+  const visibleTrustPoints = sortedTrustPoints.slice(0, 5);
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
@@ -661,38 +626,45 @@ export default function HomePage() {
           </motion.div>
 
           <motion.div variants={revealVariants} className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm">
-            <p className="text-lg font-bold text-[#5b3015]">取り組み</p>
-            <motion.div className="mt-5 space-y-3" variants={staggerVariants}>
+            <p className="text-lg font-bold text-[#5b3015]">直近の取り組み</p>
+            <motion.div
+              key="trust-top"
+              className="mt-5 space-y-3"
+              variants={staggerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {visibleTrustPoints.map((item) => (
                 <motion.div
                   key={`${item.date}-${item.title}`}
                   variants={revealVariants}
-                  className="rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4"
+                  className="rounded-2xl"
                 >
-                  <p className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
-                    {item.date}
-                  </p>
-                  <p className="mt-1 text-base font-semibold leading-7 text-stone-800">
-                    {item.title}
-                  </p>
-                  {"note" in item && item.note ? (
-                    <p className="mt-1 text-sm leading-6 text-stone-500">{item.note}</p>
-                  ) : null}
+                  <Link
+                    href={`/activities/${item.slug}`}
+                    className="block rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4 transition hover:bg-white"
+                  >
+                    <p className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
+                      {item.date}
+                    </p>
+                    <p className="mt-1 text-base font-semibold leading-7 text-stone-800">
+                      {item.title}
+                    </p>
+                    {"note" in item && item.note ? (
+                      <p className="mt-1 text-sm leading-6 text-stone-500">{item.note}</p>
+                    ) : null}
+                  </Link>
                 </motion.div>
               ))}
             </motion.div>
-            {sortedTrustPoints.length > 5 ? (
-              <button
-                type="button"
-                onClick={() => setShowAllTrustPoints((prev) => !prev)}
-                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-700"
-              >
-                {showAllTrustPoints ? "表示をたたむ" : "もっと見る"}
-                <ChevronRight
-                  className={`h-4 w-4 transition-transform ${showAllTrustPoints ? "rotate-90" : ""}`}
-                />
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => router.push("/activities")}
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129]"
+            >
+              取り組み一覧を見る
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </motion.div>
         </div>
       </motion.section>
