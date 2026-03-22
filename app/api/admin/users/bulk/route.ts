@@ -8,10 +8,6 @@ export const dynamic = "force-dynamic";
 
 type BulkAction = "suspend" | "restore" | "delete";
 
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
-
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const record = user as {
@@ -19,6 +15,10 @@ function getRole(user: unknown) {
     user_metadata?: { role?: string };
   };
   return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
+}
+
+function isAdminRole(role: string | null) {
+  return role === "super_admin" || role === "admin";
 }
 
 export async function POST(request: Request) {
@@ -39,14 +39,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Supabase env missing" }, { status: 500 });
     }
 
+    const MAX_BULK = 200;
     const body = (await request.json()) as { action: BulkAction; ids: string[] };
     const { action, ids } = body;
 
     if (!action || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
-    if (ids.length > 200) {
-      return NextResponse.json({ error: "一度に操作できるのは200件までです" }, { status: 400 });
+    if (ids.length > MAX_BULK) {
+      return NextResponse.json({ error: `一度に操作できるのは${MAX_BULK}件までです` }, { status: 400 });
+    }
+    // 自分自身への操作を除外
+    const safeIds = ids.filter((id) => id !== user.id);
+    if (safeIds.length === 0) {
+      return NextResponse.json({ error: "自分自身への操作はできません" }, { status: 400 });
     }
 
     const serviceClient = createServiceClient(supabaseUrl, serviceRoleKey, {
@@ -56,21 +62,19 @@ export async function POST(request: Request) {
     const errors: string[] = [];
 
     if (action === "delete") {
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.deleteUser(id);
         if (error) errors.push(id);
       }
     } else if (action === "suspend") {
-      const bannedUntil = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(); // 100年
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.updateUserById(id, {
           ban_duration: "876000h",
         });
         if (error) errors.push(id);
       }
-      void bannedUntil; // suppress unused warning
     } else if (action === "restore") {
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.updateUserById(id, {
           ban_duration: "none",
         });
@@ -80,14 +84,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
 
-    // 監査ログに記録
     const actionLabel = action === "delete" ? "削除" : action === "suspend" ? "停止" : "復活";
     await serviceClient.from("admin_audit_logs").insert({
       actor_id: user.id,
-      action: `bulk_${action}`,
-      target_type: "vendor",
-      target_id: ids.join(","),
-      details: `${ids.length}件を一括${actionLabel}`,
+      action: `bulk_${action}_user`,
+      target_type: "user",
+      target_id: safeIds.join(","),
+      details: `${safeIds.length}件を一括${actionLabel}`,
     });
 
     if (errors.length > 0) {
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, count: ids.length });
+    return NextResponse.json({ ok: true, count: safeIds.length });
   } catch {
     return NextResponse.json({ error: "Failed to process bulk action" }, { status: 500 });
   }
