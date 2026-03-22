@@ -9,7 +9,6 @@ import {
   MapPin,
   MessageCircle,
   Search,
-  ShieldCheck,
   Sparkles,
   Store,
 } from "lucide-react";
@@ -53,29 +52,38 @@ const heroSpeeches = [
   },
 ] as const;
 
-const problemCards = [
-  "広くて、どこから歩けばいいかわからない",
-  "気になるものはあるのに、探し方がわからない",
-  "人に聞きたいけど、最初のひと声が少し緊張する",
-];
-
-const actionCards = [
+const journeyCards = [
   {
+    problem: "広くて、どこから歩けばいいかわからない",
     icon: MapPin,
-    title: "まず、マップを見る",
-    body: "市の広さと現在地をつかむ。",
+    title: "まず、マップで全体を見る",
+    body: "市の広さと位置関係がわかると、最初の一歩が決めやすい。",
+    mediaSrc: "/images/home/Map-Demo.mp4",
+    mediaAlt: "nicchyoのマップ画面デモ",
+    actionLabel: "マップを見てみる",
+    actionType: "map",
   },
   {
+    problem: "気になるものはあるのに、探し方がわからない",
     icon: Search,
     title: "気になるものを探す",
-    body: "食べたいものから、すぐ探せる。",
+    body: "食べたいものや見たいものから探せると、歩く理由が見えてくる。",
+    mediaSrc: "/images/home/Search-Demo.mp4",
+    mediaAlt: "nicchyoの検索につながるマップ画面デモ",
+    actionLabel: "マップから探してみる",
+    actionType: "map",
   },
   {
+    problem: "人に聞きたいけど、最初のひと声が少し緊張する",
     icon: MessageCircle,
-    title: "迷ったら相談する",
-    body: "言葉にしにくくても大丈夫。",
+    title: "迷ったら、案内役に相談する",
+    body: "言葉にしにくい迷いでも、会話から次の行き先を決められる。",
+    mediaSrc: "/images/home/Consult-Demo.mp4",
+    mediaAlt: "nicchyoの相談画面デモ",
+    actionLabel: "相談を試してみる",
+    actionType: "consult",
   },
-];
+] as const;
 
 const characterCardDescriptions: Record<string, string> = {
   nichiyosan: "やさしく案内してくれる。",
@@ -164,6 +172,7 @@ export default function HomePage() {
     weeklyVisitorTotal: null,
   });
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(0);
+  const [activeJourneyIndex, setActiveJourneyIndex] = useState(0);
   const [isMapLaunching, setIsMapLaunching] = useState(false);
 
   useEffect(() => {
@@ -289,20 +298,20 @@ export default function HomePage() {
               </div>
 
               <h1 className="mt-4 text-[2.45rem] font-bold leading-tight text-[#40230e] sm:text-[3rem] md:text-[4.6rem]">
-                はじめてでも、
-                <br />
-                迷わず歩き出せる。
-                <br />
-                nicchyoの日曜市マップ。
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
                 地図で見つける。
                 <br />
                 相談して、歩き出す。
+                <br />
+                はじめての日曜市へ。
+              </h1>
+
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
+                気になるお店を探して、
+                <br />
+                迷ったら案内役に聞ける。
               </p>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="sticky bottom-4 z-20 mt-8 -mx-1 rounded-[1.5rem] bg-white/78 p-2 backdrop-blur-md sm:static sm:mx-0 sm:rounded-none sm:bg-transparent sm:p-0 sm:backdrop-blur-0">
                 <motion.button
                   onClick={handleMapClick}
                   whileHover={
@@ -336,7 +345,7 @@ export default function HomePage() {
                         ? { duration: 0.34, ease: "easeOut" }
                         : { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
                   }
-                  className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white"
+                  className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white sm:w-auto sm:self-start"
                 >
                   <span className="absolute inset-0 bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.22)_28%,transparent_46%)] opacity-70 transition-transform duration-700 group-hover:translate-x-8" />
                   <span className="absolute inset-[1px] rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_55%)]" />
@@ -370,9 +379,10 @@ export default function HomePage() {
                   onClick={() =>
                     handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
                   }
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#e4d2bc] bg-white/60 px-6 py-4 text-sm font-semibold text-[#8a5129] backdrop-blur-sm transition hover:bg-white"
+                  className="mt-3 inline-flex items-center gap-2 self-start pl-1 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
                 >
-                  相談してみる
+                  迷ったら案内役に相談する
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
 
@@ -388,6 +398,7 @@ export default function HomePage() {
                   </p>
                 </div>
               </div>
+
             </motion.div>
 
             <motion.div
@@ -420,7 +431,7 @@ export default function HomePage() {
                       <h2 className="mt-3 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
                         {activeSpeaker.name}
                       </h2>
-                      <p className="mt-3 text-sm leading-7 text-stone-700">
+                      <p className="mt-2 text-sm leading-7 text-stone-700">
                         {activeSpeaker.subtitle}
                       </p>
 
@@ -433,15 +444,24 @@ export default function HomePage() {
                       >
                         <p className="text-lg leading-8 text-stone-700">{activeSpeech.line}</p>
                       </motion.div>
-
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
+                        }
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
+                      >
+                        この案内役に聞いてみる
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
 
                   <div className="rounded-[1.4rem] bg-[#fffaf4] px-3 py-4">
                     <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
-                      相談相手をえらぶ
+                      案内役を切り替える
                     </p>
-                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="mt-4 grid grid-cols-4 gap-2">
                       {heroSpeeches.map((speech, index) => {
                         const speaker = CONSULT_CHARACTERS.find(
                           (character) => character.id === speech.characterId
@@ -454,7 +474,7 @@ export default function HomePage() {
                             key={`${speech.characterId}-${index}`}
                             type="button"
                             onClick={() => setActiveSpeechIndex(index)}
-                            className={`flex items-center gap-2 rounded-2xl border px-2 py-2 text-left transition ${
+                            className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-center transition ${
                               isActive
                                 ? "border-amber-300 bg-white shadow-sm"
                                 : "border-transparent bg-white/70 hover:border-amber-200"
@@ -468,14 +488,9 @@ export default function HomePage() {
                                 style={{ objectPosition: speaker.imagePosition }}
                               />
                             </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-bold text-[#5b3015]">
-                                {speaker.name}
-                              </p>
-                              <p className="text-[11px] leading-4 text-stone-500">
-                                {speech.chip}
-                              </p>
-                            </div>
+                            <p className="line-clamp-2 text-[11px] font-bold leading-4 text-[#5b3015]">
+                              {speaker.name}
+                            </p>
                           </button>
                         );
                       })}
@@ -489,72 +504,120 @@ export default function HomePage() {
       </section>
 
       <motion.section
-        className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
-        variants={staggerVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.18 }}
-      >
-        <div className="space-y-8">
-          <motion.div variants={revealVariants}>
-            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">
-              はじめての日曜市で
-            </p>
-            <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-5xl">
-              こんなふうに迷ったとき、
-              <br />
-              nicchyoが入口になります。
-            </h2>
-          </motion.div>
-
-          <motion.div className="grid gap-3 sm:grid-cols-3" variants={staggerVariants}>
-            {problemCards.map((item) => (
-              <motion.div
-                key={item}
-                variants={revealVariants}
-                className="rounded-[1.75rem] border border-[#f0e0cb] bg-[#fffaf4] p-5 shadow-sm"
-              >
-                <ShieldCheck className="h-6 w-6 text-[#b85c22]" />
-                <p className="mt-4 text-lg leading-8 text-stone-700">{item}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.section>
-
-      <motion.section
         className="bg-[#fffaf4] px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.16 }}
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-5xl space-y-8">
           <motion.div className="max-w-3xl" variants={revealVariants}>
-            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">できること</p>
+            <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">
+              はじめての日曜市で
+            </p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
-              見つける。
+              迷った場面から、
               <br />
-              聞ける。
-              <br />
-              歩き出せる。
+              そのまま使いはじめられる。
             </h2>
+            <p className="mt-4 text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
+              気になる項目をひらくと、
+              <br />
+              使い方と画面がまとめてわかります。
+            </p>
           </motion.div>
 
-          <motion.div className="mt-10 grid gap-5 md:grid-cols-3" variants={staggerVariants}>
-            {actionCards.map(({ icon: Icon, title, body }) => (
+          <motion.div className="space-y-4" variants={staggerVariants}>
+            {journeyCards.map(
+              ({ problem, icon: Icon, title, body, mediaSrc, mediaAlt, actionLabel, actionType }, index) => (
               <motion.article
                 key={title}
                 variants={revealVariants}
-                className="rounded-[2rem] border border-[#ecd8bf] bg-white p-5 shadow-[0_20px_60px_rgba(102,58,20,0.06)]"
+                className={`overflow-hidden rounded-[2rem] border bg-white shadow-[0_20px_60px_rgba(102,58,20,0.06)] transition ${
+                  activeJourneyIndex === index
+                    ? "border-[#ddb88f]"
+                    : "border-[#ecd8bf]"
+                }`}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7e0c1] text-[#a24f1c]">
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h3 className="mt-5 text-2xl font-bold text-[#4c2810]">{title}</h3>
-                <p className="mt-3 text-lg leading-8 text-stone-700">{body}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveJourneyIndex(index)}
+                  aria-expanded={activeJourneyIndex === index}
+                  className="flex w-full items-center gap-4 px-5 py-5 text-left md:px-6"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f7e0c1] text-[#a24f1c]">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold tracking-[0.14em] text-[#b85c22]">
+                      こんなとき
+                    </p>
+                    <p className="mt-1 text-lg font-semibold leading-8 text-stone-800 md:text-xl">
+                      {problem}
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className={`h-5 w-5 shrink-0 text-[#8a5129] transition-transform duration-300 ${
+                      activeJourneyIndex === index ? "rotate-90" : ""
+                    }`}
+                  />
+                </button>
+
+                {activeJourneyIndex === index ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    className="border-t border-[#f0dfca] bg-[#fffdf9] px-5 py-5 md:px-6"
+                  >
+                    <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] md:items-start">
+                      <div className="space-y-4">
+                        <div className="rounded-[1.5rem] bg-[#fff7ec] px-4 py-4">
+                          <p className="text-xs font-semibold tracking-[0.14em] text-[#9a5a2e]">
+                            こう使う
+                          </p>
+                          <h3 className="mt-2 text-2xl font-bold text-[#4c2810]">{title}</h3>
+                          <p className="mt-3 text-lg leading-8 text-stone-700">{body}</p>
+                        </div>
+
+                        <div className="rounded-[1.5rem] bg-white px-4 py-4 ring-1 ring-[#f1e2cf]">
+                          <p className="text-sm leading-7 text-stone-700">
+                            まずはここから試せます。
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              actionType === "map"
+                                ? handleMapClick()
+                                : handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
+                            }
+                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
+                          >
+                            {actionLabel}
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-[1.6rem] bg-[#eadcc9] shadow-[0_16px_40px_rgba(102,58,20,0.12)]">
+                        <video
+                          src={mediaSrc}
+                          aria-label={mediaAlt}
+                          className="aspect-[2/3] h-full w-full object-cover"
+                          autoPlay={!shouldReduceMotion}
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                          controls={shouldReduceMotion}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
               </motion.article>
-            ))}
+            )
+            )}
           </motion.div>
         </div>
       </motion.section>
@@ -572,39 +635,38 @@ export default function HomePage() {
         >
           <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
-            気になる相手を、
+            話しやすそうな相手を、
             <br />
-            そのまま選べます。
+            ひとり選べばいい。
           </h2>
-          <p className="mt-4 text-lg leading-8 text-stone-700">話しやすそうな相手を選べます。</p>
+          <p className="mt-4 text-lg leading-8 text-stone-700">
+            それぞれ話し方がちがいます。
+          </p>
 
-          <motion.div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4" variants={staggerVariants}>
+          <motion.div className="mt-8 grid gap-3 md:grid-cols-2" variants={staggerVariants}>
             {CONSULT_CHARACTERS.map((character) => (
-              <motion.div
+              <motion.button
                 key={character.id}
                 variants={revealVariants}
-                className="rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-3"
+                type="button"
+                onClick={() => handleCharacterConsultClick(character.id)}
+                className="group flex items-center gap-4 rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-4 text-left transition duration-300 hover:-translate-y-0.5 hover:border-[#e1c8a8] hover:bg-white"
               >
                 <CharacterPortrait
                   image={character.image}
                   name={character.name}
                   imageScale={character.imageScale}
                   imagePosition={character.imagePosition}
-                  className="h-40"
+                  className="h-24 w-24 shrink-0"
                 />
-                <p className="mt-3 text-lg font-bold text-[#5b3015]">{character.name}</p>
-                <p className="mt-1 text-sm leading-6 text-stone-600">
-                  {characterCardDescriptions[character.id] ?? character.subtitle}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleCharacterConsultClick(character.id)}
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-amber-700"
-                >
-                  このキャラに相談する
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </motion.div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-bold text-[#5b3015]">{character.name}</p>
+                  <p className="mt-1 text-sm leading-6 text-stone-600">
+                    {characterCardDescriptions[character.id] ?? character.subtitle}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-amber-700 transition duration-300 group-hover:translate-x-1" />
+              </motion.button>
             ))}
           </motion.div>
         </motion.div>
@@ -632,9 +694,17 @@ export default function HomePage() {
               <br />
               安心して歩き出せるように。
             </p>
+            <p className="mt-5 max-w-3xl text-base leading-8 text-stone-700 md:text-xl md:leading-9">
+              この考え方を机上のアイデアで終わらせず、
+              <br />
+              現地調査や対話を重ねながら育てています。
+            </p>
           </motion.div>
 
           <motion.div variants={revealVariants} className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm">
+            <p className="text-sm font-semibold tracking-[0.14em] text-[#9a5a2e]">
+              考え方を支えている実際の動き
+            </p>
             <p className="text-lg font-bold text-[#5b3015]">直近の取り組み</p>
             {latestTrustPoint ? (
               <motion.div
