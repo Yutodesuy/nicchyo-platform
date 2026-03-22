@@ -293,22 +293,18 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, ease: "easeOut" }}
             >
-              <div className="inline-flex items-center rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold tracking-[0.14em] text-amber-800 backdrop-blur-sm">
-                高知・日曜市の入口
-              </div>
-
-              <h1 className="mt-4 text-[2.45rem] font-bold leading-tight text-[#40230e] sm:text-[3rem] md:text-[4.6rem]">
-                地図で見つける。
+              <h1 className="text-[2.45rem] font-bold leading-tight text-[#40230e] sm:text-[3rem] md:text-[4.6rem]">
+                nicchyoは、
                 <br />
-                相談して、歩き出す。
+                高知県・日曜市の
                 <br />
-                はじめての日曜市へ。
+                デジタルマップ。
               </h1>
 
               <p className="mt-4 max-w-2xl text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
-                気になるお店を探して、
+                はじめてでも、
                 <br />
-                迷ったら案内役に聞ける。
+                日曜市を全力で楽しめる。
               </p>
 
               <div className="sticky bottom-4 z-20 mt-8 -mx-1 rounded-[1.5rem] bg-white/78 p-2 backdrop-blur-md sm:static sm:mx-0 sm:rounded-none sm:bg-transparent sm:p-0 sm:backdrop-blur-0">
@@ -407,7 +403,7 @@ export default function HomePage() {
               transition={{ duration: 0.75, delay: 0.08, ease: "easeOut" }}
             >
               <motion.div
-                animate={shouldReduceMotion ? undefined : { y: [0, -6, 0] }}
+                animate={shouldReduceMotion ? undefined : { y: [0, -4, 0] }}
                 transition={
                   shouldReduceMotion
                     ? undefined
@@ -415,87 +411,64 @@ export default function HomePage() {
                 }
                 className="rounded-[2rem] border border-white/60 bg-white/72 p-4 shadow-[0_24px_70px_rgba(102,58,20,0.12)] backdrop-blur-sm"
               >
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-                    <div className="mx-auto h-44 w-36 shrink-0 overflow-hidden rounded-[1.5rem] bg-gradient-to-b from-amber-100 to-orange-50 sm:mx-0 sm:h-48 sm:w-40">
-                      <img
-                        src={activeSpeaker.image}
-                        alt={activeSpeaker.name}
-                        className={`h-full w-full object-cover ${activeSpeaker.imageScale}`}
-                        style={{ objectPosition: activeSpeaker.imagePosition }}
-                      />
-                    </div>
+                <div className="flex items-center gap-4">
+                  <div className="h-24 w-20 shrink-0 overflow-hidden rounded-[1.2rem] bg-gradient-to-b from-amber-100 to-orange-50">
+                    <img
+                      src={activeSpeaker.image}
+                      alt={activeSpeaker.name}
+                      className={`h-full w-full object-cover ${activeSpeaker.imageScale}`}
+                      style={{ objectPosition: activeSpeaker.imagePosition }}
+                    />
+                  </div>
 
-                    <div className="min-w-0 text-center sm:text-left">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
                       <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">案内役</p>
-                      <h2 className="mt-3 text-2xl font-bold text-[#4c2810] sm:text-[1.9rem]">
-                        {activeSpeaker.name}
-                      </h2>
-                      <p className="mt-2 text-sm leading-7 text-stone-700">
-                        {activeSpeaker.subtitle}
-                      </p>
+                      <p className="text-sm font-bold text-[#4c2810]">{activeSpeaker.name}</p>
+                    </div>
+                    <motion.p
+                      key={`${activeSpeaker.id}-${activeSpeechIndex}`}
+                      initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="mt-2 text-base leading-7 text-stone-700"
+                    >
+                      {activeSpeech.line}
+                    </motion.p>
+                  </div>
+                </div>
 
-                      <motion.div
-                        key={`${activeSpeaker.id}-${activeSpeechIndex}`}
-                        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.24, ease: "easeOut" }}
-                        className="mt-6 rounded-[1.4rem] bg-[#fffaf4] px-4 py-4 text-left"
-                      >
-                        <p className="text-lg leading-8 text-stone-700">{activeSpeech.line}</p>
-                      </motion.div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {heroSpeeches.map((speech, index) => {
+                    const speaker = CONSULT_CHARACTERS.find(
+                      (character) => character.id === speech.characterId
+                    );
+                    if (!speaker) return null;
+
+                    const isActive = index === activeSpeechIndex;
+                    return (
                       <button
+                        key={`${speech.characterId}-${index}`}
                         type="button"
-                        onClick={() =>
-                          handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
-                        }
-                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
+                        onClick={() => setActiveSpeechIndex(index)}
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                          isActive
+                            ? "bg-white text-[#5b3015] shadow-sm ring-1 ring-[#e7c8a3]"
+                            : "bg-white/70 text-stone-600 hover:bg-white"
+                        }`}
                       >
-                        この案内役に聞いてみる
-                        <ChevronRight className="h-4 w-4" />
+                        <span className="h-7 w-7 overflow-hidden rounded-full bg-gradient-to-b from-amber-100 to-orange-50">
+                          <img
+                            src={speaker.image}
+                            alt={speaker.name}
+                            className={`h-full w-full object-cover ${speaker.imageScale}`}
+                            style={{ objectPosition: speaker.imagePosition }}
+                          />
+                        </span>
+                        {speaker.name}
                       </button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1.4rem] bg-[#fffaf4] px-3 py-4">
-                    <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
-                      案内役を切り替える
-                    </p>
-                    <div className="mt-4 grid grid-cols-4 gap-2">
-                      {heroSpeeches.map((speech, index) => {
-                        const speaker = CONSULT_CHARACTERS.find(
-                          (character) => character.id === speech.characterId
-                        );
-                        if (!speaker) return null;
-
-                        const isActive = index === activeSpeechIndex;
-                        return (
-                          <button
-                            key={`${speech.characterId}-${index}`}
-                            type="button"
-                            onClick={() => setActiveSpeechIndex(index)}
-                            className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-center transition ${
-                              isActive
-                                ? "border-amber-300 bg-white shadow-sm"
-                                : "border-transparent bg-white/70 hover:border-amber-200"
-                            }`}
-                          >
-                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-amber-100 to-orange-50">
-                              <img
-                                src={speaker.image}
-                                alt={speaker.name}
-                                className={`h-full w-full object-cover ${speaker.imageScale}`}
-                                style={{ objectPosition: speaker.imagePosition }}
-                              />
-                            </div>
-                            <p className="line-clamp-2 text-[11px] font-bold leading-4 text-[#5b3015]">
-                              {speaker.name}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </motion.div>
             </motion.div>
@@ -516,9 +489,9 @@ export default function HomePage() {
               はじめての日曜市で
             </p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
-              迷った場面から、
+              こんなとき、
               <br />
-              そのまま使いはじめられる。
+              nicchyoがサポートします！
             </h2>
             <p className="mt-4 text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
               気になる項目をひらくと、
@@ -597,9 +570,9 @@ export default function HomePage() {
                             muted
                             loop
                             playsInline
-                            preload="metadata"
-                          controls={shouldReduceMotion}
-                        />
+                            preload="none"
+                            controls={shouldReduceMotion}
+                          />
                         </div>
                         <div className="mt-3 flex justify-end">
                           <button
@@ -641,33 +614,31 @@ export default function HomePage() {
         >
           <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
-            話しやすそうな相手を、
-            <br />
-            ひとり選べばいい。
+            話しやすそうな相手を選ぶ。
           </h2>
-          <p className="mt-4 text-lg leading-8 text-stone-700">
-            それぞれ話し方がちがいます。
+          <p className="mt-3 text-lg leading-8 text-stone-700">
+            気になった相手から、そのまま相談できます。
           </p>
 
-          <motion.div className="mt-8 grid gap-3 md:grid-cols-2" variants={staggerVariants}>
+          <motion.div className="mt-6 grid gap-3 md:grid-cols-2" variants={staggerVariants}>
             {CONSULT_CHARACTERS.map((character) => (
               <motion.button
                 key={character.id}
                 variants={revealVariants}
                 type="button"
                 onClick={() => handleCharacterConsultClick(character.id)}
-                className="group flex items-center gap-4 rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-4 text-left transition duration-300 hover:-translate-y-0.5 hover:border-[#e1c8a8] hover:bg-white"
+                className="group flex items-center gap-3 rounded-[1.5rem] border border-[#f0e0cb] bg-[#fffaf4] p-3 text-left transition duration-300 hover:-translate-y-0.5 hover:border-[#e1c8a8] hover:bg-white"
               >
                 <CharacterPortrait
                   image={character.image}
                   name={character.name}
                   imageScale={character.imageScale}
                   imagePosition={character.imagePosition}
-                  className="h-24 w-24 shrink-0"
+                  className="h-20 w-20 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-lg font-bold text-[#5b3015]">{character.name}</p>
-                  <p className="mt-1 text-sm leading-6 text-stone-600">
+                  <p className="text-base font-bold text-[#5b3015]">{character.name}</p>
+                  <p className="mt-1 text-sm leading-5 text-stone-600">
                     {characterCardDescriptions[character.id] ?? character.subtitle}
                   </p>
                 </div>
@@ -701,9 +672,7 @@ export default function HomePage() {
               安心して歩き出せるように。
             </p>
             <p className="mt-5 max-w-3xl text-base leading-8 text-stone-700 md:text-xl md:leading-9">
-              この考え方を机上のアイデアで終わらせず、
-              <br />
-              現地調査や対話を重ねながら育てています。
+              この考え方を、現地調査と対話で確かめながら育てています。
             </p>
           </motion.div>
 
@@ -867,19 +836,15 @@ export default function HomePage() {
 
             <div>
               <p className="text-sm font-semibold tracking-[0.16em] text-[#f0c694]">
-                日曜市へ出かける前に
+                日曜市が好きになる
               </p>
               <h2 className="mt-3 text-4xl font-bold leading-tight md:text-6xl">
-                まずは、マップを開く。
+                ファン製造機の
                 <br />
-                それでも迷ったら、相談する。
+                nicchyoを、
+                <br />
+                試してみてください！
               </h2>
-              <p className="mt-4 text-lg leading-8 text-white/80 md:text-2xl md:leading-10">
-                ひとりで迷い続けなくていい。
-                <br />
-                nicchyoが入口になります。
-              </p>
-
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <button
                   onClick={handleMapClick}
