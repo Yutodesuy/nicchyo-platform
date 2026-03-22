@@ -4,7 +4,7 @@
 
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, memo, useMemo } from 'react';
 import { ImageOverlay, Polygon, Polyline, Rectangle } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
 import { LatLngBoundsExpression } from 'leaflet';
@@ -25,7 +25,7 @@ import {
 
 const PALM_IMAGE = '/images/maps/elements/decoration/yasinoki.png';
 
-export default function RoadOverlay({
+function RoadOverlay({
   overviewTint = false,
   routePoints,
   routeConfig,
@@ -41,8 +41,14 @@ export default function RoadOverlay({
   const roadThickness = isEastWest ? latSpan : lngSpan;
   const separatorThickness = 0.00004;
   const roadOffset = roadThickness + separatorThickness;
-  const normalizedRoutePoints = normalizeMapRoutePoints(routePoints ?? []);
-  const effectiveRouteConfig = getEffectiveMapRouteConfig(routeConfig);
+  const normalizedRoutePoints = useMemo(
+    () => normalizeMapRoutePoints(routePoints ?? []),
+    [routePoints]
+  );
+  const effectiveRouteConfig = useMemo(
+    () => getEffectiveMapRouteConfig(routeConfig),
+    [routeConfig]
+  );
 
   if (normalizedRoutePoints.length >= 2) {
     return (
@@ -252,6 +258,8 @@ function CurvedRoad({
   );
 }
 
+export default memo(RoadOverlay);
+
 function DynamicRoad({
   points,
   routeConfig,
@@ -261,15 +269,10 @@ function DynamicRoad({
   routeConfig: MapRouteConfig;
   overviewTint?: boolean;
 }) {
-  const chains = getRouteChains(points);
-
-  if (chains.length === 0) {
-    return null;
-  }
-
-  return (
-    <>
-      {chains.map((chain) => {
+  const chainGeometry = useMemo(() => {
+    const chains = getRouteChains(points);
+    return chains
+      .map((chain) => {
         const anchorPoints = chain.points.map((point) => ({
           lat: point.lat,
           lng: point.lng,
@@ -286,10 +289,26 @@ function DynamicRoad({
           return null;
         }
 
+        return {
+          key: chain.key,
+          roadPolygon,
+          smoothedCenterline,
+        };
+      })
+      .filter((item): item is { key: string; roadPolygon: Array<[number, number]>; smoothedCenterline: Array<[number, number]> } => Boolean(item));
+  }, [points, routeConfig.roadHalfWidthMeters]);
+
+  if (chainGeometry.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {chainGeometry.map((chain) => {
         return (
           <Fragment key={chain.key}>
             <Polygon
-              positions={roadPolygon}
+              positions={chain.roadPolygon}
               pathOptions={{
                 stroke: false,
                 fillColor: '#d4c5b0',
@@ -298,7 +317,7 @@ function DynamicRoad({
             />
             {overviewTint && (
               <Polygon
-                positions={roadPolygon}
+                positions={chain.roadPolygon}
                 pathOptions={{
                   stroke: false,
                   fillColor: '#22c55e',
@@ -307,7 +326,7 @@ function DynamicRoad({
               />
             )}
             <Polyline
-              positions={smoothedCenterline}
+              positions={chain.smoothedCenterline}
               pathOptions={{
                 color: '#a89070',
                 weight: 1,

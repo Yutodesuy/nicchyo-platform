@@ -552,6 +552,14 @@ export function projectPointOntoRoute(
   routePoints: MapRoutePoint[]
 ): RouteProjection | null {
   const segments = getRouteSegments(routePoints);
+  return projectPointOntoSegments(point, routePoints, segments);
+}
+
+export function projectPointOntoSegments(
+  point: { lat: number; lng: number },
+  routePoints: Array<{ lat: number; lng: number }>,
+  segments: RouteSegment[]
+): RouteProjection | null {
 
   if (routePoints.length === 0) {
     return null;

@@ -460,6 +460,12 @@ export default function MapLayoutEditor({
           center={center}
           zoom={17}
           maxZoom={maxZoom}
+          zoomSnap={0.2}
+          zoomDelta={0.35}
+          wheelPxPerZoomLevel={130}
+          zoomAnimation
+          markerZoomAnimation
+          fadeAnimation
           className="h-full w-full"
           scrollWheelZoom
           dragging={false}

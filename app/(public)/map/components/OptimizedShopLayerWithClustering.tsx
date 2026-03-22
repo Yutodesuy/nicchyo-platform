@@ -33,8 +33,9 @@ interface OptimizedShopLayerWithClusteringProps {
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
 const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
-const COMPACT_ICON_MAX_ZOOM = 17.5;
-const MID_ICON_MAX_ZOOM = 18.0;
+const COMPACT_ICON_MAX_ZOOM = 19.0;
+const MID_ICON_MAX_ZOOM = 19.4;
+const FULL_ICON_MIN_ZOOM = 19.5;
 
 function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
   if (currentZoom >= maxZoom - 0.001) {
@@ -384,9 +385,9 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
         const maxZoom = map.getMaxZoom() ?? map.getZoom();
         const isMaxZoom = map.getZoom() >= maxZoom - 0.001;
-        const showSimpleBanner = map.getZoom() >= maxZoom - 1;
+        const showSimpleBanner = map.getZoom() >= FULL_ICON_MIN_ZOOM;
         const markerZoomScale = getMarkerZoomScale(map.getZoom(), maxZoom);
-        setMarkerProductIconVisibility(marker, map.getZoom() >= maxZoom - 1 && !isMaxZoom);
+        setMarkerProductIconVisibility(marker, map.getZoom() >= FULL_ICON_MIN_ZOOM && !isMaxZoom);
         setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
         setMarkerSimpleBannerNameVisibility(marker, isMaxZoom);
         setMarkerZoomScale(marker, markerZoomScale);
@@ -404,8 +405,8 @@ export default function OptimizedShopLayerWithClustering({
       const zoom = map.getZoom();
       const maxZoom = map.getMaxZoom() ?? zoom;
       const isMaxZoom = zoom >= maxZoom - 0.001;
-      const showProductIcon = zoom >= maxZoom - 1 && !isMaxZoom;
-      const showSimpleBanner = zoom >= maxZoom - 1;
+      const showProductIcon = zoom >= FULL_ICON_MIN_ZOOM && !isMaxZoom;
+      const showSimpleBanner = zoom >= FULL_ICON_MIN_ZOOM;
       const showSimpleBannerName = isMaxZoom;
       const markerZoomScale = getMarkerZoomScale(zoom, maxZoom);
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
