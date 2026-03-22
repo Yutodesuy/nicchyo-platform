@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.markercluster';
@@ -36,6 +36,7 @@ const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
 const COMPACT_ICON_MAX_ZOOM = 19.0;
 const MID_ICON_MAX_ZOOM = 19.4;
 const FULL_ICON_MIN_ZOOM = 19.5;
+const FULL_ICON_NAME_MIN_ZOOM = 20.5;
 
 function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
   if (currentZoom >= maxZoom - 0.001) {
@@ -48,6 +49,14 @@ function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
     return 0.6;
   }
   return 1;
+}
+
+function getShopMarkerDisplayScale(currentZoom: number, maxZoom: number): number {
+  const baseScale = getMarkerZoomScale(currentZoom, maxZoom);
+  if (currentZoom >= 19.7 && currentZoom < 19.8) {
+    return baseScale * 1.1;
+  }
+  return baseScale;
 }
 
 // Helper to get origin rect for animation
@@ -66,7 +75,7 @@ const getOriginRect = (marker: L.Marker): ShopBannerOrigin | undefined => {
   };
 };
 
-export default function OptimizedShopLayerWithClustering({
+function OptimizedShopLayerWithClustering({
   shops,
   onShopClick,
   selectedShopId,
@@ -384,12 +393,12 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerBag(marker, bagShopSetRef.current.has(shop.id));
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
         const maxZoom = map.getMaxZoom() ?? map.getZoom();
-        const isMaxZoom = map.getZoom() >= maxZoom - 0.001;
         const showSimpleBanner = map.getZoom() >= FULL_ICON_MIN_ZOOM;
-        const markerZoomScale = getMarkerZoomScale(map.getZoom(), maxZoom);
-        setMarkerProductIconVisibility(marker, map.getZoom() >= FULL_ICON_MIN_ZOOM && !isMaxZoom);
+        const showSimpleBannerName = map.getZoom() >= FULL_ICON_NAME_MIN_ZOOM;
+        const markerZoomScale = getShopMarkerDisplayScale(map.getZoom(), maxZoom);
+        setMarkerProductIconVisibility(marker, map.getZoom() >= FULL_ICON_MIN_ZOOM && map.getZoom() < FULL_ICON_NAME_MIN_ZOOM);
         setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
-        setMarkerSimpleBannerNameVisibility(marker, isMaxZoom);
+        setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
         setMarkerZoomScale(marker, markerZoomScale);
         setMarkerAttendanceLabel(
           marker,
@@ -404,11 +413,10 @@ export default function OptimizedShopLayerWithClustering({
     const updateMarkerDensity = () => {
       const zoom = map.getZoom();
       const maxZoom = map.getMaxZoom() ?? zoom;
-      const isMaxZoom = zoom >= maxZoom - 0.001;
-      const showProductIcon = zoom >= FULL_ICON_MIN_ZOOM && !isMaxZoom;
+      const showProductIcon = zoom >= FULL_ICON_MIN_ZOOM && zoom < FULL_ICON_NAME_MIN_ZOOM;
       const showSimpleBanner = zoom >= FULL_ICON_MIN_ZOOM;
-      const showSimpleBannerName = isMaxZoom;
-      const markerZoomScale = getMarkerZoomScale(zoom, maxZoom);
+      const showSimpleBannerName = zoom >= FULL_ICON_NAME_MIN_ZOOM;
+      const markerZoomScale = getShopMarkerDisplayScale(zoom, maxZoom);
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
@@ -704,3 +712,5 @@ export default function OptimizedShopLayerWithClustering({
 
   return null;
 }
+
+export default memo(OptimizedShopLayerWithClustering);

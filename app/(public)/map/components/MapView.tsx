@@ -749,6 +749,8 @@ const MapView = memo(function MapView({
   const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
   const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
+  const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1;
+  const shouldRenderRecipeOverlay = showRecipeOverlay && mapUiZoom >= 19.0;
   const interactionDisabled = agentOpen;
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
   const getSnappedCenter = useCallback(
@@ -1049,6 +1051,7 @@ const MapView = memo(function MapView({
           zoom={INITIAL_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
+          preferCanvas
           zoomSnap={0.2}
           zoomDelta={0.35}
           wheelPxPerZoomLevel={130}
@@ -1124,7 +1127,7 @@ const MapView = memo(function MapView({
 
         <EventDimOverlay active={highlightEventTargets} />
 
-        {highlightEventTargets && (
+        {shouldRenderEventGlow && (
           <Pane name="event-glow" style={{ zIndex: 2000 }}>
             {eventTargets?.map((target) => (
               <Fragment key={target.id}>
@@ -1155,20 +1158,6 @@ const MapView = memo(function MapView({
                     opacity: 0.7,
                   }}
                   className="map-event-ripple is-2"
-                />
-                <CircleMarker
-                  key={`${target.id}-r3`}
-                  center={[target.lat, target.lng]}
-                  radius={40}
-                  pane="event-glow"
-                  pathOptions={{
-                    fillColor: "transparent",
-                    fillOpacity: 0,
-                    color: "#ffffff",
-                    weight: 2,
-                    opacity: 0.5,
-                  }}
-                  className="map-event-ripple is-3"
                 />
               </Fragment>
             ))}
@@ -1227,7 +1216,7 @@ const MapView = memo(function MapView({
         )}
 
         {/* レシピオーバーレイ */}
-        {!isMinimumZoomMode && showRecipeOverlay && shopsWithIngredients.map((shop) => {
+        {!isMinimumZoomMode && shouldRenderRecipeOverlay && shopsWithIngredients.map((shop) => {
           const matchingIngredients = recipeIngredients.filter((ing) =>
             shop.products.some((product) =>
               product.toLowerCase().includes(ing.name.toLowerCase()) ||
