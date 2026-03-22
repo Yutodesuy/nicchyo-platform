@@ -4,6 +4,7 @@
 
 'use client';
 
+import { Fragment } from 'react';
 import { ImageOverlay, Polygon, Polyline, Rectangle } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
 import { LatLngBoundsExpression } from 'leaflet';
@@ -12,6 +13,11 @@ import {
   buildRoadPolygon,
   densifyPath,
   getEffectiveMapRouteConfig,
+  getRouteSegments,
+  latToMeters,
+  lngToMeters,
+  metersToLat,
+  metersToLng,
   normalizeMapRoutePoints,
   smoothPath,
 } from '../utils/mapRouteGeometry';
@@ -254,46 +260,96 @@ function DynamicRoad({
   routeConfig: MapRouteConfig;
   overviewTint?: boolean;
 }) {
-  const centerline = densifyPath(points, 8);
-  const smoothedCenterline = smoothPath(centerline, 2);
-  const roadPolygon = buildRoadPolygon(smoothedCenterline, routeConfig.roadHalfWidthMeters);
+  const segments = getRouteSegments(points);
 
-  if (roadPolygon.length < 3 || smoothedCenterline.length < 2) {
+  if (segments.length === 0) {
     return null;
   }
 
   return (
     <>
-      <Polygon
-        positions={roadPolygon}
-        pathOptions={{
-          color: '#8f7d67',
-          weight: 1,
-          opacity: 0.8,
-          fillColor: '#d4c5b0',
-          fillOpacity: ROAD_CONFIG.opacity ?? 0.9,
-        }}
-      />
-      {overviewTint && (
-        <Polygon
-          positions={roadPolygon}
-          pathOptions={{
-            stroke: false,
-            fillColor: '#22c55e',
-            fillOpacity: 0.36,
-          }}
-        />
-      )}
-      <Polyline
-        positions={smoothedCenterline}
-        pathOptions={{
-          color: '#a89070',
-          weight: 1,
-          opacity: 0.5,
-        }}
-      />
+      {segments.map((segment) => {
+        const centerline = densifyPath([segment.start, segment.end], 8);
+        const smoothedCenterline = smoothPath(centerline, 2);
+        const cappedCenterline = extendCenterlineForCaps(
+          smoothedCenterline,
+          routeConfig.roadHalfWidthMeters
+        );
+        const roadPolygon = buildRoadPolygon(cappedCenterline, routeConfig.roadHalfWidthMeters);
+
+        if (roadPolygon.length < 3 || smoothedCenterline.length < 2) {
+          return null;
+        }
+
+        return (
+          <Fragment key={segment.key}>
+            <Polygon
+              positions={roadPolygon}
+              pathOptions={{
+                stroke: false,
+                fillColor: '#d4c5b0',
+                fillOpacity: ROAD_CONFIG.opacity ?? 0.9,
+              }}
+            />
+            {overviewTint && (
+              <Polygon
+                positions={roadPolygon}
+                pathOptions={{
+                  stroke: false,
+                  fillColor: '#22c55e',
+                  fillOpacity: 0.36,
+                }}
+              />
+            )}
+            <Polyline
+              positions={smoothedCenterline}
+              pathOptions={{
+                color: '#a89070',
+                weight: 1,
+                opacity: 0.5,
+              }}
+            />
+          </Fragment>
+        );
+      })}
     </>
   );
+}
+
+function extendCenterlineForCaps(
+  centerline: Array<[number, number]>,
+  extensionMeters: number
+): Array<[number, number]> {
+  if (centerline.length < 2 || extensionMeters <= 0) {
+    return centerline;
+  }
+
+  const first = centerline[0];
+  const second = centerline[1];
+  const last = centerline[centerline.length - 1];
+  const beforeLast = centerline[centerline.length - 2];
+
+  const startExtended = extendPoint(first, second, -extensionMeters);
+  const endExtended = extendPoint(last, beforeLast, -extensionMeters);
+
+  return [startExtended, ...centerline.slice(1, -1), endExtended];
+}
+
+function extendPoint(
+  origin: [number, number],
+  toward: [number, number],
+  distanceMeters: number
+): [number, number] {
+  const dxMeters = lngToMeters(toward[1] - origin[1], origin[0]);
+  const dyMeters = latToMeters(toward[0] - origin[0]);
+  const length = Math.hypot(dxMeters, dyMeters) || 1;
+  const ux = dxMeters / length;
+  const uy = dyMeters / length;
+
+  return [
+    origin[0] + metersToLat(uy * distanceMeters),
+    origin[1] + metersToLng(ux * distanceMeters, origin[0]),
+  ];
 }
 
 function renderSeparatorBricks(
