@@ -12,7 +12,12 @@ import RoadOverlay from "../map/components/RoadOverlay";
 import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
 import { normalizeRotationDeg } from "../map/utils/autoRotation";
-import { getRouteCenter, getRouteSegments, normalizeMapRoutePoints } from "../map/utils/mapRouteGeometry";
+import {
+  getRouteCenter,
+  getRoutePointRole,
+  getRouteSegments,
+  normalizeMapRoutePoints,
+} from "../map/utils/mapRouteGeometry";
 
 type EditableShop = {
   locationId: string;
@@ -43,7 +48,7 @@ type Props = {
     lng: number,
     segmentEndId?: string
   ) => void;
-  onAddConnectedRoutePoint: (pointId: string) => void;
+  onAddConnectedRoutePoint: (pointId: string, branchDirection?: "up" | "down" | "auto") => void;
   onDeleteShop: (id: number) => void;
   onDeleteLandmark: (key: string) => void;
   onDeleteRoutePoint: (id: string) => void;
@@ -117,6 +122,22 @@ function createMarkerIcon(
     html: `<div style="width:${size}px;height:${size}px;border-radius:${borderRadius};background:${background};border:3px solid white;box-shadow:${outline ? `${outline}, ` : ""}0 6px 16px ${glow};transform:${isSelected ? "scale(1.05)" : "scale(1)"};"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function createMidpointHandleIcon() {
+  return L.divIcon({
+    className: "custom-route-midpoint-icon",
+    html: `
+      <div style="width:18px;height:18px;border-radius:9999px;background:#ffffff;border:2px solid #0f172a;box-shadow:0 4px 12px rgba(15,23,42,.18);display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;width:8px;height:8px;">
+          <span style="position:absolute;left:3px;top:0;width:2px;height:8px;background:#0f172a;border-radius:9999px;"></span>
+          <span style="position:absolute;left:0;top:3px;width:8px;height:2px;background:#0f172a;border-radius:9999px;"></span>
+        </div>
+      </div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
   });
 }
 
@@ -243,6 +264,7 @@ export default function MapLayoutEditor({
     () => getRouteSegments(routePoints),
     [routePoints]
   );
+  const routeMidpointIcon = useMemo(() => createMidpointHandleIcon(), []);
 
   const applyManualRotation = useCallback((nextRotation: number) => {
     setManualRotationOffset(normalizeRotationDeg(nextRotation));
@@ -479,26 +501,37 @@ export default function MapLayoutEditor({
                   ]}
                   pathOptions={{
                     color: "#0f172a",
-                    weight: 14,
-                    opacity: 0.001,
-                  }}
-                  eventHandlers={{
-                    click: (event) => {
-                      L.DomEvent.stopPropagation(event);
-                      const shouldInsert = window.confirm(
-                        "この線分の途中に新しい道路ポイントを追加しますか？"
-                      );
-                      if (!shouldInsert) return;
-                      onInsertRoutePointAtSegment(
-                        segment.start.id,
-                        event.latlng.lat,
-                        event.latlng.lng,
-                        segment.end.id
-                      );
-                    },
+                    weight: 2,
+                    opacity: 0.28,
+                    dashArray: "8 10",
+                    lineCap: "round",
+                    lineJoin: "round",
                   }}
                 />
               ))}
+            {selectedKind === "route" &&
+              routeSegments.map((segment) => {
+                const midpointLat = (segment.start.lat + segment.end.lat) / 2;
+                const midpointLng = (segment.start.lng + segment.end.lng) / 2;
+                return (
+                  <Marker
+                    key={`route-midpoint-${segment.start.id}-${segment.end.id}`}
+                    position={[midpointLat, midpointLng]}
+                    icon={routeMidpointIcon}
+                    eventHandlers={{
+                      click: (event) => {
+                        L.DomEvent.stopPropagation(event);
+                        onInsertRoutePointAtSegment(
+                          segment.start.id,
+                          midpointLat,
+                          midpointLng,
+                          segment.end.id
+                        );
+                      },
+                    }}
+                  />
+                );
+              })}
             <ClickCapture
               onClick={() => {
                 onClearSelection();
@@ -588,23 +621,18 @@ export default function MapLayoutEditor({
               </Marker>
             ))}
             {routePoints.map((point, index) => (
+              (() => {
+                const pointRole = getRoutePointRole(routePoints, point.id);
+                const isMiddleMainPoint = pointRole === "main-middle";
+
+                return (
               <Marker
                 key={point.id}
                 position={[point.lat, point.lng]}
                 icon={createMarkerIcon("route", selectedKind === "route" && selectedId === point.id)}
                 draggable={selectedKind === "route" && selectedId === point.id}
                 eventHandlers={{
-                  click: (event) => {
-                    L.DomEvent.stopPropagation(event);
-                    const shouldAdd = window.confirm(
-                      "このポイントから接続する新しい道路ポイントを追加しますか？"
-                    );
-                    if (!shouldAdd) {
-                      onSelect("route", point.id);
-                      return;
-                    }
-                    onAddConnectedRoutePoint(point.id);
-                  },
+                  click: () => onSelect("route", point.id),
                   dragend: (event) => {
                     const marker = event.target;
                     const latlng = marker.getLatLng();
@@ -628,12 +656,40 @@ export default function MapLayoutEditor({
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
+                    {isMiddleMainPoint ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onAddConnectedRoutePoint(point.id, "up")}
+                          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          上に道を追加
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAddConnectedRoutePoint(point.id, "down")}
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          下に道を追加
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onAddConnectedRoutePoint(point.id, "auto")}
+                        className="mt-3 w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        ここから道を追加
+                      </button>
+                    )}
                     <p className="mt-3 text-xs leading-5 text-slate-500">
                       {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
                     </p>
                   </div>
                 </Popup>
               </Marker>
+                );
+              })()
             ))}
           </>
         )}

@@ -19,6 +19,21 @@ export type RouteSegment = {
   isBranch: boolean;
 };
 
+export type MapRoutePointRole = "main-start" | "main-middle" | "main-end" | "branch";
+
+export type RouteTopology = {
+  normalizedPoints: MapRoutePoint[];
+  pointById: Map<string, MapRoutePoint>;
+  mainlinePoints: MapRoutePoint[];
+  branchChildrenById: Map<string, MapRoutePoint[]>;
+  segments: RouteSegment[];
+};
+
+export type RouteChain = {
+  key: string;
+  points: MapRoutePoint[];
+};
+
 export function getDefaultMapRoutePoints(): MapRoutePoint[] {
   return getRoadCenterlinePoints().map((point, index) => ({
     id: `default-route-point-${index + 1}`,
@@ -71,10 +86,11 @@ export function getBranchRoutePoints(points: MapRoutePoint[]): MapRoutePoint[] {
   return normalizeMapRoutePoints(points).filter((point) => Boolean(point.branchFromId));
 }
 
-export function getRouteSegments(points: MapRoutePoint[]): RouteSegment[] {
+export function getRouteTopology(points: MapRoutePoint[]): RouteTopology {
   const normalized = normalizeMapRoutePoints(points);
   const mainline = normalized.filter((point) => !point.branchFromId);
   const pointById = new Map(normalized.map((point) => [point.id, point]));
+  const branchChildrenById = new Map<string, MapRoutePoint[]>();
   const segments: RouteSegment[] = [];
 
   for (let index = 0; index < mainline.length - 1; index += 1) {
@@ -91,6 +107,9 @@ export function getRouteSegments(points: MapRoutePoint[]): RouteSegment[] {
     .forEach((point) => {
       const parent = pointById.get(point.branchFromId ?? "");
       if (!parent) return;
+      const children = branchChildrenById.get(parent.id) ?? [];
+      children.push(point);
+      branchChildrenById.set(parent.id, children);
       segments.push({
         key: `branch-${parent.id}-${point.id}`,
         start: parent,
@@ -99,7 +118,306 @@ export function getRouteSegments(points: MapRoutePoint[]): RouteSegment[] {
       });
     });
 
-  return segments;
+  return {
+    normalizedPoints: normalized,
+    pointById,
+    mainlinePoints: mainline,
+    branchChildrenById,
+    segments,
+  };
+}
+
+export function getRouteSegments(points: MapRoutePoint[]): RouteSegment[] {
+  return getRouteTopology(points).segments;
+}
+
+export function getRoutePointRole(points: MapRoutePoint[], pointId: string): MapRoutePointRole | null {
+  const topology = getRouteTopology(points);
+  const point = topology.pointById.get(pointId);
+  if (!point) {
+    return null;
+  }
+  if (point.branchFromId) {
+    return "branch";
+  }
+  const mainIndex = topology.mainlinePoints.findIndex((item) => item.id === pointId);
+  if (mainIndex < 0) {
+    return null;
+  }
+  if (mainIndex === 0) {
+    return "main-start";
+  }
+  if (mainIndex === topology.mainlinePoints.length - 1) {
+    return "main-end";
+  }
+  return "main-middle";
+}
+
+export function getRoutePointStatus(points: MapRoutePoint[], pointId: string): {
+  role: MapRoutePointRole;
+  label: string;
+  description: string;
+} | null {
+  const topology = getRouteTopology(points);
+  const point = topology.pointById.get(pointId);
+  const role = getRoutePointRole(points, pointId);
+  if (!point || !role) {
+    return null;
+  }
+
+  if (role === "branch") {
+    return {
+      role,
+      label: "枝点",
+      description: `分岐元: ${point.branchFromId}`,
+    };
+  }
+
+  if (role === "main-start") {
+    return {
+      role,
+      label: "左端",
+      description: "幹線の始点です。追加すると左方向へ延長します。",
+    };
+  }
+
+  if (role === "main-end") {
+    return {
+      role,
+      label: "右端",
+      description: "幹線の終点です。追加すると右方向へ延長します。",
+    };
+  }
+
+  return {
+    role,
+    label: "幹線の中間点",
+    description: "追加すると上側/下側に分岐する新しい道を作れます。",
+  };
+}
+
+export function getMainRouteNeighbors(
+  points: MapRoutePoint[],
+  pointId: string
+): {
+  previous: MapRoutePoint | null;
+  current: MapRoutePoint | null;
+  next: MapRoutePoint | null;
+} {
+  const topology = getRouteTopology(points);
+  const mainIndex = topology.mainlinePoints.findIndex((point) => point.id === pointId);
+  if (mainIndex < 0) {
+    return {
+      previous: null,
+      current: null,
+      next: null,
+    };
+  }
+
+  return {
+    previous: topology.mainlinePoints[mainIndex - 1] ?? null,
+    current: topology.mainlinePoints[mainIndex] ?? null,
+    next: topology.mainlinePoints[mainIndex + 1] ?? null,
+  };
+}
+
+export function getBranchParent(points: MapRoutePoint[], pointId: string): MapRoutePoint | null {
+  const topology = getRouteTopology(points);
+  const point = topology.pointById.get(pointId);
+  if (!point?.branchFromId) {
+    return null;
+  }
+  return topology.pointById.get(point.branchFromId) ?? null;
+}
+
+export function getBranchChildren(points: MapRoutePoint[], pointId: string): MapRoutePoint[] {
+  return getRouteTopology(points).branchChildrenById.get(pointId) ?? [];
+}
+
+export function getConnectedRouteNeighbors(points: MapRoutePoint[], pointId: string): MapRoutePoint[] {
+  const topology = getRouteTopology(points);
+  const neighbors: MapRoutePoint[] = [];
+  for (const segment of topology.segments) {
+    if (segment.start.id === pointId) {
+      neighbors.push(segment.end);
+    } else if (segment.end.id === pointId) {
+      neighbors.push(segment.start);
+    }
+  }
+  return neighbors;
+}
+
+export function getRouteChains(points: MapRoutePoint[]): RouteChain[] {
+  const topology = getRouteTopology(points);
+  const adjacency = new Map<string, Array<{ neighborId: string; segmentKey: string }>>();
+
+  for (const segment of topology.segments) {
+    const startEdges = adjacency.get(segment.start.id) ?? [];
+    startEdges.push({ neighborId: segment.end.id, segmentKey: segment.key });
+    adjacency.set(segment.start.id, startEdges);
+
+    const endEdges = adjacency.get(segment.end.id) ?? [];
+    endEdges.push({ neighborId: segment.start.id, segmentKey: segment.key });
+    adjacency.set(segment.end.id, endEdges);
+  }
+
+  const visitedEdges = new Set<string>();
+  const chains: RouteChain[] = [];
+  const nodes = topology.normalizedPoints.filter((point) => (adjacency.get(point.id) ?? []).length > 0);
+  const startNodes = nodes.filter((point) => (adjacency.get(point.id) ?? []).length !== 2);
+
+  const walkChain = (startId: string, neighborId: string, segmentKey: string): RouteChain | null => {
+    if (visitedEdges.has(segmentKey)) {
+      return null;
+    }
+
+    const chain: MapRoutePoint[] = [];
+    let currentId = startId;
+    let nextId = neighborId;
+    let nextSegmentKey = segmentKey;
+
+    while (true) {
+      visitedEdges.add(nextSegmentKey);
+
+      const currentPoint = topology.pointById.get(currentId);
+      const nextPoint = topology.pointById.get(nextId);
+      if (!currentPoint || !nextPoint) {
+        return null;
+      }
+
+      if (chain.length === 0) {
+        chain.push(currentPoint);
+      }
+      chain.push(nextPoint);
+
+      const nextEdges = (adjacency.get(nextId) ?? []).filter((edge) => edge.neighborId !== currentId);
+      if ((adjacency.get(nextId) ?? []).length !== 2 || nextEdges.length === 0) {
+        break;
+      }
+
+      const candidate = nextEdges.find((edge) => !visitedEdges.has(edge.segmentKey));
+      if (!candidate) {
+        break;
+      }
+
+      currentId = nextId;
+      nextId = candidate.neighborId;
+      nextSegmentKey = candidate.segmentKey;
+    }
+
+    if (chain.length < 2) {
+      return null;
+    }
+
+    return {
+      key: chain.map((point) => point.id).join("->"),
+      points: chain,
+    };
+  };
+
+  for (const node of startNodes) {
+    for (const edge of adjacency.get(node.id) ?? []) {
+      const chain = walkChain(node.id, edge.neighborId, edge.segmentKey);
+      if (chain) {
+        chains.push(chain);
+      }
+    }
+  }
+
+  for (const node of nodes) {
+    for (const edge of adjacency.get(node.id) ?? []) {
+      const chain = walkChain(node.id, edge.neighborId, edge.segmentKey);
+      if (chain) {
+        chains.push(chain);
+      }
+    }
+  }
+
+  return chains;
+}
+
+export function smoothRoutePath(
+  path: Array<[number, number]>,
+  iterations = 2
+): Array<[number, number]> {
+  if (path.length < 3 || iterations <= 0) {
+    return path;
+  }
+
+  let current = path;
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    if (current.length < 3) {
+      break;
+    }
+    const next: Array<[number, number]> = [current[0]];
+    for (let index = 0; index < current.length - 1; index += 1) {
+      const a = current[index];
+      const b = current[index + 1];
+      const q: [number, number] = [
+        a[0] * 0.75 + b[0] * 0.25,
+        a[1] * 0.75 + b[1] * 0.25,
+      ];
+      const r: [number, number] = [
+        a[0] * 0.25 + b[0] * 0.75,
+        a[1] * 0.25 + b[1] * 0.75,
+      ];
+      if (index > 0) {
+        next.push(q);
+      }
+      next.push(r);
+    }
+    next.push(current[current.length - 1]);
+    current = next;
+  }
+
+  return current;
+}
+
+export function stabilizeRoutePointMove(
+  points: MapRoutePoint[],
+  pointId: string,
+  lat: number,
+  lng: number,
+  straightAngleThresholdDeg = 10,
+  snapBackDistanceMeters = 1.5
+): MapRoutePoint[] {
+  const moved = normalizeMapRoutePoints(
+    points.map((point) => (point.id === pointId ? { ...point, lat, lng } : point))
+  );
+  const neighbors = getConnectedRouteNeighbors(moved, pointId);
+  if (neighbors.length !== 2) {
+    return moved;
+  }
+
+  const target = moved.find((point) => point.id === pointId);
+  if (!target) {
+    return moved;
+  }
+
+  const a = neighbors[0];
+  const b = neighbors[1];
+  const angle = getTurnAngleDegrees(a, target, b);
+  if (Math.abs(180 - angle) > straightAngleThresholdDeg) {
+    return moved;
+  }
+
+  const projection = projectPointOntoSegment(target, a, b);
+  const distanceFromSegment = distanceMeters(target, projection.point);
+  if (distanceFromSegment > snapBackDistanceMeters) {
+    return moved;
+  }
+
+  return normalizeMapRoutePoints(
+    moved.map((point) =>
+      point.id === pointId
+        ? {
+            ...point,
+            lat: projection.point.lat,
+            lng: projection.point.lng,
+          }
+        : point
+    )
+  );
 }
 
 export function getEffectiveMapRouteConfig(
@@ -352,4 +670,24 @@ function projectPointOntoSegment(
     },
     t,
   };
+}
+
+function getTurnAngleDegrees(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  c: { lat: number; lng: number }
+): number {
+  const abx = lngToMeters(a.lng - b.lng, (a.lat + b.lat) / 2);
+  const aby = latToMeters(a.lat - b.lat);
+  const cbx = lngToMeters(c.lng - b.lng, (c.lat + b.lat) / 2);
+  const cby = latToMeters(c.lat - b.lat);
+  const abLength = Math.hypot(abx, aby);
+  const cbLength = Math.hypot(cbx, cby);
+
+  if (abLength === 0 || cbLength === 0) {
+    return 180;
+  }
+
+  const cosine = Math.max(-1, Math.min(1, (abx * cbx + aby * cby) / (abLength * cbLength)));
+  return (Math.acos(cosine) * 180) / Math.PI;
 }
