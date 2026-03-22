@@ -84,6 +84,13 @@ const characterCardDescriptions: Record<string, string> = {
   yosakochan: "気軽に話しかけやすい。",
 };
 
+const activityCategoryStyles: Record<string, string> = {
+  行政連携: "bg-[#efe1ce] text-[#7b4721]",
+  現地調査: "bg-[#f7e8d7] text-[#8b4d20]",
+  発表: "bg-[#f1e5d4] text-[#754420]",
+  受賞: "bg-[#f6ead7] text-[#7d4b1f]",
+};
+
 function createRevealVariants(reduceMotion: boolean) {
   return {
     hidden: { opacity: 0, y: reduceMotion ? 0 : 18 },
@@ -255,6 +262,8 @@ export default function HomePage() {
     []
   );
   const visibleTrustPoints = sortedTrustPoints.slice(0, 5);
+  const latestTrustPoint = visibleTrustPoints[0] ?? null;
+  const remainingTrustPoints = visibleTrustPoints.slice(1);
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
@@ -627,42 +636,125 @@ export default function HomePage() {
 
           <motion.div variants={revealVariants} className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm">
             <p className="text-lg font-bold text-[#5b3015]">直近の取り組み</p>
-            <motion.div
-              key="trust-top"
-              className="mt-5 space-y-3"
-              variants={staggerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {visibleTrustPoints.map((item) => (
-                <motion.div
-                  key={`${item.date}-${item.title}`}
-                  variants={revealVariants}
-                  className="rounded-2xl"
-                >
+            {latestTrustPoint ? (
+              <motion.div
+                key="trust-top"
+                className="mt-5 space-y-4"
+                variants={staggerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <motion.div variants={revealVariants}>
                   <Link
-                    href={`/activities/${item.slug}`}
-                    className="block rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4 transition hover:bg-white"
+                    href={`/activities/${latestTrustPoint.slug}`}
+                    className="group block overflow-hidden rounded-[1.75rem] border border-[#ead8c3] bg-[#fff8f1] transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-[0_20px_45px_rgba(91,48,21,0.08)]"
                   >
-                    <p className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
-                      {item.date}
-                    </p>
-                    <p className="mt-1 text-base font-semibold leading-7 text-stone-800">
-                      {item.title}
-                    </p>
-                    {"note" in item && item.note ? (
-                      <p className="mt-1 text-sm leading-6 text-stone-500">{item.note}</p>
+                    {latestTrustPoint.image ? (
+                      <div className="aspect-[16/9] overflow-hidden bg-[#eadcc9]">
+                        <img
+                          src={latestTrustPoint.image}
+                          alt={latestTrustPoint.title}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        />
+                      </div>
                     ) : null}
+                    <div className="space-y-3 px-5 py-5 sm:px-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#5b3015] px-3 py-1 text-[10px] font-bold tracking-[0.18em] text-white">
+                              最新
+                            </span>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${activityCategoryStyles[latestTrustPoint.category] ?? "bg-[#efe1ce] text-[#7b4721]"}`}
+                            >
+                              {latestTrustPoint.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
+                            {latestTrustPoint.date}
+                          </p>
+                        </div>
+                        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-[#8a5129] transition duration-300 group-hover:translate-x-1" />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-lg font-bold leading-8 text-stone-800 sm:text-xl">
+                          {latestTrustPoint.title}
+                        </p>
+                        <p className="text-sm leading-7 text-stone-600 sm:text-[15px]">
+                          {latestTrustPoint.summary}
+                        </p>
+                        {latestTrustPoint.note ? (
+                          <p className="text-sm font-medium text-stone-500">
+                            {latestTrustPoint.note}
+                          </p>
+                        ) : null}
+                      </div>
+                      <p className="inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129]">
+                        くわしく見る
+                        <ChevronRight className="h-4 w-4 transition duration-300 group-hover:translate-x-1" />
+                      </p>
+                    </div>
                   </Link>
                 </motion.div>
-              ))}
-            </motion.div>
+
+                {remainingTrustPoints.length > 0 ? (
+                  <div className="space-y-3">
+                    {remainingTrustPoints.map((item) => (
+                      <motion.div
+                        key={`${item.date}-${item.title}`}
+                        variants={revealVariants}
+                        className="rounded-2xl"
+                      >
+                        <Link
+                          href={`/activities/${item.slug}`}
+                          className="group flex items-center gap-4 rounded-2xl border border-[#efe0cf] bg-[#fffaf4] p-4 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_30px_rgba(91,48,21,0.06)]"
+                        >
+                          {item.image ? (
+                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#eadcc9]">
+                              <img
+                                src={item.image}
+                                alt={item.title}
+                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#f1e1cf] px-3 text-center text-xs font-bold leading-5 tracking-[0.12em] text-[#8a5129]">
+                              {item.category}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${activityCategoryStyles[item.category] ?? "bg-[#efe1ce] text-[#7b4721]"}`}
+                              >
+                                {item.category}
+                              </span>
+                              <span className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
+                                {item.date}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-base font-semibold leading-7 text-stone-800">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-sm leading-6 text-stone-600">
+                              {item.summary}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-5 w-5 shrink-0 text-[#8a5129] transition duration-300 group-hover:translate-x-1" />
+                        </Link>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : null}
+              </motion.div>
+            ) : null}
             <button
               type="button"
               onClick={() => router.push("/activities")}
-              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129]"
+              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129]"
             >
-              取り組み一覧を見る
+              これまでの活動を見る
               <ChevronRight className="h-4 w-4" />
             </button>
           </motion.div>
