@@ -161,6 +161,7 @@ export default function MapEditClient() {
   const [mapSettings, setMapSettings] = useState<MapSettings>(DEFAULT_MAP_SETTINGS);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const shopItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const landmarkItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const routePointItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -199,6 +200,7 @@ export default function MapEditClient() {
         setInitialLandmarks(cloneLandmarks(nextLandmarks));
         setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
         setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
+        setLastSavedAt(new Date().toISOString());
       })
       .catch(() => {
         if (!active) return;
@@ -450,6 +452,7 @@ export default function MapEditClient() {
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
       setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
       setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
+      setLastSavedAt(new Date().toISOString());
       if (isHistoryOpen) {
         await loadSnapshots();
       }
@@ -600,6 +603,15 @@ export default function MapEditClient() {
     setIsHistoryOpen(false);
   };
 
+  const handleResetToLastSaved = () => {
+    setShops(sortShops(cloneShops(initialShops)));
+    setLandmarks(cloneLandmarks(initialLandmarks));
+    setRoutePoints(cloneRoutePoints(initialRoutePoints));
+    setRouteConfig(cloneRouteConfig(initialRouteConfig));
+    setSelectedId("");
+    setMessage("保存済みの状態に戻しました。");
+  };
+
   const handleRestoreSnapshot = async (snapshotId: string) => {
     if (hasUnsavedChanges) {
       setMessage("現在の変更を保存してからでないと復元できません。");
@@ -634,6 +646,7 @@ export default function MapEditClient() {
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
       setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
       setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
+      setLastSavedAt(new Date().toISOString());
       await loadSnapshots();
       setMessage("バックアップから復元しました。復元前の状態も自動保存しています。");
     } catch {
@@ -807,15 +820,58 @@ export default function MapEditClient() {
     }).format(date);
   };
 
+  const formatSavedTime = (value: string | null) => {
+    if (!value) return "未保存";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "未保存";
+    return new Intl.DateTimeFormat("ja-JP", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
+
+  const taskTabs = [
+    { key: "shop" as const, label: "店舗マーカ", count: shops.length },
+    { key: "landmark" as const, label: "建物", count: landmarks.length },
+    { key: "route" as const, label: "道路", count: routePoints.length },
+  ];
+
+  const mapEditHint =
+    selectedKind === "shop"
+      ? "店舗マーカをクリックして選択。選択中のマーカはドラッグで移動できます。"
+      : selectedKind === "landmark"
+        ? "建物をクリックして選択。選択中の建物はドラッグで移動できます。"
+        : "道路ポイントをドラッグして移動。線上の + で追加、点を押すと道を追加できます。";
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-slate-100">
       <div className="border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-start gap-3">
           <div className="pl-14">
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-700">Map Admin</p>
             <h1 className="text-2xl font-bold text-slate-900">マップ管理</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  hasUnsavedChanges ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"
+                }`}
+              >
+                {hasUnsavedChanges ? "未保存の変更あり" : "保存済み"}
+              </span>
+              <span className="text-xs text-slate-500">最後に反映: {formatSavedTime(lastSavedAt)}</span>
+            </div>
           </div>
-          <div className="ml-auto mr-16 flex items-center gap-3">
+          <div className="ml-auto mr-16 flex flex-wrap items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleResetToLastSaved}
+              disabled={!hasUnsavedChanges || isSaving || isLoading}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              保存済みに戻す
+            </button>
             <button
               type="button"
               onClick={handleOpenHistory}
@@ -928,28 +984,31 @@ export default function MapEditClient() {
           </aside>
         )}
         <aside className="flex min-h-0 flex-col overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedKind("shop")}
-              className={`inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold ${selectedKind === "shop" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
-            >
-              店舗マーカ
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedKind("landmark")}
-              className={`inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold ${selectedKind === "landmark" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
-            >
-              建物オブジェクト
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedKind("route")}
-              className={`inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold ${selectedKind === "route" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
-            >
-              道路・通路
-            </button>
+          <div className="grid grid-cols-3 gap-2">
+            {taskTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSelectedKind(tab.key)}
+                className={`rounded-2xl border px-3 py-3 text-left transition ${
+                  selectedKind === tab.key
+                    ? "border-sky-200 bg-sky-50 shadow-sm"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`text-sm font-semibold ${selectedKind === tab.key ? "text-sky-900" : "text-slate-700"}`}>
+                    {tab.label}
+                  </span>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                    {tab.count}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {selectedKind === tab.key ? "編集中" : "切り替える"}
+                </p>
+              </button>
+            ))}
           </div>
 
           {selectedKind === "shop" ? (
@@ -1213,7 +1272,7 @@ export default function MapEditClient() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     Road Settings
                   </p>
-                  <p className="text-[11px] text-slate-400">数値は公開マップの道路表示と現在地補正に使われます</p>
+                  <p className="text-[11px] text-slate-400">よく使う設定だけ先に表示しています</p>
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-3">
                   <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1232,39 +1291,46 @@ export default function MapEditClient() {
                       className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
                     />
                   </label>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    スナップ開始距離(m)
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.5"
-                      value={routeConfig.snapDistanceMeters}
-                      onChange={(event) =>
-                        setRouteConfig((prev) => ({
-                          ...prev,
-                          snapDistanceMeters: Number(event.target.value),
-                        }))
-                      }
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                    />
-                  </label>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    最大表示距離(m)
-                    <input
-                      type="number"
-                      min="1"
-                      step="0.5"
-                      value={routeConfig.visibleDistanceMeters}
-                      onChange={(event) =>
-                        setRouteConfig((prev) => ({
-                          ...prev,
-                          visibleDistanceMeters: Number(event.target.value),
-                        }))
-                      }
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                    />
-                  </label>
                 </div>
+                <details className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                    詳細設定を開く
+                  </summary>
+                  <div className="mt-3 grid grid-cols-1 gap-3">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      スナップ開始距離(m)
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        value={routeConfig.snapDistanceMeters}
+                        onChange={(event) =>
+                          setRouteConfig((prev) => ({
+                            ...prev,
+                            snapDistanceMeters: Number(event.target.value),
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      最大表示距離(m)
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        value={routeConfig.visibleDistanceMeters}
+                        onChange={(event) =>
+                          setRouteConfig((prev) => ({
+                            ...prev,
+                            visibleDistanceMeters: Number(event.target.value),
+                          }))
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                      />
+                    </label>
+                  </div>
+                </details>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white">
@@ -1477,6 +1543,7 @@ export default function MapEditClient() {
             landmarks={landmarks}
             routePoints={routePoints}
             routeConfig={routeConfig}
+            interactionHint={mapEditHint}
             maxZoom={mapSettings.maxEditZoom}
             selectedKind={selectedKind}
             selectedId={selectedId}
