@@ -278,12 +278,36 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
       <section className="relative overflow-hidden border-b border-amber-100 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(247,241,232,0.86)_48%,_rgba(235,208,166,0.45)_100%)]">
         <div className="absolute inset-0">
-          <img
+          <motion.img
             src="/images/home-hero.jpg"
             alt="高知の日曜市を歩く風景"
-            className="h-full w-full object-cover object-center opacity-15"
+            className="h-full w-full object-cover object-center"
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0.72, scale: 1.03, filter: "blur(0px) saturate(1.04)" }
+            }
+            animate={
+              shouldReduceMotion
+                ? undefined
+                : { opacity: 0.24, scale: 1, filter: "blur(5px) saturate(0.92)" }
+            }
+            transition={
+              shouldReduceMotion
+                ? undefined
+                : { duration: 1.35, ease: [0.22, 1, 0.36, 1], delay: 0.08 }
+            }
           />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.05),rgba(247,241,232,0.94))]" />
+          <motion.div
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.05),rgba(247,241,232,0.94))]"
+            initial={shouldReduceMotion ? false : { opacity: 0.28 }}
+            animate={shouldReduceMotion ? undefined : { opacity: 0.88 }}
+            transition={
+              shouldReduceMotion
+                ? undefined
+                : { duration: 1.15, ease: "easeOut", delay: 0.12 }
+            }
+          />
         </div>
 
         <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:py-16">

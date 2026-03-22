@@ -32,7 +32,6 @@ export default function ActivitiesPage() {
         </Link>
 
         <div className="mt-6 space-y-4">
-          <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">PROJECT ARCHIVE</p>
           <h1 className="text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
             プロジェクトの歩み
           </h1>

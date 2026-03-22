@@ -90,6 +90,26 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
               </section>
             ))}
           </div>
+
+          {activity.externalLink ? (
+            <div className="mt-8 rounded-[1.5rem] border border-[#ead8c0] bg-[#fffaf4] px-4 py-4">
+              <a
+                href={activity.externalLink.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-3 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
+              >
+                {activity.externalLink.image ? (
+                  <img
+                    src={activity.externalLink.image}
+                    alt=""
+                    className="h-8 w-auto object-contain"
+                  />
+                ) : null}
+                {activity.externalLink.label}
+              </a>
+            </div>
+          ) : null}
         </article>
       </div>
     </main>
