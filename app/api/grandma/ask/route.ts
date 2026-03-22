@@ -1010,8 +1010,12 @@ export async function POST(request: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supabaseUrl && serviceRoleKey) {
       const secClient = createClient(supabaseUrl, serviceRoleKey);
-      const forwardedFor = request.headers.get("x-forwarded-for");
-      const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "unknown";
+      // x-real-ip はVercelが設定する信頼できるヘッダー（スプーフィング不可）
+      // x-forwarded-for の末尾はプロキシが追加した値で比較的信頼できる
+      const ip =
+        request.headers.get("x-real-ip") ??
+        request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
+        "unknown";
       const abuseResult = await handleAbuseDetection(secClient, ip, text, visitorKey ?? undefined);
       if (abuseResult === "blocked") {
         return NextResponse.json(

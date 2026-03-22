@@ -46,6 +46,8 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [dangerPassword, setDangerPassword] = useState("");
+  const [isDangerLoading, setIsDangerLoading] = useState(false);
+  const [dangerMessage, setDangerMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -94,6 +96,43 @@ export default function AdminSettingsPage() {
   if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
+
+  const handleDangerAction = async (action: "clean-map-history" | "delete-analytics") => {
+    if (!dangerPassword) {
+      setDangerMessage({ type: "error", text: "パスワードを入力してください" });
+      return;
+    }
+    const label = action === "clean-map-history" ? "古いマップ履歴の整理" : "分析ログの全削除";
+    if (!confirm(`${label}を実行しますか？この操作は取り消せません。`)) return;
+
+    setIsDangerLoading(true);
+    setDangerMessage(null);
+    try {
+      const res = await fetch("/api/admin/danger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          password: dangerPassword,
+          ...(action === "clean-map-history" ? { keepCount: mapSettings.maxMapSnapshots } : {}),
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; deletedCount?: number };
+      if (!res.ok || !data.ok) {
+        setDangerMessage({ type: "error", text: data.error ?? "操作に失敗しました" });
+        return;
+      }
+      setDangerMessage({
+        type: "ok",
+        text: `${label}が完了しました（${data.deletedCount ?? 0}件削除）`,
+      });
+      setDangerPassword("");
+    } catch {
+      setDangerMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setIsDangerLoading(false);
+    }
+  };
 
   const saveSettings = async () => {
     setIsSaving(true);
@@ -309,7 +348,7 @@ export default function AdminSettingsPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-rose-600">Danger Zone</p>
           <h3 className="mt-2 text-xl font-bold text-slate-900">認証が必要な危険操作</h3>
           <p className="mt-2 text-sm text-slate-600">
-            UI と認証入力だけ先に用意しています。実際の削除処理はまだ無効化されており、操作は実行されません。
+            パスワードを入力して実行してください。この操作は取り消せません。
           </p>
 
           <div className="mt-5 max-w-md">
@@ -325,21 +364,29 @@ export default function AdminSettingsPage() {
             </label>
           </div>
 
+          {dangerMessage && (
+            <p className={`mt-3 text-sm ${dangerMessage.type === "ok" ? "text-emerald-700" : "text-rose-700"}`}>
+              {dangerMessage.text}
+            </p>
+          )}
+
           <div className="mt-6 flex flex-col gap-4 md:flex-row">
             <button
               type="button"
-              disabled
-              className="inline-flex items-center justify-center rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900 transition disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => handleDangerAction("clean-map-history")}
+              disabled={isDangerLoading || !dangerPassword}
+              className="inline-flex items-center justify-center rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              古いマップ履歴を整理（無効）
+              {isDangerLoading ? "処理中..." : `古いマップ履歴を整理（最新${mapSettings.maxMapSnapshots}件を保持）`}
             </button>
 
             <button
               type="button"
-              disabled
-              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => handleDangerAction("delete-analytics")}
+              disabled={isDangerLoading || !dangerPassword}
+              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              分析ログを全削除（無効）
+              {isDangerLoading ? "処理中..." : "分析ログを全削除"}
             </button>
           </div>
         </section>
