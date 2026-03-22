@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function GET() {
   });
 
   try {
-    const shops = await fetchShopsFromDb(supabase);
+    const shops = await fetchVendorShopsFromDb(supabase);
     return NextResponse.json({ shops }, { status: 200 });
   } catch (error) {
     console.error(error);

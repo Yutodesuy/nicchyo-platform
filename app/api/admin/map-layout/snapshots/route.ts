@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
+import { fetchMapRouteFromDb } from "@/app/(public)/map/services/mapRouteDb";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
+import type { MapRouteConfig, MapRoutePoint } from "@/app/(public)/map/types/mapRoute";
 
 type EditableShop = {
   locationId: string;
@@ -20,6 +22,8 @@ type SnapshotSummary = {
   deletedShopCount?: number;
   upsertLandmarkCount?: number;
   deletedLandmarkCount?: number;
+  updatedRoutePointCount?: number;
+  routeConfigChanged?: boolean;
   restoreSourceSnapshotId?: string;
 };
 
@@ -136,10 +140,13 @@ async function createMapLayoutSnapshot(
     loadEditableShops(supabase),
     fetchLandmarksFromDb(supabase),
   ]);
+  const mapRoute = await fetchMapRouteFromDb(supabase);
 
   const { error } = await adminWriteClient.from("map_layout_snapshots").insert({
     shops_json: shops,
     landmarks_json: landmarks,
+    route_json: mapRoute.points,
+    route_config_json: mapRoute.config,
     created_by: createdBy,
     summary,
   });
@@ -152,7 +159,9 @@ async function createMapLayoutSnapshot(
 async function applySnapshot(
   adminWriteClient: SupabaseClient,
   snapshotShops: EditableShop[],
-  snapshotLandmarks: EditableLandmark[]
+  snapshotLandmarks: EditableLandmark[],
+  snapshotRoutePoints: MapRoutePoint[],
+  snapshotRouteConfig: MapRouteConfig | null
 ) {
   const { data: currentLocations, error: currentLocationsError } = await adminWriteClient
     .from("market_locations")
@@ -173,6 +182,14 @@ async function applySnapshot(
     .select("key");
   if (currentLandmarksError) {
     throw new Error("Failed to load current landmarks");
+  }
+
+  const { error: clearRoutePointsError } = await adminWriteClient
+    .from("map_route_points")
+    .delete()
+    .neq("id", "");
+  if (clearRoutePointsError) {
+    throw new Error("Failed to clear current route points");
   }
 
   if (snapshotShops.length > 0) {
@@ -275,6 +292,35 @@ async function applySnapshot(
       throw new Error("Failed to delete extra landmarks during restore");
     }
   }
+
+  if (snapshotRoutePoints.length > 0) {
+    const { error } = await adminWriteClient.from("map_route_points").insert(
+      snapshotRoutePoints.map((point, index) => ({
+        id: point.id,
+        latitude: point.lat,
+        longitude: point.lng,
+        sort_order: index,
+      }))
+    );
+    if (error) {
+      throw new Error("Failed to restore route points");
+    }
+  }
+
+  if (snapshotRouteConfig) {
+    const { error } = await adminWriteClient.from("map_route_configs").upsert(
+      {
+        key: snapshotRouteConfig.key,
+        road_half_width_meters: snapshotRouteConfig.roadHalfWidthMeters,
+        snap_distance_meters: snapshotRouteConfig.snapDistanceMeters,
+        visible_distance_meters: snapshotRouteConfig.visibleDistanceMeters,
+      },
+      { onConflict: "key" }
+    );
+    if (error) {
+      throw new Error("Failed to restore route config");
+    }
+  }
 }
 
 export async function GET() {
@@ -326,7 +372,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await adminWriteClient
       .from("map_layout_snapshots")
-      .select("id, shops_json, landmarks_json")
+      .select("id, shops_json, landmarks_json, route_json, route_config_json")
       .eq("id", body.snapshotId)
       .single();
 
@@ -338,11 +384,24 @@ export async function POST(request: NextRequest) {
     const snapshotLandmarks = Array.isArray(data.landmarks_json)
       ? (data.landmarks_json as EditableLandmark[])
       : [];
+    const snapshotRoutePoints = Array.isArray(data.route_json)
+      ? (data.route_json as MapRoutePoint[])
+      : [];
+    const snapshotRouteConfig =
+      data.route_config_json && typeof data.route_config_json === "object"
+        ? (data.route_config_json as MapRouteConfig)
+        : null;
 
     await createMapLayoutSnapshot(supabase, adminWriteClient, user.id, {
       restoreSourceSnapshotId: body.snapshotId,
     });
-    await applySnapshot(adminWriteClient, snapshotShops, snapshotLandmarks);
+    await applySnapshot(
+      adminWriteClient,
+      snapshotShops,
+      snapshotLandmarks,
+      snapshotRoutePoints,
+      snapshotRouteConfig
+    );
 
     return NextResponse.json({ ok: true });
   } catch {
