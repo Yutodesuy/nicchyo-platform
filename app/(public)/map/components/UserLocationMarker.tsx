@@ -7,8 +7,9 @@ import type { MapRouteConfig, MapRoutePoint } from '../types/mapRoute';
 import {
   getDefaultMapRouteConfig,
   getDefaultMapRoutePoints,
+  getRouteSegments,
   normalizeMapRoutePoints,
-  projectPointOntoRoute,
+  projectPointOntoSegments,
 } from '../utils/mapRouteGeometry';
 
 const MARKET_CENTER: [number, number] = [33.5614118, 133.5379706];
@@ -68,6 +69,7 @@ export default function UserLocationMarker({
     }),
     [routeConfig]
   );
+  const routeSegments = useMemo(() => getRouteSegments(effectiveRoutePoints), [effectiveRoutePoints]);
 
   const applyHeading = (heading: number) => {
     lastHeadingRef.current = heading;
@@ -240,9 +242,10 @@ export default function UserLocationMarker({
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
-          const projected = projectPointOntoRoute(
+          const projected = projectPointOntoSegments(
             { lat: latitude, lng: longitude },
-            effectiveRoutePoints
+            effectiveRoutePoints,
+            routeSegments
           );
           const distanceFromRoute = projected?.distanceMeters ?? Number.POSITIVE_INFINITY;
           const canSnap = distanceFromRoute <= effectiveRouteConfig.snapDistanceMeters;
@@ -358,7 +361,7 @@ export default function UserLocationMarker({
     return () => {
       removeMarker();
     };
-  }, [effectiveRouteConfig, effectiveRoutePoints, map, suppressInitialFocus]);
+  }, [effectiveRouteConfig, effectiveRoutePoints, map, routeSegments, suppressInitialFocus]);
 
   return null;
 }

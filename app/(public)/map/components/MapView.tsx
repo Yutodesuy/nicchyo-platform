@@ -746,9 +746,9 @@ const MapView = memo(function MapView({
   }, [selectedShop, shops]);
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
-  const isMinimumZoomMode = mapUiZoom <= MIN_ZOOM + 0.05;
-  const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
-  const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
+  const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
+  const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
+  const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
   const interactionDisabled = agentOpen;
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
   const getSnappedCenter = useCallback(
@@ -1049,6 +1049,12 @@ const MapView = memo(function MapView({
           zoom={INITIAL_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
+          zoomSnap={0.2}
+          zoomDelta={0.35}
+          wheelPxPerZoomLevel={130}
+          zoomAnimation
+          markerZoomAnimation
+          fadeAnimation
           scrollWheelZoom={!agentOpen && !isMobile}
           dragging={false}
           touchZoom={agentOpen ? false : isMultiTouchGesture || isTouchRotating ? false : isMobile ? "center" : true}
