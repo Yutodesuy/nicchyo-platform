@@ -30,12 +30,8 @@ import MapAgentAssistant from "./MapAgentAssistant";
 import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
-  getRoadBounds,
-  getNearestPointOnRoad,
-  getSundayMarketBounds,
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
-import { getZoomConfig } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import {
   applyShopEdits,
@@ -49,17 +45,21 @@ import {
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
 import type { Landmark } from "../types/landmark";
-import { normalizeRotationDeg } from "../utils/autoRotation";
-
-// Map bounds (Sunday market)
-const ROAD_BOUNDS = getRoadBounds();
-const KOCHI_SUNDAY_MARKET: [number, number] = [
-  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // latitude center
-  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
-];
-
-// Sunday Market area boundaries (restrict pan operations to this area)
-const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
+import type { MapRoute } from "../types/mapRoute";
+import {
+  getAutoRotationForVisibleRoad,
+  getNearestRoadAlignedRotation,
+  normalizeRotationDeg,
+} from "../utils/autoRotation";
+import {
+  expandBoundsByMeters,
+  getDefaultMapRouteConfig,
+  getDefaultMapRoutePoints,
+  getRouteBounds,
+  getRouteCenter,
+  normalizeMapRoutePoints,
+  projectPointOntoRoute,
+} from "../utils/mapRouteGeometry";
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -80,15 +80,9 @@ function findIngredientMatch(name: string) {
 // Recommended zoom bounds (optimal range for Sunday Market)
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
-// Zoom config by shop count
-const BASE_SHOP_COUNT = baseShops.length || 300;
-const ZOOM_CONFIG = getZoomConfig(BASE_SHOP_COUNT);
 const MIN_ZOOM = ZOOM_BOUNDS.min;
 const MAX_ZOOM = ZOOM_BOUNDS.max;
 const INITIAL_ZOOM = MAX_ZOOM;
-
-// Allow a slight pan margin outside road bounds
-const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
 const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
 const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
 
@@ -202,6 +196,7 @@ function MapControls({
 type MapViewProps = {
   shops?: Shop[];
   landmarks?: Landmark[];
+  mapRoute?: MapRoute;
   initialShopId?: number;
   openInitialShopBanner?: boolean;
   selectedRecipe?: Recipe;
@@ -239,6 +234,7 @@ type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
 const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
 const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
+const AUTO_ROTATION_SNAP_THRESHOLD_DEG = 20;
 const PAN_START_THRESHOLD_PX = 3;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.01;
@@ -307,7 +303,11 @@ function MapZoomConstraint() {
   return null;
 }
 
-function MapZoomRoadSnapController() {
+function MapZoomRoadSnapController({
+  onSnapCenter,
+}: {
+  onSnapCenter: (center: L.LatLng) => [number, number] | null;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -323,8 +323,11 @@ function MapZoomRoadSnapController() {
       }
 
       const center = map.getCenter();
-      const nearestRoadPoint = getNearestPointOnRoad(center.lat, center.lng);
-      map.panTo([nearestRoadPoint.lat, nearestRoadPoint.lng], {
+      const snappedPoint = onSnapCenter(center);
+      if (!snappedPoint) {
+        return;
+      }
+      map.panTo(snappedPoint, {
         animate: true,
         duration: 0.7,
         easeLinearity: 0.25,
@@ -335,7 +338,7 @@ function MapZoomRoadSnapController() {
     return () => {
       map.off("zoomend", handleZoomEnd);
     };
-  }, [map]);
+  }, [map, onSnapCenter]);
 
   return null;
 }
@@ -343,6 +346,7 @@ function MapZoomRoadSnapController() {
 const MapView = memo(function MapView({
   shops: initialShops,
   landmarks = [],
+  mapRoute,
   initialShopId,
   openInitialShopBanner = true,
   selectedRecipe,
@@ -379,6 +383,26 @@ const MapView = memo(function MapView({
   const sourceShops = useMemo(
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
+  );
+  const routePoints = useMemo(
+    () => {
+      const normalized = normalizeMapRoutePoints(mapRoute?.points ?? []);
+      return normalized.length >= 2 ? normalized : getDefaultMapRoutePoints();
+    },
+    [mapRoute]
+  );
+  const routeConfig = useMemo(
+    () => ({
+      ...getDefaultMapRouteConfig(),
+      ...(mapRoute?.config ?? {}),
+    }),
+    [mapRoute]
+  );
+  const routeBounds = useMemo(() => getRouteBounds(routePoints), [routePoints]);
+  const routeCenter = useMemo(() => getRouteCenter(routePoints), [routePoints]);
+  const mapBounds = useMemo(
+    () => expandBoundsByMeters(routeBounds, Math.max(routeConfig.visibleDistanceMeters + 48, 120)),
+    [routeBounds, routeConfig.visibleDistanceMeters]
   );
   const landmarkSpecs = useMemo(() => landmarks ?? [], [landmarks]);
   const majorPlaceLabels = useMemo(
@@ -727,6 +751,14 @@ const MapView = memo(function MapView({
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
   const interactionDisabled = agentOpen;
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
+  const getSnappedCenter = useCallback(
+    (center: L.LatLng) => {
+      const projection = projectPointOntoRoute(center, routePoints);
+      if (!projection) return null;
+      return [projection.point.lat, projection.point.lng] as [number, number];
+    },
+    [routePoints]
+  );
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -741,6 +773,29 @@ const MapView = memo(function MapView({
       setManualRotationOffset(normalizeRotationDeg(nextRotation));
     },
     []
+  );
+
+  const snapRotationToVisibleRoad = useCallback(
+    (center?: L.LatLng) => {
+      if (interactionDisabled || isTouchRotating) return;
+      const map = mapRef.current;
+      if (!map) return;
+      const targetRotation = getAutoRotationForVisibleRoad({
+        center: center ?? map.getCenter(),
+        routePoints,
+      });
+      if (targetRotation === null) return;
+      const currentRotation = normalizeRotationDeg(manualRotationOffset);
+      const { rotation: snappedRotation, delta } = getNearestRoadAlignedRotation(
+        currentRotation,
+        targetRotation
+      );
+      if (Math.abs(delta) > AUTO_ROTATION_SNAP_THRESHOLD_DEG || Math.abs(delta) < 0.1) {
+        return;
+      }
+      setManualRotationOffset(snappedRotation);
+    },
+    [interactionDisabled, isTouchRotating, manualRotationOffset, routePoints]
   );
 
   const panMapByScreenDelta = useCallback((dx: number, dy: number) => {
@@ -906,7 +961,13 @@ const MapView = memo(function MapView({
         hasMoved: false,
       };
     }
-  }, [interactionDisabled]);
+    if (e.touches.length < 2) {
+      const map = mapRef.current;
+      if (map) {
+        snapRotationToVisibleRoad(map.getCenter());
+      }
+    }
+  }, [interactionDisabled, snapRotationToVisibleRoad]);
 
   const handleMouseDownPan = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (interactionDisabled) return;
@@ -946,6 +1007,20 @@ const MapView = memo(function MapView({
     };
   }, [interactionDisabled, isTouchRotating, panMapByScreenDelta]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const handleMoveEnd = () => {
+      snapRotationToVisibleRoad(map.getCenter());
+    };
+
+    map.on("moveend", handleMoveEnd);
+    return () => {
+      map.off("moveend", handleMoveEnd);
+    };
+  }, [mapInstance, snapRotationToVisibleRoad]);
+
   return (
     <div
       className="relative h-full w-full overflow-hidden"
@@ -970,7 +1045,7 @@ const MapView = memo(function MapView({
         }}
       >
         <MapContainer
-          center={KOCHI_SUNDAY_MARKET}
+          center={routeCenter}
           zoom={INITIAL_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
@@ -986,7 +1061,7 @@ const MapView = memo(function MapView({
           }}
           zoomControl={false}
           attributionControl={false}
-          maxBounds={MAX_BOUNDS}
+          maxBounds={mapBounds}
           maxBoundsViscosity={1.0}
           whenReady={() => {
             onMapReady?.();
@@ -1003,7 +1078,7 @@ const MapView = memo(function MapView({
           }}
         >
           <MapZoomConstraint />
-          <MapZoomRoadSnapController />
+          <MapZoomRoadSnapController onSnapCenter={getSnappedCenter} />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
           <TileLayer
             url={BASEMAP_TILE_URL}
@@ -1016,8 +1091,12 @@ const MapView = memo(function MapView({
           <BackgroundOverlay />
 
         {/* 道路 */}
-        <RoadOverlay overviewTint={isLowZoomTintMode} />
-        <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
+        <RoadOverlay
+          overviewTint={isLowZoomTintMode}
+          routePoints={routePoints}
+          routeConfig={routeConfig}
+        />
+        <DynamicMaxBounds baseBounds={mapBounds} paddingPx={100} />
         <Pane name="major-place-label" style={{ zIndex: 950 }}>
           {visibleMajorPlaceLabels.map((place) => (
             <Marker
@@ -1195,6 +1274,8 @@ const MapView = memo(function MapView({
           }}
           isTracking={isTracking}
           suppressInitialFocus={suppressInitialLocationFocus}
+          routePoints={routePoints}
+          routeConfig={routeConfig}
         />
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

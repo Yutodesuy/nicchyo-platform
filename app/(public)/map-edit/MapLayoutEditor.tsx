@@ -7,10 +7,12 @@ import "leaflet/dist/leaflet.css";
 import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
 import type { Shop } from "../map/data/shops";
+import type { MapRouteConfig, MapRoutePoint } from "../map/types/mapRoute";
 import RoadOverlay from "../map/components/RoadOverlay";
 import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
 import { normalizeRotationDeg } from "../map/utils/autoRotation";
+import { getRouteCenter, normalizeMapRoutePoints } from "../map/utils/mapRouteGeometry";
 
 type EditableShop = {
   locationId: string;
@@ -25,15 +27,19 @@ type Props = {
   mode: "edit" | "preview";
   shops: EditableShop[];
   landmarks: EditableLandmark[];
+  routePoints: MapRoutePoint[];
+  routeConfig: MapRouteConfig;
   maxZoom?: number;
-  selectedKind: "shop" | "landmark";
+  selectedKind: "shop" | "landmark" | "route";
   selectedId: string;
-  onSelect: (kind: "shop" | "landmark", id: string) => void;
+  onSelect: (kind: "shop" | "landmark" | "route", id: string) => void;
   onClearSelection: () => void;
   onMoveShop: (id: number, lat: number, lng: number) => void;
   onMoveLandmark: (key: string, lat: number, lng: number) => void;
+  onMoveRoutePoint: (id: string, lat: number, lng: number) => void;
   onDeleteShop: (id: number) => void;
   onDeleteLandmark: (key: string) => void;
+  onDeleteRoutePoint: (id: string) => void;
 };
 
 function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void }) {
@@ -107,6 +113,8 @@ export default function MapLayoutEditor({
   mode,
   shops,
   landmarks,
+  routePoints,
+  routeConfig,
   maxZoom = 20,
   selectedKind,
   selectedId,
@@ -114,8 +122,10 @@ export default function MapLayoutEditor({
   onClearSelection,
   onMoveShop,
   onMoveLandmark,
+  onMoveRoutePoint,
   onDeleteShop,
   onDeleteLandmark,
+  onDeleteRoutePoint,
 }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const [manualRotationOffset, setManualRotationOffset] = useState(0);
@@ -142,9 +152,13 @@ export default function MapLayoutEditor({
     isPanning: boolean;
   } | null>(null);
   const center = useMemo<[number, number]>(() => {
+    const normalizedRoutePoints = normalizeMapRoutePoints(routePoints);
+    if (normalizedRoutePoints.length >= 2) {
+      return getRouteCenter(normalizedRoutePoints);
+    }
     const first = shops[0] ?? landmarks[0];
     return first ? [first.lat, first.lng] : [33.56145, 133.5383];
-  }, [landmarks, shops]);
+  }, [landmarks, routePoints, shops]);
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
   const shopIcons = useMemo(() => {
     const icons = new Map<number, L.DivIcon>();
@@ -421,7 +435,7 @@ export default function MapLayoutEditor({
         {mode === "preview" ? (
           <>
             <BackgroundOverlay />
-            <RoadOverlay />
+            <RoadOverlay routePoints={routePoints} routeConfig={routeConfig} />
             {landmarks.map((landmark) => (
               <Marker
                 key={landmark.key}
@@ -436,6 +450,8 @@ export default function MapLayoutEditor({
           </>
         ) : (
           <>
+            <BackgroundOverlay />
+            <RoadOverlay routePoints={routePoints} routeConfig={routeConfig} />
             <ClickCapture
               onClick={() => {
                 onClearSelection();
@@ -519,6 +535,44 @@ export default function MapLayoutEditor({
                     </div>
                     <p className="mt-3 text-xs leading-5 text-slate-500">
                       {landmark.lat.toFixed(6)}, {landmark.lng.toFixed(6)}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+            {routePoints.map((point, index) => (
+              <Marker
+                key={point.id}
+                position={[point.lat, point.lng]}
+                icon={createMarkerIcon("landmark", selectedKind === "route" && selectedId === point.id)}
+                draggable={selectedKind === "route" && selectedId === point.id}
+                eventHandlers={{
+                  click: () => onSelect("route", point.id),
+                  dragend: (event) => {
+                    const marker = event.target;
+                    const latlng = marker.getLatLng();
+                    onMoveRoutePoint(point.id, latlng.lat, latlng.lng);
+                  },
+                }}
+              >
+                <Popup className="map-edit-marker-popup" closeButton={false} offset={[0, -12]}>
+                  <div className="min-w-[180px]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Route</p>
+                        <h3 className="mt-1 text-sm font-semibold text-slate-900">ポイント {index + 1}</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRoutePoint(point.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                        aria-label={`道路ポイント ${index + 1} を削除`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
                     </p>
                   </div>
                 </Popup>

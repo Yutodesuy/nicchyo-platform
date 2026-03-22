@@ -4,6 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
+import type { MapRoute, MapRouteConfig, MapRoutePoint } from "../map/types/mapRoute";
+import {
+  getDefaultMapRouteConfig,
+  getDefaultMapRoutePoints,
+  normalizeMapRoutePoints,
+} from "../map/utils/mapRouteGeometry";
 
 type EditableShop = {
   locationId: string;
@@ -57,6 +63,14 @@ function cloneLandmarks(landmarks: EditableLandmark[]) {
   return landmarks.map((landmark) => ({ ...landmark }));
 }
 
+function cloneRoutePoints(points: MapRoutePoint[]) {
+  return points.map((point) => ({ ...point }));
+}
+
+function cloneRouteConfig(config: MapRouteConfig) {
+  return { ...config };
+}
+
 function getUnassignedPriority(shop: EditableShop) {
   if (shop.vendorId) return Number.NEGATIVE_INFINITY;
   if (shop.locationId.startsWith("new-")) {
@@ -93,6 +107,7 @@ async function fetchMapLayout() {
   return response.json() as Promise<{
     shops?: EditableShop[];
     landmarks?: EditableLandmark[];
+    route?: MapRoute;
     vendors?: VendorOption[];
   }>;
 }
@@ -100,11 +115,15 @@ async function fetchMapLayout() {
 export default function MapEditClient() {
   const [shops, setShops] = useState<EditableShop[]>([]);
   const [landmarks, setLandmarks] = useState<EditableLandmark[]>([]);
+  const [routePoints, setRoutePoints] = useState<MapRoutePoint[]>([]);
+  const [routeConfig, setRouteConfig] = useState<MapRouteConfig>(getDefaultMapRouteConfig());
   const [initialShops, setInitialShops] = useState<EditableShop[]>([]);
   const [initialLandmarks, setInitialLandmarks] = useState<EditableLandmark[]>([]);
+  const [initialRoutePoints, setInitialRoutePoints] = useState<MapRoutePoint[]>([]);
+  const [initialRouteConfig, setInitialRouteConfig] = useState<MapRouteConfig>(getDefaultMapRouteConfig());
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
-  const [selectedKind, setSelectedKind] = useState<"shop" | "landmark">("shop");
+  const [selectedKind, setSelectedKind] = useState<"shop" | "landmark" | "route">("shop");
   const [selectedId, setSelectedId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,6 +137,7 @@ export default function MapEditClient() {
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const shopItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const landmarkItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const routePointItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     let active = true;
@@ -136,14 +156,23 @@ export default function MapEditClient() {
         const nextLandmarks = Array.isArray(data.landmarks)
           ? (data.landmarks as EditableLandmark[])
           : [];
+        const nextRoutePoints = normalizeMapRoutePoints(data.route?.points ?? getDefaultMapRoutePoints());
+        const nextRouteConfig = {
+          ...getDefaultMapRouteConfig(),
+          ...(data.route?.config ?? {}),
+        };
         const nextVendors = Array.isArray(data.vendors) ? (data.vendors as VendorOption[]) : [];
         const nextMapSettings = { ...DEFAULT_MAP_SETTINGS, ...(settingsData.map ?? {}) };
         setShops(sortShops(nextShops));
         setLandmarks(nextLandmarks);
+        setRoutePoints(nextRoutePoints);
+        setRouteConfig(nextRouteConfig);
         setVendorOptions(nextVendors);
         setMapSettings(nextMapSettings);
         setInitialShops(cloneShops(nextShops));
         setInitialLandmarks(cloneLandmarks(nextLandmarks));
+        setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
+        setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
       })
       .catch(() => {
         if (!active) return;
@@ -164,6 +193,10 @@ export default function MapEditClient() {
   const selectedLandmark = useMemo(
     () => landmarks.find((landmark) => landmark.key === selectedId) ?? null,
     [landmarks, selectedId]
+  );
+  const selectedRoutePoint = useMemo(
+    () => routePoints.find((point) => point.id === selectedId) ?? null,
+    [routePoints, selectedId]
   );
   const normalizedShopQuery = shopQuery.trim().toLowerCase();
   const normalizedLandmarkQuery = landmarkQuery.trim().toLowerCase();
@@ -190,6 +223,7 @@ export default function MapEditClient() {
       }),
     [landmarks, normalizedLandmarkQuery, selectedId, selectedKind]
   );
+  const filteredRoutePoints = useMemo(() => routePoints, [routePoints]);
   const hasUnsavedChanges = useMemo(() => {
     const initialShopMap = new Map(initialShops.map((shop) => [shop.locationId, shop]));
     const currentShopMap = new Map(shops.map((shop) => [shop.locationId, shop]));
@@ -223,9 +257,36 @@ export default function MapEditClient() {
     const deletedLandmarkExists = initialLandmarks.some(
       (landmark) => !currentLandmarkMap.has(landmark.key)
     );
+    const routePointsChanged =
+      initialRoutePoints.length !== routePoints.length ||
+      routePoints.some((point, index) => {
+        const initial = initialRoutePoints[index];
+        if (!initial) return true;
+        return initial.id !== point.id || initial.lat !== point.lat || initial.lng !== point.lng;
+      });
+    const routeConfigChanged =
+      initialRouteConfig.roadHalfWidthMeters !== routeConfig.roadHalfWidthMeters ||
+      initialRouteConfig.snapDistanceMeters !== routeConfig.snapDistanceMeters ||
+      initialRouteConfig.visibleDistanceMeters !== routeConfig.visibleDistanceMeters;
 
-    return updatedShopExists || deletedShopExists || updatedLandmarkExists || deletedLandmarkExists;
-  }, [initialLandmarks, initialShops, landmarks, shops]);
+    return (
+      updatedShopExists ||
+      deletedShopExists ||
+      updatedLandmarkExists ||
+      deletedLandmarkExists ||
+      routePointsChanged ||
+      routeConfigChanged
+    );
+  }, [
+    initialLandmarks,
+    initialRouteConfig,
+    initialRoutePoints,
+    initialShops,
+    landmarks,
+    routeConfig,
+    routePoints,
+    shops,
+  ]);
 
   const loadSnapshots = async () => {
     setIsLoadingSnapshots(true);
@@ -247,10 +308,12 @@ export default function MapEditClient() {
     const target =
       selectedKind === "shop"
         ? shopItemRefs.current[selectedId]
-        : landmarkItemRefs.current[selectedId];
+        : selectedKind === "landmark"
+          ? landmarkItemRefs.current[selectedId]
+          : routePointItemRefs.current[selectedId];
 
     target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [filteredLandmarks, filteredShops, selectedId, selectedKind]);
+  }, [filteredLandmarks, filteredRoutePoints, filteredShops, selectedId, selectedKind]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -291,12 +354,25 @@ export default function MapEditClient() {
       const deletedLandmarkKeys = initialLandmarks
         .filter((landmark) => !currentLandmarkMap.has(landmark.key))
         .map((landmark) => landmark.key);
+      const routePointsChanged =
+        initialRoutePoints.length !== routePoints.length ||
+        routePoints.some((point, index) => {
+          const initial = initialRoutePoints[index];
+          if (!initial) return true;
+          return initial.id !== point.id || initial.lat !== point.lat || initial.lng !== point.lng;
+        });
+      const routeConfigChanged =
+        initialRouteConfig.roadHalfWidthMeters !== routeConfig.roadHalfWidthMeters ||
+        initialRouteConfig.snapDistanceMeters !== routeConfig.snapDistanceMeters ||
+        initialRouteConfig.visibleDistanceMeters !== routeConfig.visibleDistanceMeters;
 
       if (
         updatedShops.length === 0 &&
         deletedLocationIds.length === 0 &&
         upsertLandmarks.length === 0 &&
-        deletedLandmarkKeys.length === 0
+        deletedLandmarkKeys.length === 0 &&
+        !routePointsChanged &&
+        !routeConfigChanged
       ) {
         setMessage("変更はありません。");
         setIsSaving(false);
@@ -315,22 +391,35 @@ export default function MapEditClient() {
             upsert: upsertLandmarks,
             deletedKeys: deletedLandmarkKeys,
           },
+          route: {
+            points: routePoints,
+            config: routeConfig,
+          },
         }),
       });
       if (!response.ok) throw new Error("save failed");
       const nextData = await fetchMapLayout();
       const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
       const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
+      const nextRoutePoints = normalizeMapRoutePoints(nextData.route?.points ?? getDefaultMapRoutePoints());
+      const nextRouteConfig = {
+        ...getDefaultMapRouteConfig(),
+        ...(nextData.route?.config ?? {}),
+      };
       const nextVendors = Array.isArray(nextData.vendors) ? nextData.vendors : [];
       setShops(sortShops(nextShops));
       setLandmarks(nextLandmarks);
+      setRoutePoints(nextRoutePoints);
+      setRouteConfig(nextRouteConfig);
       setVendorOptions(nextVendors);
       setInitialShops(cloneShops(nextShops));
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
+      setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
+      setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
       if (isHistoryOpen) {
         await loadSnapshots();
       }
-      setMessage("保存しました。店舗マーカと建物オブジェクトをDBへ反映しました。");
+      setMessage("保存しました。店舗・建物・道路通路の編集をDBへ反映しました。");
     } catch {
       setMessage("保存に失敗しました。");
     } finally {
@@ -496,12 +585,21 @@ export default function MapEditClient() {
       const nextData = await fetchMapLayout();
       const nextShops = Array.isArray(nextData.shops) ? nextData.shops : [];
       const nextLandmarks = Array.isArray(nextData.landmarks) ? nextData.landmarks : [];
+      const nextRoutePoints = normalizeMapRoutePoints(nextData.route?.points ?? getDefaultMapRoutePoints());
+      const nextRouteConfig = {
+        ...getDefaultMapRouteConfig(),
+        ...(nextData.route?.config ?? {}),
+      };
       const nextVendors = Array.isArray(nextData.vendors) ? nextData.vendors : [];
       setShops(sortShops(nextShops));
       setLandmarks(nextLandmarks);
+      setRoutePoints(nextRoutePoints);
+      setRouteConfig(nextRouteConfig);
       setVendorOptions(nextVendors);
       setInitialShops(cloneShops(nextShops));
       setInitialLandmarks(cloneLandmarks(nextLandmarks));
+      setInitialRoutePoints(cloneRoutePoints(nextRoutePoints));
+      setInitialRouteConfig(cloneRouteConfig(nextRouteConfig));
       await loadSnapshots();
       setMessage("バックアップから復元しました。復元前の状態も自動保存しています。");
     } catch {
@@ -509,6 +607,57 @@ export default function MapEditClient() {
     } finally {
       setIsRestoring(null);
     }
+  };
+
+  const handleAddRoutePoint = () => {
+    const base =
+      selectedRoutePoint ??
+      routePoints[routePoints.length - 1] ?? {
+        id: "route-point-seed",
+        lat: 33.56145,
+        lng: 133.5383,
+        order: 0,
+      };
+    const nextPoint: MapRoutePoint = {
+      id: `route-point-${Date.now()}`,
+      lat: base.lat,
+      lng: base.lng,
+      order: routePoints.length,
+    };
+    const next = normalizeMapRoutePoints([...routePoints, nextPoint]);
+    setRoutePoints(next);
+    setSelectedKind("route");
+    setSelectedId(nextPoint.id);
+  };
+
+  const handleDeleteRoutePoint = (pointId: string) => {
+    setRoutePoints((prev) => normalizeMapRoutePoints(prev.filter((point) => point.id !== pointId)));
+    if (selectedKind === "route" && selectedId === pointId) {
+      setSelectedId("");
+    }
+  };
+
+  const handleCancelRoute = () => {
+    setRoutePoints(cloneRoutePoints(initialRoutePoints));
+    setRouteConfig(cloneRouteConfig(initialRouteConfig));
+    if (selectedKind === "route") {
+      setSelectedId("");
+    }
+  };
+
+  const handleConfirmRoute = () => {
+    setSelectedKind("route");
+    setSelectedId("");
+    setMessage("道路と通路設定の編集を確定しました。保存するとDBへ反映されます。");
+  };
+
+  const toggleRouteSelection = (pointId: string) => {
+    if (selectedKind === "route" && selectedId === pointId) {
+      setSelectedId("");
+      return;
+    }
+    setSelectedKind("route");
+    setSelectedId(pointId);
   };
 
   const formatSnapshotDate = (value: string) => {
@@ -658,6 +807,13 @@ export default function MapEditClient() {
               className={`rounded-full px-4 py-2 text-sm font-semibold ${selectedKind === "landmark" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
             >
               建物オブジェクト
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedKind("route")}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${selectedKind === "route" ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-600"}`}
+            >
+              道路・通路
             </button>
           </div>
 
@@ -823,7 +979,7 @@ export default function MapEditClient() {
                 )}
               </div>
             </div>
-          ) : (
+          ) : selectedKind === "landmark" ? (
             <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <button
                 type="button"
@@ -882,6 +1038,117 @@ export default function MapEditClient() {
                   該当する建物オブジェクトはありません。
                 </div>
               )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
+              <button
+                type="button"
+                onClick={handleAddRoutePoint}
+                className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
+              >
+                ＋道路ポイントを追加
+              </button>
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Corridor Settings
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    道幅の半径(m)
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.1"
+                      value={routeConfig.roadHalfWidthMeters}
+                      onChange={(event) =>
+                        setRouteConfig((prev) => ({
+                          ...prev,
+                          roadHalfWidthMeters: Number(event.target.value),
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    スナップ開始距離(m)
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={routeConfig.snapDistanceMeters}
+                      onChange={(event) =>
+                        setRouteConfig((prev) => ({
+                          ...prev,
+                          snapDistanceMeters: Number(event.target.value),
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    最大表示距離(m)
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={routeConfig.visibleDistanceMeters}
+                      onChange={(event) =>
+                        setRouteConfig((prev) => ({
+                          ...prev,
+                          visibleDistanceMeters: Number(event.target.value),
+                        }))
+                      }
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                {filteredRoutePoints.map((point, index) => (
+                  <div
+                    key={point.id}
+                    ref={(node) => {
+                      routePointItemRefs.current[point.id] = node;
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleRouteSelection(point.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        toggleRouteSelection(point.id);
+                      }
+                    }}
+                    className={`rounded-2xl border px-4 py-3 transition ${
+                      selectedId === point.id
+                        ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
+                        : "border-slate-200 bg-white"
+                    } cursor-pointer`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1 text-left">
+                        <span className="block text-sm font-semibold text-slate-900">
+                          ポイント {index + 1}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteRoutePoint(point.id);
+                        }}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                        aria-label={`道路ポイント ${index + 1} を削除`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -943,6 +1210,83 @@ export default function MapEditClient() {
             </div>
           )}
 
+          {selectedKind === "route" && (
+            <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-4">
+              {selectedRoutePoint ? (
+                <>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Selected Route Point
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      緯度
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={selectedRoutePoint.lat}
+                        onChange={(event) =>
+                          setRoutePoints((prev) =>
+                            normalizeMapRoutePoints(
+                              prev.map((point) =>
+                                point.id === selectedRoutePoint.id
+                                  ? { ...point, lat: Number(event.target.value) }
+                                  : point
+                              )
+                            )
+                          )
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      経度
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={selectedRoutePoint.lng}
+                        onChange={(event) =>
+                          setRoutePoints((prev) =>
+                            normalizeMapRoutePoints(
+                              prev.map((point) =>
+                                point.id === selectedRoutePoint.id
+                                  ? { ...point, lng: Number(event.target.value) }
+                                  : point
+                              )
+                            )
+                          )
+                        }
+                        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  道路ポイントを選ぶと座標を直接編集できます。地図上ではドラッグでも動かせます。
+                </p>
+              )}
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelRoute}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRoute}
+                  className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                >
+                  確定
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                この道路中心線が公開マップの道路形状と現在地の通路判定に使われます。
+              </p>
+            </div>
+          )}
+
           {message && (
             <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
               {message}
@@ -955,6 +1299,8 @@ export default function MapEditClient() {
             mode={mode}
             shops={shops}
             landmarks={landmarks}
+            routePoints={routePoints}
+            routeConfig={routeConfig}
             maxZoom={mapSettings.maxEditZoom}
             selectedKind={selectedKind}
             selectedId={selectedId}
@@ -973,8 +1319,16 @@ export default function MapEditClient() {
             onMoveLandmark={(key, lat, lng) =>
               setLandmarks((prev) => prev.map((item) => (item.key === key ? { ...item, lat, lng } : item)))
             }
+            onMoveRoutePoint={(id, lat, lng) =>
+              setRoutePoints((prev) =>
+                normalizeMapRoutePoints(
+                  prev.map((point) => (point.id === id ? { ...point, lat, lng } : point))
+                )
+              )
+            }
             onDeleteShop={handleDeleteShop}
             onDeleteLandmark={handleDeleteLandmark}
+            onDeleteRoutePoint={handleDeleteRoutePoint}
           />
         </div>
       </div>

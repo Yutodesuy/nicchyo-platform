@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
 
 type Answers = {
   purpose?: string;
@@ -48,7 +48,7 @@ async function loadShops(): Promise<BaseShop[]> {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false },
   });
-  const shops = await fetchShopsFromDb(supabase);
+  const shops = await fetchVendorShopsFromDb(supabase);
   return shops.map((shop) => ({
     id: shop.id,
     name: shop.name,
