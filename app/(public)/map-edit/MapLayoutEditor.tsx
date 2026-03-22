@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Trash2 } from "lucide-react";
@@ -12,7 +12,7 @@ import RoadOverlay from "../map/components/RoadOverlay";
 import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
 import { normalizeRotationDeg } from "../map/utils/autoRotation";
-import { getRouteCenter, normalizeMapRoutePoints } from "../map/utils/mapRouteGeometry";
+import { getRouteCenter, getRouteSegments, normalizeMapRoutePoints } from "../map/utils/mapRouteGeometry";
 
 type EditableShop = {
   locationId: string;
@@ -37,6 +37,13 @@ type Props = {
   onMoveShop: (id: number, lat: number, lng: number) => void;
   onMoveLandmark: (key: string, lat: number, lng: number) => void;
   onMoveRoutePoint: (id: string, lat: number, lng: number) => void;
+  onInsertRoutePointAtSegment: (
+    segmentStartId: string,
+    lat: number,
+    lng: number,
+    segmentEndId?: string
+  ) => void;
+  onAddConnectedRoutePoint: (pointId: string) => void;
   onDeleteShop: (id: number) => void;
   onDeleteLandmark: (key: string) => void;
   onDeleteRoutePoint: (id: string) => void;
@@ -82,7 +89,7 @@ function isInteractiveMapElement(target: EventTarget | null): boolean {
 }
 
 function createMarkerIcon(
-  kind: "shop" | "landmark",
+  kind: "shop" | "landmark" | "route",
   isSelected: boolean,
   isUnassigned = false,
   isIncompleteLandmark = false
@@ -92,13 +99,17 @@ function createMarkerIcon(
   const background =
     kind === "shop"
       ? (isUnassigned ? "#94a3b8" : "#0284c7")
-      : (isIncompleteLandmark ? "#c7926a" : "#f97316");
+      : kind === "route"
+        ? "#111827"
+        : (isIncompleteLandmark ? "#c7926a" : "#f97316");
   const glow =
     kind === "shop"
       ? isUnassigned
         ? "rgba(148,163,184,.38)"
         : "rgba(2,132,199,.38)"
-      : (isIncompleteLandmark ? "rgba(199,146,106,.38)" : "rgba(249,115,22,.38)");
+      : kind === "route"
+        ? "rgba(15,23,42,.38)"
+        : (isIncompleteLandmark ? "rgba(199,146,106,.38)" : "rgba(249,115,22,.38)");
   const outline = isSelected ? "0 0 0 6px rgba(255,255,255,.95), 0 0 0 10px rgba(15,23,42,.14)" : "";
 
   return L.divIcon({
@@ -123,6 +134,8 @@ export default function MapLayoutEditor({
   onMoveShop,
   onMoveLandmark,
   onMoveRoutePoint,
+  onInsertRoutePointAtSegment,
+  onAddConnectedRoutePoint,
   onDeleteShop,
   onDeleteLandmark,
   onDeleteRoutePoint,
@@ -226,6 +239,10 @@ export default function MapLayoutEditor({
     }
     return icons;
   }, [landmarks]);
+  const routeSegments = useMemo(
+    () => getRouteSegments(routePoints),
+    [routePoints]
+  );
 
   const applyManualRotation = useCallback((nextRotation: number) => {
     setManualRotationOffset(normalizeRotationDeg(nextRotation));
@@ -452,6 +469,36 @@ export default function MapLayoutEditor({
           <>
             <BackgroundOverlay />
             <RoadOverlay routePoints={routePoints} routeConfig={routeConfig} />
+            {selectedKind === "route" &&
+              routeSegments.map((segment) => (
+                <Polyline
+                  key={`route-segment-${segment.start.id}-${segment.end.id}`}
+                  positions={[
+                    [segment.start.lat, segment.start.lng],
+                    [segment.end.lat, segment.end.lng],
+                  ]}
+                  pathOptions={{
+                    color: "#0f172a",
+                    weight: 14,
+                    opacity: 0.001,
+                  }}
+                  eventHandlers={{
+                    click: (event) => {
+                      L.DomEvent.stopPropagation(event);
+                      const shouldInsert = window.confirm(
+                        "この線分の途中に新しい道路ポイントを追加しますか？"
+                      );
+                      if (!shouldInsert) return;
+                      onInsertRoutePointAtSegment(
+                        segment.start.id,
+                        event.latlng.lat,
+                        event.latlng.lng,
+                        segment.end.id
+                      );
+                    },
+                  }}
+                />
+              ))}
             <ClickCapture
               onClick={() => {
                 onClearSelection();
@@ -544,10 +591,20 @@ export default function MapLayoutEditor({
               <Marker
                 key={point.id}
                 position={[point.lat, point.lng]}
-                icon={createMarkerIcon("landmark", selectedKind === "route" && selectedId === point.id)}
+                icon={createMarkerIcon("route", selectedKind === "route" && selectedId === point.id)}
                 draggable={selectedKind === "route" && selectedId === point.id}
                 eventHandlers={{
-                  click: () => onSelect("route", point.id),
+                  click: (event) => {
+                    L.DomEvent.stopPropagation(event);
+                    const shouldAdd = window.confirm(
+                      "このポイントから接続する新しい道路ポイントを追加しますか？"
+                    );
+                    if (!shouldAdd) {
+                      onSelect("route", point.id);
+                      return;
+                    }
+                    onAddConnectedRoutePoint(point.id);
+                  },
                   dragend: (event) => {
                     const marker = event.target;
                     const latlng = marker.getLatLng();

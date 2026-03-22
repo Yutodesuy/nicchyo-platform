@@ -8,6 +8,7 @@ import type { MapRoute, MapRouteConfig, MapRoutePoint } from "../map/types/mapRo
 import {
   getDefaultMapRouteConfig,
   getDefaultMapRoutePoints,
+  getRouteLengthKm,
   normalizeMapRoutePoints,
 } from "../map/utils/mapRouteGeometry";
 
@@ -224,6 +225,11 @@ export default function MapEditClient() {
     [landmarks, normalizedLandmarkQuery, selectedId, selectedKind]
   );
   const filteredRoutePoints = useMemo(() => routePoints, [routePoints]);
+  const routeLengthKm = useMemo(() => getRouteLengthKm(routePoints), [routePoints]);
+  const mainRoutePoints = useMemo(
+    () => routePoints.filter((point) => !point.branchFromId),
+    [routePoints]
+  );
   const hasUnsavedChanges = useMemo(() => {
     const initialShopMap = new Map(initialShops.map((shop) => [shop.locationId, shop]));
     const currentShopMap = new Map(shops.map((shop) => [shop.locationId, shop]));
@@ -623,6 +629,7 @@ export default function MapEditClient() {
       lat: base.lat,
       lng: base.lng,
       order: routePoints.length,
+      branchFromId: null,
     };
     const next = normalizeMapRoutePoints([...routePoints, nextPoint]);
     setRoutePoints(next);
@@ -658,6 +665,132 @@ export default function MapEditClient() {
     }
     setSelectedKind("route");
     setSelectedId(pointId);
+  };
+
+  const handleMoveRoutePointOrder = (pointId: string, direction: -1 | 1) => {
+    setRoutePoints((prev) => {
+      const current = normalizeMapRoutePoints(prev);
+      const index = current.findIndex((point) => point.id === pointId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return normalizeMapRoutePoints(next);
+    });
+  };
+
+  const handleInsertRoutePointAtSegment = (
+    segmentStartId: string,
+    lat: number,
+    lng: number,
+    segmentEndId?: string
+  ) => {
+    setRoutePoints((prev) => {
+      const current = normalizeMapRoutePoints(prev);
+      const index = current.findIndex((point) => point.id === segmentStartId);
+      if (index < 0) return current;
+      const segmentStart = current[index];
+      const segmentEnd = segmentEndId ? current.find((point) => point.id === segmentEndId) : null;
+      const nextPoint: MapRoutePoint = {
+        id: `route-point-${Date.now()}`,
+        lat,
+        lng,
+        order: index + 1,
+        branchFromId: segmentEnd?.branchFromId === segmentStart.id ? segmentStart.id : segmentStart.branchFromId ?? null,
+      };
+      const next = [...current];
+      if (segmentEnd && segmentEnd.branchFromId === segmentStart.id) {
+        next.splice(index + 1, 0, nextPoint);
+        const endIndex = next.findIndex((point) => point.id === segmentEnd.id);
+        if (endIndex >= 0) {
+          next[endIndex] = { ...next[endIndex], branchFromId: nextPoint.id };
+        }
+      } else {
+        next.splice(index + 1, 0, nextPoint);
+      }
+      const normalized = normalizeMapRoutePoints(next);
+      setSelectedKind("route");
+      setSelectedId(nextPoint.id);
+      return normalized;
+    });
+  };
+
+  const handleAddConnectedRoutePoint = (pointId: string) => {
+    setRoutePoints((prev) => {
+      const current = normalizeMapRoutePoints(prev);
+      const index = current.findIndex((point) => point.id === pointId);
+      if (index < 0) return current;
+      const anchor = current[index];
+      const nextReference = current[index + 1];
+      const prevReference = current[index - 1];
+      let baseLatOffset = 0;
+      let baseLngOffset = 0;
+
+      const isBranchPoint = Boolean(anchor.branchFromId);
+      const isLeftEnd = !isBranchPoint && !prevReference && Boolean(nextReference);
+      const isRightEnd = !isBranchPoint && Boolean(prevReference) && !nextReference;
+      const isMiddle = !isBranchPoint && Boolean(prevReference && nextReference);
+
+      if (isLeftEnd && nextReference) {
+        // 左端: 左側へ延長
+        baseLatOffset = anchor.lat - nextReference.lat;
+        baseLngOffset = anchor.lng - nextReference.lng;
+      } else if (isRightEnd && prevReference) {
+        // 右端: 右側へ延長
+        baseLatOffset = anchor.lat - prevReference.lat;
+        baseLngOffset = anchor.lng - prevReference.lng;
+      } else if (isMiddle && prevReference && nextReference) {
+        // 中間点: 上か下へ分岐
+        const tangentLat = nextReference.lat - prevReference.lat;
+        const tangentLng = nextReference.lng - prevReference.lng;
+        let upLat = tangentLng;
+        let upLng = -tangentLat;
+        const normalLength = Math.hypot(upLat, upLng);
+        if (normalLength > 0) {
+          upLat /= normalLength;
+          upLng /= normalLength;
+        }
+        if (upLat < 0) {
+          upLat *= -1;
+          upLng *= -1;
+        }
+
+        const prevDistance = Math.hypot(anchor.lat - prevReference.lat, anchor.lng - prevReference.lng);
+        const nextDistance = Math.hypot(nextReference.lat - anchor.lat, nextReference.lng - anchor.lng);
+        const baseDistance = Math.max(0.00012, (prevDistance + nextDistance) / 2);
+        const placeUp = window.confirm(
+          "この中間ポイントから上側へ新しい道路ポイントを追加しますか？\nキャンセルで下側に追加します。"
+        );
+        const direction = placeUp ? 1 : -1;
+        baseLatOffset = upLat * baseDistance * direction;
+        baseLngOffset = upLng * baseDistance * direction;
+      } else {
+        baseLngOffset = 0.00018;
+      }
+
+      const nextPoint: MapRoutePoint = {
+        id: `route-point-${Date.now()}`,
+        lat: anchor.lat + (Math.abs(baseLatOffset) > 0 ? baseLatOffset : 0),
+        lng: anchor.lng + (Math.abs(baseLngOffset) > 0 ? baseLngOffset : 0.00018),
+        order: index + 1,
+        branchFromId: isMiddle || isBranchPoint ? anchor.id : null,
+      };
+
+      const next = [...current];
+      if (isMiddle || isBranchPoint) {
+        next.push(nextPoint);
+      } else {
+        next.splice(index + 1, 0, nextPoint);
+      }
+
+      const normalized = normalizeMapRoutePoints(next);
+      setSelectedKind("route");
+      setSelectedId(nextPoint.id);
+      return normalized;
+    });
   };
 
   const formatSnapshotDate = (value: string) => {
@@ -792,7 +925,7 @@ export default function MapEditClient() {
             </div>
           </aside>
         )}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <aside className="flex min-h-0 flex-col overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex gap-2">
             <button
               type="button"
@@ -1042,17 +1175,51 @@ export default function MapEditClient() {
             </div>
           ) : (
             <div className="mt-4 flex min-h-0 flex-1 flex-col">
-              <button
-                type="button"
-                onClick={handleAddRoutePoint}
-                className="w-full rounded-2xl border border-dashed border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700"
-              >
-                ＋道路ポイントを追加
-              </button>
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Corridor Settings
-                </p>
+              <div className="rounded-[28px] border border-slate-200 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+                      Route Editor
+                    </p>
+                    <h3 className="mt-1 text-lg font-bold text-slate-900">道路と通路の編集</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      道路の形、現在地の吸着距離、表示許容距離をここで調整します。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddRoutePoint}
+                    className="shrink-0 rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                  >
+                    ＋ポイント追加
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Points</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">{routePoints.length}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Length</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">{routeLengthKm.toFixed(2)}km</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Selected</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">
+                      {selectedRoutePoint ? routePoints.findIndex((point) => point.id === selectedRoutePoint.id) + 1 : "-"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Corridor Settings
+                  </p>
+                  <p className="text-[11px] text-slate-400">数値は公開マップへそのまま反映されます</p>
+                </div>
                 <div className="mt-3 grid grid-cols-1 gap-3">
                   <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                     道幅の半径(m)
@@ -1104,51 +1271,102 @@ export default function MapEditClient() {
                   </label>
                 </div>
               </div>
-              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-                {filteredRoutePoints.map((point, index) => (
-                  <div
-                    key={point.id}
-                    ref={(node) => {
-                      routePointItemRefs.current[point.id] = node;
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => toggleRouteSelection(point.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        toggleRouteSelection(point.id);
-                      }
-                    }}
-                    className={`rounded-2xl border px-4 py-3 transition ${
-                      selectedId === point.id
-                        ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
-                        : "border-slate-200 bg-white"
-                    } cursor-pointer`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1 text-left">
-                        <span className="block text-sm font-semibold text-slate-900">
-                          ポイント {index + 1}
-                        </span>
-                        <span className="block text-xs text-slate-500">
-                          {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteRoutePoint(point.id);
-                        }}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
-                        aria-label={`道路ポイント ${index + 1} を削除`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+
+              <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Route Points
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      地図上ドラッグ、または一覧選択後の座標入力で編集
+                    </p>
                   </div>
-                ))}
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+                  <div className="space-y-2">
+                    {filteredRoutePoints.map((point, index) => (
+                      <div
+                        key={point.id}
+                        ref={(node) => {
+                          routePointItemRefs.current[point.id] = node;
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleRouteSelection(point.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleRouteSelection(point.id);
+                          }
+                        }}
+                        className={`rounded-2xl border px-4 py-3 transition ${
+                          selectedId === point.id
+                            ? "border-sky-400 bg-sky-50 shadow-sm ring-2 ring-sky-200"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        } cursor-pointer`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-900 px-2 text-[11px] font-bold text-white">
+                                {index + 1}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-900">道路ポイント</span>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              緯度 {point.lat.toFixed(6)}
+                              <br />
+                              経度 {point.lng.toFixed(6)}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleMoveRoutePointOrder(point.id, -1);
+                              }}
+                              disabled={index === 0}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              aria-label={`道路ポイント ${index + 1} を前へ移動`}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleMoveRoutePointOrder(point.id, 1);
+                              }}
+                              disabled={index === filteredRoutePoints.length - 1}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              aria-label={`道路ポイント ${index + 1} を後ろへ移動`}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteRoutePoint(point.id);
+                              }}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                              aria-label={`道路ポイント ${index + 1} を削除`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {filteredRoutePoints.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                        道路ポイントがまだありません。
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1211,12 +1429,22 @@ export default function MapEditClient() {
           )}
 
           {selectedKind === "route" && (
-            <div className="mt-6 space-y-3 rounded-2xl bg-slate-50 p-4">
+            <div className="mt-6 space-y-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4">
               {selectedRoutePoint ? (
                 <>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Selected Route Point
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Selected Route Point
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        ポイント {routePoints.findIndex((point) => point.id === selectedRoutePoint.id) + 1}
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500">
+                      ID: {selectedRoutePoint.id}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                       緯度
@@ -1259,10 +1487,28 @@ export default function MapEditClient() {
                       />
                     </label>
                   </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleMoveRoutePointOrder(selectedRoutePoint.id, -1)}
+                      disabled={routePoints.findIndex((point) => point.id === selectedRoutePoint.id) === 0}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      一つ前へ移動
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveRoutePointOrder(selectedRoutePoint.id, 1)}
+                      disabled={routePoints.findIndex((point) => point.id === selectedRoutePoint.id) === routePoints.length - 1}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      一つ後ろへ移動
+                    </button>
+                  </div>
                 </>
               ) : (
                 <p className="text-sm text-slate-600">
-                  道路ポイントを選ぶと座標を直接編集できます。地図上ではドラッグでも動かせます。
+                  左の一覧から道路ポイントを選ぶと、ここで座標編集と順序変更ができます。地図上ではドラッグでも動かせます。
                 </p>
               )}
               <div className="flex items-center justify-end gap-2">
@@ -1326,6 +1572,8 @@ export default function MapEditClient() {
                 )
               )
             }
+            onInsertRoutePointAtSegment={handleInsertRoutePointAtSegment}
+            onAddConnectedRoutePoint={handleAddConnectedRoutePoint}
             onDeleteShop={handleDeleteShop}
             onDeleteLandmark={handleDeleteLandmark}
             onDeleteRoutePoint={handleDeleteRoutePoint}

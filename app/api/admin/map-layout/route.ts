@@ -412,6 +412,7 @@ export async function PUT(request: NextRequest) {
           latitude: point.lat,
           longitude: point.lng,
           sort_order: index,
+          branch_from_id: point.branchFromId ?? null,
         }))
       );
 

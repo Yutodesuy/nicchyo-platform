@@ -1,7 +1,7 @@
 import L from "leaflet";
 import type { MapRoutePoint } from "../types/mapRoute";
 import { getRoadCenterlinePoints } from "../config/roadConfig";
-import { normalizeMapRoutePoints } from "./mapRouteGeometry";
+import { getRouteSegments, normalizeMapRoutePoints } from "./mapRouteGeometry";
 
 export function normalizeRotationDeg(value: number): number {
   const normalized = ((value % 360) + 360) % 360;
@@ -37,16 +37,27 @@ export function getAutoRotationForVisibleRoad({
   routePoints?: MapRoutePoint[];
 }): number | null {
   const points = normalizeMapRoutePoints(routePoints ?? []);
-  const activePoints = points.length >= 2 ? points : getRoadCenterlinePoints();
-  if (activePoints.length < 2) {
+  const activeSegments =
+    points.length >= 2
+      ? getRouteSegments(points)
+      : getRouteSegments(
+          getRoadCenterlinePoints().map((point, index) => ({
+            id: `fallback-${index}`,
+            lat: point.lat,
+            lng: point.lng,
+            order: index,
+            branchFromId: null,
+          }))
+        );
+  if (activeSegments.length === 0) {
     return null;
   }
 
   let bestSegmentIndex = 0;
   let bestDistanceSq = Number.POSITIVE_INFINITY;
 
-  for (let i = 0; i < activePoints.length - 1; i += 1) {
-    const candidate = projectPointOntoSegment(center, activePoints[i], activePoints[i + 1]);
+  for (let i = 0; i < activeSegments.length; i += 1) {
+    const candidate = projectPointOntoSegment(center, activeSegments[i].start, activeSegments[i].end);
     const distanceSq =
       (candidate.lat - center.lat) * (candidate.lat - center.lat) +
       (candidate.lng - center.lng) * (candidate.lng - center.lng);
@@ -57,8 +68,8 @@ export function getAutoRotationForVisibleRoad({
     }
   }
 
-  const from = activePoints[bestSegmentIndex];
-  const to = activePoints[bestSegmentIndex + 1];
+  const from = activeSegments[bestSegmentIndex].start;
+  const to = activeSegments[bestSegmentIndex].end;
   const screenAngleDeg =
     (Math.atan2(-(to.lat - from.lat), to.lng - from.lng) * 180) / Math.PI;
 

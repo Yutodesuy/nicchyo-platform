@@ -12,12 +12,20 @@ export type RouteProjection = {
   t: number;
 };
 
+export type RouteSegment = {
+  key: string;
+  start: MapRoutePoint;
+  end: MapRoutePoint;
+  isBranch: boolean;
+};
+
 export function getDefaultMapRoutePoints(): MapRoutePoint[] {
   return getRoadCenterlinePoints().map((point, index) => ({
     id: `default-route-point-${index + 1}`,
     lat: point.lat,
     lng: point.lng,
     order: index,
+    branchFromId: null,
   }));
 }
 
@@ -37,11 +45,61 @@ export function normalizeMapRoutePoints(points: MapRoutePoint[]): MapRoutePoint[
         Number.isFinite(point.lat) &&
         Number.isFinite(point.lng)
     )
-    .sort((a, b) => a.order - b.order)
+    .map((point) => ({
+      ...point,
+      branchFromId: point.branchFromId ?? null,
+    }))
+    .sort((a, b) => {
+      const branchRankA = a.branchFromId ? 1 : 0;
+      const branchRankB = b.branchFromId ? 1 : 0;
+      if (branchRankA !== branchRankB) {
+        return branchRankA - branchRankB;
+      }
+      return a.order - b.order;
+    })
     .map((point, index) => ({
       ...point,
       order: index,
     }));
+}
+
+export function getMainRoutePoints(points: MapRoutePoint[]): MapRoutePoint[] {
+  return normalizeMapRoutePoints(points).filter((point) => !point.branchFromId);
+}
+
+export function getBranchRoutePoints(points: MapRoutePoint[]): MapRoutePoint[] {
+  return normalizeMapRoutePoints(points).filter((point) => Boolean(point.branchFromId));
+}
+
+export function getRouteSegments(points: MapRoutePoint[]): RouteSegment[] {
+  const normalized = normalizeMapRoutePoints(points);
+  const mainline = normalized.filter((point) => !point.branchFromId);
+  const pointById = new Map(normalized.map((point) => [point.id, point]));
+  const segments: RouteSegment[] = [];
+
+  for (let index = 0; index < mainline.length - 1; index += 1) {
+    segments.push({
+      key: `main-${mainline[index].id}-${mainline[index + 1].id}`,
+      start: mainline[index],
+      end: mainline[index + 1],
+      isBranch: false,
+    });
+  }
+
+  normalized
+    .filter((point) => point.branchFromId)
+    .forEach((point) => {
+      const parent = pointById.get(point.branchFromId ?? "");
+      if (!parent) return;
+      segments.push({
+        key: `branch-${parent.id}-${point.id}`,
+        start: parent,
+        end: point,
+        isBranch: true,
+      });
+    });
+
+  return segments;
 }
 
 export function getEffectiveMapRouteConfig(
@@ -173,13 +231,15 @@ export function buildRoadPolygon(
 
 export function projectPointOntoRoute(
   point: { lat: number; lng: number },
-  routePoints: Array<{ lat: number; lng: number }>
+  routePoints: MapRoutePoint[]
 ): RouteProjection | null {
+  const segments = getRouteSegments(routePoints);
+
   if (routePoints.length === 0) {
     return null;
   }
 
-  if (routePoints.length === 1) {
+  if (segments.length === 0 && routePoints.length === 1) {
     return {
       point: { lat: routePoints[0].lat, lng: routePoints[0].lng },
       distanceMeters: distanceMeters(point, routePoints[0]),
@@ -190,8 +250,8 @@ export function projectPointOntoRoute(
 
   let bestProjection: RouteProjection | null = null;
 
-  for (let i = 0; i < routePoints.length - 1; i += 1) {
-    const projection = projectPointOntoSegment(point, routePoints[i], routePoints[i + 1]);
+  for (let i = 0; i < segments.length; i += 1) {
+    const projection = projectPointOntoSegment(point, segments[i].start, segments[i].end);
     const nextProjection: RouteProjection = {
       point: projection.point,
       distanceMeters: distanceMeters(point, projection.point),
@@ -217,8 +277,9 @@ export function getRouteLengthKm(points: Array<{ lat: number; lng: number }>): n
   }
 
   let meters = 0;
-  for (let i = 0; i < points.length - 1; i += 1) {
-    meters += distanceMeters(points[i], points[i + 1]);
+  const routeSegments = getRouteSegments(points as MapRoutePoint[]);
+  for (const segment of routeSegments) {
+    meters += distanceMeters(segment.start, segment.end);
   }
   return meters / 1000;
 }

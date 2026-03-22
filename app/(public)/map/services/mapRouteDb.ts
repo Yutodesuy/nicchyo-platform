@@ -12,6 +12,7 @@ type MapRoutePointRow = {
   latitude: number | null;
   longitude: number | null;
   sort_order: number | null;
+  branch_from_id: string | null;
 };
 
 type MapRouteConfigRow = {
@@ -34,7 +35,7 @@ export async function fetchMapRouteFromDb(
   const [pointsResult, configResult] = await Promise.all([
     supabase
       .from("map_route_points")
-      .select("id, latitude, longitude, sort_order")
+      .select("id, latitude, longitude, sort_order, branch_from_id")
       .order("sort_order", { ascending: true }),
     supabase
       .from("map_route_configs")
@@ -58,6 +59,7 @@ export async function fetchMapRouteFromDb(
           lat: Number(row.latitude),
           lng: Number(row.longitude),
           order: Number(row.sort_order ?? 0),
+          branchFromId: row.branch_from_id ?? null,
         };
       })
       .filter((row): row is MapRoutePoint => row !== null)

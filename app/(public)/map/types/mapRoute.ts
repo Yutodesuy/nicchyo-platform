@@ -3,6 +3,7 @@ export type MapRoutePoint = {
   lat: number;
   lng: number;
   order: number;
+  branchFromId?: string | null;
 };
 
 export type MapRouteConfig = {
