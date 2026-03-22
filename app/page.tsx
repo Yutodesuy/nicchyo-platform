@@ -76,10 +76,42 @@ const actionCards = [
 ];
 
 const trustPoints = [
-  "高知高専の学生が、現地の声を聞きながら育てています。",
-  "高知市や出店者との対話を重ねて設計しています。",
-  "効率よりも、安心して歩き出せることを大切にしています。",
-];
+  {
+    date: "2025年7月15日",
+    title: "第1回高知市商業振興課街路市担当との会談",
+  },
+  {
+    date: "2025年9月30日",
+    title: "第2回高知市商業振興課街路市担当との会談",
+  },
+  {
+    date: "2025年10月19日",
+    title: "日曜市での来訪者アンケートを実施",
+    note: "133人に実施",
+  },
+  {
+    date: "2026年2月28日",
+    title: "こうちNPOアワード2025「ワカモノ未来賞」受賞",
+  },
+  {
+    date: "2026年3月17日",
+    title: "第2回高知市商業振興課街路市担当との会談",
+  },
+] as const;
+
+function parseJapaneseDateToNumber(value: string) {
+  const match = value.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!match) return 0;
+  const [, year, month, day] = match;
+  return Number(`${year}${month.padStart(2, "0")}${day.padStart(2, "0")}`);
+}
+
+const characterCardDescriptions: Record<string, string> = {
+  nichiyosan: "やさしく案内してくれる。",
+  yoichisan: "落ち着いて教えてくれる。",
+  miraikun: "軽やかに手伝ってくれる。",
+  yosakochan: "気軽に話しかけやすい。",
+};
 
 function createRevealVariants(reduceMotion: boolean) {
   return {
@@ -154,6 +186,8 @@ export default function HomePage() {
     weeklyVisitorTotal: null,
   });
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(0);
+  const [showAllTrustPoints, setShowAllTrustPoints] = useState(false);
+  const [isMapLaunching, setIsMapLaunching] = useState(false);
 
   useEffect(() => {
     setLoaded(true);
@@ -222,6 +256,8 @@ export default function HomePage() {
   }, []);
 
   const handleMapClick = () => {
+    if (isMapLaunching) return;
+    setIsMapLaunching(true);
     startMapLoading();
     setTimeout(() => {
       router.push("/map");
@@ -244,6 +280,16 @@ export default function HomePage() {
   const activeSpeaker =
     CONSULT_CHARACTERS.find((character) => character.id === activeSpeech.characterId) ??
     primaryCharacter;
+  const sortedTrustPoints = useMemo(
+    () =>
+      [...trustPoints].sort(
+        (a, b) => parseJapaneseDateToNumber(b.date) - parseJapaneseDateToNumber(a.date)
+      ),
+    []
+  );
+  const visibleTrustPoints = showAllTrustPoints
+    ? sortedTrustPoints
+    : sortedTrustPoints.slice(0, 5);
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] text-stone-900 selection:bg-[#f3c78f]">
@@ -257,8 +303,8 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(72,36,12,0.05),rgba(247,241,232,0.94))]" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:py-16">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-12">
+        <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 md:px-10 lg:py-16">
+          <div className="space-y-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -283,18 +329,74 @@ export default function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <button
+                <motion.button
                   onClick={handleMapClick}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white shadow-[0_18px_45px_rgba(184,92,34,0.24)] transition hover:-translate-y-0.5 hover:bg-[#a24f1c] active:scale-[0.98]"
+                  whileHover={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          y: -3,
+                          scale: 1.015,
+                        }
+                  }
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.985 }}
+                  animate={
+                    shouldReduceMotion
+                      ? undefined
+                      : isMapLaunching
+                        ? {
+                            scale: [1, 0.98, 1.02, 1],
+                          }
+                        : {
+                            boxShadow: [
+                              "0 18px 45px rgba(184,92,34,0.24)",
+                              "0 22px 54px rgba(184,92,34,0.34)",
+                              "0 18px 45px rgba(184,92,34,0.24)",
+                            ],
+                          }
+                  }
+                  transition={
+                    shouldReduceMotion
+                      ? undefined
+                      : isMapLaunching
+                        ? { duration: 0.34, ease: "easeOut" }
+                        : { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
+                  }
+                  className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-[#b85c22] px-7 py-4 text-base font-bold text-white"
                 >
-                  マップを見る
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                  <span className="absolute inset-0 bg-[linear-gradient(120deg,transparent_10%,rgba(255,255,255,0.22)_28%,transparent_46%)] opacity-70 transition-transform duration-700 group-hover:translate-x-8" />
+                  <span className="absolute inset-[1px] rounded-full bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_55%)]" />
+                  <span className="absolute -left-6 top-1/2 h-20 w-20 -translate-y-1/2 rounded-full bg-white/10 blur-2xl" />
+                  <span className="relative flex items-center gap-2">
+                    <span>{isMapLaunching ? "マップを開いています..." : "マップを見る"}</span>
+                    <motion.span
+                      animate={
+                        shouldReduceMotion
+                          ? undefined
+                          : isMapLaunching
+                            ? { x: [0, 8, 0] }
+                            : { x: [0, 4, 0] }
+                      }
+                      transition={
+                        shouldReduceMotion
+                          ? undefined
+                          : isMapLaunching
+                            ? { duration: 0.45, ease: "easeOut" }
+                            : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }
+                      }
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </motion.span>
+                  </span>
+                  {!shouldReduceMotion && !isMapLaunching ? (
+                    <span className="absolute right-4 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-amber-200 shadow-[0_0_0_0_rgba(253,230,138,0.65)] animate-ping" />
+                  ) : null}
+                </motion.button>
                 <button
                   onClick={() =>
                     handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
                   }
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d8b896] bg-white/80 px-7 py-4 text-base font-semibold text-[#6f3a16] backdrop-blur-sm transition hover:bg-white"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#e4d2bc] bg-white/60 px-6 py-4 text-sm font-semibold text-[#8a5129] backdrop-blur-sm transition hover:bg-white"
                 >
                   相談してみる
                 </button>
@@ -358,17 +460,6 @@ export default function HomePage() {
                         <p className="text-lg leading-8 text-stone-700">{activeSpeech.line}</p>
                       </motion.div>
 
-                      <div className="mt-6 flex flex-wrap justify-center gap-2 sm:justify-start">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
-                          }
-                          className="rounded-full bg-[#b85c22] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#a24f1c]"
-                        >
-                          {activeSpeech.chip}
-                        </button>
-                      </div>
                     </div>
                   </div>
 
@@ -376,7 +467,7 @@ export default function HomePage() {
                     <p className="text-xs font-semibold tracking-[0.14em] text-amber-700">
                       相談相手をえらぶ
                     </p>
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                       {heroSpeeches.map((speech, index) => {
                         const speaker = CONSULT_CHARACTERS.find(
                           (character) => character.id === speech.characterId
@@ -407,7 +498,7 @@ export default function HomePage() {
                               <p className="truncate text-sm font-bold text-[#5b3015]">
                                 {speaker.name}
                               </p>
-                              <p className="line-clamp-2 text-[11px] leading-4 text-stone-500">
+                              <p className="text-[11px] leading-4 text-stone-500">
                                 {speech.chip}
                               </p>
                             </div>
@@ -424,13 +515,13 @@ export default function HomePage() {
       </section>
 
       <motion.section
-        className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
+        className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.18 }}
       >
-        <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="space-y-8">
           <motion.div variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">
               はじめての日曜市で
@@ -464,7 +555,7 @@ export default function HomePage() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.16 }}
       >
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-5xl">
           <motion.div className="max-w-3xl" variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">できること</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
@@ -476,12 +567,12 @@ export default function HomePage() {
             </h2>
           </motion.div>
 
-          <motion.div className="mt-10 grid gap-6 md:grid-cols-3" variants={staggerVariants}>
+          <motion.div className="mt-10 grid gap-5 md:grid-cols-3" variants={staggerVariants}>
             {actionCards.map(({ icon: Icon, title, body }) => (
               <motion.article
                 key={title}
                 variants={revealVariants}
-                className="rounded-[2rem] border border-[#ecd8bf] bg-white p-6 shadow-[0_20px_60px_rgba(102,58,20,0.06)]"
+                className="rounded-[2rem] border border-[#ecd8bf] bg-white p-5 shadow-[0_20px_60px_rgba(102,58,20,0.06)]"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f7e0c1] text-[#a24f1c]">
                   <Icon className="h-6 w-6" />
@@ -495,7 +586,7 @@ export default function HomePage() {
       </motion.section>
 
       <motion.section
-        className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
+        className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-24 md:px-10"
         variants={staggerVariants}
         initial="hidden"
         whileInView="visible"
@@ -507,15 +598,11 @@ export default function HomePage() {
         >
           <p className="text-sm font-semibold tracking-[0.16em] text-[#9a5a2e]">相談相手をえらぶ</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight text-[#40230e] md:text-4xl">
-            キャラたちは、
+            気になる相手を、
             <br />
-            ここで待っています。
+            そのまま選べます。
           </h2>
-          <p className="mt-4 text-lg leading-8 text-stone-700">
-            気になる相手を選んで、
-            <br />
-            そのまま相談できます。
-          </p>
+          <p className="mt-4 text-lg leading-8 text-stone-700">話しやすそうな相手を選べます。</p>
 
           <motion.div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4" variants={staggerVariants}>
             {CONSULT_CHARACTERS.map((character) => (
@@ -532,7 +619,9 @@ export default function HomePage() {
                   className="h-40"
                 />
                 <p className="mt-3 text-lg font-bold text-[#5b3015]">{character.name}</p>
-                <p className="mt-1 text-sm leading-7 text-stone-600">{character.personality}</p>
+                <p className="mt-1 text-sm leading-6 text-stone-600">
+                  {characterCardDescriptions[character.id] ?? character.subtitle}
+                </p>
                 <button
                   type="button"
                   onClick={() => handleCharacterConsultClick(character.id)}
@@ -554,37 +643,56 @@ export default function HomePage() {
         whileInView="visible"
         viewport={{ once: true, amount: 0.18 }}
       >
-        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_0.95fr]">
+        <div className="mx-auto max-w-5xl space-y-8">
           <motion.div variants={revealVariants}>
             <p className="text-sm font-semibold tracking-[0.16em] text-[#8d4e22]">nicchyoについて</p>
             <h2 className="mt-3 text-4xl font-bold leading-tight text-[#40230e] md:text-6xl">
-              急がせない。
+              効率化ではない。
               <br />
-              日曜市らしさを残す。
+              日曜市の楽しさを
+              <br />
+              最大化する。
             </h2>
             <p className="mt-5 text-lg leading-8 text-stone-700 md:text-2xl md:leading-10">
-              効率より、安心。
+              はじめての人が、
               <br />
-              情報より、歩きやすさ。
+              安心して歩き出せるように。
             </p>
           </motion.div>
 
-          <motion.div
-            variants={revealVariants}
-            className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm"
-          >
-            <p className="text-lg font-bold text-[#5b3015]">信頼できる理由</p>
+          <motion.div variants={revealVariants} className="rounded-[2rem] border border-white/60 bg-white/75 p-6 backdrop-blur-sm">
+            <p className="text-lg font-bold text-[#5b3015]">取り組み</p>
             <motion.div className="mt-5 space-y-3" variants={staggerVariants}>
-              {trustPoints.map((item) => (
+              {visibleTrustPoints.map((item) => (
                 <motion.div
-                  key={item}
+                  key={`${item.date}-${item.title}`}
                   variants={revealVariants}
-                  className="rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4 text-lg leading-8 text-stone-700"
+                  className="rounded-2xl border border-[#efe0cf] bg-[#fffaf4] px-4 py-4"
                 >
-                  {item}
+                  <p className="text-[11px] font-semibold tracking-[0.12em] text-[#9a5a2e]">
+                    {item.date}
+                  </p>
+                  <p className="mt-1 text-base font-semibold leading-7 text-stone-800">
+                    {item.title}
+                  </p>
+                  {"note" in item && item.note ? (
+                    <p className="mt-1 text-sm leading-6 text-stone-500">{item.note}</p>
+                  ) : null}
                 </motion.div>
               ))}
             </motion.div>
+            {sortedTrustPoints.length > 5 ? (
+              <button
+                type="button"
+                onClick={() => setShowAllTrustPoints((prev) => !prev)}
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-amber-700"
+              >
+                {showAllTrustPoints ? "表示をたたむ" : "もっと見る"}
+                <ChevronRight
+                  className={`h-4 w-4 transition-transform ${showAllTrustPoints ? "rotate-90" : ""}`}
+                />
+              </button>
+            ) : null}
           </motion.div>
         </div>
       </motion.section>
@@ -597,7 +705,7 @@ export default function HomePage() {
         viewport={{ once: true, amount: 0.2 }}
       >
         <div className="mx-auto max-w-5xl rounded-[2.5rem] bg-[#4b2a13] px-6 py-12 text-white shadow-[0_35px_100px_rgba(75,42,19,0.28)] md:px-8 md:py-14">
-          <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+          <div className="space-y-8 text-center">
             <div className="mx-auto w-full max-w-xs">
               <motion.div
                 animate={shouldReduceMotion ? undefined : { rotate: [0, -1.2, 0, 1.2, 0] }}
@@ -617,7 +725,7 @@ export default function HomePage() {
               </motion.div>
             </div>
 
-            <div className="text-center md:text-left">
+            <div>
               <p className="text-sm font-semibold tracking-[0.16em] text-[#f0c694]">
                 日曜市へ出かける前に
               </p>
@@ -632,7 +740,7 @@ export default function HomePage() {
                 nicchyoが入口になります。
               </p>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row md:justify-start">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <button
                   onClick={handleMapClick}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-[#d9772b] px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#c46a25] active:scale-[0.98]"
