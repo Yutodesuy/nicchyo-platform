@@ -34,6 +34,7 @@ type Props = {
   landmarks: EditableLandmark[];
   routePoints: MapRoutePoint[];
   routeConfig: MapRouteConfig;
+  interactionHint?: string;
   maxZoom?: number;
   selectedKind: "shop" | "landmark" | "route";
   selectedId: string;
@@ -147,6 +148,7 @@ export default function MapLayoutEditor({
   landmarks,
   routePoints,
   routeConfig,
+  interactionHint,
   maxZoom = 20,
   selectedKind,
   selectedId,
@@ -449,6 +451,11 @@ export default function MapLayoutEditor({
           transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
         }}
       >
+        {mode === "edit" && interactionHint ? (
+          <div className="pointer-events-none absolute left-1/2 top-5 z-[500] w-[min(92%,560px)] -translate-x-1/2 rounded-2xl border border-white/70 bg-white/92 px-4 py-3 text-center text-sm text-slate-700 shadow-lg backdrop-blur">
+            {interactionHint}
+          </div>
+        ) : null}
         <MapContainer
           center={center}
           zoom={17}
