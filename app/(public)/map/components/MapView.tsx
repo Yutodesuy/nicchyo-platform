@@ -193,6 +193,53 @@ function MapControls({
   );
 }
 
+function MapStatusHud({
+  isTracking,
+  isInMarket,
+  shopLoadProgress,
+}: {
+  isTracking: boolean;
+  isInMarket: boolean | null;
+  shopLoadProgress: { processed: number; total: number; done: boolean };
+}) {
+  const showShopProgress = shopLoadProgress.total > 0 && !shopLoadProgress.done;
+  const trackingLabel = isTracking ? "現在地を追従中" : "地図を閲覧中";
+  const marketLabel =
+    isInMarket === null
+      ? "位置を確認中"
+      : isInMarket
+        ? "通路上に現在地を表示中"
+        : "通路外のため現在地は非表示";
+
+  return (
+    <div className="pointer-events-none absolute right-4 top-4 z-[1000] flex max-w-[240px] flex-col gap-2">
+      <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Map Status</p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">{trackingLabel}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-600">{marketLabel}</p>
+      </div>
+      {showShopProgress && (
+        <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+          <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
+            <span className="font-medium text-slate-800">店舗を読み込み中</span>
+            <span>{shopLoadProgress.processed}/{shopLoadProgress.total}</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-[width] duration-200"
+              style={{
+                width: `${shopLoadProgress.total > 0
+                  ? Math.min(100, (shopLoadProgress.processed / shopLoadProgress.total) * 100)
+                  : 0}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type MapViewProps = {
   shops?: Shop[];
   landmarks?: Landmark[];
@@ -424,6 +471,7 @@ const MapView = memo(function MapView({
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
+  const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
   const [manualRotationOffset, setManualRotationOffset] = useState(0);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const [isTouchRotating, setIsTouchRotating] = useState(false);
@@ -740,6 +788,19 @@ const MapView = memo(function MapView({
     addItem({ name: value, fromShopId, category });
   }, [addItem]);
 
+  const handleShopChunkProgress = useCallback((processed: number, total: number, done: boolean) => {
+    setShopLoadProgress((prev) => {
+      if (
+        prev.processed === processed &&
+        prev.total === total &&
+        prev.done === done
+      ) {
+        return prev;
+      }
+      return { processed, total, done };
+    });
+  }, []);
+
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return shops.findIndex((shop) => shop.id === selectedShop.id);
@@ -749,10 +810,21 @@ const MapView = memo(function MapView({
   const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
   const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
-  const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1;
+  const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
   const shouldRenderRecipeOverlay = showRecipeOverlay && mapUiZoom >= 19.0;
+  const shouldRenderMajorLabels = mapUiZoom <= MIN_ZOOM + 2.5;
+  const shouldRenderLandmarks = mapUiZoom >= MIN_ZOOM + 0.8 || highlightEventTargets;
   const interactionDisabled = agentOpen;
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
+
+  useEffect(() => {
+    if (isMinimumZoomMode) {
+      setShopLoadProgress({ processed: 0, total: 0, done: true });
+      return;
+    }
+    setShopLoadProgress({ processed: 0, total: shops.length, done: shops.length === 0 });
+  }, [isMinimumZoomMode, shops.length]);
+
   const getSnappedCenter = useCallback(
     (center: L.LatLng) => {
       const projection = projectPointOntoRoute(center, routePoints);
@@ -844,6 +916,9 @@ const MapView = memo(function MapView({
   }, [highlightEventTargets, landmarkScale, landmarkSpecs]);
 
   const visibleMajorPlaceLabels = useMemo(() => {
+    if (!shouldRenderMajorLabels) {
+      return [];
+    }
     if (!isMinimumZoomMode) {
       return majorPlaceLabels;
     }
@@ -851,14 +926,17 @@ const MapView = memo(function MapView({
       ...majorPlaceLabels.filter((place) => MIN_ZOOM_LABEL_NAMES.has(place.name)),
       MIN_ZOOM_ONLY_LABEL,
     ];
-  }, [isMinimumZoomMode, majorPlaceLabels]);
+  }, [isMinimumZoomMode, majorPlaceLabels, shouldRenderMajorLabels]);
 
   const visibleLandmarkSpecs = useMemo(() => {
+    if (!shouldRenderLandmarks) {
+      return [];
+    }
     if (!isMinimumZoomMode) {
       return landmarkSpecs;
     }
     return landmarkSpecs.filter((spec) => minZoomLandmarkKeys.has(spec.key));
-  }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys]);
+  }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys, shouldRenderLandmarks]);
 
   const handleTouchStartRotate = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
@@ -1106,7 +1184,7 @@ const MapView = memo(function MapView({
           routeConfig={routeConfig}
         />
         <DynamicMaxBounds baseBounds={mapBounds} paddingPx={100} />
-        <Pane name="major-place-label" style={{ zIndex: 950 }}>
+          <Pane name="major-place-label" style={{ zIndex: 950 }}>
           {visibleMajorPlaceLabels.map((place) => (
             <Marker
               key={`major-place-${place.name}`}
@@ -1203,6 +1281,7 @@ const MapView = memo(function MapView({
           <OptimizedShopLayerWithClustering
             shops={shops}
             onShopClick={handleShopClick}
+            onChunkProgress={handleShopChunkProgress}
             selectedShopId={selectedShop?.id}
             favoriteShopIds={favoriteShopIds}
             searchShopIds={searchShopIds}
@@ -1286,6 +1365,11 @@ const MapView = memo(function MapView({
         isMobile={isMobile}
         isTracking={isTracking}
         onToggleTracking={() => setIsTracking((prev) => !prev)}
+      />
+      <MapStatusHud
+        isTracking={isTracking}
+        isInMarket={isInMarket}
+        shopLoadProgress={shopLoadProgress}
       />
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
