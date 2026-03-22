@@ -70,8 +70,8 @@ const journeyCards = [
     body: "食べたいものや見たいものから探せると、歩く理由が見えてくる。",
     mediaSrc: "/images/home/Search-Demo.mp4",
     mediaAlt: "nicchyoの検索につながるマップ画面デモ",
-    actionLabel: "マップから探してみる",
-    actionType: "map",
+    actionLabel: "お店を探してみる",
+    actionType: "search",
   },
   {
     problem: "人に聞きたいけど、最初のひと声が少し緊張する",
@@ -172,7 +172,7 @@ export default function HomePage() {
     weeklyVisitorTotal: null,
   });
   const [activeSpeechIndex, setActiveSpeechIndex] = useState(0);
-  const [activeJourneyIndex, setActiveJourneyIndex] = useState(0);
+  const [activeJourneyIndex, setActiveJourneyIndex] = useState<number | null>(0);
   const [isMapLaunching, setIsMapLaunching] = useState(false);
 
   useEffect(() => {
@@ -535,15 +535,17 @@ export default function HomePage() {
                 variants={revealVariants}
                 className={`overflow-hidden rounded-[2rem] border bg-white shadow-[0_20px_60px_rgba(102,58,20,0.06)] transition ${
                   activeJourneyIndex === index
-                    ? "border-[#ddb88f]"
+                    ? "border-[#ddb88f] shadow-[0_24px_64px_rgba(102,58,20,0.1)]"
                     : "border-[#ecd8bf]"
                 }`}
               >
                 <button
                   type="button"
-                  onClick={() => setActiveJourneyIndex(index)}
+                  onClick={() =>
+                    setActiveJourneyIndex((prev) => (prev === index ? null : index))
+                  }
                   aria-expanded={activeJourneyIndex === index}
-                  className="flex w-full items-center gap-4 px-5 py-5 text-left md:px-6"
+                  className="flex w-full items-center gap-4 px-5 py-5 text-left transition hover:bg-[#fffaf4] md:px-6"
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#f7e0c1] text-[#a24f1c]">
                     <Icon className="h-6 w-6" />
@@ -555,6 +557,11 @@ export default function HomePage() {
                     <p className="mt-1 text-lg font-semibold leading-8 text-stone-800 md:text-xl">
                       {problem}
                     </p>
+                    {activeJourneyIndex !== index ? (
+                      <p className="mt-1 text-sm leading-6 text-stone-500">
+                        {title}
+                      </p>
+                    ) : null}
                   </div>
                   <ChevronRight
                     className={`h-5 w-5 shrink-0 text-[#8a5129] transition-transform duration-300 ${
@@ -568,49 +575,48 @@ export default function HomePage() {
                     initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.28, ease: "easeOut" }}
-                    className="border-t border-[#f0dfca] bg-[#fffdf9] px-5 py-5 md:px-6"
+                    className="border-t border-[#f0dfca] bg-[linear-gradient(180deg,#fffdfa_0%,#fff8ef_100%)] px-5 py-5 md:px-6"
                   >
                     <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] md:items-start">
-                      <div className="space-y-4">
-                        <div className="rounded-[1.5rem] bg-[#fff7ec] px-4 py-4">
-                          <p className="text-xs font-semibold tracking-[0.14em] text-[#9a5a2e]">
-                            こう使う
-                          </p>
-                          <h3 className="mt-2 text-2xl font-bold text-[#4c2810]">{title}</h3>
-                          <p className="mt-3 text-lg leading-8 text-stone-700">{body}</p>
-                        </div>
+                      <div className="pt-1">
+                        <p className="text-sm font-semibold tracking-[0.14em] text-[#9a5a2e]">
+                          {title}
+                        </p>
+                        <p className="mt-3 max-w-xl text-lg leading-8 text-stone-700 md:text-xl md:leading-9">
+                          {body}
+                        </p>
+                      </div>
 
-                        <div className="rounded-[1.5rem] bg-white px-4 py-4 ring-1 ring-[#f1e2cf]">
-                          <p className="text-sm leading-7 text-stone-700">
-                            まずはここから試せます。
-                          </p>
+                      <div className="mx-auto w-full max-w-[320px]">
+                        <div className="overflow-hidden rounded-[1.6rem] bg-[#eadcc9] shadow-[0_16px_40px_rgba(102,58,20,0.12)]">
+                          <video
+                            src={mediaSrc}
+                            aria-label={mediaAlt}
+                            className="aspect-[2/3] h-full w-full object-cover"
+                            autoPlay={!shouldReduceMotion}
+                            muted
+                            loop
+                            playsInline
+                            preload="metadata"
+                          controls={shouldReduceMotion}
+                        />
+                        </div>
+                        <div className="mt-3 flex justify-end">
                           <button
                             type="button"
                             onClick={() =>
                               actionType === "map"
                                 ? handleMapClick()
-                                : handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
+                                : actionType === "search"
+                                  ? router.push("/search")
+                                  : handleCharacterConsultClick(activeSpeaker.id, activeSpeech.prompt)
                             }
-                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#8a5129] transition hover:text-[#6f3a16]"
+                            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#8a5129] shadow-[0_8px_24px_rgba(64,35,14,0.14)] ring-1 ring-[#ead8c0] transition hover:-translate-y-0.5 hover:bg-[#fffaf4]"
                           >
                             {actionLabel}
                             <ChevronRight className="h-4 w-4" />
                           </button>
                         </div>
-                      </div>
-
-                      <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-[1.6rem] bg-[#eadcc9] shadow-[0_16px_40px_rgba(102,58,20,0.12)]">
-                        <video
-                          src={mediaSrc}
-                          aria-label={mediaAlt}
-                          className="aspect-[2/3] h-full w-full object-cover"
-                          autoPlay={!shouldReduceMotion}
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          controls={shouldReduceMotion}
-                        />
                       </div>
                     </div>
                   </motion.div>
