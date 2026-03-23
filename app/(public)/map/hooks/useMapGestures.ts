@@ -18,6 +18,7 @@ type TouchGestureState = {
   startDistance: number;
   startRotation: number;
   startZoom: number;
+  lastMidpoint: { x: number; y: number };
 };
 
 type PointerPanState = {
@@ -85,6 +86,8 @@ export function useMapGestures({
   const touchPanRef = useRef<PointerPanState | null>(null);
   const mousePanRef = useRef<PointerPanState | null>(null);
   const touchGestureRef = useRef<TouchGestureState | null>(null);
+  const zoomFrameRef = useRef<number | null>(null);
+  const pendingZoomRef = useRef<{ zoom: number; midpoint: { x: number; y: number } } | null>(null);
 
   useEffect(() => {
     gestureActiveRef.current = isTouchGestureActive;
@@ -113,6 +116,26 @@ export function useMapGestures({
       noMoveStart: true,
     });
   }, [interactionDisabled, mapRef, mapRotation]);
+
+  const flushPendingZoom = useCallback(() => {
+    const map = mapRef.current;
+    const pending = pendingZoomRef.current;
+    zoomFrameRef.current = null;
+    pendingZoomRef.current = null;
+    if (!map || !pending) return;
+    if (Math.abs(pending.zoom - map.getZoom()) <= 0.001) return;
+    map.setZoomAround(L.point(pending.midpoint.x, pending.midpoint.y), pending.zoom, { animate: false });
+  }, [mapRef]);
+
+  const scheduleZoom = useCallback((zoom: number, midpoint: { x: number; y: number }) => {
+    pendingZoomRef.current = { zoom, midpoint };
+    if (zoomFrameRef.current !== null) {
+      return;
+    }
+    zoomFrameRef.current = window.requestAnimationFrame(() => {
+      flushPendingZoom();
+    });
+  }, [flushPendingZoom]);
 
   const handleTouchStartCapture = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
     if (interactionDisabled) return;
@@ -145,6 +168,7 @@ export function useMapGestures({
       startDistance: getTouchDistance(t0, t1),
       startRotation: mapRotation,
       startZoom: map.getZoom(),
+      lastMidpoint: getTouchMidpoint(t0, t1),
     };
     setIsTouchGestureActive(true);
     debugLog("touch:start", { rotation: mapRotation, zoom: map.getZoom() });
@@ -178,6 +202,7 @@ export function useMapGestures({
     const t1 = e.touches[1];
     const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
     const distance = getTouchDistance(t0, t1);
+    const midpoint = getTouchMidpoint(t0, t1);
     const gesture = touchGestureRef.current;
     const deltaDeg = ((angle - gesture.startAngle) * 180) / Math.PI;
     const distanceDelta = distance - gesture.startDistance;
@@ -218,16 +243,15 @@ export function useMapGestures({
       return;
     }
 
-    const midpoint = getTouchMidpoint(t0, t1);
     const nextZoom = Math.max(
       map.getMinZoom(),
       Math.min(map.getMaxZoom(), gesture.startZoom + zoomDelta)
     );
-    if (Math.abs(nextZoom - map.getZoom()) <= 0.001) {
+    if (Math.abs(nextZoom - map.getZoom()) <= 0.001 && Math.abs(nextZoom - (pendingZoomRef.current?.zoom ?? nextZoom)) <= 0.001) {
       return;
     }
-
-    map.setZoomAround(L.point(midpoint.x, midpoint.y), nextZoom, { animate: false });
+    gesture.lastMidpoint = midpoint;
+    scheduleZoom(nextZoom, midpoint);
   }, [
     interactionDisabled,
     isTouchGestureActive,
@@ -236,6 +260,7 @@ export function useMapGestures({
     onRotationChange,
     panMapByScreenDelta,
     debugLog,
+    scheduleZoom,
   ]);
 
   const handleTouchEndCapture = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
@@ -259,6 +284,10 @@ export function useMapGestures({
     }
 
     touchGestureRef.current = null;
+    if (zoomFrameRef.current !== null) {
+      window.cancelAnimationFrame(zoomFrameRef.current);
+      flushPendingZoom();
+    }
     if (isTouchGestureActive) {
       debugLog("touch:end", { mode: activeGesture?.mode ?? "unknown" });
       onGestureEnd();
@@ -274,6 +303,14 @@ export function useMapGestures({
       hasMoved: false,
     };
   }, [interactionDisabled, isTouchGestureActive]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomFrameRef.current !== null) {
+        window.cancelAnimationFrame(zoomFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
