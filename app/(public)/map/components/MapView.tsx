@@ -875,25 +875,28 @@ const MapView = memo(function MapView({
     return landmarkSpecs.filter((spec) => minZoomLandmarkKeys.has(spec.key));
   }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys, shouldRenderLandmarks]);
 
+  const { markManualRotation, snapRotationToVisibleRoad } = useMapCameraController({
+    mapRef,
+    gestureActiveRef: isTouchGestureActiveRef,
+    interactionDisabled,
+    autoRotation,
+    routePoints,
+    isTracking,
+    setIsTracking,
+    setAutoRotation,
+  });
+
   const { isTouchGestureActive, gestureHandlers } = useMapGestures({
     mapRef,
     gestureActiveRef: isTouchGestureActiveRef,
     interactionDisabled,
     mapRotation,
     onPanStart: () => setIsTracking(false),
-    onRotationChange: setAutoRotation,
+    onRotationChange: (rotation) => {
+      markManualRotation();
+      setAutoRotation(rotation);
+    },
     onGestureEnd: () => {},
-  });
-
-  const { snapRotationToVisibleRoad } = useMapCameraController({
-    mapRef,
-    interactionDisabled,
-    isGestureActive: isTouchGestureActive,
-    autoRotation,
-    routePoints,
-    isTracking,
-    setIsTracking,
-    setAutoRotation,
   });
 
   useEffect(() => {
