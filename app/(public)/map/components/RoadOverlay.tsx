@@ -228,6 +228,7 @@ function CurvedRoad({
     <>
       <Polygon
         positions={roadPolygon}
+        interactive={false}
         pathOptions={{
           color: '#8f7d67',
           weight: 1,
@@ -239,6 +240,7 @@ function CurvedRoad({
       {overviewTint && (
         <Polygon
           positions={roadPolygon}
+          interactive={false}
           pathOptions={{
             stroke: false,
             fillColor: '#22c55e',
@@ -248,6 +250,7 @@ function CurvedRoad({
       )}
       <Polyline
         positions={smoothedCenterline}
+        interactive={false}
         pathOptions={{
           color: '#a89070',
           weight: 1,

@@ -60,6 +60,7 @@ import {
   normalizeMapRoutePoints,
   projectPointOntoRoute,
 } from "../utils/mapRouteGeometry";
+import { useMapGestures } from "../hooks/useMapGestures";
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -279,29 +280,9 @@ type MapViewProps = {
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
-const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
-const AUTO_ROTATION_SNAP_THRESHOLD_DEG = 20;
-const PAN_START_THRESHOLD_PX = 3;
+const AUTO_ROTATION_SNAP_THRESHOLD_DEG = 15;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.01;
-
-function getTouchDistance(
-  t0: { clientX: number; clientY: number },
-  t1: { clientX: number; clientY: number }
-): number {
-  return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-}
-
-function rotateVector(x: number, y: number, degrees: number): { x: number; y: number } {
-  const radians = (degrees * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  return {
-    x: x * cos - y * sin,
-    y: x * sin + y * cos,
-  };
-}
 
 function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => void }) {
   const map = useMap();
@@ -447,6 +428,24 @@ const MapView = memo(function MapView({
   );
   const routeBounds = useMemo(() => getRouteBounds(routePoints), [routePoints]);
   const routeCenter = useMemo(() => getRouteCenter(routePoints), [routePoints]);
+  const initialMapCenter = useMemo<[number, number]>(() => {
+    const projected = projectPointOntoRoute(
+      { lat: routeCenter[0], lng: routeCenter[1] },
+      routePoints
+    );
+    if (!projected) {
+      return routeCenter;
+    }
+    return [projected.point.lat, projected.point.lng];
+  }, [routeCenter, routePoints]);
+  const initialMapRotation = useMemo(() => {
+    const baseRotation =
+      getAutoRotationForVisibleRoad({
+        center: L.latLng(initialMapCenter[0], initialMapCenter[1]),
+        routePoints,
+      }) ?? 0;
+    return normalizeRotationDeg(baseRotation + 180);
+  }, [initialMapCenter, routePoints]);
   const mapBounds = useMemo(
     () => expandBoundsByMeters(routeBounds, Math.max(routeConfig.visibleDistanceMeters + 48, 120)),
     [routeBounds, routeConfig.visibleDistanceMeters]
@@ -472,37 +471,20 @@ const MapView = memo(function MapView({
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [isTracking, setIsTracking] = useState(true);
   const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
-  const [manualRotationOffset, setManualRotationOffset] = useState(0);
+  const [autoRotation, setAutoRotation] = useState(initialMapRotation);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
-  const [isTouchRotating, setIsTouchRotating] = useState(false);
-  const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
     const { innerWidth, innerHeight } = window;
     return Math.ceil(Math.hypot(innerWidth, innerHeight) + 120);
   });
-  const touchRotateRef = useRef<{
-    startAngle: number;
-    startDistance: number;
-    startRotation: number;
-    isRotating: boolean;
-  } | null>(null);
-  const touchPanRef = useRef<{
-    lastX: number;
-    lastY: number;
-    hasMoved: boolean;
-  } | null>(null);
-  const mousePanRef = useRef<{
-    lastX: number;
-    lastY: number;
-    isPanning: boolean;
-  } | null>(null);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [planOrder, setPlanOrder] = useState<number[]>([]);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const isTouchGestureActiveRef = useRef(false);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【削除】visibleShops の計算を削除
@@ -536,6 +518,10 @@ const MapView = memo(function MapView({
     if (!mapInstance) return;
     mapInstance.invalidateSize(false);
   }, [mapInstance, mapShellSize]);
+
+  useEffect(() => {
+    setAutoRotation(initialMapRotation);
+  }, [initialMapRotation]);
 
   useEffect(() => {
     if (initialShopId) {
@@ -815,7 +801,7 @@ const MapView = memo(function MapView({
   const shouldRenderMajorLabels = mapUiZoom <= MIN_ZOOM + 2.5;
   const shouldRenderLandmarks = mapUiZoom >= MIN_ZOOM + 0.8 || highlightEventTargets;
   const interactionDisabled = agentOpen;
-  const mapRotation = normalizeRotationDeg(manualRotationOffset);
+  const mapRotation = normalizeRotationDeg(autoRotation);
 
   useEffect(() => {
     if (isMinimumZoomMode) {
@@ -842,24 +828,24 @@ const MapView = memo(function MapView({
     handleShopClick(nextShop);
   }, [canNavigate, selectedShopIndex, handleShopClick, shops]);
 
-  const applyManualRotation = useCallback(
-    (nextRotation: number) => {
-      setManualRotationOffset(normalizeRotationDeg(nextRotation));
-    },
-    []
-  );
-
   const snapRotationToVisibleRoad = useCallback(
-    (center?: L.LatLng) => {
-      if (interactionDisabled || isTouchRotating) return;
+    (center?: L.LatLng, forceNorthUp = false) => {
+      if (interactionDisabled || isTouchGestureActiveRef.current) return;
       const map = mapRef.current;
       if (!map) return;
+      if (forceNorthUp) {
+        setAutoRotation(0);
+        return;
+      }
       const targetRotation = getAutoRotationForVisibleRoad({
         center: center ?? map.getCenter(),
         routePoints,
       });
-      if (targetRotation === null) return;
-      const currentRotation = normalizeRotationDeg(manualRotationOffset);
+      if (targetRotation === null) {
+        setAutoRotation(0);
+        return;
+      }
+      const currentRotation = normalizeRotationDeg(autoRotation);
       const { rotation: snappedRotation, delta } = getNearestRoadAlignedRotation(
         currentRotation,
         targetRotation
@@ -867,21 +853,10 @@ const MapView = memo(function MapView({
       if (Math.abs(delta) > AUTO_ROTATION_SNAP_THRESHOLD_DEG || Math.abs(delta) < 0.1) {
         return;
       }
-      setManualRotationOffset(snappedRotation);
+      setAutoRotation(snappedRotation);
     },
-    [interactionDisabled, isTouchRotating, manualRotationOffset, routePoints]
+    [autoRotation, interactionDisabled, routePoints]
   );
-
-  const panMapByScreenDelta = useCallback((dx: number, dy: number) => {
-    if (interactionDisabled) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const adjusted = rotateVector(-dx, -dy, -mapRotation);
-    map.panBy([adjusted.x, adjusted.y], {
-      animate: false,
-      noMoveStart: true,
-    });
-  }, [interactionDisabled, mapRotation]);
 
   const handleMapZoomChange = useCallback(
     (zoom: number) => {
@@ -890,6 +865,13 @@ const MapView = memo(function MapView({
     },
     [onZoomChange]
   );
+
+  useEffect(() => {
+    if (!isTracking) return;
+    const map = mapRef.current;
+    if (!map) return;
+    snapRotationToVisibleRoad(map.getCenter());
+  }, [isTracking, snapRotationToVisibleRoad]);
 
   const landmarkScale = useMemo(() => {
     const factor = Math.pow(1.22, mapUiZoom - 18);
@@ -938,168 +920,55 @@ const MapView = memo(function MapView({
     return landmarkSpecs.filter((spec) => minZoomLandmarkKeys.has(spec.key));
   }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys, shouldRenderLandmarks]);
 
-  const handleTouchStartRotate = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (interactionDisabled) return;
-      if (e.touches.length === 1) {
-        setIsMultiTouchGesture(false);
-        const touch = e.touches[0];
-        touchPanRef.current = {
-          lastX: touch.clientX,
-          lastY: touch.clientY,
-          hasMoved: false,
-        };
-        touchRotateRef.current = null;
-        setIsTouchRotating(false);
-        return;
-      }
-      if (e.touches.length !== 2) return;
-      setIsMultiTouchGesture(true);
-      touchPanRef.current = null;
-      const t0 = e.touches[0];
-      const t1 = e.touches[1];
-      const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-      const distance = getTouchDistance(t0, t1);
-      touchRotateRef.current = {
-        startAngle: angle,
-        startDistance: distance,
-        startRotation: mapRotation,
-        isRotating: false,
-      };
-    },
-    [interactionDisabled, mapRotation]
-  );
-
-  const handleTouchMoveRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    if (e.touches.length === 1 && touchPanRef.current && !isTouchRotating) {
-      const touch = e.touches[0];
-      const dx = touch.clientX - touchPanRef.current.lastX;
-      const dy = touch.clientY - touchPanRef.current.lastY;
-      if (
-        !touchPanRef.current.hasMoved &&
-        Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX
-      ) {
-        return;
-      }
-      touchPanRef.current.hasMoved = true;
-      touchPanRef.current.lastX = touch.clientX;
-      touchPanRef.current.lastY = touch.clientY;
-      setIsTracking(false);
-      e.preventDefault();
-      panMapByScreenDelta(dx, dy);
-      return;
-    }
-
-    if (e.touches.length !== 2 || !touchRotateRef.current) return;
-    const t0 = e.touches[0];
-    const t1 = e.touches[1];
-    const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-    const deltaDeg = ((angle - touchRotateRef.current.startAngle) * 180) / Math.PI;
-    const distance = getTouchDistance(t0, t1);
-    const distanceDelta = distance - touchRotateRef.current.startDistance;
-
-    if (!touchRotateRef.current.isRotating) {
-      if (
-        Math.abs(deltaDeg) < TOUCH_ROTATION_ANGLE_THRESHOLD_DEG &&
-        Math.abs(distanceDelta) < TOUCH_ROTATION_DISTANCE_THRESHOLD_PX
-      ) {
-        return;
-      }
-
-      if (
-        Math.abs(deltaDeg) <= TOUCH_ROTATION_ANGLE_THRESHOLD_DEG ||
-        Math.abs(deltaDeg) * 2 < Math.abs(distanceDelta)
-      ) {
-        return;
-      }
-
-      touchRotateRef.current.isRotating = true;
-      setIsTouchRotating(true);
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-    const next = touchRotateRef.current.startRotation + deltaDeg;
-    applyManualRotation(next);
-  }, [applyManualRotation, interactionDisabled, isTouchRotating, panMapByScreenDelta]);
-
-  const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    setIsMultiTouchGesture(e.touches.length >= 2);
-    if (e.touches.length < 2) {
-      touchRotateRef.current = null;
-      setIsTouchRotating(false);
-    }
-    if (e.touches.length === 0) {
-      touchPanRef.current = null;
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      touchPanRef.current = {
-        lastX: touch.clientX,
-        lastY: touch.clientY,
-        hasMoved: false,
-      };
-    }
-    if (e.touches.length < 2) {
+  const { isTouchGestureActive, gestureHandlers } = useMapGestures({
+    mapRef,
+    gestureActiveRef: isTouchGestureActiveRef,
+    interactionDisabled,
+    mapRotation,
+    onPanStart: () => setIsTracking(false),
+    onRotationChange: setAutoRotation,
+    onGestureEnd: () => {
       const map = mapRef.current;
       if (map) {
         snapRotationToVisibleRoad(map.getCenter());
       }
-    }
-  }, [interactionDisabled, snapRotationToVisibleRoad]);
-
-  const handleMouseDownPan = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    if (e.button !== 0) return;
-    mousePanRef.current = {
-      lastX: e.clientX,
-      lastY: e.clientY,
-      isPanning: false,
-    };
-  }, [interactionDisabled]);
+    },
+  });
 
   useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      if (!mousePanRef.current || isTouchRotating || interactionDisabled) return;
-      const dx = e.clientX - mousePanRef.current.lastX;
-      const dy = e.clientY - mousePanRef.current.lastY;
-      if (
-        !mousePanRef.current.isPanning &&
-        Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX
-      ) {
-        return;
-      }
-      mousePanRef.current.isPanning = true;
-      mousePanRef.current.lastX = e.clientX;
-      mousePanRef.current.lastY = e.clientY;
-      setIsTracking(false);
-      panMapByScreenDelta(dx, dy);
-    };
-    const handleUp = () => {
-      mousePanRef.current = null;
-    };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-  }, [interactionDisabled, isTouchRotating, panMapByScreenDelta]);
+    const map = mapRef.current;
+    if (!map) return;
+    if (!interactionDisabled) {
+      map.dragging.disable();
+      map.touchZoom.disable();
+    }
+  }, [interactionDisabled, mapInstance]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const handleMoveEnd = () => {
+      if (isTouchGestureActive) {
+        return;
+      }
       snapRotationToVisibleRoad(map.getCenter());
     };
 
+    const handleDragStart = () => {
+      if (isTouchGestureActive) {
+        return;
+      }
+      setIsTracking(false);
+    };
+
+    map.on("dragstart", handleDragStart);
     map.on("moveend", handleMoveEnd);
     return () => {
+      map.off("dragstart", handleDragStart);
       map.off("moveend", handleMoveEnd);
     };
-  }, [mapInstance, snapRotationToVisibleRoad]);
+  }, [isTouchGestureActive, mapInstance, snapRotationToVisibleRoad]);
 
   return (
     <div
@@ -1110,22 +979,18 @@ const MapView = memo(function MapView({
     >
       <div
         className="absolute left-1/2 top-1/2 z-0"
-        onTouchStart={handleTouchStartRotate}
-        onTouchMove={handleTouchMoveRotate}
-        onTouchEnd={handleTouchEndRotate}
-        onTouchCancel={handleTouchEndRotate}
-        onMouseDown={handleMouseDownPan}
+        {...gestureHandlers}
         style={{
           width: `${mapShellSize}px`,
           height: `${mapShellSize}px`,
           touchAction: "none",
           transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
           transformOrigin: "center center",
-          transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
+          transition: "transform 1500ms ease-out",
         }}
       >
         <MapContainer
-          center={routeCenter}
+          center={initialMapCenter}
           zoom={INITIAL_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
@@ -1138,7 +1003,7 @@ const MapView = memo(function MapView({
           fadeAnimation
           scrollWheelZoom={!agentOpen && !isMobile}
           dragging={false}
-          touchZoom={agentOpen ? false : isMultiTouchGesture || isTouchRotating ? false : isMobile ? "center" : true}
+          touchZoom={false}
           doubleClickZoom={!agentOpen && !isMobile}
           className={`h-full w-full ${agentOpen ? "pointer-events-none" : ""}`}
           style={{
