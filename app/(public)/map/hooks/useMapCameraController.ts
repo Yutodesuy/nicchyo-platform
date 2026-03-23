@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { MutableRefObject } from "react";
 import L from "leaflet";
 import {
@@ -11,11 +11,12 @@ import {
 import type { MapRoutePoint } from "../types/mapRoute";
 
 const AUTO_ROTATION_SNAP_THRESHOLD_DEG = 15;
+const AUTO_ROTATION_COOLDOWN_MS = 3000;
 
 type UseMapCameraControllerArgs = {
   mapRef: MutableRefObject<L.Map | null>;
   interactionDisabled: boolean;
-  isGestureActive: boolean;
+  gestureActiveRef: MutableRefObject<boolean>;
   autoRotation: number;
   routePoints: MapRoutePoint[];
   isTracking: boolean;
@@ -26,16 +27,23 @@ type UseMapCameraControllerArgs = {
 export function useMapCameraController({
   mapRef,
   interactionDisabled,
-  isGestureActive,
+  gestureActiveRef,
   autoRotation,
   routePoints,
   isTracking,
   setIsTracking,
   setAutoRotation,
 }: UseMapCameraControllerArgs) {
+  const autoRotationCooldownUntilRef = useRef(0);
+
+  const markManualRotation = useCallback(() => {
+    autoRotationCooldownUntilRef.current = Date.now() + AUTO_ROTATION_COOLDOWN_MS;
+  }, []);
+
   const snapRotationToVisibleRoad = useCallback(
     (center?: L.LatLng, forceNorthUp = false) => {
-      if (interactionDisabled || isGestureActive) return;
+      if (interactionDisabled || gestureActiveRef.current) return;
+      if (Date.now() < autoRotationCooldownUntilRef.current) return;
       const map = mapRef.current;
       if (!map) return;
 
@@ -64,7 +72,7 @@ export function useMapCameraController({
 
       setAutoRotation(snappedRotation);
     },
-    [autoRotation, interactionDisabled, isGestureActive, mapRef, routePoints, setAutoRotation]
+    [autoRotation, gestureActiveRef, interactionDisabled, mapRef, routePoints, setAutoRotation]
   );
 
   useEffect(() => {
@@ -79,12 +87,12 @@ export function useMapCameraController({
     if (!map) return;
 
     const handleMoveEnd = () => {
-      if (isGestureActive) return;
+      if (gestureActiveRef.current) return;
       snapRotationToVisibleRoad(map.getCenter());
     };
 
     const handleDragStart = () => {
-      if (isGestureActive) return;
+      if (gestureActiveRef.current) return;
       setIsTracking(false);
     };
 
@@ -94,7 +102,7 @@ export function useMapCameraController({
       map.off("dragstart", handleDragStart);
       map.off("moveend", handleMoveEnd);
     };
-  }, [isGestureActive, mapRef, setIsTracking, snapRotationToVisibleRoad]);
+  }, [gestureActiveRef, mapRef, setIsTracking, snapRotationToVisibleRoad]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -106,6 +114,7 @@ export function useMapCameraController({
   }, [interactionDisabled, mapRef]);
 
   return {
+    markManualRotation,
     snapRotationToVisibleRoad,
   };
 }
