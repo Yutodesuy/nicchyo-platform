@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { fetchShopsFromDb } from './services/shopDb';
+import { fetchVendorShopsFromDb } from './services/shopDb';
 
 export type AttendanceEstimate = {
   label: string;
@@ -15,7 +15,7 @@ export async function fetchMapData(supabase: SupabaseClient) {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const [shops, estimatesResult] = await Promise.all([
-      fetchShopsFromDb(supabase),
+      fetchVendorShopsFromDb(supabase),
       supabase.rpc('get_shop_attendance_estimates', {
         target_date: today,
       }),

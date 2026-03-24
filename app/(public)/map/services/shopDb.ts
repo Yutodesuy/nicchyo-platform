@@ -72,7 +72,7 @@ function normalizeChome(value: string | null): Shop["chome"] {
   return undefined;
 }
 
-export async function fetchShopsFromDb(
+export async function fetchVendorShopsFromDb(
   supabase: SupabaseClient
 ): Promise<Shop[]> {
   const [
@@ -243,3 +243,5 @@ export async function fetchShopsFromDb(
 
   return shops;
 }
+
+export const fetchShopsFromDb = fetchVendorShopsFromDb;

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import SearchClient from "./SearchClient";
 import type { Shop } from "../map/data/shops";
-import { fetchShopsFromDb } from "../map/services/shopDb";
+import { fetchVendorShopsFromDb } from "../map/services/shopDb";
 import type { Landmark } from "../map/types/landmark";
 import { fetchLandmarksFromDb } from "../map/services/landmarksDb";
 
@@ -16,7 +16,7 @@ async function loadShops(): Promise<Shop[]> {
   try {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
-    return await fetchShopsFromDb(supabase);
+    return await fetchVendorShopsFromDb(supabase);
   } catch {
     return [];
   }
