@@ -32,7 +32,7 @@ const GUIDE_SECTIONS = [
   {
     icon: BarChart2,
     color: "bg-violet-100 text-violet-600",
-    title: "アナリティクス",
+    title: "お店の分析",
     href: "/vendor/analytics",
     description: "店舗の閲覧数・クリック数を先週と比較できます。時間帯別・商品別の分析も確認できます。",
     tips: [
@@ -81,7 +81,6 @@ export default function VendorHelpPage() {
             <ArrowLeft size={18} />
           </Link>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-600">Help</p>
             <h1 className="text-xl font-bold text-slate-900">使い方ガイド</h1>
           </div>
         </div>
@@ -117,9 +116,9 @@ export default function VendorHelpPage() {
 
               {/* Tips */}
               <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                   {section.tips.map((tip) => (
-                    <li key={tip} className="flex items-start gap-2 text-xs text-slate-600">
+                    <li key={tip} className="flex items-start gap-2 text-sm text-slate-600">
                       <span className="mt-0.5 flex-shrink-0 text-amber-400">•</span>
                       {tip}
                     </li>
