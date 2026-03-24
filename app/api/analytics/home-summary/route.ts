@@ -108,10 +108,12 @@ export async function GET() {
     0
   );
 
-  return NextResponse.json({
-    ok: true,
-    categoryCount,
-    areaCount,
-    weeklyVisitorTotal,
-  });
+  return NextResponse.json(
+    { ok: true, categoryCount, areaCount, weeklyVisitorTotal },
+    {
+      headers: {
+        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      },
+    }
+  );
 }
