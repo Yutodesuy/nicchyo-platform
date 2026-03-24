@@ -1,16 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Trash2 } from "lucide-react";
 import type { Landmark as EditableLandmark } from "../map/types/landmark";
 import type { Shop } from "../map/data/shops";
+import type { MapRouteConfig, MapRoutePoint } from "../map/types/mapRoute";
 import RoadOverlay from "../map/components/RoadOverlay";
 import BackgroundOverlay from "../map/components/BackgroundOverlay";
 import OptimizedShopLayerWithClustering from "../map/components/OptimizedShopLayerWithClustering";
 import { normalizeRotationDeg } from "../map/utils/autoRotation";
+import {
+  getRouteCenter,
+  getRoutePointRole,
+  getRouteSegments,
+  normalizeMapRoutePoints,
+} from "../map/utils/mapRouteGeometry";
 
 type EditableShop = {
   locationId: string;
@@ -25,15 +32,27 @@ type Props = {
   mode: "edit" | "preview";
   shops: EditableShop[];
   landmarks: EditableLandmark[];
+  routePoints: MapRoutePoint[];
+  routeConfig: MapRouteConfig;
+  interactionHint?: string;
   maxZoom?: number;
-  selectedKind: "shop" | "landmark";
+  selectedKind: "shop" | "landmark" | "route";
   selectedId: string;
-  onSelect: (kind: "shop" | "landmark", id: string) => void;
+  onSelect: (kind: "shop" | "landmark" | "route", id: string) => void;
   onClearSelection: () => void;
   onMoveShop: (id: number, lat: number, lng: number) => void;
   onMoveLandmark: (key: string, lat: number, lng: number) => void;
+  onMoveRoutePoint: (id: string, lat: number, lng: number) => void;
+  onInsertRoutePointAtSegment: (
+    segmentStartId: string,
+    lat: number,
+    lng: number,
+    segmentEndId?: string
+  ) => void;
+  onAddConnectedRoutePoint: (pointId: string, branchDirection?: "up" | "down" | "auto") => void;
   onDeleteShop: (id: number) => void;
   onDeleteLandmark: (key: string) => void;
+  onDeleteRoutePoint: (id: string) => void;
 };
 
 function ClickCapture({ onClick }: { onClick: (lat: number, lng: number) => void }) {
@@ -76,7 +95,7 @@ function isInteractiveMapElement(target: EventTarget | null): boolean {
 }
 
 function createMarkerIcon(
-  kind: "shop" | "landmark",
+  kind: "shop" | "landmark" | "route",
   isSelected: boolean,
   isUnassigned = false,
   isIncompleteLandmark = false
@@ -86,13 +105,17 @@ function createMarkerIcon(
   const background =
     kind === "shop"
       ? (isUnassigned ? "#94a3b8" : "#0284c7")
-      : (isIncompleteLandmark ? "#c7926a" : "#f97316");
+      : kind === "route"
+        ? "#111827"
+        : (isIncompleteLandmark ? "#c7926a" : "#f97316");
   const glow =
     kind === "shop"
       ? isUnassigned
         ? "rgba(148,163,184,.38)"
         : "rgba(2,132,199,.38)"
-      : (isIncompleteLandmark ? "rgba(199,146,106,.38)" : "rgba(249,115,22,.38)");
+      : kind === "route"
+        ? "rgba(15,23,42,.38)"
+        : (isIncompleteLandmark ? "rgba(199,146,106,.38)" : "rgba(249,115,22,.38)");
   const outline = isSelected ? "0 0 0 6px rgba(255,255,255,.95), 0 0 0 10px rgba(15,23,42,.14)" : "";
 
   return L.divIcon({
@@ -103,10 +126,29 @@ function createMarkerIcon(
   });
 }
 
+function createMidpointHandleIcon() {
+  return L.divIcon({
+    className: "custom-route-midpoint-icon",
+    html: `
+      <div style="width:18px;height:18px;border-radius:9999px;background:#ffffff;border:2px solid #0f172a;box-shadow:0 4px 12px rgba(15,23,42,.18);display:flex;align-items:center;justify-content:center;">
+        <div style="position:relative;width:8px;height:8px;">
+          <span style="position:absolute;left:3px;top:0;width:2px;height:8px;background:#0f172a;border-radius:9999px;"></span>
+          <span style="position:absolute;left:0;top:3px;width:8px;height:2px;background:#0f172a;border-radius:9999px;"></span>
+        </div>
+      </div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+}
+
 export default function MapLayoutEditor({
   mode,
   shops,
   landmarks,
+  routePoints,
+  routeConfig,
+  interactionHint,
   maxZoom = 20,
   selectedKind,
   selectedId,
@@ -114,8 +156,12 @@ export default function MapLayoutEditor({
   onClearSelection,
   onMoveShop,
   onMoveLandmark,
+  onMoveRoutePoint,
+  onInsertRoutePointAtSegment,
+  onAddConnectedRoutePoint,
   onDeleteShop,
   onDeleteLandmark,
+  onDeleteRoutePoint,
 }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const [manualRotationOffset, setManualRotationOffset] = useState(0);
@@ -142,9 +188,13 @@ export default function MapLayoutEditor({
     isPanning: boolean;
   } | null>(null);
   const center = useMemo<[number, number]>(() => {
+    const normalizedRoutePoints = normalizeMapRoutePoints(routePoints);
+    if (normalizedRoutePoints.length >= 2) {
+      return getRouteCenter(normalizedRoutePoints);
+    }
     const first = shops[0] ?? landmarks[0];
     return first ? [first.lat, first.lng] : [33.56145, 133.5383];
-  }, [landmarks, shops]);
+  }, [landmarks, routePoints, shops]);
   const mapRotation = normalizeRotationDeg(manualRotationOffset);
   const shopIcons = useMemo(() => {
     const icons = new Map<number, L.DivIcon>();
@@ -212,6 +262,11 @@ export default function MapLayoutEditor({
     }
     return icons;
   }, [landmarks]);
+  const routeSegments = useMemo(
+    () => getRouteSegments(routePoints),
+    [routePoints]
+  );
+  const routeMidpointIcon = useMemo(() => createMidpointHandleIcon(), []);
 
   const applyManualRotation = useCallback((nextRotation: number) => {
     setManualRotationOffset(normalizeRotationDeg(nextRotation));
@@ -396,10 +451,21 @@ export default function MapLayoutEditor({
           transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
         }}
       >
+        {mode === "edit" && interactionHint ? (
+          <div className="pointer-events-none absolute left-1/2 top-5 z-[500] w-[min(92%,560px)] -translate-x-1/2 rounded-2xl border border-white/70 bg-white/92 px-4 py-3 text-center text-sm text-slate-700 shadow-lg backdrop-blur">
+            {interactionHint}
+          </div>
+        ) : null}
         <MapContainer
           center={center}
           zoom={17}
           maxZoom={maxZoom}
+          zoomSnap={0.2}
+          zoomDelta={0.35}
+          wheelPxPerZoomLevel={130}
+          zoomAnimation
+          markerZoomAnimation
+          fadeAnimation
           className="h-full w-full"
           scrollWheelZoom
           dragging={false}
@@ -421,7 +487,7 @@ export default function MapLayoutEditor({
         {mode === "preview" ? (
           <>
             <BackgroundOverlay />
-            <RoadOverlay />
+            <RoadOverlay routePoints={routePoints} routeConfig={routeConfig} />
             {landmarks.map((landmark) => (
               <Marker
                 key={landmark.key}
@@ -436,6 +502,49 @@ export default function MapLayoutEditor({
           </>
         ) : (
           <>
+            <BackgroundOverlay />
+            <RoadOverlay routePoints={routePoints} routeConfig={routeConfig} />
+            {selectedKind === "route" &&
+              routeSegments.map((segment) => (
+                <Polyline
+                  key={`route-segment-${segment.start.id}-${segment.end.id}`}
+                  positions={[
+                    [segment.start.lat, segment.start.lng],
+                    [segment.end.lat, segment.end.lng],
+                  ]}
+                  pathOptions={{
+                    color: "#0f172a",
+                    weight: 2,
+                    opacity: 0.28,
+                    dashArray: "8 10",
+                    lineCap: "round",
+                    lineJoin: "round",
+                  }}
+                />
+              ))}
+            {selectedKind === "route" &&
+              routeSegments.map((segment) => {
+                const midpointLat = (segment.start.lat + segment.end.lat) / 2;
+                const midpointLng = (segment.start.lng + segment.end.lng) / 2;
+                return (
+                  <Marker
+                    key={`route-midpoint-${segment.start.id}-${segment.end.id}`}
+                    position={[midpointLat, midpointLng]}
+                    icon={routeMidpointIcon}
+                    eventHandlers={{
+                      click: (event) => {
+                        L.DomEvent.stopPropagation(event);
+                        onInsertRoutePointAtSegment(
+                          segment.start.id,
+                          midpointLat,
+                          midpointLng,
+                          segment.end.id
+                        );
+                      },
+                    }}
+                  />
+                );
+              })}
             <ClickCapture
               onClick={() => {
                 onClearSelection();
@@ -523,6 +632,77 @@ export default function MapLayoutEditor({
                   </div>
                 </Popup>
               </Marker>
+            ))}
+            {routePoints.map((point, index) => (
+              (() => {
+                const pointRole = getRoutePointRole(routePoints, point.id);
+                const isMiddleMainPoint = pointRole === "main-middle";
+
+                return (
+              <Marker
+                key={point.id}
+                position={[point.lat, point.lng]}
+                icon={createMarkerIcon("route", selectedKind === "route" && selectedId === point.id)}
+                draggable={selectedKind === "route" && selectedId === point.id}
+                eventHandlers={{
+                  click: () => onSelect("route", point.id),
+                  dragend: (event) => {
+                    const marker = event.target;
+                    const latlng = marker.getLatLng();
+                    onMoveRoutePoint(point.id, latlng.lat, latlng.lng);
+                  },
+                }}
+              >
+                <Popup className="map-edit-marker-popup" closeButton={false} offset={[0, -12]}>
+                  <div className="min-w-[180px]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Route</p>
+                        <h3 className="mt-1 text-sm font-semibold text-slate-900">ポイント {index + 1}</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRoutePoint(point.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                        aria-label={`道路ポイント ${index + 1} を削除`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    {isMiddleMainPoint ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onAddConnectedRoutePoint(point.id, "up")}
+                          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                        >
+                          上に道を追加
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAddConnectedRoutePoint(point.id, "down")}
+                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          下に道を追加
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onAddConnectedRoutePoint(point.id, "auto")}
+                        className="mt-3 w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        ここから道を追加
+                      </button>
+                    )}
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+                );
+              })()
             ))}
           </>
         )}

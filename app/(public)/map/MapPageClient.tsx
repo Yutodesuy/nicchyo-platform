@@ -14,6 +14,7 @@ import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
 import type { Landmark } from "./types/landmark";
+import type { MapRoute } from "./types/mapRoute";
 import { grandmaComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
@@ -28,6 +29,7 @@ const MapView = dynamic(() => import("./components/MapView"), {
 type MapPageClientProps = {
   shops: Shop[];
   landmarks: Landmark[];
+  mapRoute: MapRoute;
   showGrandma?: boolean;
   shopBannerVariant?: "default" | "kotodute";
   attendanceEstimates?: Record<
@@ -93,6 +95,7 @@ function shuffleArray<T>(items: T[]): T[] {
 export default function MapPageClient({
   shops,
   landmarks,
+  mapRoute,
   showGrandma = true,
   shopBannerVariant = "default",
   attendanceEstimates,
@@ -627,6 +630,7 @@ export default function MapPageClient({
             <MapView
               shops={shops}
               landmarks={landmarks}
+              mapRoute={mapRoute}
               initialShopId={initialShopId}
               openInitialShopBanner={!isAiFocusMode}
               selectedRecipe={recommendedRecipe ?? undefined}

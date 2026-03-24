@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
+import { fetchMapRouteFromDb } from "@/app/(public)/map/services/mapRouteDb";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
+import type { MapRouteConfig, MapRoutePoint } from "@/app/(public)/map/types/mapRoute";
 
 type EditableShop = {
   locationId: string;
@@ -25,6 +27,8 @@ type SnapshotSummary = {
   deletedShopCount: number;
   upsertLandmarkCount: number;
   deletedLandmarkCount: number;
+  updatedRoutePointCount: number;
+  routeConfigChanged: boolean;
 };
 
 function getRole(user: unknown) {
@@ -140,10 +144,13 @@ async function createMapLayoutSnapshot(
     loadEditableShops(supabase),
     fetchLandmarksFromDb(supabase),
   ]);
+  const mapRoute = await fetchMapRouteFromDb(supabase);
 
   const { error } = await adminWriteClient.from("map_layout_snapshots").insert({
     shops_json: shops,
     landmarks_json: landmarks,
+    route_json: mapRoute.points,
+    route_config_json: mapRoute.config,
     created_by: createdBy,
     summary,
   });
@@ -165,9 +172,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [editableShops, landmarks, vendorsResult] = await Promise.all([
+    const [editableShops, landmarks, mapRoute, vendorsResult] = await Promise.all([
       loadEditableShops(supabase),
       fetchLandmarksFromDb(supabase),
+      fetchMapRouteFromDb(supabase),
       supabase.from("vendors").select("id, shop_name, owner_name").order("shop_name", { ascending: true }),
     ]);
 
@@ -180,7 +188,7 @@ export async function GET() {
       name: ((row.shop_name as string | null) || (row.owner_name as string | null) || "名称未設定").trim(),
     }));
 
-    return NextResponse.json({ shops: editableShops, landmarks, vendors });
+    return NextResponse.json({ shops: editableShops, landmarks, route: mapRoute, vendors });
   } catch {
     return NextResponse.json({ error: "Failed to load map layout" }, { status: 500 });
   }
@@ -208,15 +216,22 @@ export async function PUT(request: NextRequest) {
         upsert?: EditableLandmark[];
         deletedKeys?: string[];
       };
+      route?: {
+        points?: MapRoutePoint[];
+        config?: MapRouteConfig;
+      };
     };
 
     if (
       !body.shops ||
       !body.landmarks ||
+      !body.route ||
       !Array.isArray(body.shops.updated) ||
       !Array.isArray(body.shops.deletedLocationIds) ||
       !Array.isArray(body.landmarks.upsert) ||
-      !Array.isArray(body.landmarks.deletedKeys)
+      !Array.isArray(body.landmarks.deletedKeys) ||
+      !Array.isArray(body.route.points) ||
+      !body.route.config
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
@@ -225,7 +240,8 @@ export async function PUT(request: NextRequest) {
       body.shops.updated.length > 0 ||
       body.shops.deletedLocationIds.length > 0 ||
       body.landmarks.upsert.length > 0 ||
-      body.landmarks.deletedKeys.length > 0;
+      body.landmarks.deletedKeys.length > 0 ||
+      body.route.points.length > 0;
 
     if (hasChanges) {
       await createMapLayoutSnapshot(supabase, adminWriteClient, user.id, {
@@ -233,6 +249,8 @@ export async function PUT(request: NextRequest) {
         deletedShopCount: body.shops.deletedLocationIds.length,
         upsertLandmarkCount: body.landmarks.upsert.length,
         deletedLandmarkCount: body.landmarks.deletedKeys.length,
+        updatedRoutePointCount: body.route.points.length,
+        routeConfigChanged: Boolean(body.route.config),
       });
     }
 
@@ -376,6 +394,45 @@ export async function PUT(request: NextRequest) {
       if (landmarksError) {
         return NextResponse.json({ error: "Failed to save landmarks" }, { status: 500 });
       }
+    }
+
+    const { error: deleteRoutePointsError } = await adminWriteClient
+      .from("map_route_points")
+      .delete()
+      .neq("id", "");
+
+    if (deleteRoutePointsError) {
+      return NextResponse.json({ error: "Failed to clear route points" }, { status: 500 });
+    }
+
+    if (body.route.points.length > 0) {
+      const { error: routePointsError } = await adminWriteClient.from("map_route_points").insert(
+        body.route.points.map((point, index) => ({
+          id: point.id,
+          latitude: point.lat,
+          longitude: point.lng,
+          sort_order: index,
+          branch_from_id: point.branchFromId ?? null,
+        }))
+      );
+
+      if (routePointsError) {
+        return NextResponse.json({ error: "Failed to save route points" }, { status: 500 });
+      }
+    }
+
+    const { error: routeConfigError } = await adminWriteClient.from("map_route_configs").upsert(
+      {
+        key: body.route.config.key,
+        road_half_width_meters: body.route.config.roadHalfWidthMeters,
+        snap_distance_meters: body.route.config.snapDistanceMeters,
+        visible_distance_meters: body.route.config.visibleDistanceMeters,
+      },
+      { onConflict: "key" }
+    );
+
+    if (routeConfigError) {
+      return NextResponse.json({ error: "Failed to save route config" }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
