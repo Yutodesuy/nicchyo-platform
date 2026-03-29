@@ -4,10 +4,10 @@
 
 'use client';
 
-import { Fragment, memo, useMemo } from 'react';
-import { ImageOverlay, Polygon, Polyline, Rectangle } from 'react-leaflet';
+import { Fragment, memo, useMemo, useEffect, useState } from 'react';
+import { ImageOverlay, Marker, Polygon, Polyline, Rectangle, useMap } from 'react-leaflet';
 import { ROAD_CONFIG, RoadConfig } from '../config/roadConfig';
-import { LatLngBoundsExpression } from 'leaflet';
+import L, { LatLngBoundsExpression } from 'leaflet';
 import type { MapRouteConfig, MapRoutePoint } from '../types/mapRoute';
 import {
   buildRoadPolygon,
@@ -230,9 +230,11 @@ function CurvedRoad({
         positions={roadPolygon}
         interactive={false}
         pathOptions={{
-          color: '#8f7d67',
-          weight: 1,
-          opacity: 0.8,
+          color: '#c2820a',
+          weight: 1.5,
+          opacity: 0.38,
+          dashArray: '10,6',
+          lineCap: 'round',
           fillColor: '#d4c5b0',
           fillOpacity: 1,
         }}
@@ -257,6 +259,7 @@ function CurvedRoad({
           opacity: 0.5,
         }}
       />
+      <NoboriMarkersForCenterline positions={smoothedCenterline} chainKey="curved-main" />
     </>
   );
 }
@@ -313,7 +316,11 @@ function DynamicRoad({
             <Polygon
               positions={chain.roadPolygon}
               pathOptions={{
-                stroke: false,
+                color: '#c2820a',
+                weight: 1.5,
+                opacity: 0.38,
+                dashArray: '10,6',
+                lineCap: 'round',
                 fillColor: '#d4c5b0',
                 fillOpacity: 1,
               }}
@@ -338,6 +345,7 @@ function DynamicRoad({
                 lineJoin: 'round',
               }}
             />
+            <NoboriMarkersForCenterline positions={chain.smoothedCenterline} chainKey={chain.key} />
           </Fragment>
         );
       })}
@@ -475,3 +483,66 @@ function getRoadSeparatorBounds(
     [bounds[1][0], seamLng],
   ];
 }
+
+// ===== のぼり旗 =====
+
+function createNoboriIcon(): L.DivIcon {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 32" width="8" height="32">
+    <rect x="0" y="0" width="1.5" height="32" fill="#92400e" rx="0.5"/>
+    <rect x="0" y="0.5" width="7.5" height="1.2" fill="#92400e" rx="0.4"/>
+    <rect x="1.5" y="0.5" width="6" height="20" rx="0.5" fill="#dc2626" opacity="0.88"/>
+    <rect x="2.5" y="4" width="3.5" height="1" fill="white" opacity="0.75"/>
+    <rect x="2.5" y="7.5" width="3.5" height="1" fill="white" opacity="0.75"/>
+    <rect x="2.5" y="11" width="3.5" height="1" fill="white" opacity="0.75"/>
+    <rect x="2.5" y="14.5" width="3.5" height="1" fill="white" opacity="0.75"/>
+    <rect x="2.5" y="18" width="3.5" height="1" fill="white" opacity="0.75"/>
+  </svg>`;
+  return L.divIcon({
+    className: 'map-nobori-icon',
+    html: svg,
+    iconSize: [8, 32],
+    iconAnchor: [0, 32],
+  });
+}
+
+const NoboriMarkersForCenterline = memo(function NoboriMarkersForCenterline({
+  positions,
+  chainKey,
+}: {
+  positions: Array<[number, number]>;
+  chainKey: string;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [map]);
+
+  const flagPoints = useMemo(() => {
+    if (zoom < 16 || positions.length === 0) return [];
+    const step = Math.max(5, Math.ceil(positions.length / 13));
+    return positions.filter((_, i) => i % step === 0);
+  }, [zoom, positions]);
+
+  const icon = useMemo(() => createNoboriIcon(), []);
+
+  if (flagPoints.length === 0) return null;
+
+  return (
+    <>
+      {flagPoints.map((point, i) => (
+        <Marker
+          key={`nobori-${chainKey}-${i}`}
+          position={point}
+          icon={icon}
+          interactive={false}
+          keyboard={false}
+          zIndexOffset={-100}
+        />
+      ))}
+    </>
+  );
+});

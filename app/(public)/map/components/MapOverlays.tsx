@@ -301,6 +301,7 @@ function EventDimOverlay({ active }: { active: boolean }) {
   );
 }
 
+
 export function getVisibleMajorPlaceLabels({
   shouldRenderMajorLabels,
   isMinimumZoomMode,

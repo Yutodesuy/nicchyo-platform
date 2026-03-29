@@ -103,6 +103,125 @@ function isIngredientName(name: string) {
   );
 }
 
+// ===== 時間帯に応じたアンビエントオーバーレイ =====
+function TimeAmbientOverlay() {
+  const hour = new Date().getHours();
+
+  let background: string | null = null;
+  if (hour >= 6 && hour < 9) {
+    // 朝 — 朝霧・柔らかい白い光
+    background = 'linear-gradient(to bottom, rgba(255,252,235,0.18), rgba(255,248,220,0.07))';
+  } else if (hour >= 14 && hour < 17) {
+    // 昼後半 — 陽光の暖かみ
+    background = 'rgba(255,195,70,0.06)';
+  } else if (hour >= 17 && hour < 19) {
+    // 夕方 — 橙色の斜光
+    background = 'linear-gradient(to bottom, rgba(255,140,30,0.12), rgba(255,90,10,0.05))';
+  }
+
+  if (!background) return null;
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[500]"
+      style={{ background }}
+    />
+  );
+}
+
+// ===== テーパー型縦ズームスライダー =====
+// 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
+const VZ_PAD = 12;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 130;   // トラック高さ
+const VZ_SVG_W = 28;
+const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
+const VZ_WIDE = 18;       // 上端（拡大）の幅
+const VZ_NARROW = 7;      // 下端（縮小）の幅
+const VZ_CX = VZ_SVG_W / 2;
+const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
+const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
+const VZ_L_BOT = VZ_CX - VZ_NARROW / 2;
+const VZ_R_BOT = VZ_CX + VZ_NARROW / 2;
+
+function VerticalZoomSlider({
+  value,
+  min,
+  max,
+  onValueChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onValueChange: (v: number) => void;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const isDragging = useRef(false);
+
+  const trackTop = VZ_PAD;
+  const trackBot = VZ_PAD + VZ_TRACK_H;
+
+  const pct = (value - min) / (max - min);           // 0=最小, 1=最大
+  const thumbY = trackTop + VZ_TRACK_H * (1 - pct); // 上=拡大, 下=縮小
+
+  // アンバー塗り: サムから下端まで（塗りが多い＝よりズームインしている）
+  const fillRatio = (thumbY - trackTop) / VZ_TRACK_H;
+  const fillTL = VZ_L_TOP + (VZ_L_BOT - VZ_L_TOP) * fillRatio;
+  const fillTR = VZ_R_TOP + (VZ_R_BOT - VZ_R_TOP) * fillRatio;
+  const trackPts = `${VZ_L_TOP},${trackTop} ${VZ_R_TOP},${trackTop} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+  const fillPts  = `${fillTL},${thumbY} ${fillTR},${thumbY} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+
+  const getValueFromY = useCallback(
+    (clientY: number): number => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return value;
+      const relY = Math.max(0, Math.min(VZ_TRACK_H, clientY - rect.top - VZ_PAD));
+      return min + (1 - relY / VZ_TRACK_H) * (max - min);
+    },
+    [min, max, value],
+  );
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = true;
+    svgRef.current?.setPointerCapture(e.pointerId);
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isDragging.current) return;
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = false;
+    e.stopPropagation();
+  };
+
+  return (
+    <svg
+      ref={svgRef}
+      width={VZ_SVG_W}
+      height={VZ_SVG_H}
+      style={{ cursor: "ns-resize", touchAction: "none", display: "block" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      role="slider"
+      aria-label="ズーム"
+      aria-valuenow={value}
+      aria-valuemin={min}
+      aria-valuemax={max}
+    >
+      {/* グレーのトラック（くさび形） */}
+      <polygon points={trackPts} fill="#e5e7eb" />
+      {/* アンバー塗り（現在のズームレベルを表す） */}
+      <polygon points={fillPts} fill="#d97706" opacity="0.65" />
+      {/* サム */}
+      <circle cx={VZ_CX} cy={thumbY} r={7} fill="white" stroke="#d97706" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
 // ===== Left-side controls: vertical zoom slider + tracking button =====
 function MapControls({
   map,
@@ -119,11 +238,6 @@ function MapControls({
   minZoom: number;
   maxZoom: number;
 }) {
-  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    map?.setZoom(parseFloat(e.target.value), { animate: false });
-  };
-
   return (
     <div
       className="absolute top-4 left-4 z-[1000] flex flex-col items-center gap-3"
@@ -131,29 +245,16 @@ function MapControls({
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => { e.stopPropagation(); }}
     >
-      {/* 縦ズームスライダー */}
-      <div className="flex flex-col items-center rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <input
-          type="range"
+      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
+      <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+        <span className="select-none text-[11px] font-bold leading-none text-slate-400">+</span>
+        <VerticalZoomSlider
+          value={currentZoom}
           min={minZoom}
           max={maxZoom}
-          step={0.05}
-          value={currentZoom}
-          onChange={handleZoomChange}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-          style={{
-            writingMode: "vertical-lr" as any,
-            WebkitAppearance: "slider-vertical" as any,
-            direction: "rtl",
-            height: "140px",
-            width: "24px",
-            cursor: "pointer",
-            accentColor: "#d97706",
-          }}
-          aria-label="ズーム"
+          onValueChange={(v) => map?.setZoom(v, { animate: false })}
         />
+        <span className="select-none text-[11px] font-bold leading-none text-slate-400">−</span>
       </div>
 
       {/* 現在地追従ボタン */}
@@ -1024,6 +1125,7 @@ const MapView = memo(function MapView({
         </MapContainer>
       </div>
 
+      <TimeAmbientOverlay />
       <MapControls
         map={mapInstance}
         isTracking={isTracking}
