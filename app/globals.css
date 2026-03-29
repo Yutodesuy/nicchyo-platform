@@ -142,6 +142,68 @@ body.grandma-chat-open .leaflet-container {
   animation-delay: 0.8s;
 }
 
+/* ===== 丁目エリアマーカー（縮小時の代替表示） ===== */
+
+.chome-area-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.chome-area-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  min-height: 72px;
+  padding: 8px 6px;
+  gap: 1px;
+  background: rgba(255, 251, 235, 0.96);
+  border: 2.5px solid #d97706;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.22), 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  rotate: var(--map-rotation-inverse, 0deg);
+  user-select: none;
+}
+
+.chome-area-badge:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(180, 83, 9, 0.35), 0 2px 6px rgba(0, 0, 0, 0.14);
+}
+
+.chome-area-badge:active {
+  transform: scale(0.97);
+}
+
+.chome-area-kanji {
+  font-size: 26px;
+  font-weight: 900;
+  color: #92400e;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.chome-area-sublabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #b45309;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+
+.chome-area-count {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #78350f;
+  background: rgba(217, 119, 6, 0.13);
+  padding: 1px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
 /* ===== マップ軽量化: クラスタアイコン ===== */
 
 /* クラスタアイコンのコンチE�� */
