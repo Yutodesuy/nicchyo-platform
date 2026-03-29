@@ -137,7 +137,7 @@ function MapControls({
           type="range"
           min={minZoom}
           max={maxZoom}
-          step={0.2}
+          step={0.05}
           value={currentZoom}
           onChange={handleZoomChange}
           onTouchStart={(e) => e.stopPropagation()}
@@ -261,7 +261,7 @@ type MapViewProps = {
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
 const SKIPPED_ZOOM_LEVELS = [18];
-const SKIPPED_ZOOM_TOLERANCE = 0.01;
+const SKIPPED_ZOOM_TOLERANCE = 0.026; // step(0.05) の半分より少し大きく設定
 
 function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => void }) {
   const map = useMap();
@@ -292,8 +292,9 @@ function MapZoomConstraint() {
         (level) => Math.abs(zoom - level) <= SKIPPED_ZOOM_TOLERANCE
       );
       if (skippedZoom !== undefined) {
+        // スムーズスライダー対応: ±1 の大ジャンプをやめ、スキップゾーンを抜ける最小幅(0.1)だけ移動
         const targetZoom =
-          lastAcceptedZoom > zoom ? skippedZoom - 1 : skippedZoom + 1;
+          lastAcceptedZoom > zoom ? skippedZoom - 0.1 : skippedZoom + 0.1;
         map.setZoom(targetZoom, { animate: false });
         lastAcceptedZoom = targetZoom;
         return;
@@ -917,7 +918,7 @@ const MapView = memo(function MapView({
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           preferCanvas
-          zoomSnap={0.2}
+          zoomSnap={0.05}
           zoomDelta={0.35}
           wheelPxPerZoomLevel={130}
           zoomAnimation
