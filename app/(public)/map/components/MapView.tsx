@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Navigation, Plus, Minus } from "lucide-react";
+import { Navigation } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
@@ -103,88 +103,72 @@ function isIngredientName(name: string) {
   );
 }
 
-// ===== Mobile zoom buttons =====
+// ===== Left-side controls: vertical zoom slider + tracking button =====
 function MapControls({
   map,
-  isMobile,
   isTracking,
   onToggleTracking,
+  currentZoom,
+  minZoom,
+  maxZoom,
 }: {
   map: L.Map | null;
-  isMobile: boolean;
   isTracking: boolean;
   onToggleTracking: () => void;
+  currentZoom: number;
+  minZoom: number;
+  maxZoom: number;
 }) {
-  // Mobile: Only tracking button at top-left
-  if (isMobile) {
-    return (
-      <div
-        className="absolute top-4 left-4 z-[1000]"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleTracking();
-          }}
-          className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-            isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-          aria-label={isTracking ? "追従中" : "追従オフ"}
-        >
-          <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-        </button>
-      </div>
-    );
-  }
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    map?.setZoom(parseFloat(e.target.value), { animate: false });
+  };
 
-  // Desktop: Unified stack at top-left
   return (
     <div
-      className="absolute top-4 left-4 z-[1000] flex flex-col overflow-hidden rounded-lg bg-white shadow-md ring-1 ring-gray-900/5"
+      className="absolute top-4 left-4 z-[1000] flex flex-col items-center gap-3"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      onTouchStart={(e) => { e.stopPropagation(); }}
     >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomIn();
+      {/* 縦ズームスライダー */}
+      <div className="flex flex-col items-center rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+        <input
+          type="range"
+          min={minZoom}
+          max={maxZoom}
+          step={0.2}
+          value={currentZoom}
+          onChange={handleZoomChange}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+          style={{
+            writingMode: "vertical-lr" as any,
+            WebkitAppearance: "slider-vertical" as any,
+            direction: "rtl",
+            height: "140px",
+            width: "24px",
+            cursor: "pointer",
+            accentColor: "#d97706",
           }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームイン"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomOut();
-          }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームアウト"
-      >
-        <Minus className="h-5 w-5" />
-      </button>
+          aria-label="ズーム"
+        />
+      </div>
+
+      {/* 現在地追従ボタン */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggleTracking();
         }}
-        className={`flex h-9 w-9 items-center justify-center transition-colors ${
-          isTracking
-            ? "bg-blue-50 text-blue-600"
-            : "bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
+          isTracking ? "bg-blue-500 text-white" : "bg-white/92 text-gray-700 hover:bg-gray-50"
         }`}
         aria-label={isTracking ? "追従中" : "追従オフ"}
       >
-        <Navigation className={`h-4 w-4 ${isTracking ? "fill-current" : ""}`} />
+        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
       </button>
     </div>
   );
@@ -1037,9 +1021,11 @@ const MapView = memo(function MapView({
 
       <MapControls
         map={mapInstance}
-        isMobile={isMobile}
         isTracking={isTracking}
         onToggleTracking={() => setIsTracking((prev) => !prev)}
+        currentZoom={mapUiZoom}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
       />
       <MapStatusHud
         isTracking={isTracking}
