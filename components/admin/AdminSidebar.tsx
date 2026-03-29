@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getRoleTheme } from "@/lib/theme/roleTheme";
+import { useAdminNotifications } from "@/lib/hooks/useAdminNotifications";
 
 interface NavItem {
   label: string;
@@ -29,12 +30,19 @@ export const AdminSidebar = React.memo(function AdminSidebar({
   const { user, permissions } = useAuth();
   const pathname = usePathname();
   const theme = getRoleTheme(user?.role);
+  const { unreadCount } = useAdminNotifications(permissions.isSuperAdmin || permissions.canModerateContent);
 
   const navItems: NavItem[] = [
     {
       label: "ダッシュボード",
       href: "/admin/dashboard",
       icon: "📊",
+      show: permissions.isSuperAdmin,
+    },
+    {
+      label: "アナリティクス",
+      href: "/admin/analytics",
+      icon: "📈",
       show: permissions.isSuperAdmin,
     },
     {
@@ -50,10 +58,29 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       show: permissions.isSuperAdmin,
     },
     {
+      label: "コンテンツ管理",
+      href: "/admin/content",
+      icon: "📝",
+      show: permissions.isSuperAdmin,
+    },
+    {
       label: "ことづて管理",
       href: "/admin/kotodute",
       icon: "💬",
       show: permissions.canModerateContent,
+    },
+    {
+      label: "監査ログ",
+      href: "/admin/audit-logs",
+      icon: "🔍",
+      show: permissions.isSuperAdmin,
+    },
+    {
+      label: "通知",
+      href: "/admin/notifications",
+      icon: "🔔",
+      badge: unreadCount > 0 ? unreadCount : undefined,
+      show: permissions.isSuperAdmin || permissions.canModerateContent,
     },
     {
       label: "設定",

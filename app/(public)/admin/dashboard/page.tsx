@@ -466,10 +466,10 @@ export default async function AdminDashboardPage() {
     .slice(0, 12);
 
   const stats = [
-    { title: "登録店舗数", value: vendorsCountResult.count ?? 0, icon: "🏪", bgColor: "bg-blue-50", textColor: "text-blue-600" },
-    { title: "今月の訪問者", value: monthVisitors, icon: "📊", bgColor: "bg-purple-50", textColor: "text-purple-600" },
-    { title: "出店者アクセス数", value: vendorVisitorsToday, icon: "🧑‍🌾", bgColor: "bg-emerald-50", textColor: "text-emerald-600" },
-    { title: "公開中のお知らせ", value: activeContentsCountResult.count ?? 0, icon: "📝", bgColor: "bg-amber-50", textColor: "text-amber-600" },
+    { title: "登録店舗数", value: vendorsCountResult.count ?? 0, icon: "🏪", bgColor: "bg-white border border-slate-200", textColor: "text-slate-800" },
+    { title: "今月の訪問者", value: monthVisitors, icon: "📊", bgColor: "bg-white border border-slate-200", textColor: "text-slate-800" },
+    { title: "出店者アクセス数", value: vendorVisitorsToday, icon: "🧑‍🌾", bgColor: "bg-white border border-slate-200", textColor: "text-slate-800" },
+    { title: "公開中のお知らせ", value: activeContentsCountResult.count ?? 0, icon: "📝", bgColor: "bg-white border border-slate-200", textColor: "text-slate-800" },
   ];
 
   const latestVendorRows = Array.isArray(latestVendorsResult.data)
@@ -533,9 +533,9 @@ export default async function AdminDashboardPage() {
             eyebrow="Traffic"
             title="サイト全体の訪問者推移"
             legendLabel="全体"
-            dotClassName="bg-violet-500"
-            panelClassName="bg-gradient-to-b from-purple-50 to-white"
-            barClassName="bg-gradient-to-t from-purple-600 via-fuchsia-500 to-violet-400"
+            dotClassName="bg-indigo-600"
+            panelClassName="bg-slate-50"
+            barClassName="bg-indigo-600"
             seriesByGranularity={trafficSeriesByGranularity}
           />
 
@@ -543,16 +543,16 @@ export default async function AdminDashboardPage() {
             eyebrow="Vendor Traffic"
             title="出店者ロールの訪問者推移"
             legendLabel="出店者のみ"
-            dotClassName="bg-emerald-500"
-            panelClassName="bg-gradient-to-b from-emerald-50 to-white"
-            barClassName="bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400"
+            dotClassName="bg-emerald-600"
+            panelClassName="bg-slate-50"
+            barClassName="bg-emerald-600"
             seriesByGranularity={vendorTrafficSeriesByGranularity}
           />
 
           <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="duration-chart">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-600">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
                   Stay Time
                 </p>
                 <h2 id="duration-chart" className="mt-2 text-xl font-bold text-gray-900">
@@ -563,41 +563,66 @@ export default async function AdminDashboardPage() {
                 <p className="text-sm text-gray-500">平均 {formatMinutes(webAverageStayMinutes)}</p>
                 <div className="mt-2 flex items-center justify-end gap-4 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
                     全体
                   </span>
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
                     出店者のみ
                   </span>
                 </div>
               </div>
             </div>
-            <div className="mt-8 flex h-72 items-end gap-3">
-              {durationSeries.map((item) => (
-                <div key={item.date} className="flex flex-1 flex-col items-center gap-3">
-                  <div className="flex h-56 w-full items-end gap-2 rounded-2xl bg-gradient-to-b from-sky-50 to-white px-2 pb-2">
-                    <div
-                      className="w-1/2 rounded-xl bg-gradient-to-t from-sky-600 via-cyan-500 to-teal-400 shadow-[0_10px_24px_rgba(14,165,233,0.22)]"
-                      style={{
-                        height: `${Math.max((item.averageMinutes / durationMax) * 100, item.averageMinutes > 0 ? 10 : 0)}%`,
-                      }}
-                    />
-                    <div
-                      className="w-1/2 rounded-xl bg-gradient-to-t from-emerald-600 via-green-500 to-lime-400 shadow-[0_10px_24px_rgba(16,185,129,0.22)]"
-                      style={{
-                        height: `${Math.max((item.vendorAverageMinutes / durationMax) * 100, item.vendorAverageMinutes > 0 ? 10 : 0)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatMinutes(item.averageMinutes)} / {formatMinutes(item.vendorAverageMinutes)}
-                    </p>
-                    <p className="text-xs text-gray-500">{formatShortDate(item.date)}</p>
-                  </div>
+
+            <div className="mt-6 flex gap-2">
+              {/* Y軸 */}
+              <div
+                className="flex w-12 shrink-0 flex-col-reverse justify-between pb-6 text-right"
+                style={{ height: 180 + 24 }}
+              >
+                {[0, Math.ceil(durationMax / 2), Math.ceil(durationMax)].map((tick) => (
+                  <span key={tick} className="text-[10px] leading-none text-slate-400">
+                    {tick > 0 ? `${tick}分` : "0"}
+                  </span>
+                ))}
+              </div>
+
+              {/* グラフ本体 */}
+              <div className="min-w-0 flex-1">
+                <div
+                  className="flex items-end gap-2 border-b border-slate-200"
+                  style={{ height: 180 }}
+                >
+                  {durationSeries.map((item) => (
+                    <div key={item.date} className="flex h-full flex-1 items-end gap-0.5">
+                      <div className="flex h-full flex-1 flex-col justify-end">
+                        <div
+                          className="w-full rounded-t bg-indigo-600"
+                          style={{
+                            height: `${Math.max((item.averageMinutes / durationMax) * 100, item.averageMinutes > 0 ? 5 : 0)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex h-full flex-1 flex-col justify-end">
+                        <div
+                          className="w-full rounded-t bg-emerald-600"
+                          style={{
+                            height: `${Math.max((item.vendorAverageMinutes / durationMax) * 100, item.vendorAverageMinutes > 0 ? 5 : 0)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                {/* X軸ラベル */}
+                <div className="mt-1.5 flex gap-2">
+                  {durationSeries.map((item) => (
+                    <div key={item.date} className="flex-1 text-center text-[10px] text-slate-400">
+                      {formatShortDate(item.date)}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -606,7 +631,7 @@ export default async function AdminDashboardPage() {
           <section className="rounded-2xl bg-white p-6 shadow" aria-labelledby="url-summary">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
                   URL Analytics
                 </p>
                 <h2 id="url-summary" className="mt-2 text-xl font-bold text-gray-900">

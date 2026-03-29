@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDebounce } from "use-debounce";
 import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/exportUtils";
@@ -13,28 +12,21 @@ import { useKeyboardShortcuts, ShortcutHelp } from "@/lib/hooks/useKeyboardShort
 import { SortableTableHeader, useSortableData } from "@/components/admin/desktop/SortableTableHeader";
 import { Tooltip } from "@/components/admin/desktop/Tooltip";
 import { DataDensityToggle, DENSITY_CONFIG, type DataDensity } from "@/components/admin/desktop/DataDensityToggle";
-import { useShops } from "@/lib/hooks/useShops";
+import type { AdminShop } from "@/app/api/admin/shops/route";
 
-type ShopStatus = "active" | "pending" | "suspended";
-
-interface ShopWithStatus {
-  id: number;
-  name: string;
-  category: string;
-  status: ShopStatus;
-  owner?: string;
-  registeredDate?: string;
-}
+type ShopStatus = "active" | "suspended";
 
 function AdminShopsContent() {
   const { permissions, isLoading } = useAuth();
   const router = useRouter();
-  const { shops: allShops } = useShops();
+  const [shops, setShops] = useState<AdminShop[]>([]);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | ShopStatus>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery] = useDebounce(searchQuery, 300);
-  const [selectedShopIds, setSelectedShopIds] = useState<number[]>([]);
+  const [selectedShopIds, setSelectedShopIds] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
@@ -44,7 +36,6 @@ function AdminShopsContent() {
   const parentRef = useRef<HTMLTableSectionElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 管理者権限チェック
   useEffect(() => {
     if (isLoading) return;
     if (!permissions.isSuperAdmin) {
@@ -52,65 +43,74 @@ function AdminShopsContent() {
     }
   }, [isLoading, permissions.isSuperAdmin, router]);
 
+  const loadShops = useCallback(async () => {
+    setFetchLoading(true);
+    setFetchError(null);
+    try {
+      const res = await fetch("/api/admin/shops");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { shops: AdminShop[] };
+      setShops(Array.isArray(data.shops) ? data.shops : []);
+    } catch {
+      setFetchError("店舗データの取得に失敗しました");
+    } finally {
+      setFetchLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && permissions.isSuperAdmin) {
+      loadShops();
+    }
+  }, [isLoading, permissions.isSuperAdmin, loadShops]);
+
   if (isLoading || !permissions.isSuperAdmin) {
     return null;
   }
 
-  // ダミーデータ: 実際のshopsデータにステータスを追加
-  const shopsWithStatus: ShopWithStatus[] = useMemo(
-    () =>
-      allShops.map((shop, index) => ({
-        id: shop.id,
-        name: shop.name,
-        category: shop.category,
-        status: index % 10 === 0 ? "pending" : index % 20 === 0 ? "suspended" : "active",
-        owner: `店主${shop.id}`,
-        registeredDate: "2024-01-15",
-      })),
-    [allShops]
-  );
-
-  // ユニークなカテゴリーを抽出
+  // ユニークカテゴリー
   const uniqueCategories = useMemo(() => {
-    const categories = new Set(shopsWithStatus.map((shop) => shop.category));
+    const categories = new Set(shops.map((s) => s.category));
     return Array.from(categories).sort();
-  }, [shopsWithStatus]);
+  }, [shops]);
 
-  // フィルタリング（メモ化）
+  // フィルタリング
   const filteredShops = useMemo(() => {
-    return shopsWithStatus.filter((shop) => {
-      const matchesStatusFilter = filter === "all" || shop.status === filter;
-      const matchesCategoryFilter = categoryFilter === "all" || shop.category === categoryFilter;
+    return shops.filter((shop) => {
+      const matchesStatus = filter === "all" || shop.status === filter;
+      const matchesCategory = categoryFilter === "all" || shop.category === categoryFilter;
+      const q = debouncedSearchQuery.toLowerCase();
       const matchesSearch =
-        debouncedSearchQuery === "" ||
-        shop.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        shop.category.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      return matchesStatusFilter && matchesCategoryFilter && matchesSearch;
+        q === "" ||
+        shop.name.toLowerCase().includes(q) ||
+        shop.category.toLowerCase().includes(q) ||
+        shop.owner.toLowerCase().includes(q) ||
+        shop.email.toLowerCase().includes(q);
+      return matchesStatus && matchesCategory && matchesSearch;
     });
-  }, [shopsWithStatus, filter, categoryFilter, debouncedSearchQuery]);
+  }, [shops, filter, categoryFilter, debouncedSearchQuery]);
 
-  // ソート機能
+  // ソート
   const { sortedData, sortKey, sortDirection, handleSort } = useSortableData(filteredShops, "name");
 
-  // 統計（メモ化）
+  // 統計
   const stats = useMemo(
     () => ({
-      total: shopsWithStatus.length,
-      active: shopsWithStatus.filter((s) => s.status === "active").length,
-      pending: shopsWithStatus.filter((s) => s.status === "pending").length,
-      suspended: shopsWithStatus.filter((s) => s.status === "suspended").length,
+      total: shops.length,
+      active: shops.filter((s) => s.status === "active").length,
+      suspended: shops.filter((s) => s.status === "suspended").length,
     }),
-    [shopsWithStatus]
+    [shops]
   );
 
-  // カテゴリー別の統計
+  // カテゴリー別統計
   const categoryStats = useMemo(() => {
-    const stats: Record<string, number> = {};
-    shopsWithStatus.forEach((shop) => {
-      stats[shop.category] = (stats[shop.category] || 0) + 1;
+    const s: Record<string, number> = {};
+    shops.forEach((shop) => {
+      s[shop.category] = (s[shop.category] || 0) + 1;
     });
-    return stats;
-  }, [shopsWithStatus]);
+    return s;
+  }, [shops]);
 
   // 仮想化
   const rowVirtualizer = useVirtualizer({
@@ -125,85 +125,79 @@ function AdminShopsContent() {
     if (selectedShopIds.length === filteredShops.length) {
       setSelectedShopIds([]);
     } else {
-      setSelectedShopIds(filteredShops.map((shop) => shop.id));
+      setSelectedShopIds(filteredShops.map((s) => s.id));
     }
   }, [selectedShopIds.length, filteredShops]);
 
-  const handleSelectShop = useCallback((shopId: number, index: number, shiftKey: boolean) => {
-    if (shiftKey && lastSelectedIndex !== null) {
-      // Shift+クリックで範囲選択
-      const start = Math.min(lastSelectedIndex, index);
-      const end = Math.max(lastSelectedIndex, index);
-      const rangeIds = sortedData.slice(start, end + 1).map((shop) => shop.id);
+  const handleSelectShop = useCallback(
+    (shopId: string, index: number, shiftKey: boolean) => {
+      if (shiftKey && lastSelectedIndex !== null) {
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        const rangeIds = sortedData.slice(start, end + 1).map((s) => s.id);
+        setSelectedShopIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+      } else {
+        setSelectedShopIds((prev) =>
+          prev.includes(shopId) ? prev.filter((id) => id !== shopId) : [...prev, shopId]
+        );
+        setLastSelectedIndex(index);
+      }
+    },
+    [lastSelectedIndex, sortedData]
+  );
 
-      setSelectedShopIds((prev) => {
-        const newSet = new Set(prev);
-        rangeIds.forEach((id) => newSet.add(id));
-        return Array.from(newSet);
-      });
-    } else {
-      // 通常のクリックでトグル
-      setSelectedShopIds((prev) =>
-        prev.includes(shopId) ? prev.filter((id) => id !== shopId) : [...prev, shopId]
-      );
-      setLastSelectedIndex(index);
-    }
-  }, [lastSelectedIndex, sortedData]);
+  // 一括操作（実API）
+  const executeBulk = useCallback(
+    async (action: "suspend" | "restore" | "delete", label: string) => {
+      if (selectedShopIds.length === 0) return;
+      if (!confirm(`${selectedShopIds.length}件の店舗を一括${label}しますか？`)) return;
 
-  // 一括操作
-  const handleBulkApprove = useCallback(async () => {
-    if (selectedShopIds.length === 0) return;
-    if (!confirm(`${selectedShopIds.length}件の店舗を一括承認しますか？`)) return;
+      setBulkLoading(true);
+      try {
+        const res = await fetch("/api/admin/shops/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, ids: selectedShopIds }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !data.ok) throw new Error(data.error ?? "エラー");
+        showToast.success(`${selectedShopIds.length}件を${label}しました`);
+        setSelectedShopIds([]);
+        await loadShops();
+      } catch (err) {
+        showToast.error(`一括${label}に失敗しました: ${err instanceof Error ? err.message : ""}`);
+      } finally {
+        setBulkLoading(false);
+      }
+    },
+    [selectedShopIds, loadShops]
+  );
 
-    setBulkLoading(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast.success(`${selectedShopIds.length}件の店舗を承認しました`);
-      setSelectedShopIds([]);
-    } catch (error) {
-      showToast.error("一括承認に失敗しました");
-    } finally {
-      setBulkLoading(false);
-    }
-  }, [selectedShopIds]);
+  const handleBulkSuspend = useCallback(() => executeBulk("suspend", "停止"), [executeBulk]);
+  const handleBulkRestore = useCallback(() => executeBulk("restore", "復活"), [executeBulk]);
+  const handleBulkDelete = useCallback(() => executeBulk("delete", "削除"), [executeBulk]);
 
-  const handleBulkSuspend = useCallback(async () => {
-    if (selectedShopIds.length === 0) return;
-    if (!confirm(`${selectedShopIds.length}件の店舗を一括停止しますか？`)) return;
-
-    setBulkLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast.success(`${selectedShopIds.length}件の店舗を停止しました`);
-      setSelectedShopIds([]);
-    } catch (error) {
-      showToast.error("一括停止に失敗しました");
-    } finally {
-      setBulkLoading(false);
-    }
-  }, [selectedShopIds]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedShopIds.length === 0) return;
-    if (
-      !confirm(
-        `${selectedShopIds.length}件の店舗を一括削除しますか？この操作は取り消せません。`
-      )
-    )
-      return;
-
-    setBulkLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast.success(`${selectedShopIds.length}件の店舗を削除しました`);
-      setSelectedShopIds([]);
-    } catch (error) {
-      showToast.error("一括削除に失敗しました");
-    } finally {
-      setBulkLoading(false);
-    }
-  }, [selectedShopIds]);
+  // 個別操作
+  const handleSingleAction = useCallback(
+    async (id: string, action: "suspend" | "restore" | "delete") => {
+      const label = action === "suspend" ? "停止" : action === "restore" ? "復活" : "削除";
+      if (!confirm(`この店舗を${label}しますか？`)) return;
+      try {
+        const res = await fetch("/api/admin/shops/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, ids: [id] }),
+        });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || !data.ok) throw new Error(data.error ?? "エラー");
+        showToast.success(`${label}しました`);
+        await loadShops();
+      } catch {
+        showToast.error(`${label}に失敗しました`);
+      }
+    },
+    [loadShops]
+  );
 
   // エクスポート
   const handleExportCSV = useCallback(async () => {
@@ -213,20 +207,15 @@ function AdminShopsContent() {
         ID: shop.id,
         店舗名: shop.name,
         カテゴリー: shop.category,
-        店主: shop.owner || "",
-        ステータス:
-          shop.status === "active" ? "稼働中" : shop.status === "pending" ? "承認待ち" : "停止中",
-        登録日: shop.registeredDate || "",
+        店主: shop.owner,
+        メール: shop.email,
+        ステータス: shop.status === "active" ? "稼働中" : "停止中",
+        登録日: shop.registeredDate,
       }));
-      const filename = `shops_${formatDateForFilename()}.csv`;
-      const result = exportToCSV(dataToExport, filename);
-
-      if (result.success) {
-        showToast.success("CSVファイルをエクスポートしました");
-      } else {
-        showToast.error(result.error || "エクスポートに失敗しました");
-      }
-    } catch (error) {
+      const result = exportToCSV(dataToExport, `shops_${formatDateForFilename()}.csv`);
+      if (result.success) showToast.success("CSVをエクスポートしました");
+      else showToast.error(result.error ?? "エクスポートに失敗しました");
+    } catch {
       showToast.error("エクスポートに失敗しました");
     } finally {
       setIsExporting(false);
@@ -236,445 +225,375 @@ function AdminShopsContent() {
   const handleExportJSON = useCallback(async () => {
     setIsExporting(true);
     try {
-      const filename = `shops_${formatDateForFilename()}.json`;
-      const result = exportToJSON(filteredShops, filename);
-
-      if (result.success) {
-        showToast.success("JSONファイルをエクスポートしました");
-      } else {
-        showToast.error(result.error || "エクスポートに失敗しました");
-      }
-    } catch (error) {
+      const result = exportToJSON(filteredShops, `shops_${formatDateForFilename()}.json`);
+      if (result.success) showToast.success("JSONをエクスポートしました");
+      else showToast.error(result.error ?? "エクスポートに失敗しました");
+    } catch {
       showToast.error("エクスポートに失敗しました");
     } finally {
       setIsExporting(false);
     }
   }, [filteredShops]);
 
-  const handleCreateShop = useCallback(() => {
-    showToast.success("新規店舗追加 (未実装)");
-  }, []);
-
   // キーボードショートカット
   useKeyboardShortcuts([
-    {
-      key: "a",
-      ctrl: true,
-      description: "全選択",
-      action: handleSelectAll,
-    },
-    {
-      key: "f",
-      ctrl: true,
-      description: "検索フォーカス",
-      action: () => searchInputRef.current?.focus(),
-    },
-    {
-      key: "/",
-      description: "検索フォーカス",
-      action: () => searchInputRef.current?.focus(),
-    },
-    {
-      key: "e",
-      ctrl: true,
-      description: "CSV出力",
-      action: handleExportCSV,
-    },
-    {
-      key: "Delete",
-      description: "選択した店舗を削除",
-      action: () => {
-        if (selectedShopIds.length > 0) {
-          handleBulkDelete();
-        }
-      },
-    },
-    {
-      key: "?",
-      description: "ショートカット一覧を表示",
-      action: () => setShowShortcutHelp(true),
-    },
+    { key: "a", ctrl: true, description: "全選択", action: handleSelectAll },
+    { key: "f", ctrl: true, description: "検索フォーカス", action: () => searchInputRef.current?.focus() },
+    { key: "/", description: "検索フォーカス", action: () => searchInputRef.current?.focus() },
+    { key: "e", ctrl: true, description: "CSV出力", action: handleExportCSV },
+    { key: "?", description: "ショートカット一覧を表示", action: () => setShowShortcutHelp(true) },
   ]);
 
   return (
     <AdminLayout>
       {/* ヘッダー */}
       <div className="bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">店舗管理</h1>
-            </div>
-            <div className="flex gap-2">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:py-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">店舗管理</h1>
+            <div className="flex flex-wrap gap-2">
               <LoadingButton
                 onClick={handleExportCSV}
                 isLoading={isExporting}
-                className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 text-sm"
+                className="rounded-lg bg-green-600 px-3 py-2 text-white hover:bg-green-700 text-sm"
               >
                 CSV出力
               </LoadingButton>
               <LoadingButton
                 onClick={handleExportJSON}
                 isLoading={isExporting}
-                className="rounded-lg bg-purple-600 px-4 py-2 text-white hover:bg-purple-700 text-sm"
+                className="rounded-lg bg-purple-600 px-3 py-2 text-white hover:bg-purple-700 text-sm"
               >
                 JSON出力
               </LoadingButton>
-              <button
-                onClick={handleCreateShop}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-              >
-                + 新規店舗追加
-              </button>
             </div>
           </div>
         </div>
       </div>
 
       {/* メインコンテンツ */}
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:py-8">
         {/* 統計カード */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4 mb-6">
-          <div className="rounded-lg bg-white p-4 shadow">
-            <p className="text-sm text-gray-600">総店舗数</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="rounded-lg bg-white p-3 shadow sm:p-4">
+            <p className="text-xs text-gray-600 sm:text-sm">総店舗数</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 sm:text-2xl">{stats.total}</p>
           </div>
-          <div className="rounded-lg bg-green-50 p-4 shadow">
-            <p className="text-sm text-green-600">稼働中</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">{stats.active}</p>
+          <div className="rounded-lg bg-green-50 p-3 shadow sm:p-4">
+            <p className="text-xs text-green-600 sm:text-sm">稼働中</p>
+            <p className="mt-1 text-xl font-bold text-green-600 sm:text-2xl">{stats.active}</p>
           </div>
-          <div className="rounded-lg bg-orange-50 p-4 shadow">
-            <p className="text-sm text-orange-600">承認待ち</p>
-            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.pending}</p>
-          </div>
-          <div className="rounded-lg bg-red-50 p-4 shadow">
-            <p className="text-sm text-red-600">停止中</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">{stats.suspended}</p>
+          <div className="rounded-lg bg-red-50 p-3 shadow sm:p-4">
+            <p className="text-xs text-red-600 sm:text-sm">停止中</p>
+            <p className="mt-1 text-xl font-bold text-red-600 sm:text-2xl">{stats.suspended}</p>
           </div>
         </div>
 
-        {/* フィルターと検索 */}
-        <div className="mb-6 rounded-lg bg-white p-4 shadow space-y-4">
-          {/* ステータスフィルター */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-2 flex-wrap">
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center mr-2">
-                ステータス:
-              </div>
-              <button
-                onClick={() => setFilter("all")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                すべて ({stats.total})
-              </button>
-              <button
-                onClick={() => setFilter("active")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "active"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                稼働中 ({stats.active})
-              </button>
-              <button
-                onClick={() => setFilter("pending")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "pending"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                承認待ち ({stats.pending})
-              </button>
-              <button
-                onClick={() => setFilter("suspended")}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  filter === "suspended"
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                停止中 ({stats.suspended})
-              </button>
-            </div>
-            <div className="flex items-center gap-4">
-              <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
-              <div>
-                <label htmlFor="shop-search" className="sr-only">
-                  店舗を検索
-                </label>
-                <input
-                  ref={searchInputRef}
-                  id="shop-search"
-                  type="text"
-                  placeholder="店舗名・カテゴリーで検索... (Ctrl+F または /)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none w-80"
-                  aria-label="店舗名またはカテゴリーで検索"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* カテゴリーフィルター */}
-          <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-200">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mr-2">
-              カテゴリー:
-            </div>
+        {/* エラー表示 */}
+        {fetchError && (
+          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-4 flex items-center justify-between">
+            <p className="text-sm text-red-700">{fetchError}</p>
             <button
-              onClick={() => setCategoryFilter("all")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                categoryFilter === "all"
-                  ? "bg-purple-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              onClick={loadShops}
+              className="ml-4 rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
             >
-              すべて ({shopsWithStatus.length})
+              再試行
             </button>
-            {uniqueCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setCategoryFilter(category)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                  categoryFilter === category
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {category} ({categoryStats[category] || 0})
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 一括操作ツールバー */}
-        {selectedShopIds.length > 0 && (
-          <div className="mb-6 rounded-lg bg-blue-50 border border-blue-200 p-4 shadow" role="status">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-blue-900">
-                  {selectedShopIds.length}件選択中
-                </span>
-                <button
-                  onClick={() => setSelectedShopIds([])}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                  aria-label="選択を解除"
-                >
-                  選択解除
-                </button>
-              </div>
-              <div className="flex gap-2">
-                <LoadingButton
-                  onClick={handleBulkApprove}
-                  isLoading={bulkLoading}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                >
-                  一括承認
-                </LoadingButton>
-                <LoadingButton
-                  onClick={handleBulkSuspend}
-                  isLoading={bulkLoading}
-                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
-                >
-                  一括停止
-                </LoadingButton>
-                <LoadingButton
-                  onClick={handleBulkDelete}
-                  isLoading={bulkLoading}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                >
-                  一括削除
-                </LoadingButton>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* 店舗リスト */}
-        {filteredShops.length === 0 ? (
-          <EmptyState
-            icon="🏪"
-            title="店舗が見つかりません"
-            description="検索条件に一致する店舗がありません。フィルターや検索キーワードを変更してください。"
-            action={{
-              label: "新規店舗を追加",
-              onClick: handleCreateShop,
-            }}
-          />
-        ) : (
-          <div className="rounded-lg bg-white shadow">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <Tooltip content="すべての店舗を選択/解除 (Ctrl+A)" position="top">
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedShopIds.length === filteredShops.length &&
-                            filteredShops.length > 0
-                          }
-                          onChange={handleSelectAll}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          aria-label="すべての店舗を選択"
-                        />
-                      </Tooltip>
-                    </th>
-                    <SortableTableHeader
-                      label="店舗"
-                      sortKey="name"
-                      currentSortKey={sortKey}
-                      currentSortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableTableHeader
-                      label="カテゴリー"
-                      sortKey="category"
-                      currentSortKey={sortKey}
-                      currentSortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableTableHeader
-                      label="店主"
-                      sortKey="owner"
-                      currentSortKey={sortKey}
-                      currentSortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableTableHeader
-                      label="ステータス"
-                      sortKey="status"
-                      currentSortKey={sortKey}
-                      currentSortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <SortableTableHeader
-                      label="登録日"
-                      sortKey="registeredDate"
-                      currentSortKey={sortKey}
-                      currentSortDirection={sortDirection}
-                      onSort={handleSort}
-                    />
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      アクション
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  ref={parentRef}
-                  className="divide-y divide-gray-200 bg-white"
-                  style={{ height: "600px", overflow: "auto" }}
-                >
-                  <div
-                    style={{
-                      height: `${rowVirtualizer.getTotalSize()}px`,
-                      width: "100%",
-                      position: "relative",
-                    }}
-                  >
-                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                      const shop = sortedData[virtualRow.index];
-                      return (
-                        <tr
-                          key={shop.id}
-                          className="hover:bg-gray-50"
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: `${virtualRow.size}px`,
-                            transform: `translateY(${virtualRow.start}px)`,
-                          }}
-                        >
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <input
-                              type="checkbox"
-                              checked={selectedShopIds.includes(shop.id)}
-                              onChange={(e) => handleSelectShop(shop.id, virtualRow.index, (e.nativeEvent as MouseEvent).shiftKey)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              aria-label={`店舗「${shop.name}」を選択`}
-                            />
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <div className="flex items-center">
-                              <div>
-                                <div className="font-medium text-gray-900">{shop.name}</div>
-                                <div className="text-sm text-gray-500">ID: {shop.id}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                            {shop.category}
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                            {shop.owner}
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <StatusBadge status={shop.status} />
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                            {shop.registeredDate}
-                          </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-right text-sm">
-                            <Tooltip content="店舗情報を編集" position="top">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                編集
-                              </button>
-                            </Tooltip>
-                            {shop.status === "pending" && (
-                              <Tooltip content="店舗を承認" position="top">
-                                <button className="text-green-600 hover:text-green-900 mr-3">
-                                  承認
-                                </button>
-                              </Tooltip>
-                            )}
-                            <Tooltip content="店舗を削除" position="top">
-                              <button className="text-red-600 hover:text-red-900">削除</button>
-                            </Tooltip>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </div>
-                </tbody>
-              </table>
-            </div>
+        {/* ローディング */}
+        {fetchLoading && (
+          <div className="flex justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
           </div>
+        )}
+
+        {!fetchLoading && !fetchError && (
+          <>
+            {/* フィルター */}
+            <div className="mb-4 rounded-lg bg-white p-4 shadow space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス:</span>
+                  <button
+                    onClick={() => setFilter("all")}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    すべて ({stats.total})
+                  </button>
+                  <button
+                    onClick={() => setFilter("active")}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${filter === "active" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    稼働中 ({stats.active})
+                  </button>
+                  <button
+                    onClick={() => setFilter("suspended")}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium ${filter === "suspended" ? "bg-red-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    停止中 ({stats.suspended})
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DataDensityToggle density={dataDensity} onChange={setDataDensity} />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="店舗名・オーナーで検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none w-full sm:w-64"
+                  />
+                </div>
+              </div>
+
+              {/* カテゴリーフィルター */}
+              {uniqueCategories.length > 0 && (
+                <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-gray-200">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">カテゴリー:</span>
+                  <button
+                    onClick={() => setCategoryFilter("all")}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium ${categoryFilter === "all" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    すべて
+                  </button>
+                  {uniqueCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-medium ${categoryFilter === cat ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                    >
+                      {cat} ({categoryStats[cat] ?? 0})
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 一括操作ツールバー */}
+            {selectedShopIds.length > 0 && (
+              <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3 sm:p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-blue-900">{selectedShopIds.length}件選択中</span>
+                    <button onClick={() => setSelectedShopIds([])} className="text-sm text-blue-600 hover:text-blue-800">
+                      解除
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <LoadingButton
+                      onClick={handleBulkRestore}
+                      isLoading={bulkLoading}
+                      className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+                    >
+                      一括復活
+                    </LoadingButton>
+                    <LoadingButton
+                      onClick={handleBulkSuspend}
+                      isLoading={bulkLoading}
+                      className="rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700"
+                    >
+                      一括停止
+                    </LoadingButton>
+                    <LoadingButton
+                      onClick={handleBulkDelete}
+                      isLoading={bulkLoading}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                    >
+                      一括削除
+                    </LoadingButton>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 店舗リスト */}
+            {filteredShops.length === 0 ? (
+              <EmptyState
+                icon="🏪"
+                title="店舗が見つかりません"
+                description="検索条件に一致する店舗がありません。"
+              />
+            ) : (
+              <>
+                {/* PC: テーブル */}
+                <div className="hidden sm:block rounded-lg bg-white shadow">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left">
+                            <Tooltip content="全選択/解除 (Ctrl+A)" position="top">
+                              <input
+                                type="checkbox"
+                                checked={selectedShopIds.length === filteredShops.length && filteredShops.length > 0}
+                                onChange={handleSelectAll}
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                              />
+                            </Tooltip>
+                          </th>
+                          <SortableTableHeader label="店舗" sortKey="name" currentSortKey={sortKey} currentSortDirection={sortDirection} onSort={handleSort} />
+                          <SortableTableHeader label="カテゴリー" sortKey="category" currentSortKey={sortKey} currentSortDirection={sortDirection} onSort={handleSort} />
+                          <SortableTableHeader label="オーナー" sortKey="owner" currentSortKey={sortKey} currentSortDirection={sortDirection} onSort={handleSort} />
+                          <SortableTableHeader label="ステータス" sortKey="status" currentSortKey={sortKey} currentSortDirection={sortDirection} onSort={handleSort} />
+                          <SortableTableHeader label="登録日" sortKey="registeredDate" currentSortKey={sortKey} currentSortDirection={sortDirection} onSort={handleSort} />
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">アクション</th>
+                        </tr>
+                      </thead>
+                      <tbody
+                        ref={parentRef}
+                        className="divide-y divide-gray-200 bg-white"
+                        style={{ height: "560px", overflow: "auto" }}
+                      >
+                        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+                          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                            const shop = sortedData[virtualRow.index];
+                            return (
+                              <tr
+                                key={shop.id}
+                                className="hover:bg-gray-50"
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100%",
+                                  height: `${virtualRow.size}px`,
+                                  transform: `translateY(${virtualRow.start}px)`,
+                                }}
+                              >
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedShopIds.includes(shop.id)}
+                                    onChange={(e) => handleSelectShop(shop.id, virtualRow.index, (e.nativeEvent as MouseEvent).shiftKey)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                  />
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="font-medium text-gray-900 text-sm">{shop.name}</div>
+                                  <div className="text-xs text-gray-400">{shop.email}</div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{shop.category}</td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{shop.owner}</td>
+                                <td className="px-4 py-3">
+                                  <StatusBadge status={shop.status} />
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{shop.registeredDate}</td>
+                                <td className="px-4 py-3 text-right text-sm whitespace-nowrap">
+                                  {shop.status === "active" ? (
+                                    <button
+                                      onClick={() => handleSingleAction(shop.id, "suspend")}
+                                      className="text-orange-600 hover:text-orange-900 mr-3"
+                                    >
+                                      停止
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSingleAction(shop.id, "restore")}
+                                      className="text-green-600 hover:text-green-900 mr-3"
+                                    >
+                                      復活
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleSingleAction(shop.id, "delete")}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    削除
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </div>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* モバイル: カードリスト */}
+                <div className="sm:hidden space-y-3">
+                  {filteredShops.map((shop) => (
+                    <div key={shop.id} className="rounded-lg bg-white shadow p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedShopIds.includes(shop.id)}
+                            onChange={() =>
+                              setSelectedShopIds((prev) =>
+                                prev.includes(shop.id) ? prev.filter((id) => id !== shop.id) : [...prev, shop.id]
+                              )
+                            }
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 mt-0.5"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900">{shop.name}</div>
+                            <div className="text-xs text-gray-500">{shop.category}</div>
+                          </div>
+                        </div>
+                        <StatusBadge status={shop.status} />
+                      </div>
+                      <div className="text-xs text-gray-500 mb-3">
+                        <span>オーナー: {shop.owner}</span>
+                        <span className="mx-2">·</span>
+                        <span>登録: {shop.registeredDate}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {shop.status === "active" ? (
+                          <button
+                            onClick={() => handleSingleAction(shop.id, "suspend")}
+                            className="flex-1 rounded-lg border border-orange-300 py-1.5 text-sm text-orange-600 hover:bg-orange-50"
+                          >
+                            停止
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSingleAction(shop.id, "restore")}
+                            className="flex-1 rounded-lg border border-green-300 py-1.5 text-sm text-green-600 hover:bg-green-50"
+                          >
+                            復活
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleSingleAction(shop.id, "delete")}
+                          className="flex-1 rounded-lg border border-red-300 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
 
-      {/* キーボードショートカットヘルプボタン */}
-      <Tooltip content="キーボードショートカット (?)">
-        <button
-          onClick={() => setShowShortcutHelp(true)}
-          className="fixed bottom-8 right-8 w-12 h-12 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition"
-          aria-label="キーボードショートカット一覧を表示"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-      </Tooltip>
+      {/* ショートカットヘルプボタン（PCのみ） */}
+      <div className="hidden sm:block">
+        <Tooltip content="キーボードショートカット (?)">
+          <button
+            onClick={() => setShowShortcutHelp(true)}
+            className="fixed bottom-8 right-8 w-12 h-12 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition"
+            aria-label="ショートカット一覧"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </Tooltip>
+      </div>
 
-      {/* キーボードショートカットヘルプモーダル */}
+      {/* ショートカットヘルプモーダル */}
       {showShortcutHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShortcutHelp(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcutHelp(false)}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">キーボードショートカット</h3>
-              <button
-                onClick={() => setShowShortcutHelp(false)}
-                className="text-gray-400 hover:text-gray-600"
-                aria-label="閉じる"
-              >
+              <button onClick={() => setShowShortcutHelp(false)} className="text-gray-400 hover:text-gray-600">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -682,13 +601,12 @@ function AdminShopsContent() {
             </div>
             <ShortcutHelp
               shortcuts={[
-                { key: "a", ctrl: true, description: "全選択" },
-                { key: "f", ctrl: true, description: "検索フォーカス" },
-                { key: "/", description: "検索フォーカス" },
-                { key: "e", ctrl: true, description: "CSV出力" },
-                { key: "Delete", description: "選択した店舗を削除" },
-                { key: "?", description: "このヘルプを表示" },
-              ].map(s => ({ ...s, action: () => {} }))}
+                { key: "a", ctrl: true, description: "全選択", action: () => {} },
+                { key: "f", ctrl: true, description: "検索フォーカス", action: () => {} },
+                { key: "/", description: "検索フォーカス", action: () => {} },
+                { key: "e", ctrl: true, description: "CSV出力", action: () => {} },
+                { key: "?", description: "このヘルプを表示", action: () => {} },
+              ]}
             />
           </div>
         </div>
