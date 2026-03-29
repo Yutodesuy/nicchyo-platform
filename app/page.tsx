@@ -193,7 +193,6 @@ export default function HomePage() {
             alt="高知の日曜市"
             className="h-full w-full object-cover object-center"
           />
-          {/* Gradient overlay — bottom-heavy for text legibility */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/70" />
         </div>
 
@@ -491,7 +490,6 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Data CTA */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -568,7 +566,6 @@ export default function HomePage() {
           FINAL CTA — Bold close
       ═══════════════════════════════════════ */}
       <section className="relative overflow-hidden bg-[#3A3A3A] px-6 py-24 text-center">
-        {/* Decorative background blobs */}
         <div className="pointer-events-none absolute -top-20 -left-20 h-64 w-64 rounded-full bg-[#7ED957]/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -right-10 h-64 w-64 rounded-full bg-[#FFDE59]/20 blur-3xl" />
 

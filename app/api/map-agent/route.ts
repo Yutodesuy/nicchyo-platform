@@ -284,8 +284,39 @@ async function callOpenAI(
   }
 }
 
+// IPレートリミット（インスタンス内メモリ）: 10回/10分
+const ipRateMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+
+function getClientIp(req: Request): string {
+  // x-real-ip はVercel/プロキシが設定する信頼できるヘッダー
+  return (
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
+    "unknown"
+  );
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipRateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipRateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count += 1;
+  return true;
+}
+
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ message: "リクエストが多すぎます。しばらくしてからお試しください。" }, { status: 429 });
+    }
+
     const body = (await request.json()) as RequestBody;
     const answers: Answers = body?.answers ?? {};
     const start = Array.isArray(body?.location) && body.location.length === 2 ? body.location : MARKET_CENTER;

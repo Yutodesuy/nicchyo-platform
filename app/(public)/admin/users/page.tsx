@@ -186,6 +186,25 @@ function AdminUsersContent() {
     [selectedUserIds, lastSelectedIndex, sortedData]
   );
 
+  const reloadUsers = useCallback(() => {
+    setIsLoadingUsers(true);
+    setLoadError(null);
+    void fetch("/api/admin/users")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("failed");
+        return response.json() as Promise<{ users?: AdminUser[] }>;
+      })
+      .then((data) => {
+        setUsers(Array.isArray(data.users) ? data.users : []);
+      })
+      .catch(() => {
+        setLoadError("ユーザーデータの取得に失敗しました。");
+      })
+      .finally(() => {
+        setIsLoadingUsers(false);
+      });
+  }, []);
+
   // 一括操作
   const handleBulkActivate = useCallback(async () => {
     if (selectedUserIds.length === 0) return;
@@ -193,15 +212,21 @@ function AdminUsersContent() {
 
     setBulkLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", ids: selectedUserIds }),
+      });
+      if (!res.ok) throw new Error("failed");
       showToast.success(`${selectedUserIds.length}人のユーザーをアクティブ化しました`);
       setSelectedUserIds([]);
-    } catch (error) {
+      reloadUsers();
+    } catch {
       showToast.error("一括アクティブ化に失敗しました");
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedUserIds]);
+  }, [selectedUserIds, reloadUsers]);
 
   const handleBulkSuspend = useCallback(async () => {
     if (selectedUserIds.length === 0) return;
@@ -209,15 +234,21 @@ function AdminUsersContent() {
 
     setBulkLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "suspend", ids: selectedUserIds }),
+      });
+      if (!res.ok) throw new Error("failed");
       showToast.success(`${selectedUserIds.length}人のユーザーを停止しました`);
       setSelectedUserIds([]);
-    } catch (error) {
+      reloadUsers();
+    } catch {
       showToast.error("一括停止に失敗しました");
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedUserIds]);
+  }, [selectedUserIds, reloadUsers]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedUserIds.length === 0) return;
@@ -228,15 +259,21 @@ function AdminUsersContent() {
 
     setBulkLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const res = await fetch("/api/admin/users/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", ids: selectedUserIds }),
+      });
+      if (!res.ok) throw new Error("failed");
       showToast.success(`${selectedUserIds.length}人のユーザーを削除しました`);
       setSelectedUserIds([]);
-    } catch (error) {
+      reloadUsers();
+    } catch {
       showToast.error("一括削除に失敗しました");
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedUserIds]);
+  }, [selectedUserIds, reloadUsers]);
 
   // エクスポート
   const handleExportCSV = useCallback(async () => {
@@ -283,6 +320,38 @@ function AdminUsersContent() {
     }
   }, [filteredUsers]);
 
+  const handleSuspendUser = useCallback(async (user: AdminUser) => {
+    if (!confirm(`「${user.name}」を停止しますか？`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "suspend" }),
+      });
+      if (!res.ok) throw new Error("failed");
+      showToast.success(`${user.name}を停止しました`);
+      reloadUsers();
+    } catch {
+      showToast.error("停止に失敗しました");
+    }
+  }, [reloadUsers]);
+
+  const handleRestoreUser = useCallback(async (user: AdminUser) => {
+    if (!confirm(`「${user.name}」を復帰しますか？`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+      if (!res.ok) throw new Error("failed");
+      showToast.success(`${user.name}を復帰しました`);
+      reloadUsers();
+    } catch {
+      showToast.error("復帰に失敗しました");
+    }
+  }, [reloadUsers]);
+
   const handleCreateUser = useCallback(() => {
     showToast.success("新規ユーザー追加 (未実装)");
   }, []);
@@ -307,13 +376,19 @@ function AdminUsersContent() {
       return;
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const res = await fetch(`/api/admin/users/${roleChangeUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change_role", role: newRole }),
+      });
+      if (!res.ok) throw new Error("failed");
       showToast.success(`${roleChangeUser.name}のロールを「${getRoleLabel(newRole)}」に変更しました`);
       setRoleChangeUser(null);
-    } catch (error) {
+      reloadUsers();
+    } catch {
       showToast.error("ロール変更に失敗しました");
     }
-  }, [roleChangeUser, newRole, getRoleLabel]);
+  }, [roleChangeUser, newRole, getRoleLabel, reloadUsers]);
 
   // キーボードショートカット
   useKeyboardShortcuts([
@@ -749,17 +824,10 @@ function AdminUsersContent() {
                                 権限変更
                               </button>
                             </Tooltip>
-                            <Tooltip content="ユーザー情報を編集" position="top">
-                              <button
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                                aria-label={`${user.name}を編集`}
-                              >
-                                編集
-                              </button>
-                            </Tooltip>
                             {user.status === "active" ? (
                               <Tooltip content="ユーザーを停止" position="top">
                                 <button
+                                  onClick={() => handleSuspendUser(user)}
                                   className="text-orange-600 hover:text-orange-900"
                                   aria-label={`${user.name}を停止`}
                                 >
@@ -769,6 +837,7 @@ function AdminUsersContent() {
                             ) : (
                               <Tooltip content="ユーザーを復帰" position="top">
                                 <button
+                                  onClick={() => handleRestoreUser(user)}
                                   className="text-green-600 hover:text-green-900"
                                   aria-label={`${user.name}を復帰`}
                                 >
