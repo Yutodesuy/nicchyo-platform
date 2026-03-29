@@ -215,8 +215,8 @@ export function useMapGestures({
         return;
       }
 
-      gesture.mode =
-        Math.abs(distanceDelta) >= Math.abs(deltaDeg) * 2 ? "zoom" : "rotate";
+      // ピンチズームは無効 — 2本指操作は常に回転として扱う
+      gesture.mode = "rotate";
 
       debugLog("touch:mode", {
         mode: gesture.mode,
