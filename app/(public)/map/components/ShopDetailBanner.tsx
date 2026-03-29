@@ -3,11 +3,21 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
-import type { DragEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MessageSquarePlus, MapPin, History } from "lucide-react";
+import {
+  MessageSquarePlus,
+  MapPin,
+  ShoppingBag,
+  Clock,
+  ChevronRight,
+  Sparkles,
+  Instagram,
+  Globe,
+  X as XIcon,
+  Pencil,
+} from "lucide-react";
 import { Shop } from "../data/shops";
 import EmptyState from "@/components/EmptyState";
 import { useAuth } from "../../../../lib/auth/AuthContext";
@@ -20,6 +30,19 @@ import {
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
 
+// ─── Theme presets ────────────────────────────────────────────────────────────
+const THEME_PRESETS = {
+  amber:  { bg: "#FFFBEB", accent: "#F59E0B", text: "#92400E", border: "#FDE68A", light: "#FEF3C7" },
+  green:  { bg: "#F0FDF4", accent: "#7ED957", text: "#166534", border: "#BBF7D0", light: "#DCFCE7" },
+  orange: { bg: "#FFF7ED", accent: "#F97316", text: "#9A3412", border: "#FED7AA", light: "#FFEDD5" },
+  earth:  { bg: "#FDF6EE", accent: "#B45309", text: "#7C2D12", border: "#DDB898", light: "#FEF3E2" },
+  navy:   { bg: "#EFF6FF", accent: "#3B82F6", text: "#1E40AF", border: "#BFDBFE", light: "#DBEAFE" },
+  rose:   { bg: "#FFF1F2", accent: "#F43F5E", text: "#9F1239", border: "#FECDD3", light: "#FFE4E6" },
+} as const;
+
+type ThemeKey = keyof typeof THEME_PRESETS;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 type ShopDetailBannerProps = {
   shop: Shop;
   bagCount?: number;
@@ -35,6 +58,7 @@ type BagItem = {
   fromShopId?: number;
 };
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "nicchyo-fridge-items";
 const KOTODUTE_PREVIEW_LIMIT = 3;
 const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
@@ -83,18 +107,10 @@ function useCenterBounceTrigger(
     if (!root || !target || typeof IntersectionObserver === "undefined") {
       return;
     }
-
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsActive(entry.isIntersecting);
-      },
-      {
-        root,
-        threshold: 0.55,
-        rootMargin: "-28% 0px -28% 0px",
-      }
+      ([entry]) => { setIsActive(entry.isIntersecting); },
+      { root, threshold: 0.55, rootMargin: "-28% 0px -28% 0px" }
     );
-
     observer.observe(target);
     return () => observer.disconnect();
   }, [rootRef, targetRef]);
@@ -102,6 +118,7 @@ function useCenterBounceTrigger(
   return isActive;
 }
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShopDetailBanner({
   shop,
   bagCount,
@@ -114,26 +131,22 @@ export default function ShopDetailBanner({
   const router = useRouter();
   const { permissions } = useAuth();
   const { addItem } = useBag();
-  const [draggedProduct, setDraggedProduct] = useState<string | null>(null);
-  const [isBagHover, setIsBagHover] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<string | null>(null);
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
-  const [kotoduteFilter, setKotoduteFilter] = useState<"presence" | "footprints" | null>(null);
-  const [isGrandmaCommentBouncing, setIsGrandmaCommentBouncing] = useState(false);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
 
+  // body scroll lock
   useEffect(() => {
     if (layout !== "overlay" || typeof document === "undefined") return;
     document.body.classList.add("shop-banner-open");
-    return () => {
-      document.body.classList.remove("shop-banner-open");
-    };
+    return () => { document.body.classList.remove("shop-banner-open"); };
   }, [layout]);
 
+  // bag sync
   useEffect(() => {
     if (typeof window === "undefined") return;
     const updateBag = () => {
@@ -142,7 +155,6 @@ export default function ShopDetailBanner({
       items.forEach((item) => {
         const key = buildBagKey(item.name, item.fromShopId);
         keys.add(key);
-        // 互換性: fromShopId が無いデータは any として扱う
         if (item.fromShopId === undefined) {
           keys.add(buildBagKey(item.name, undefined));
         }
@@ -151,29 +163,24 @@ export default function ShopDetailBanner({
     };
     updateBag();
     const handler = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) {
-        updateBag();
-      }
+      if (event.key === STORAGE_KEY) updateBag();
     };
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-
+  // kotodute sync
   useEffect(() => {
     if (typeof window === "undefined") return;
     const updateKotodute = () => {
       const notes = loadKotodute().filter(
         (note) => typeof note.shopId === "number" && note.shopId === shop.id
       );
-      const sorted = notes.slice().sort((a, b) => b.createdAt - a.createdAt);
-      setKotoduteNotes(sorted);
+      setKotoduteNotes(notes.slice().sort((a, b) => b.createdAt - a.createdAt));
     };
     updateKotodute();
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === "nicchyo-kotodute-notes") {
-        updateKotodute();
-      }
+      if (event.key === "nicchyo-kotodute-notes") updateKotodute();
     };
     const handleUpdate = () => updateKotodute();
     window.addEventListener("storage", handleStorage);
@@ -184,112 +191,36 @@ export default function ShopDetailBanner({
     };
   }, [shop.id]);
 
-  const handleProductDragStart = useCallback(
-    (event: DragEvent<HTMLButtonElement>, product: string) => {
-      event.dataTransfer.setData("text/plain", product);
-      event.dataTransfer.effectAllowed = "move";
-      setDraggedProduct(product);
-    },
-    []
-  );
-
-  const handleProductDragEnd = useCallback(() => {
-    setDraggedProduct(null);
-    setIsBagHover(false);
-  }, []);
-
-  const handleBagDragOver = useCallback((event: DragEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    setIsBagHover(true);
-  }, []);
-
-  const handleBagDragLeave = useCallback(() => {
-    setIsBagHover(false);
-  }, []);
-
-  const handleBagDrop = useCallback(
-    (event: DragEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      const product = event.dataTransfer.getData("text/plain") || draggedProduct;
-      if (product) {
-        setPendingProduct(product);
-      }
-      setIsBagHover(false);
-      setDraggedProduct(null);
-    },
-    [draggedProduct]
-  );
-
-  const handleProductTap = useCallback((product: string) => {
-    setPendingProduct(product);
-  }, []);
-
-  const handleBagClick = useCallback(() => {
-    router.push("/bag");
-  }, [router]);
+  const handleProductTap = useCallback((product: string) => { setPendingProduct(product); }, []);
+  const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
-  const consultHref = `/consult?shopId=${shop.id}&shopName=${encodeURIComponent(
-    shop.name
-  )}&q=${encodeURIComponent("このお店のおすすめやこだわりを詳しく教えて")}`;
+  const consultHref = `/consult?shopId=${shop.id}&shopName=${encodeURIComponent(shop.name)}&q=${encodeURIComponent("このお店のおすすめやこだわりを詳しく教えて")}`;
   const today = new Date();
+
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];
-    return shop.products
-      .map((product) => findIngredientMatch(product)?.id)
-      .filter(Boolean) as string[];
+    return shop.products.map((p) => findIngredientMatch(p)?.id).filter(Boolean) as string[];
   }, [shop.category, shop.products]);
+
   const suggestedRecipes = useMemo(() => {
     if (matchedIngredientIds.length === 0) return [];
     const ids = new Set(matchedIngredientIds);
-    return recipes
-      .filter((recipe) => recipe.ingredientIds.some((id) => ids.has(id)))
-      .slice(0, 2);
+    return recipes.filter((r) => r.ingredientIds.some((id) => ids.has(id))).slice(0, 2);
   }, [matchedIngredientIds]);
+
   const shopNameSizeClass = useMemo(() => {
     const length = shop.name?.length ?? 0;
     if (length >= 18) return "text-2xl";
     if (length >= 14) return "text-3xl";
     return "text-4xl";
   }, [shop.name]);
-  const kotodutePresenceNotes = useMemo(
-    () =>
-      kotoduteNotes.filter((note) => {
-        const d = new Date(note.createdAt);
-        return (
-          d.getFullYear() === today.getFullYear() &&
-          d.getMonth() === today.getMonth() &&
-          d.getDate() === today.getDate()
-        );
-      }),
-    [kotoduteNotes, today]
-  );
-  const kotoduteFootprintNotes = useMemo(
-    () =>
-      kotoduteNotes.filter((note) => {
-        const d = new Date(note.createdAt);
-        return (
-          d.getFullYear() !== today.getFullYear() ||
-          d.getMonth() !== today.getMonth() ||
-          d.getDate() !== today.getDate()
-        );
-      }),
-    [kotoduteNotes, today]
-  );
-  const handleKotoduteToggle = useCallback(
-    (next: "presence" | "footprints") => {
-      setKotoduteFilter((prev) => (prev === next ? null : next));
-    },
-    []
-  );
+
   const canEditShop = permissions.canEditShop(shop.id);
   const bannerSeed = shop.position ?? shop.id;
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
 
-  const handleEditShop = useCallback(() => {
-    router.push("/my-shop");
-  }, [router]);
+  const handleEditShop = useCallback(() => { router.push("/my-shop"); }, [router]);
 
   const handleConfirmAdd = useCallback(() => {
     if (!pendingProduct) return;
@@ -306,20 +237,7 @@ export default function ShopDetailBanner({
     setPendingProduct(null);
   }, [addItem, onAddToBag, pendingProduct, shop.id]);
 
-  const handleCancelAdd = useCallback(() => {
-    setPendingProduct(null);
-  }, []);
-
-  const handleGrandmaCommentTap = useCallback(() => {
-    setIsGrandmaCommentBouncing(false);
-    if (typeof window === "undefined") {
-      setIsGrandmaCommentBouncing(true);
-      return;
-    }
-    window.requestAnimationFrame(() => {
-      setIsGrandmaCommentBouncing(true);
-    });
-  }, []);
+  const handleCancelAdd = useCallback(() => { setPendingProduct(null); }, []);
 
   const bannerStyle = useMemo(() => {
     if (!originRect || typeof window === "undefined") return undefined;
@@ -340,25 +258,14 @@ export default function ShopDetailBanner({
   }, [originRect]);
 
   const activePosts = useMemo(() => {
-    if (shop.activePosts && shop.activePosts.length > 0) {
-      return shop.activePosts;
-    }
+    if (shop.activePosts && shop.activePosts.length > 0) return shop.activePosts;
     if (shop.activePost) {
-      return [
-        {
-          text: shop.activePost.text,
-          imageUrl: shop.activePost.imageUrl,
-          expiresAt: shop.activePost.expiresAt,
-          createdAt: shop.activePost.createdAt ?? '',
-        },
-      ];
+      return [{ text: shop.activePost.text, imageUrl: shop.activePost.imageUrl, expiresAt: shop.activePost.expiresAt, createdAt: shop.activePost.createdAt ?? "" }];
     }
     return [];
   }, [shop.activePost, shop.activePosts]);
 
-  useEffect(() => {
-    setCurrentPostIndex(0);
-  }, [shop.id]);
+  useEffect(() => { setCurrentPostIndex(0); }, [shop.id]);
 
   useEffect(() => {
     if (activePosts.length <= 1) return;
@@ -373,266 +280,129 @@ export default function ShopDetailBanner({
     if (!container) return;
     const target = container.children[currentPostIndex] as HTMLElement | undefined;
     if (!target) return;
-    container.scrollTo({
-      left: target.offsetLeft,
-      behavior: 'smooth',
-    });
+    container.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
   }, [currentPostIndex]);
 
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
-
   const isInline = layout === "inline";
 
+  // ─── Theme ──────────────────────────────────────────────────────────────────
+  const themeKey: ThemeKey = (shop.themeColor as ThemeKey) ?? "amber";
+  const theme = THEME_PRESETS[themeKey] ?? THEME_PRESETS.amber;
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div
       className={
         isInline
           ? "relative min-h-[calc(100vh-7.5rem)]"
-          : "fixed inset-0 z-[2000] flex items-stretch justify-center bg-slate-900/30 md:pointer-events-none md:justify-end md:bg-transparent"
+          // Mobile: bottom sheet / Desktop: side panel
+          : "fixed inset-0 z-[2000] flex flex-col items-end justify-end bg-black/40 backdrop-blur-[2px] md:items-stretch md:justify-center md:bg-slate-900/20 md:backdrop-blur-none"
       }
       style={isInline ? undefined : { right: "var(--desktop-menu-offset, 0px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
+      {/* ── Scroll container ────────────────────────────────────────────────── */}
       <div
-        className={
-          isInline
-            ? "absolute right-4 top-4 z-20 flex items-center gap-2"
-            : "fixed right-4 top-4 z-[2105] flex items-center gap-2 pointer-events-auto"
-        }
-        style={
-          isInline
-            ? undefined
-            : { right: "calc(var(--desktop-menu-offset, 0px) + 1rem)" }
-        }
+        ref={scrollContainerRef}
+        className={`
+          relative w-full overflow-y-auto bg-white
+          ${isInline
+            ? "h-[calc(100vh-3.5rem)] border-l border-slate-100 px-0 pb-16 pt-0 shadow-sm"
+            : `
+              /* Mobile: bottom sheet — rounded top, max 90vh */
+              max-h-[90vh] rounded-t-3xl pb-10 shadow-2xl
+              /* Desktop: right side panel */
+              md:h-[calc(100vh-3.5rem)] md:max-h-none md:w-[520px] md:max-w-[520px]
+              md:rounded-none md:border-l md:border-slate-100 md:pb-16
+              md:pointer-events-auto
+            `
+          }
+          ${originRect && !isInline ? "shop-banner-animate" : ""}
+        `}
+        style={isInline ? undefined : bannerStyle}
       >
+        {/* ── Drag handle (mobile only) ────────────────────────────────────── */}
+        {!isInline && (
+          <div className="sticky top-0 z-30 flex justify-center pb-1 pt-3 md:hidden">
+            <div className="h-1 w-10 rounded-full bg-slate-300" />
+          </div>
+        )}
+
+        {/* ── Close button ─────────────────────────────────────────────────── */}
         <button
           onClick={onClose}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-3xl font-bold text-slate-700 shadow-lg backdrop-blur transition-transform hover:scale-110"
+          className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white shadow backdrop-blur-sm transition hover:bg-black/50"
           type="button"
           aria-label="閉じる"
         >
-          ×
+          <XIcon className="h-4 w-4" />
         </button>
-      </div>
-      <div
-        ref={scrollContainerRef}
-        className={`relative w-full overflow-y-auto ${
-          isInline
-            ? "h-[calc(100vh-3.5rem)] border-l border-amber-200 bg-white/96 px-5 pb-16 pt-5 shadow-sm"
-            : "h-full max-w-none bg-white px-6 pb-24 pt-6 shadow-2xl md:pointer-events-auto md:h-[calc(100vh-3.5rem)] md:w-[540px] md:max-w-[540px] md:border-l md:border-amber-200 md:bg-white/96 md:px-5 md:pb-16 md:pt-5 md:shadow-sm"
-        } ${originRect && !isInline ? "shop-banner-animate" : ""}`}
-        style={isInline ? undefined : bannerStyle}
-      >
-        {/* 写真 */}
-        <div className="-mx-6 -mt-6 overflow-hidden border-y border-slate-200 bg-white relative md:mx-0 md:mt-0 md:rounded-[26px] md:border md:border-slate-200">
+
+        {/* ══════════════════════════════════════════════════════════════════
+            HERO — Full-bleed cover with gradient overlay
+        ══════════════════════════════════════════════════════════════════ */}
+        <div className="relative h-56 w-full overflow-hidden md:h-64">
           <Image
             src={bannerImage}
             alt={`${shop.name}の写真`}
-            width={960}
-            height={640}
-            className="h-56 w-full object-cover object-center md:h-64"
+            fill
+            className="object-cover object-center"
             priority
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
-        </div>
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-        {/* ヘッダー */}
-        <div className="mt-6 flex items-start justify-between md:mt-5">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis ${shopNameSizeClass}`}>
-                {shop.name}
-              </h2>
-              {!isKotodute && (
-                <Link
-                  href={consultHref}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-100"
-                >
-                  AIに詳しく聞く
-                </Link>
-              )}
+          {/* Shop name overlay */}
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+            <div className="flex items-end justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <h2 className={`font-extrabold leading-tight text-white drop-shadow-md ${shopNameSizeClass}`}>
+                  {shop.name}
+                </h2>
+                {!isKotodute && shop.catchphrase && (
+                  <p className="mt-1 text-sm font-medium text-white/80 drop-shadow">
+                    {shop.catchphrase}
+                  </p>
+                )}
+              </div>
               {!isKotodute && canEditShop && (
                 <button
                   type="button"
                   onClick={handleEditShop}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xl font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/30"
                 >
-                  編集する
+                  <Pencil className="h-3 w-3" />
+                  編集
                 </button>
               )}
             </div>
-            {!isKotodute && (
-              <p className="text-xl text-slate-600">
-                {shop.chome ?? "丁目未設定"} | {shop.ownerName}
-              </p>
-            )}
-            {/* 営業時間バッジ・SNSクイックリンク */}
-            {!isKotodute && (shop.businessHoursStart || shop.businessHoursEnd || shop.socialLinks?.instagram || shop.socialLinks?.twitter || shop.socialLinks?.website) && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                  <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-600">
-                    🕐 <span className="font-medium text-slate-500">営業時間</span>
-                    {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
-                  </span>
-                )}
-                {shop.socialLinks?.instagram && (
-                  <a
-                    href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-sm font-medium text-pink-700 transition hover:bg-pink-100"
-                  >
-                    📸 <span>Instagramを見る</span>
-                  </a>
-                )}
-                {shop.socialLinks?.twitter && (
-                  <a
-                    href={shop.socialLinks.twitter.startsWith("http") ? shop.socialLinks.twitter : `https://x.com/${shop.socialLinks.twitter.replace(/^@/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                  >
-                    𝕏 <span>X（旧Twitter）を見る</span>
-                  </a>
-                )}
-                {shop.socialLinks?.website && (
-                  <a
-                    href={shop.socialLinks.website.startsWith("http") ? shop.socialLinks.website : `https://${shop.socialLinks.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
-                  >
-                    🌐 <span>ウェブサイトを見る</span>
-                  </a>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* 今日のお知らせ（出店者投稿） */}
-        {!isKotodute && activePosts.length > 0 && (
-          <div
-            ref={activePostRef}
-            className={`mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 ${
-              isActivePostCentered ? "center-bounce-in" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-2.5">
-              <span className="text-base">📢</span>
-              <span className="text-sm font-semibold text-amber-700">今日のお知らせ</span>
-              <span className="ml-auto text-xs text-amber-500">
-                {activePosts.length > 1 ? `${currentPostIndex + 1}/${activePosts.length}` : ""}
-              </span>
-            </div>
-            <div
-              ref={activePostCarouselRef}
-              className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth"
-            >
-              {activePosts.map((post, index) => (
-                <article
-                  key={`${shop.id}-${post.createdAt || post.expiresAt}-${index}`}
-                  className="w-full shrink-0 snap-center"
-                >
-                  <div className="flex items-center gap-2 px-4 py-2 text-xs text-amber-600">
-                    <span>
-                      {(() => {
-                        const diff = new Date(post.expiresAt).getTime() - Date.now();
-                        if (diff <= 0) return "期限切れ";
-                        const h = Math.floor(diff / 3600000);
-                        const m = Math.floor((diff % 3600000) / 60000);
-                        return h > 0 ? `あと${h}時間` : `あと${m}分`;
-                      })()}
-                    </span>
-                    {post.createdAt ? (
-                      <span className="ml-auto">
-                        {new Intl.DateTimeFormat("ja-JP", {
-                          timeZone: "Asia/Tokyo",
-                          month: "numeric",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        }).format(new Date(post.createdAt))}
-                      </span>
-                    ) : null}
-                  </div>
-                  {post.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={post.imageUrl}
-                      alt="お知らせ画像"
-                      className="h-40 w-full object-cover"
-                    />
-                  )}
-                  <p className="whitespace-pre-wrap px-4 py-3 text-lg leading-relaxed text-slate-800">
-                    {post.text}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ── Accent color bar ─────────────────────────────────────────────── */}
+        <div className="h-1 w-full" style={{ backgroundColor: theme.accent }} />
 
-        {!isKotodute && (
-          <div className="mt-6 divide-y divide-slate-200">
-            <section className="py-8 text-xl text-slate-700">
-              <p className="text-base font-semibold text-slate-500">商品ジャンル</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">{shop.category}</p>
-              <p className="mt-4 text-base font-semibold text-slate-500">にちよのおせっかい</p>
-              <div className="mt-3 flex items-start gap-4">
-              <div className="shrink-0">
-                  <Image
-                    src="/images/obaasan_transparent.png"
-                    alt="おせっかいばあちゃん"
-                    width={88}
-                    height={88}
-                    className="h-20 w-20 opacity-70"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleGrandmaCommentTap}
-                  onAnimationEnd={() => setIsGrandmaCommentBouncing(false)}
-                  className={`relative w-full appearance-none rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left text-xl leading-relaxed text-slate-700 ${
-                    isGrandmaCommentBouncing ? "center-bounce-in" : ""
-                  }`}
-                >
-                  <span
-                    className="absolute -left-2 top-6 h-4 w-4 rotate-45 border-b border-l border-amber-200 bg-amber-50"
-                    aria-hidden
-                  />
-                  {shop.shopStrength?.trim() || OSEKKAI_FALLBACK}
-                </button>
-              </div>
-            </section>
-
-          {/* 商品名 */}
-          <section className="py-10 text-xl text-slate-700">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <span className="text-base font-semibold text-slate-500">
+        {/* ══════════════════════════════════════════════════════════════════
+            PRODUCTS — 商品と値段（ヒーロー直下に移動）
+        ══════════════════════════════════════════════════════════════════ */}
+        {!isKotodute && shop.products.length > 0 && (
+          <div className="px-5 pt-4 pb-2">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>
                 商品
-              </span>
+              </p>
               <button
                 type="button"
                 onClick={handleBagClick}
-                onDragOver={handleBagDragOver}
-                onDragLeave={handleBagDragLeave}
-                onDrop={handleBagDrop}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xl font-semibold shadow-sm transition ${
-                  isBagHover
-                    ? "border-slate-500 bg-slate-100 text-slate-900"
-                    : "border-slate-200 bg-white text-slate-700"
-                }`}
-                aria-label="買い物リストへ"
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50"
               >
-                <span className="text-xl" aria-hidden>
-                  {"\u{1F6CD}"}
-                </span>
+                <ShoppingBag className="h-3.5 w-3.5" />
                 買い物リスト
               </button>
             </div>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-2">
               {shop.products.map((product) => {
                 const specificKey = buildBagKey(product, shop.id);
                 const anyKey = buildBagKey(product, undefined);
@@ -642,362 +412,302 @@ export default function ShopDetailBanner({
                   <button
                     key={product}
                     type="button"
-                    draggable
-                    onDragStart={(event) => handleProductDragStart(event, product)}
-                    onDragEnd={handleProductDragEnd}
                     onClick={() => handleProductTap(product)}
-                    className={`cursor-grab rounded-full border px-3 py-1.5 text-xl font-semibold shadow-sm active:cursor-grabbing ${
+                    className={`flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-sm font-semibold shadow-sm transition hover:shadow-md ${
                       isInBag
                         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-slate-200 bg-white text-slate-700"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                     }`}
-                    aria-label={`${product}`}
                   >
-                    {product}
+                    <span>{product}</span>
                     {price != null && (
-                      <span className="ml-1.5 text-base font-normal text-slate-500">
+                      <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${isInBag ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                         ¥{price.toLocaleString()}
                       </span>
                     )}
+                    {isInBag && <span className="text-emerald-500">✓</span>}
                   </button>
                 );
               })}
             </div>
-            {!isKotodute && shop.category === "食材" && suggestedRecipes.length > 0 && (
-              <div className="mt-6 border-t border-slate-200 pt-6">
-                <p className="text-base font-semibold text-slate-500">この食材で作れるレシピ</p>
-                <div className="mt-3 space-y-3">
-                  {suggestedRecipes.map((recipe) => (
-                    <Link
-                      key={recipe.id}
-                      href={`/recipes/${recipe.id}`}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800 shadow-sm transition hover:bg-slate-50"
-                    >
-                      {recipe.heroImage && (
-                        <div className="h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
-                          <Image
-                            src={recipe.heroImage}
-                            alt={`${recipe.title}の写真`}
-                            width={640}
-                            height={360}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="line-clamp-1 font-semibold text-slate-900">{recipe.title}</p>
-                        <p className="mt-1 line-clamp-2 text-base text-slate-600">{recipe.description}</p>
+            {shop.category === "食材" && suggestedRecipes.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold text-slate-400">この食材で作れるレシピ</p>
+                {suggestedRecipes.map((recipe) => (
+                  <Link
+                    key={recipe.id}
+                    href={`/recipes/${recipe.id}`}
+                    className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm transition hover:bg-slate-50"
+                  >
+                    {recipe.heroImage && (
+                      <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg">
+                        <Image src={recipe.heroImage} alt={recipe.title} width={112} height={96} className="h-full w-full object-cover" />
                       </div>
-                    </Link>
-                  ))}
-                </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-semibold text-slate-900">{recipe.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{recipe.description}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                  </Link>
+                ))}
               </div>
             )}
-          </section>
+          </div>
+        )}
 
-          <section className="py-10 text-slate-800">
-            <div className="space-y-8">
-              {/* 出店スタイル・出店予定日・雨天時対応 */}
-              {(shop.stallStyleTags?.length || shop.stallStyle || shop.schedule || (shop.rainPolicy && shop.rainPolicy !== "undecided")) ? (
-                <div>
-                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
-                  {(shop.stallStyleTags ?? []).length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(shop.stallStyleTags ?? []).map((tag) => (
-                        <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700">
-                          {tag}
+        {/* ══════════════════════════════════════════════════════════════════
+            IDENTITY — Owner, location, quick info
+        ══════════════════════════════════════════════════════════════════ */}
+        {!isKotodute && (
+          <div className="px-5 pt-4 pb-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+              <span className="flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" />
+                {shop.chome ?? "丁目未設定"}
+              </span>
+              <span>{shop.ownerName}</span>
+              {(shop.businessHoursStart || shop.businessHoursEnd) && (
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
+                </span>
+              )}
+            </div>
+
+            {/* SNS / AI quick links */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={consultHref}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition hover:opacity-90"
+                style={{ backgroundColor: theme.light, color: theme.text, borderColor: theme.border }}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AIに詳しく聞く
+              </Link>
+              {shop.socialLinks?.instagram && (
+                <a
+                  href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-700 transition hover:bg-pink-100"
+                >
+                  <Instagram className="h-3.5 w-3.5" />
+                  Instagram
+                </a>
+              )}
+              {shop.socialLinks?.twitter && (
+                <a
+                  href={shop.socialLinks.twitter.startsWith("http") ? shop.socialLinks.twitter : `https://x.com/${shop.socialLinks.twitter.replace(/^@/, "")}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                >
+                  𝕏
+                </a>
+              )}
+              {shop.socialLinks?.website && (
+                <a
+                  href={shop.socialLinks.website.startsWith("http") ? shop.socialLinks.website : `https://${shop.socialLinks.website}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 transition hover:bg-sky-100"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  サイト
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Divider ──────────────────────────────────────────────────────── */}
+        <div className="mx-5 my-3 border-t border-slate-100" />
+
+        <div className="px-5 pb-6 space-y-6">
+
+          {/* ════════════════════════════════════════════════════════════════
+              TODAY'S ANNOUNCEMENT — Rich card
+          ════════════════════════════════════════════════════════════════ */}
+          {!isKotodute && activePosts.length > 0 && (
+            <div ref={activePostRef} className={`overflow-hidden rounded-2xl border shadow-sm ${isActivePostCentered ? "center-bounce-in" : ""}`} style={{ borderColor: theme.border }}>
+              {/* Header */}
+              <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: theme.light }}>
+                <span className="text-base">📢</span>
+                <span className="text-sm font-bold" style={{ color: theme.text }}>今日のお知らせ</span>
+                {activePosts.length > 1 && (
+                  <div className="ml-auto flex gap-1">
+                    {activePosts.map((_, i) => (
+                      <div key={i} className="h-1.5 w-1.5 rounded-full transition-colors" style={{ backgroundColor: i === currentPostIndex ? theme.accent : theme.border }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Carousel */}
+              <div ref={activePostCarouselRef} className="flex snap-x snap-mandatory overflow-x-hidden scroll-smooth">
+                {activePosts.map((post, index) => (
+                  <article key={`${shop.id}-${post.createdAt || post.expiresAt}-${index}`} className="w-full shrink-0 snap-center">
+                    {post.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={post.imageUrl} alt="お知らせ画像" className="h-48 w-full object-cover" />
+                    )}
+                    <div className="px-4 py-3">
+                      <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800">{post.text}</p>
+                      <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                        <span>
+                          {(() => {
+                            const diff = new Date(post.expiresAt).getTime() - Date.now();
+                            if (diff <= 0) return "期限切れ";
+                            const h = Math.floor(diff / 3600000);
+                            const m = Math.floor((diff % 3600000) / 60000);
+                            return h > 0 ? `あと${h}時間` : `あと${m}分`;
+                          })()}
                         </span>
-                      ))}
+                        {post.createdAt && (
+                          <span>
+                            {new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(post.createdAt))}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {shop.stallStyle && (
-                    <p className="mt-2 text-xl text-slate-700">{shop.stallStyle}</p>
-                  )}
-                  {shop.schedule && (
-                    <p className="mt-1 text-xl text-slate-600">{shop.schedule}</p>
-                  )}
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════
+              SHOP STORY — こだわり with grandma character
+          ════════════════════════════════════════════════════════════════ */}
+          {!isKotodute && (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>
+                お店のこだわり
+              </p>
+              <div className="flex items-start gap-3">
+                <div className="shrink-0">
+                  <Image
+                    src="/images/obaasan_transparent.png"
+                    alt="おせっかいばあちゃん"
+                    width={60}
+                    height={60}
+                    className="h-14 w-14 opacity-80"
+                  />
+                </div>
+                <div
+                  className="relative w-full rounded-2xl border px-4 py-3 text-sm leading-relaxed text-slate-700"
+                  style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+                >
+                  <span className="absolute -left-2 top-4 h-3.5 w-3.5 rotate-45 border-b border-l" style={{ borderColor: theme.border, backgroundColor: theme.bg }} aria-hidden />
+                  <span className="font-semibold">{shop.shopStrength?.trim() || OSEKKAI_FALLBACK}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════
+              STALL INFO — Style, payment, hours
+          ════════════════════════════════════════════════════════════════ */}
+          {!isKotodute && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-4">
+              {/* Style tags */}
+              {((shop.stallStyleTags ?? []).length > 0 || shop.stallStyle || shop.schedule) && (
+                <div>
+                  <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">出店スタイル</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(shop.stallStyleTags ?? []).map((tag) => (
+                      <span key={tag} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">{tag}</span>
+                    ))}
+                    {shop.stallStyle && <span className="text-sm text-slate-600">{shop.stallStyle}</span>}
+                  </div>
+                  {shop.schedule && <p className="mt-1 text-xs text-slate-500">{shop.schedule}</p>}
                   {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
-                    <p className="mt-2 text-xl text-slate-700">
+                    <p className="mt-1 text-xs text-slate-500">
                       {shop.rainPolicy === "outdoor" && "🌧 雨でも出店"}
                       {shop.rainPolicy === "tent" && "⛺ 雨でも出店（テント）"}
                       {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
                     </p>
                   )}
                 </div>
-              ) : (
-                <div>
-                  <p className="text-base font-semibold text-slate-500">出店スタイル</p>
-                  <p className="mt-2 text-2xl text-slate-400">—</p>
-                </div>
               )}
 
-              {/* 決済方法 */}
+              {/* Payment methods */}
               {(shop.paymentMethods ?? []).length > 0 && (
                 <div>
-                  <p className="text-base font-semibold text-slate-500">決済方法</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">決済方法</p>
+                  <div className="flex flex-wrap gap-1.5">
                     {(shop.paymentMethods ?? []).map((method) => {
-                      const labels: Record<string, string> = {
-                        cash: "💴 現金",
-                        card: "💳 カード",
-                        paypay: "📱 PayPay",
-                        ic: "🚃 交通系IC",
-                      };
+                      const labels: Record<string, string> = { cash: "💴 現金", card: "💳 カード", paypay: "📱 PayPay", ic: "🚃 交通系IC" };
                       return (
-                        <span
-                          key={method}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-lg text-slate-700"
-                        >
-                          {labels[method] ?? method}
-                        </span>
+                        <span key={method} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">{labels[method] ?? method}</span>
                       );
                     })}
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* 営業時間 */}
-              {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                <div>
-                  <p className="text-base font-semibold text-slate-500">営業時間</p>
-                  <p className="mt-2 text-xl text-slate-700">
-                    🕐 {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
-                  </p>
-                </div>
-              )}
+          {/* ════════════════════════════════════════════════════════════════
+              KOTODUTE — User comments
+          ════════════════════════════════════════════════════════════════ */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>ことづて</p>
+                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ backgroundColor: theme.light, color: theme.text }}>
+                  {kotoduteNotes.length}
+                </span>
+              </div>
+              <Link href={`/kotodute?shopId=${shop.id}`} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
+                投稿・もっと読む
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
 
-              {/* SNSリンク */}
-              {(shop.socialLinks?.instagram || shop.socialLinks?.twitter || shop.socialLinks?.website) && (
-                <div>
-                  <p className="text-base font-semibold text-slate-500">SNS・ウェブサイト</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {shop.socialLinks?.instagram && (
-                      <a
-                        href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-3 py-1.5 text-base font-medium text-pink-700 transition hover:bg-pink-100"
-                      >
-                        <span>📸</span> Instagram
-                      </a>
-                    )}
-                    {shop.socialLinks?.twitter && (
-                      <a
-                        href={shop.socialLinks.twitter.startsWith("http") ? shop.socialLinks.twitter : `https://x.com/${shop.socialLinks.twitter.replace(/^@/, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-base font-medium text-slate-700 transition hover:bg-slate-100"
-                      >
-                        <span>𝕏</span> X
-                      </a>
-                    )}
-                    {shop.socialLinks?.website && (
-                      <a
-                        href={shop.socialLinks.website.startsWith("http") ? shop.socialLinks.website : `https://${shop.socialLinks.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-base font-medium text-sky-700 transition hover:bg-sky-100"
-                      >
-                        <span>🌐</span> ウェブサイト
-                      </a>
-                    )}
+            {kotoduteNotes.length === 0 ? (
+              <EmptyState
+                icon={MessageSquarePlus}
+                title="一番乗りでコメントしよう！"
+                description={<>まだ投稿がありません。<br />お店の感想やおすすめを教えてください。</>}
+                action={
+                  <Link href={`/kotodute?shopId=${shop.id}`} className="rounded-full px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90" style={{ backgroundColor: theme.accent }}>
+                    投稿する
+                  </Link>
+                }
+                className="mt-3"
+                variant="amber"
+              />
+            ) : (
+              <div className="space-y-2">
+                {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
+                  <div key={note.id} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+                    {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
                   </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ことづてセクション */}
-            <section className="py-10 text-lg text-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-slate-500">
-                    ことづて
-                  </span>
-                  <span className="text-base text-slate-600">
-                    {kotoduteNotes.length}
-                  </span>
-                </div>
-                <Link
-                  href={`/kotodute?shopId=${shop.id}`}
-                  className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
-                >
-                  投稿・もっと読む
-                </Link>
+                ))}
               </div>
-
-              {kotoduteNotes.length === 0 ? (
-                <EmptyState
-                  icon={MessageSquarePlus}
-                  title="一番乗りでコメントしよう！"
-                  description={
-                    <>
-                      まだ投稿がありません。<br />
-                      お店の感想やおすすめを教えてください。
-                    </>
-                  }
-                  action={
-                    <Link
-                      href={`/kotodute?shopId=${shop.id}`}
-                      className="rounded-full bg-amber-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-amber-600 active:scale-95"
-                    >
-                      投稿する
-                    </Link>
-                  }
-                  className="mt-6"
-                  variant="amber"
-                />
-              ) : (
-                <div className="mt-6 space-y-4">
-                  {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
-                    <div
-                      key={note.id}
-                      className="border border-slate-200 bg-slate-50 px-3 py-3 text-lg text-slate-800"
-                    >
-                      {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+            )}
           </div>
-        )}
 
-        {isKotodute && (
-          <div className="mt-10">
-            <section className="py-10 text-lg text-slate-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-slate-500">
-                    ことづて
-                  </span>
-                  <span className="text-base text-slate-600">
-                    {kotoduteNotes.length}
-                  </span>
-                </div>
-                <Link
-                  href={`/kotodute?shopId=${shop.id}`}
-                  className="rounded-full border border-slate-300 px-3 py-1 text-base font-semibold text-slate-600"
-                >
-                  投稿・もっと読む
-                </Link>
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => handleKotoduteToggle("presence")}
-                  className={`min-h-[88px] rounded-2xl px-4 py-5 text-left text-xl font-semibold transition ${
-                    kotoduteFilter === "presence"
-                      ? "bg-pink-200 text-pink-900"
-                      : "bg-pink-50 text-pink-700"
-                  }`}
-                >
-                  気配
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleKotoduteToggle("footprints")}
-                  className={`min-h-[88px] rounded-2xl px-4 py-5 text-left text-xl font-semibold transition ${
-                    kotoduteFilter === "footprints"
-                      ? "bg-sky-200 text-sky-900"
-                      : "bg-sky-50 text-sky-700"
-                  }`}
-                >
-                  足跡
-                </button>
-              </div>
-
-              {kotoduteFilter && (
-                <div className="mt-8 space-y-4">
-                  {(kotoduteFilter === "presence"
-                    ? kotodutePresenceNotes
-                    : kotoduteFootprintNotes
-                  )
-                    .slice(0, KOTODUTE_PREVIEW_LIMIT)
-                    .map((note) => (
-                      <div
-                        key={note.id}
-                        className="border border-slate-200 bg-white px-3 py-3 text-lg text-slate-800"
-                      >
-                        {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
-                      </div>
-                    ))}
-                  {kotoduteFilter === "presence" && kotodutePresenceNotes.length === 0 && (
-                    <EmptyState
-                      icon={MapPin}
-                      title="最初の訪問者になりませんか？"
-                      description={
-                        <>
-                          今日はまだ誰も「気配」を残していません。<br />
-                          お店に着いたら、みんなに知らせましょう！
-                        </>
-                      }
-                      action={
-                        <Link
-                          href={`/kotodute?shopId=${shop.id}`}
-                          className="rounded-full bg-pink-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-pink-600 active:scale-95"
-                        >
-                          気配を残す
-                        </Link>
-                      }
-                      variant="pink"
-                    />
-                  )}
-                  {kotoduteFilter === "footprints" && kotoduteFootprintNotes.length === 0 && (
-                    <EmptyState
-                      icon={History}
-                      title="思い出を共有しよう"
-                      description={
-                        <>
-                          過去の来店記録がまだありません。<br />
-                          このお店との思い出を書き残しませんか？
-                        </>
-                      }
-                      action={
-                        <Link
-                          href={`/kotodute?shopId=${shop.id}`}
-                          className="rounded-full bg-sky-500 px-6 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-sky-600 active:scale-95"
-                        >
-                          足跡を残す
-                        </Link>
-                      }
-                      variant="sky"
-                    />
-                  )}
-                </div>
-              )}
-
-            </section>
-          </div>
-        )}
-
-        {pendingProduct && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
-            <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
-              <p className="text-xl font-semibold text-gray-900">
-                {`「${pendingProduct}」をリストに追加しますか？`}
-              </p>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleCancelAdd}
-                  className="rounded-full border border-gray-200 bg-white px-3 py-2 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-                >
-                  いいえ
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmAdd}
-                  className="rounded-full bg-slate-800 px-3 py-2 text-lg font-semibold text-white shadow-sm hover:bg-slate-700"
-                >
-                  はい
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Bag confirmation modal ────────────────────────────────────────────── */}
+      {pendingProduct && (
+        <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-black/40 p-4 md:items-center">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+            <p className="text-center text-lg font-bold text-slate-900">
+              「<span style={{ color: theme.accent }}>{pendingProduct}</span>」を<br />買い物リストに追加しますか？
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button type="button" onClick={handleCancelAdd} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                キャンセル
+              </button>
+              <button type="button" onClick={handleConfirmAdd} className="flex-1 rounded-xl py-3 text-sm font-bold text-white shadow transition hover:opacity-90" style={{ backgroundColor: theme.accent }}>
+                追加する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
