@@ -95,6 +95,7 @@ type GrandmaChatterProps = {
   variant?: "default" | "consult";
   preferredCharacterId?: ConsultCharacterId | null;
   onPreferredCharacterChange?: (characterId: ConsultCharacterId | null) => void;
+  onCommentSeen?: (id: string, genre: string) => void;
 };
 
 export default function GrandmaChatter({
@@ -125,6 +126,7 @@ export default function GrandmaChatter({
   variant = "default",
   preferredCharacterId,
   onPreferredCharacterChange,
+  onCommentSeen,
 }: GrandmaChatterProps) {
   const isConsultVariant = variant === "consult";
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -330,6 +332,11 @@ export default function GrandmaChatter({
     if (!pool.length) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
+
+  useEffect(() => {
+    if (currentId && current) onCommentSeen?.(currentId, current.genre);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId]);
 
   useEffect(() => {
     if (layout !== "page") return;

@@ -819,6 +819,16 @@ export default function ShopDetailBanner({
   );
 }
 
+// ─── Kotodute characters ──────────────────────────────────────────────────────
+const KOTODUTE_CHARACTERS = [
+  { id: "sakura", emoji: "🌸", name: "さくら" },
+  { id: "kon",    emoji: "🦊", name: "こん" },
+  { id: "nami",   emoji: "🌊", name: "なみ" },
+  { id: "shiro",  emoji: "🏯", name: "しろ" },
+] as const;
+type KotoduteCharacterId = typeof KOTODUTE_CHARACTERS[number]["id"];
+const CHAR_STORAGE_KEY = "nicchyo-kotodute-character";
+
 // ─── Kotodute Panel (2nd slide) ───────────────────────────────────────────────
 function KotodutePanel({
   shop,
@@ -832,7 +842,13 @@ function KotodutePanel({
   const [allNotes, setAllNotes] = useState<KotoduteNote[]>([]);
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [selectedCharId, setSelectedCharId] = useState<KotoduteCharacterId>(() => {
+    if (typeof window === "undefined") return "sakura";
+    return (localStorage.getItem(CHAR_STORAGE_KEY) as KotoduteCharacterId) ?? "sakura";
+  });
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const selectedChar = KOTODUTE_CHARACTERS.find((c) => c.id === selectedCharId) ?? KOTODUTE_CHARACTERS[0];
 
   const notes = useMemo(
     () =>
@@ -862,6 +878,11 @@ function KotodutePanel({
     };
   }, []);
 
+  const handleCharSelect = useCallback((id: KotoduteCharacterId) => {
+    setSelectedCharId(id);
+    localStorage.setItem(CHAR_STORAGE_KEY, id);
+  }, []);
+
   const handleSubmit = useCallback(() => {
     const body = text.trim();
     if (!body) return;
@@ -870,6 +891,7 @@ function KotodutePanel({
       shopId: shop.id,
       text: body,
       createdAt: Date.now(),
+      authorEmoji: selectedChar.emoji,
     };
     const updated = [next, ...loadKotodute()];
     saveKotodute(updated);
@@ -877,7 +899,7 @@ function KotodutePanel({
     setText("");
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 2000);
-  }, [text, shop.id]);
+  }, [text, shop.id, selectedChar]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -917,6 +939,35 @@ function KotodutePanel({
 
       {/* ── Compose area ────────────────────────────────────────────────────── */}
       <div className="border-b px-4 py-4" style={{ borderColor: theme.border }}>
+        {/* Character selector */}
+        <div className="mb-3">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: theme.text }}>
+            投稿キャラを選ぶ
+          </p>
+          <div className="flex gap-2">
+            {KOTODUTE_CHARACTERS.map((char) => (
+              <button
+                key={char.id}
+                type="button"
+                onClick={() => handleCharSelect(char.id)}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-xs font-bold transition active:scale-95 ${
+                  selectedCharId === char.id
+                    ? "shadow-sm ring-2"
+                    : "opacity-50 hover:opacity-80"
+                }`}
+                style={{
+                  backgroundColor: selectedCharId === char.id ? theme.light : "transparent",
+                  border: `1px solid ${theme.border}`,
+                  ...(selectedCharId === char.id ? { outline: `2px solid ${theme.accent}`, outlineOffset: "1px" } : {}),
+                }}
+              >
+                <span className="text-xl leading-none">{char.emoji}</span>
+                <span style={{ color: theme.text }}>{char.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <p className="mb-2 text-xs font-semibold" style={{ color: theme.text }}>
           {shop.name}へひとことメモ
         </p>
@@ -965,19 +1016,26 @@ function KotodutePanel({
           <p className="text-xs text-slate-400">最初の一言を投稿してみましょう！</p>
         </div>
       ) : (
-        <div className="space-y-2 px-4 py-4">
+        <div className="space-y-3 px-4 py-4">
           {notes.map((note) => (
-            <div
-              key={note.id}
-              className="rounded-2xl border px-4 py-3 text-sm"
-              style={{ borderColor: theme.border, backgroundColor: theme.bg }}
-            >
+            <div key={note.id} className="flex items-start gap-2.5">
+              <div
+                className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-xl shadow-sm"
+                style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
+              >
+                {note.authorEmoji ?? "💬"}
+              </div>
+              <div
+                className="flex-1 rounded-2xl border px-3 py-2.5 text-sm"
+                style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+              >
               <p className="leading-relaxed text-slate-800">
                 {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
               </p>
               <p className="mt-1.5 text-[11px]" style={{ color: theme.text, opacity: 0.6 }}>
                 {formatRelativeTime(note.createdAt)}
               </p>
+              </div>
             </div>
           ))}
         </div>
