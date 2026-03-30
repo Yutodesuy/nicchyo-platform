@@ -32,6 +32,8 @@ import {
   saveKotodute,
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
+import type { ConsultAskResponse, ConsultHistoryEntry } from "../../consult/types/consultConversation";
+import type { ConsultCharacterId } from "../../consult/data/consultCharacters";
 
 // ─── Theme presets ────────────────────────────────────────────────────────────
 const THEME_PRESETS = {
@@ -159,7 +161,7 @@ export default function ShopDetailBanner({
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
   const [toast, setToast] = useState<{ product: string } | null>(null);
-  const [activePanel, setActivePanel] = useState<"main" | "kotodute">("main");
+  const [activePanel, setActivePanel] = useState<"main" | "kotodute" | "ai">("main");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
@@ -251,7 +253,6 @@ export default function ShopDetailBanner({
   const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
-  const consultHref = `/consult?shopId=${shop.id}&shopName=${encodeURIComponent(shop.name)}&q=${encodeURIComponent("このお店のおすすめやこだわりを詳しく教えて")}`;
   const today = new Date();
 
   const matchedIngredientIds = useMemo(() => {
@@ -388,17 +389,23 @@ export default function ShopDetailBanner({
           <XIcon className="h-4 w-4" />
         </button>
 
-        {/* ── Slide rail ──────────────────────────────────────────────────── */}
+        {/* ── Slide rail (3 panels) ───────────────────────────────────────── */}
         <div
           className="flex h-full transition-transform duration-300 ease-in-out"
-          style={{ width: "200%", transform: activePanel === "kotodute" ? "translateX(-50%)" : "translateX(0)" }}
+          style={{
+            width: "300%",
+            transform:
+              activePanel === "kotodute" ? "translateX(calc(-100% / 3))"
+              : activePanel === "ai"     ? "translateX(calc(-200% / 3))"
+              : "translateX(0)",
+          }}
         >
           {/* ── Main panel ─────────────────────────────────────────────── */}
           <div
             ref={scrollContainerRef}
             onTouchStart={handleSwipeTouchStart}
             onTouchEnd={handleSwipeTouchEnd}
-            className={`h-full w-1/2 overflow-y-auto ${isInline ? "px-0 pb-16 pt-0" : "pb-10 md:pb-16"}`}
+            className={`h-full w-1/3 overflow-y-auto ${isInline ? "px-0 pb-16 pt-0" : "pb-10 md:pb-16"}`}
           >
             {/* ── Drag handle (mobile only) ──────────────────────────── */}
             {!isInline && (
@@ -716,20 +723,21 @@ export default function ShopDetailBanner({
               AI CONSULT — Dedicated card
           ════════════════════════════════════════════════════════════════ */}
           {!isKotodute && (
-            <Link
-              href={consultHref}
-              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+            <button
+              type="button"
+              onClick={() => setActivePanel("ai")}
+              className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition hover:opacity-90 active:scale-[0.98]"
               style={{ backgroundColor: theme.light, borderColor: theme.border }}
             >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm" style={{ backgroundColor: theme.accent }}>
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-bold" style={{ color: theme.text }}>AIに詳しく聞く</p>
                 <p className="mt-0.5 text-xs text-slate-500">おすすめや旬の食材についてAIに質問できます</p>
               </div>
               <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
-            </Link>
+            </button>
           )}
 
           {/* ════════════════════════════════════════════════════════════════
@@ -792,11 +800,20 @@ export default function ShopDetailBanner({
         </div>{/* space-y-6 */}
           </div>{/* main panel */}
           {/* ── Kotodute panel ─────────────────────────────────────────── */}
-          <div className="h-full w-1/2 overflow-y-auto">
+          <div className="h-full w-1/3 overflow-y-auto">
             <KotodutePanel
               shop={shop}
               theme={theme}
               onBack={() => setActivePanel("main")}
+            />
+          </div>
+          {/* ── AI consult panel ───────────────────────────────────────── */}
+          <div className="h-full w-1/3 overflow-hidden">
+            <AiConsultPanel
+              shop={shop}
+              theme={theme}
+              onBack={() => setActivePanel("main")}
+              isActive={activePanel === "ai"}
             />
           </div>
         </div>
@@ -1040,6 +1057,289 @@ function KotodutePanel({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── AI Consult Panel (3rd slide) ─────────────────────────────────────────────
+type AiChatMsg = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  speakerId?: string;
+  speakerName?: string;
+};
+
+const CHAR_EMOJI: Record<string, string> = {
+  nichiyosan: "🧓",
+  yoichisan:  "👴",
+  miraikun:   "🌟",
+  yosakochan: "🌸",
+};
+
+function buildAiMessages(data: ConsultAskResponse): AiChatMsg[] {
+  if (data.turns && data.turns.length > 0) {
+    return data.turns.map((t) => ({
+      id: crypto.randomUUID(),
+      role: "assistant" as const,
+      text: t.text,
+      speakerId: t.speakerId,
+      speakerName: t.speakerName,
+    }));
+  }
+  if (data.reply) {
+    return [{ id: crypto.randomUUID(), role: "assistant", text: data.reply }];
+  }
+  return [{ id: "err-empty", role: "assistant", text: "うまく取得できませんでした。もう一度お試しください。" }];
+}
+
+function AiConsultPanel({
+  shop,
+  theme,
+  onBack,
+  isActive,
+}: {
+  shop: Shop;
+  theme: { bg: string; accent: string; text: string; border: string; light: string };
+  onBack: () => void;
+  isActive: boolean;
+}) {
+  const [messages, setMessages] = useState<AiChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const historyRef = useRef<ConsultHistoryEntry[]>([]);
+  const initializedForRef = useRef<number | null>(null);
+
+  // Reset state when shop changes
+  useEffect(() => {
+    setMessages([]);
+    historyRef.current = [];
+    setInput("");
+    setLoading(false);
+    initializedForRef.current = null;
+  }, [shop.id]);
+
+  // Auto-fetch when panel becomes active for the first time per shop
+  useEffect(() => {
+    if (!isActive) return;
+    if (initializedForRef.current === shop.id) return;
+    initializedForRef.current = shop.id;
+    const initText = "このお店のおすすめやこだわりを詳しく教えて";
+    setLoading(true);
+    fetch("/api/grandma/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: initText,
+        targetShopId: shop.id,
+        targetShopName: shop.name,
+        history: [],
+        location: null,
+        imageDataUrl: null,
+        memorySummary: "",
+        preferredCharacterId: null,
+        visitorKey: null,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data: ConsultAskResponse) => {
+        const aiMsgs = buildAiMessages(data);
+        setMessages(aiMsgs);
+        historyRef.current = [
+          { role: "user", text: initText },
+          ...aiMsgs.map((m) => ({
+            role: "assistant" as const,
+            text: m.text,
+            speakerId: m.speakerId as ConsultCharacterId | undefined,
+            speakerName: m.speakerName,
+          })),
+        ];
+      })
+      .catch(() => {
+        setMessages([{ id: "err-init", role: "assistant", text: "通信エラーが発生しました。もう一度お試しください。" }]);
+      })
+      .finally(() => setLoading(false));
+  }, [isActive, shop.id, shop.name]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  const handleSend = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    const userMsg: AiChatMsg = { id: crypto.randomUUID(), role: "user", text };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/grandma/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          targetShopId: shop.id,
+          targetShopName: shop.name,
+          history: historyRef.current,
+          location: null,
+          imageDataUrl: null,
+          memorySummary: "",
+          preferredCharacterId: null,
+          visitorKey: null,
+        }),
+      });
+      const data: ConsultAskResponse = await res.json();
+      const aiMsgs = buildAiMessages(data);
+      setMessages((prev) => [...prev, ...aiMsgs]);
+      historyRef.current = [
+        ...historyRef.current,
+        { role: "user", text },
+        ...aiMsgs.map((m) => ({
+          role: "assistant" as const,
+          text: m.text,
+          speakerId: m.speakerId as ConsultCharacterId | undefined,
+          speakerName: m.speakerName,
+        })),
+      ];
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: "err", role: "assistant", text: "エラーが発生しました。もう一度お試しください。" },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, shop.id, shop.name]);
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div
+        className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
+        style={{ borderColor: theme.border }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          戻る
+        </button>
+        <div className="flex flex-1 items-center justify-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />
+          <span className="text-sm font-bold text-slate-900">AIに詳しく聞く</span>
+        </div>
+        <div className="w-14" />
+      </div>
+
+      {/* ── Shop context ────────────────────────────────────────────────────── */}
+      <div className="shrink-0 border-b px-4 py-2" style={{ borderColor: theme.border, backgroundColor: theme.bg }}>
+        <p className="text-xs text-slate-500">
+          <span className="font-bold" style={{ color: theme.text }}>{shop.name}</span>
+          {" "}について会話しています
+        </p>
+      </div>
+
+      {/* ── Messages ────────────────────────────────────────────────────────── */}
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {/* Initial loading dots */}
+        {loading && messages.length === 0 && (
+          <div
+            className="flex items-center gap-2.5 rounded-2xl border px-4 py-3"
+            style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+          >
+            <span className="text-lg">🧓</span>
+            <span className="flex gap-1">
+              {[0, 150, 300].map((d) => (
+                <span
+                  key={d}
+                  className="h-2 w-2 animate-bounce rounded-full"
+                  style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
+                />
+              ))}
+            </span>
+          </div>
+        )}
+
+        {/* Message list */}
+        {messages.map((msg) =>
+          msg.role === "user" ? (
+            <div key={msg.id} className="flex justify-end">
+              <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-slate-800 px-4 py-2.5 text-sm leading-relaxed text-white">
+                {msg.text}
+              </div>
+            </div>
+          ) : (
+            <div key={msg.id} className="flex items-start gap-2.5">
+              <div
+                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg shadow-sm"
+                style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
+              >
+                {CHAR_EMOJI[msg.speakerId ?? ""] ?? "✨"}
+              </div>
+              <div className="max-w-[82%]">
+                {msg.speakerName && (
+                  <p className="mb-0.5 text-[10px] font-bold" style={{ color: theme.text }}>
+                    {msg.speakerName}
+                  </p>
+                )}
+                <div
+                  className="rounded-2xl rounded-tl-sm border px-4 py-2.5 text-sm leading-relaxed text-slate-800"
+                  style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Follow-up loading dots */}
+        {loading && messages.length > 0 && (
+          <div className="flex items-center gap-1.5 pl-10">
+            {[0, 150, 300].map((d) => (
+              <span
+                key={d}
+                className="h-2 w-2 animate-bounce rounded-full"
+                style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
+              />
+            ))}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* ── Input ───────────────────────────────────────────────────────────── */}
+      <div className="shrink-0 border-t bg-white px-3 py-3" style={{ borderColor: theme.border }}>
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="質問を入力…"
+            disabled={loading}
+            className="min-w-0 flex-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 transition focus:bg-white focus:outline-none disabled:opacity-50"
+            style={{ borderColor: theme.border }}
+          />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!input.trim() || loading}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition disabled:opacity-40 hover:opacity-90 active:scale-95"
+            style={{ backgroundColor: theme.accent }}
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
