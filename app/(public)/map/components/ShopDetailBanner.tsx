@@ -315,6 +315,20 @@ export default function ShopDetailBanner({
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
   const isInline = layout === "inline";
 
+  // スワイプダウンで閉じる (モバイル bottom-sheet のみ)
+  const swipeStartY = useRef<number | null>(null);
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isInline) return;
+    swipeStartY.current = e.touches[0].clientY;
+  }, [isInline]);
+  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isInline || swipeStartY.current === null) return;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0;
+    if (dy > 80 && scrollTop <= 0) onClose?.();
+    swipeStartY.current = null;
+  }, [isInline, onClose]);
+
   // ─── Theme ──────────────────────────────────────────────────────────────────
   const themeKey: ThemeKey = (shop.themeColor as ThemeKey) ?? "amber";
   const theme = THEME_PRESETS[themeKey] ?? THEME_PRESETS.amber;
@@ -334,6 +348,8 @@ export default function ShopDetailBanner({
       {/* ── Scroll container ────────────────────────────────────────────────── */}
       <div
         ref={scrollContainerRef}
+        onTouchStart={handleSwipeTouchStart}
+        onTouchEnd={handleSwipeTouchEnd}
         className={`
           relative w-full overflow-y-auto bg-white
           ${isInline
