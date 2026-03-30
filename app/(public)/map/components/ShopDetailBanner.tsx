@@ -510,16 +510,8 @@ export default function ShopDetailBanner({
               )}
             </div>
 
-            {/* SNS / AI quick links */}
+            {/* SNS links */}
             <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                href={consultHref}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm transition hover:opacity-90"
-                style={{ backgroundColor: theme.light, color: theme.text, borderColor: theme.border }}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AIに詳しく聞く
-              </Link>
               {shop.socialLinks?.instagram && (
                 <a
                   href={shop.socialLinks.instagram.startsWith("http") ? shop.socialLinks.instagram : `https://instagram.com/${shop.socialLinks.instagram.replace(/^@/, "")}`}
@@ -682,35 +674,61 @@ export default function ShopDetailBanner({
           )}
 
           {/* ════════════════════════════════════════════════════════════════
+              AI CONSULT — Dedicated card
+          ════════════════════════════════════════════════════════════════ */}
+          {!isKotodute && (
+            <Link
+              href={consultHref}
+              className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+              style={{ backgroundColor: theme.light, borderColor: theme.border }}
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm" style={{ backgroundColor: theme.accent }}>
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold" style={{ color: theme.text }}>AIに詳しく聞く</p>
+                <p className="mt-0.5 text-xs text-slate-500">おすすめや旬の食材についてAIに質問できます</p>
+              </div>
+              <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
+            </Link>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════
               KOTODUTE — User comments
           ════════════════════════════════════════════════════════════════ */}
           <div>
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>ことづて</p>
-                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ backgroundColor: theme.light, color: theme.text }}>
-                  {kotoduteNotes.length}
-                </span>
+                {kotoduteNotes.length > 0 && (
+                  <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ backgroundColor: theme.light, color: theme.text }}>
+                    {kotoduteNotes.length}
+                  </span>
+                )}
               </div>
-              <Link href={`/kotodute?shopId=${shop.id}`} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
-                投稿・もっと読む
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
+              {kotoduteNotes.length > 0 && (
+                <Link href={`/kotodute?shopId=${shop.id}`} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
+                  もっと読む
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
             </div>
 
             {kotoduteNotes.length === 0 ? (
-              <EmptyState
-                icon={MessageSquarePlus}
-                title="一番乗りでコメントしよう！"
-                description={<>まだ投稿がありません。<br />お店の感想やおすすめを教えてください。</>}
-                action={
-                  <Link href={`/kotodute?shopId=${shop.id}`} className="rounded-full px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90" style={{ backgroundColor: theme.accent }}>
-                    投稿する
-                  </Link>
-                }
-                className="mt-3"
-                variant="amber"
-              />
+              <Link
+                href={`/kotodute?shopId=${shop.id}`}
+                className="flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-4 transition hover:opacity-80 active:scale-[0.98]"
+                style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+              >
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: theme.light }}>
+                  <MessageSquarePlus className="h-4 w-4" style={{ color: theme.accent }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: theme.text }}>一番乗りでコメントしよう！</p>
+                  <p className="mt-0.5 text-xs text-slate-500">お店の感想やおすすめを教えてください</p>
+                </div>
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
+              </Link>
             ) : (
               <div className="space-y-2">
                 {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
@@ -718,6 +736,14 @@ export default function ShopDetailBanner({
                     {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
                   </div>
                 ))}
+                <Link
+                  href={`/kotodute?shopId=${shop.id}`}
+                  className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition hover:opacity-80"
+                  style={{ borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }}
+                >
+                  <MessageSquarePlus className="h-3.5 w-3.5" />
+                  コメントを投稿する
+                </Link>
               </div>
             )}
           </div>
