@@ -118,6 +118,15 @@ function useCenterBounceTrigger(
   return isActive;
 }
 
+// ─── Category fallback ────────────────────────────────────────────────────────
+const CATEGORY_FALLBACK: Record<string, { emoji: string; gradient: string }> = {
+  "食材":     { emoji: "🥦", gradient: "bg-gradient-to-br from-emerald-100 to-green-200" },
+  "加工食品": { emoji: "🍱", gradient: "bg-gradient-to-br from-amber-100 to-orange-200" },
+  "工芸品":   { emoji: "🎨", gradient: "bg-gradient-to-br from-purple-100 to-indigo-200" },
+  "植物":     { emoji: "🌿", gradient: "bg-gradient-to-br from-green-100 to-emerald-200" },
+  "飲食":     { emoji: "🍜", gradient: "bg-gradient-to-br from-orange-100 to-red-200" },
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShopDetailBanner({
   shop,
@@ -130,11 +139,13 @@ export default function ShopDetailBanner({
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
-  const { addItem } = useBag();
-  const [pendingProduct, setPendingProduct] = useState<string | null>(null);
+  const { addItem, removeItem, items: bagContextItems } = useBag();
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
+  const [heroImageError, setHeroImageError] = useState(false);
+  const [toast, setToast] = useState<{ product: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
@@ -191,7 +202,37 @@ export default function ShopDetailBanner({
     };
   }, [shop.id]);
 
-  const handleProductTap = useCallback((product: string) => { setPendingProduct(product); }, []);
+  const handleProductTap = useCallback((product: string) => {
+    // 即追加 (Undo パターン)
+    if (onAddToBag) {
+      onAddToBag(product, shop.id);
+    } else {
+      addItem({ name: product, fromShopId: shop.id });
+    }
+    setBagProductKeys((prev) => {
+      const next = new Set(prev);
+      next.add(buildBagKey(product, shop.id));
+      return next;
+    });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ product });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+  }, [addItem, onAddToBag, shop.id]);
+
+  const handleUndoAdd = useCallback((product: string) => {
+    const item = bagContextItems.slice().reverse().find(
+      (i) => i.name === product && i.fromShopId === shop.id
+    );
+    if (item) removeItem(item.id);
+    setBagProductKeys((prev) => {
+      const next = new Set(prev);
+      next.delete(buildBagKey(product, shop.id));
+      return next;
+    });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(null);
+  }, [bagContextItems, removeItem, shop.id]);
+
   const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
@@ -222,23 +263,6 @@ export default function ShopDetailBanner({
 
   const handleEditShop = useCallback(() => { router.push("/my-shop"); }, [router]);
 
-  const handleConfirmAdd = useCallback(() => {
-    if (!pendingProduct) return;
-    if (onAddToBag) {
-      onAddToBag(pendingProduct, shop.id);
-    } else {
-      addItem({ name: pendingProduct, fromShopId: shop.id });
-    }
-    setBagProductKeys((prev) => {
-      const next = new Set(prev);
-      next.add(buildBagKey(pendingProduct, shop.id));
-      return next;
-    });
-    setPendingProduct(null);
-  }, [addItem, onAddToBag, pendingProduct, shop.id]);
-
-  const handleCancelAdd = useCallback(() => { setPendingProduct(null); }, []);
-
   const bannerStyle = useMemo(() => {
     if (!originRect || typeof window === "undefined") return undefined;
     const vw = window.innerWidth;
@@ -265,7 +289,12 @@ export default function ShopDetailBanner({
     return [];
   }, [shop.activePost, shop.activePosts]);
 
-  useEffect(() => { setCurrentPostIndex(0); }, [shop.id]);
+  useEffect(() => {
+    setCurrentPostIndex(0);
+    setHeroImageError(false);
+    setToast(null);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, [shop.id]);
 
   useEffect(() => {
     if (activePosts.length <= 1) return;
@@ -343,14 +372,20 @@ export default function ShopDetailBanner({
             HERO — Full-bleed cover with gradient overlay
         ══════════════════════════════════════════════════════════════════ */}
         <div className="relative h-56 w-full overflow-hidden md:h-64">
-          <Image
-            src={bannerImage}
-            alt={`${shop.name}の写真`}
-            fill
-            className="object-cover object-center"
-            priority
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
+          {heroImageError ? (
+            <div className={`flex h-full w-full items-center justify-center ${CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"}`}>
+              <span className="text-7xl">{CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}</span>
+            </div>
+          ) : (
+            <Image
+              src={bannerImage}
+              alt={`${shop.name}の写真`}
+              fill
+              className="object-cover object-center"
+              priority
+              onError={() => setHeroImageError(true)}
+            />
+          )}
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
@@ -690,22 +725,17 @@ export default function ShopDetailBanner({
         </div>
       </div>
 
-      {/* ── Bag confirmation modal ────────────────────────────────────────────── */}
-      {pendingProduct && (
-        <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-black/40 p-4 md:items-center">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
-            <p className="text-center text-lg font-bold text-slate-900">
-              「<span style={{ color: theme.accent }}>{pendingProduct}</span>」を<br />買い物リストに追加しますか？
-            </p>
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={handleCancelAdd} className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
-                キャンセル
-              </button>
-              <button type="button" onClick={handleConfirmAdd} className="flex-1 rounded-xl py-3 text-sm font-bold text-white shadow transition hover:opacity-90" style={{ backgroundColor: theme.accent }}>
-                追加する
-              </button>
-            </div>
-          </div>
+      {/* ── Undo toast ───────────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[3100] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-slate-900 px-4 py-3 shadow-xl text-sm text-white">
+          <span>「{toast.product}」を追加しました</span>
+          <button
+            type="button"
+            onClick={() => handleUndoAdd(toast.product)}
+            className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold transition hover:bg-white/30"
+          >
+            取り消す
+          </button>
         </div>
       )}
     </div>
