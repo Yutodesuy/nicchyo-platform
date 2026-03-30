@@ -19,6 +19,7 @@ import type {
   ConsultAskResponse,
   ConsultErrorCode,
   ConsultHistoryEntry,
+  ConsultAskStreamEvent,
 } from "../../consult/types/consultConversation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
@@ -74,6 +75,14 @@ type GrandmaChatterProps = {
     history?: ConsultHistoryEntry[],
     memorySummary?: string
   ) => Promise<ConsultAskResponse>;
+  onAskStream?: (
+    text: string,
+    imageFile: File | null | undefined,
+    context: AskContext | undefined,
+    history: ConsultHistoryEntry[] | undefined,
+    memorySummary: string | undefined,
+    onEvent: (event: ConsultAskStreamEvent) => void
+  ) => Promise<ConsultAskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number, shop?: Shop) => void;
@@ -105,6 +114,7 @@ export default function GrandmaChatter({
   onPriorityClick,
   onPriorityDismiss,
   onAsk,
+  onAskStream,
   allShops,
   aiSuggestedShops,
   onSelectShop,
@@ -178,6 +188,7 @@ export default function GrandmaChatter({
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [activeStreamingMessageId, setActiveStreamingMessageId] = useState<string | null>(null);
   const chatStorageKeyRef = useRef<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -524,16 +535,15 @@ export default function GrandmaChatter({
           source: "suggestion",
         });
       }
-      // レイアウトがpageの場合は最初から開いているので即座に、
-      // floatingの場合は開いてから少し待って送信するなどの制御ができるが、
-      // ここではシンプルに少し遅延させて送信する
       if (!isChatOpen) setIsChatOpen(true);
 
-      setTimeout(() => {
+      const autoAskDelayMs = layout === "page" ? 0 : 600;
+      const timer = window.setTimeout(() => {
         handleAskSubmit(autoAskText, autoAskContext);
-      }, 600);
+      }, autoAskDelayMs);
+      return () => window.clearTimeout(timer);
     }
-  }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen]);
+  }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen, layout]);
 
   useEffect(() => {
     if (layout === "page") {
@@ -690,7 +700,9 @@ export default function GrandmaChatter({
     setAiStatus("thinking");
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
+    setActiveStreamingMessageId(null);
     const requestId = ++askRequestRef.current;
+    let streamedFirstMessageId: string | null = null;
     const historyForRequest: ConsultHistoryEntry[] = chatMessages
       .slice(-8)
       .map((message) => ({
@@ -700,15 +712,54 @@ export default function GrandmaChatter({
         speakerName: message.speakerName ?? null,
       }));
     try {
-      const response = onAsk
-        ? await onAsk(
+      const handleStreamEvent = (event: ConsultAskStreamEvent) => {
+        if (requestId !== askRequestRef.current) return;
+        if (event.type === "first_turn_start") {
+          if (streamedFirstMessageId) return;
+          streamedFirstMessageId = `assistant-stream-${Date.now()}`;
+          setActiveStreamingMessageId(streamedFirstMessageId);
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              id: streamedFirstMessageId!,
+              role: "assistant",
+              text: "",
+              speakerId: event.speakerId,
+              speakerName: event.speakerName,
+            },
+          ]);
+          return;
+        }
+        if (event.type === "first_turn_delta") {
+          if (!streamedFirstMessageId || !event.delta) return;
+          setChatMessages((prev) =>
+            prev.map((message) =>
+              message.id === streamedFirstMessageId
+                ? { ...message, text: `${message.text}${event.delta}` }
+                : message
+            )
+          );
+        }
+      };
+
+      const response = onAskStream
+        ? await onAskStream(
             value,
             imageFile ?? undefined,
             submission.context,
             historyForRequest,
-            conversationSummary
+            conversationSummary,
+            handleStreamEvent
           )
-        : { reply: "いま準備中やき、もう少し待っててね。" };
+        : onAsk
+          ? await onAsk(
+              value,
+              imageFile ?? undefined,
+              submission.context,
+              historyForRequest,
+              conversationSummary
+            )
+          : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       const reply =
         response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。";
@@ -733,26 +784,67 @@ export default function GrandmaChatter({
                 text: reply,
               },
             ];
-      for (let index = 0; index < turns.length; index += 1) {
-        const turn = turns[index];
+      const appendAssistantTurn = (
+        turn: (typeof turns)[number],
+        index: number,
+        options?: {
+          messageId?: string;
+          includeResponseMeta?: boolean;
+        }
+      ) => {
+        const includeResponseMeta = options?.includeResponseMeta ?? index === turns.length - 1;
         setChatMessages((prev) => [
           ...prev,
           {
-            id: `assistant-${Date.now()}-${index}`,
+            id: options?.messageId ?? `assistant-${Date.now()}-${index}`,
             role: "assistant",
             text: turn.text,
-            imageUrl: index === turns.length - 1 ? response.imageUrl : undefined,
-            shopIds: index === turns.length - 1 ? response.shopIds : undefined,
-            shops: index === turns.length - 1 ? response.shops : undefined,
+            imageUrl: includeResponseMeta ? response.imageUrl : undefined,
+            shopIds: includeResponseMeta ? response.shopIds : undefined,
+            shops: includeResponseMeta ? response.shops : undefined,
             speakerId: turn.speakerId,
             speakerName: turn.speakerName,
-            followUpQuestion:
-              index === turns.length - 1 ? response.followUpQuestion : undefined,
+            followUpQuestion: includeResponseMeta ? response.followUpQuestion : undefined,
           },
         ]);
-        if (index < turns.length - 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      };
+
+      if (streamedFirstMessageId && turns.length > 0) {
+        const [firstTurn, ...remainingTurns] = turns;
+        setChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === streamedFirstMessageId
+              ? {
+                  ...message,
+                  text: firstTurn.text,
+                  imageUrl: remainingTurns.length === 0 ? response.imageUrl : undefined,
+                  shopIds: remainingTurns.length === 0 ? response.shopIds : undefined,
+                  shops: remainingTurns.length === 0 ? response.shops : undefined,
+                  speakerId: firstTurn.speakerId,
+                  speakerName: firstTurn.speakerName,
+                  followUpQuestion:
+                    remainingTurns.length === 0 ? response.followUpQuestion : undefined,
+                }
+              : message
+          )
+        );
+        setActiveStreamingMessageId(null);
+        for (let index = 0; index < remainingTurns.length; index += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
           if (requestId !== askRequestRef.current) return;
+          appendAssistantTurn(remainingTurns[index], index + 1, {
+            includeResponseMeta: index === remainingTurns.length - 1,
+          });
+        }
+      } else {
+        if (turns.length > 0) {
+          appendAssistantTurn(turns[0], 0);
+        }
+
+        for (let index = 1; index < turns.length; index += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          if (requestId !== askRequestRef.current) return;
+          appendAssistantTurn(turns[index], index);
         }
       }
     } catch {
@@ -760,18 +852,32 @@ export default function GrandmaChatter({
       setAiStatus("error");
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
+      setActiveStreamingMessageId(null);
       setErrorNotice("接続に失敗しました。少し時間をおいて、もう一度試してください。");
       setErrorCode("system_error");
       setErrorHelperQuestions([]);
       setLastFailedSubmission(submission);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        },
-      ]);
+      if (streamedFirstMessageId) {
+        setChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === streamedFirstMessageId
+              ? {
+                  ...message,
+                  text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+                }
+              : message
+          )
+        );
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+          },
+        ]);
+      }
     }
   };
 
@@ -1392,7 +1498,7 @@ export default function GrandmaChatter({
                   )}
                 </div>
               )})}
-              {aiStatus === "thinking" && (
+              {aiStatus === "thinking" && !activeStreamingMessageId && (
                 isConsultVariant ? (
                   <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
                     <div className="mt-1 flex-shrink-0">

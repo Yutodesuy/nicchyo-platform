@@ -35,6 +35,10 @@ export type Store = {
   sns_hp?: string;
   business_hours_start?: string;
   business_hours_end?: string;
+  /** バナーのテーマカラー（プリセットキー） */
+  theme_color?: "amber" | "green" | "orange" | "earth" | "navy" | "rose";
+  /** キャッチコピー（20文字以内） */
+  catchphrase?: string;
 };
 
 export type VendorAnalytics = {
