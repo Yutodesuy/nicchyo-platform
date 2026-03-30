@@ -15,12 +15,13 @@ import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
 import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
-import { grandmaComments } from "./data/grandmaComments";
+import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
-import FirstVisitGuide from "./components/FirstVisitGuide";
+
+const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -126,6 +127,10 @@ export default function MapPageClient({
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
+  const [tutorialProgress, setTutorialProgress] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Math.min(10, parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10));
+  });
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
@@ -497,15 +502,29 @@ export default function MapPageClient({
 
   const commentPool = useMemo(() => {
     if (!showGrandma) return [];
-    if (shopIntroComments.length > 0) {
-      return interleaveComments(grandmaComments, shopIntroComments);
-    }
-    return grandmaComments;
-  }, [isInMarket, shopIntroComments, showGrandma]);
+    const tutorials = mapTutorialComments.slice(tutorialProgress);
+    const base = shopIntroComments.length > 0
+      ? interleaveComments(grandmaComments, shopIntroComments)
+      : grandmaComments;
+    return [...tutorials, ...base];
+  }, [isInMarket, shopIntroComments, showGrandma, tutorialProgress]);
+
+  const handleCommentSeen = useCallback((id: string, genre: string) => {
+    if (genre !== "tutorial") return;
+    const idx = mapTutorialComments.findIndex((c) => c.id === id);
+    if (idx < 0) return;
+    setTutorialProgress((prev) => {
+      const next = Math.min(10, idx + 1);
+      if (next > prev) {
+        localStorage.setItem(TUTORIAL_STORAGE_KEY, String(next));
+        return next;
+      }
+      return prev;
+    });
+  }, []);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      <FirstVisitGuide />
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
@@ -671,6 +690,7 @@ export default function MapPageClient({
                   onActiveShopChange={setCommentHighlightShopId}
                   onCommentShopFocus={handleCommentShopFocus}
                   onCommentShopOpen={handleCommentShopOpen}
+                  onCommentSeen={handleCommentSeen}
                   introImageUrl={introImageUrl}
                   onAiImageClick={handleAiImageClick}
                   currentZoom={currentZoom}
