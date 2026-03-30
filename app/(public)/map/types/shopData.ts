@@ -138,6 +138,12 @@ export interface ShopEditableData {
 
   /** 更新者ID（将来の実装用） */
   updatedBy?: string;
+
+  /** バナーのテーマカラー（プリセットキー） */
+  themeColor?: "amber" | "green" | "orange" | "earth" | "navy" | "rose";
+
+  /** キャッチコピー（20文字以内） */
+  catchphrase?: string;
 }
 
 /**

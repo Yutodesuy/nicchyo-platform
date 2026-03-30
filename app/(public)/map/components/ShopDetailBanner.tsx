@@ -32,8 +32,6 @@ import {
   saveKotodute,
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
-import type { ConsultAskResponse, ConsultHistoryEntry } from "../../consult/types/consultConversation";
-import type { ConsultCharacterId } from "../../consult/data/consultCharacters";
 
 // ─── Theme presets ────────────────────────────────────────────────────────────
 const THEME_PRESETS = {
@@ -56,6 +54,7 @@ type ShopDetailBannerProps = {
   variant?: "default" | "kotodute";
   originRect?: { x: number; y: number; width: number; height: number };
   layout?: "overlay" | "inline";
+  openNonce?: number;
 };
 
 type BagItem = {
@@ -152,6 +151,7 @@ export default function ShopDetailBanner({
   variant = "default",
   originRect,
   layout = "overlay",
+  openNonce = 0,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -162,7 +162,9 @@ export default function ShopDetailBanner({
   const [heroImageError, setHeroImageError] = useState(false);
   const [toast, setToast] = useState<{ product: string } | null>(null);
   const [activePanel, setActivePanel] = useState<"main" | "kotodute" | "ai">("main");
+  const [contentInteractive, setContentInteractive] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interactionLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
@@ -217,7 +219,7 @@ export default function ShopDetailBanner({
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(KOTODUTE_UPDATED_EVENT, handleUpdate);
     };
-  }, [shop.id]);
+  }, [shop.id, openNonce]);
 
   const handleProductTap = useCallback((product: string) => {
     // 即追加 (Undo パターン)
@@ -305,13 +307,25 @@ export default function ShopDetailBanner({
     return [];
   }, [shop.activePost, shop.activePosts]);
 
+  const armInteractionLock = useCallback((delayMs: number = 650) => {
+    if (interactionLockTimerRef.current) clearTimeout(interactionLockTimerRef.current);
+    setContentInteractive(false);
+    interactionLockTimerRef.current = setTimeout(() => {
+      setContentInteractive(true);
+    }, delayMs);
+  }, []);
+
   useEffect(() => {
     setCurrentPostIndex(0);
     setHeroImageError(false);
     setToast(null);
     setActivePanel("main");
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-  }, [shop.id]);
+    armInteractionLock();
+    return () => {
+      if (interactionLockTimerRef.current) clearTimeout(interactionLockTimerRef.current);
+    };
+  }, [armInteractionLock, shop.id, openNonce]);
 
   useEffect(() => {
     if (activePosts.length <= 1) return;
@@ -331,6 +345,22 @@ export default function ShopDetailBanner({
 
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
   const isInline = layout === "inline";
+  const handleBackToMain = useCallback(() => {
+    setActivePanel("main");
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    armInteractionLock(420);
+  }, [armInteractionLock]);
+  const handleOpenAiPanel = useCallback(() => {
+    if (!contentInteractive) return;
+    setActivePanel("ai");
+  }, [contentInteractive]);
+  const handleOpenKotodutePanel = useCallback(() => {
+    if (!contentInteractive) return;
+    setActivePanel("kotodute");
+  }, [contentInteractive]);
 
   // スワイプダウンで閉じる (モバイル bottom-sheet のみ)
   const swipeStartY = useRef<number | null>(null);
@@ -391,7 +421,9 @@ export default function ShopDetailBanner({
 
         {/* ── Slide rail (3 panels) ───────────────────────────────────────── */}
         <div
-          className="flex h-full transition-transform duration-300 ease-in-out"
+          className={`flex h-full transition-transform duration-300 ease-in-out ${
+            contentInteractive ? "pointer-events-auto" : "pointer-events-none"
+          }`}
           style={{
             width: "300%",
             transform:
@@ -723,21 +755,41 @@ export default function ShopDetailBanner({
               AI CONSULT — Dedicated card
           ════════════════════════════════════════════════════════════════ */}
           {!isKotodute && (
-            <button
-              type="button"
-              onClick={() => setActivePanel("ai")}
-              className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+            <div
+              className="rounded-2xl border px-4 py-4 shadow-sm"
               style={{ backgroundColor: theme.light, borderColor: theme.border }}
             >
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm" style={{ backgroundColor: theme.accent }}>
-                <Sparkles className="h-5 w-5 text-white" />
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm" style={{ backgroundColor: theme.accent }}>
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold" style={{ color: theme.text }}>ショップ相談</p>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                    このお店のおすすめ、旬、買い方のコツを会話しながら深掘りできます
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-sm font-bold" style={{ color: theme.text }}>AIに詳しく聞く</p>
-                <p className="mt-0.5 text-xs text-slate-500">おすすめや旬の食材についてAIに質問できます</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {shop.products.slice(0, 3).map((product) => (
+                  <span
+                    key={product}
+                    className="rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                  >
+                    {product}
+                  </span>
+                ))}
               </div>
-              <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
-            </button>
+                <button
+                  type="button"
+                  onClick={handleOpenAiPanel}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+                  style={{ color: theme.text }}
+                >
+                ショップ相談を開く
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           )}
 
           {/* ════════════════════════════════════════════════════════════════
@@ -754,7 +806,7 @@ export default function ShopDetailBanner({
                 )}
               </div>
               {kotoduteNotes.length > 0 && (
-                <button type="button" onClick={() => setActivePanel("kotodute")} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
+                <button type="button" onClick={handleOpenKotodutePanel} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
                   もっと見る
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
@@ -764,7 +816,7 @@ export default function ShopDetailBanner({
             {kotoduteNotes.length === 0 ? (
               <button
                 type="button"
-                onClick={() => setActivePanel("kotodute")}
+                onClick={handleOpenKotodutePanel}
                 className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-4 transition hover:opacity-80 active:scale-[0.98]"
                 style={{ borderColor: theme.border, backgroundColor: theme.bg }}
               >
@@ -786,7 +838,7 @@ export default function ShopDetailBanner({
                 ))}
                 <button
                   type="button"
-                  onClick={() => setActivePanel("kotodute")}
+                  onClick={handleOpenKotodutePanel}
                   className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition hover:opacity-80"
                   style={{ borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }}
                 >
@@ -796,15 +848,14 @@ export default function ShopDetailBanner({
               </div>
             )}
           </div>
-
-        </div>{/* space-y-6 */}
+          </div>{/* space-y-6 */}
           </div>{/* main panel */}
           {/* ── Kotodute panel ─────────────────────────────────────────── */}
           <div className="h-full w-1/3 overflow-y-auto">
             <KotodutePanel
               shop={shop}
               theme={theme}
-              onBack={() => setActivePanel("main")}
+              onBack={handleBackToMain}
             />
           </div>
           {/* ── AI consult panel ───────────────────────────────────────── */}
@@ -812,8 +863,7 @@ export default function ShopDetailBanner({
             <AiConsultPanel
               shop={shop}
               theme={theme}
-              onBack={() => setActivePanel("main")}
-              isActive={activePanel === "ai"}
+              onBack={handleBackToMain}
             />
           </div>
         </div>
@@ -1077,39 +1127,32 @@ const CHAR_EMOJI: Record<string, string> = {
   yosakochan: "🌸",
 };
 
-function buildAiMessages(data: ConsultAskResponse): AiChatMsg[] {
-  if (data.turns && data.turns.length > 0) {
-    return data.turns.map((t) => ({
-      id: crypto.randomUUID(),
-      role: "assistant" as const,
-      text: t.text,
-      speakerId: t.speakerId,
-      speakerName: t.speakerName,
-    }));
-  }
-  if (data.reply) {
-    return [{ id: crypto.randomUUID(), role: "assistant", text: data.reply }];
-  }
-  return [{ id: "err-empty", role: "assistant", text: "うまく取得できませんでした。もう一度お試しください。" }];
-}
 
 function AiConsultPanel({
   shop,
   theme,
   onBack,
-  isActive,
 }: {
   shop: Shop;
   theme: { bg: string; accent: string; text: string; border: string; light: string };
   onBack: () => void;
-  isActive: boolean;
 }) {
   const [messages, setMessages] = useState<AiChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const historyRef = useRef<ConsultHistoryEntry[]>([]);
-  const initializedForRef = useRef<number | null>(null);
+  const historyRef = useRef<{ role: "user" | "assistant"; text: string }[]>([]);
+  const streamingIdRef = useRef<string | null>(null);
+
+  const shopContext = useMemo(() => ({
+    category: shop.category,
+    catchphrase: shop.catchphrase,
+    shopStrength: shop.shopStrength,
+    products: shop.products,
+    chome: shop.chome,
+  }), [shop.category, shop.catchphrase, shop.shopStrength, shop.products, shop.chome]);
 
   // Reset state when shop changes
   useEffect(() => {
@@ -1117,101 +1160,93 @@ function AiConsultPanel({
     historyRef.current = [];
     setInput("");
     setLoading(false);
-    initializedForRef.current = null;
+    setHasStarted(false);
+    setErrorNotice(null);
+    streamingIdRef.current = null;
   }, [shop.id]);
 
-  // Auto-fetch when panel becomes active for the first time per shop
-  useEffect(() => {
-    if (!isActive) return;
-    if (initializedForRef.current === shop.id) return;
-    initializedForRef.current = shop.id;
-    const initText = "このお店のおすすめやこだわりを詳しく教えて";
+  const suggestedPrompts = useMemo(() => {
+    const prompts = [
+      "このお店のおすすめを教えて",
+      `${shop.name}で今おすすめの買い方は？`,
+      "初めて来た人に向いている商品は？",
+    ];
+    if (shop.products[0]) {
+      prompts.push(`${shop.products[0]}はどんな人におすすめ？`);
+    }
+    if (shop.category === "食材") {
+      prompts.push("旬の食材や食べ方のコツはある？");
+    }
+    return Array.from(new Set(prompts)).slice(0, 4);
+  }, [shop.category, shop.name, shop.products]);
+
+  const streamResponse = useCallback(async (text: string, msgId: string) => {
     setLoading(true);
-    fetch("/api/grandma/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: initText,
-        targetShopId: shop.id,
-        targetShopName: shop.name,
-        history: [],
-        location: null,
-        imageDataUrl: null,
-        memorySummary: "",
-        preferredCharacterId: null,
-        visitorKey: null,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data: ConsultAskResponse) => {
-        const aiMsgs = buildAiMessages(data);
-        setMessages(aiMsgs);
-        historyRef.current = [
-          { role: "user", text: initText },
-          ...aiMsgs.map((m) => ({
-            role: "assistant" as const,
-            text: m.text,
-            speakerId: m.speakerId as ConsultCharacterId | undefined,
-            speakerName: m.speakerName,
-          })),
-        ];
-      })
-      .catch(() => {
-        setMessages([{ id: "err-init", role: "assistant", text: "通信エラーが発生しました。もう一度お試しください。" }]);
-      })
-      .finally(() => setLoading(false));
-  }, [isActive, shop.id, shop.name]);
+    setErrorNotice(null);
+    streamingIdRef.current = msgId;
+    // Add empty AI message to stream into
+    setMessages((prev) => [...prev, { id: msgId, role: "assistant", text: "" }]);
+    try {
+      const res = await fetch("/api/grandma/shop-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shopName: shop.name,
+          shopContext,
+          history: historyRef.current,
+          text,
+        }),
+      });
+      if (!res.ok || !res.body) throw new Error("stream error");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        accumulated += chunk;
+        const snapshot = accumulated;
+        setMessages((prev) =>
+          prev.map((m) => m.id === msgId ? { ...m, text: snapshot } : m)
+        );
+      }
+      historyRef.current = [
+        ...historyRef.current,
+        { role: "user", text },
+        { role: "assistant", text: accumulated },
+      ];
+    } catch {
+      setErrorNotice("返答の取得に失敗しました。少し時間をおいて再度お試しください。");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId ? { ...m, text: "エラーが発生しました。もう一度お試しください。" } : m
+        )
+      );
+    } finally {
+      setLoading(false);
+      streamingIdRef.current = null;
+    }
+  }, [shop.name, shopContext]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const handleSend = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+  const handleAsk = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+    setHasStarted(true);
     setInput("");
-    const userMsg: AiChatMsg = { id: crypto.randomUUID(), role: "user", text };
+    const userMsg: AiChatMsg = { id: crypto.randomUUID(), role: "user", text: trimmed };
     setMessages((prev) => [...prev, userMsg]);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/grandma/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          targetShopId: shop.id,
-          targetShopName: shop.name,
-          history: historyRef.current,
-          location: null,
-          imageDataUrl: null,
-          memorySummary: "",
-          preferredCharacterId: null,
-          visitorKey: null,
-        }),
-      });
-      const data: ConsultAskResponse = await res.json();
-      const aiMsgs = buildAiMessages(data);
-      setMessages((prev) => [...prev, ...aiMsgs]);
-      historyRef.current = [
-        ...historyRef.current,
-        { role: "user", text },
-        ...aiMsgs.map((m) => ({
-          role: "assistant" as const,
-          text: m.text,
-          speakerId: m.speakerId as ConsultCharacterId | undefined,
-          speakerName: m.speakerName,
-        })),
-      ];
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { id: "err", role: "assistant", text: "エラーが発生しました。もう一度お試しください。" },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }, [input, loading, shop.id, shop.name]);
+    await streamResponse(trimmed, crypto.randomUUID());
+  }, [loading, streamResponse]);
+
+  const handleSend = useCallback(async () => {
+    await handleAsk(input);
+  }, [handleAsk, input]);
 
   return (
     <div className="flex h-full flex-col">
@@ -1230,37 +1265,84 @@ function AiConsultPanel({
         </button>
         <div className="flex flex-1 items-center justify-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />
-          <span className="text-sm font-bold text-slate-900">AIに詳しく聞く</span>
+          <span className="text-sm font-bold text-slate-900">ショップ相談</span>
         </div>
         <div className="w-14" />
       </div>
 
       {/* ── Shop context ────────────────────────────────────────────────────── */}
-      <div className="shrink-0 border-b px-4 py-2" style={{ borderColor: theme.border, backgroundColor: theme.bg }}>
-        <p className="text-xs text-slate-500">
-          <span className="font-bold" style={{ color: theme.text }}>{shop.name}</span>
-          {" "}について会話しています
+      <div className="shrink-0 border-b px-4 py-3" style={{ borderColor: theme.border, backgroundColor: theme.bg }}>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: theme.text }}>
+          {shop.category || "ショップ相談"}
+        </p>
+        <p className="mt-1 text-sm text-slate-600">
+          <span className="font-bold text-slate-900">{shop.name}</span>
+          {" "}のおすすめやこだわりを深掘りできます
         </p>
       </div>
 
       {/* ── Messages ────────────────────────────────────────────────────────── */}
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        {/* Initial loading dots */}
-        {loading && messages.length === 0 && (
-          <div
-            className="flex items-center gap-2.5 rounded-2xl border px-4 py-3"
-            style={{ borderColor: theme.border, backgroundColor: theme.bg }}
-          >
-            <span className="text-lg">🧓</span>
-            <span className="flex gap-1">
-              {[0, 150, 300].map((d) => (
-                <span
-                  key={d}
-                  className="h-2 w-2 animate-bounce rounded-full"
-                  style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
-                />
-              ))}
-            </span>
+        {!hasStarted && messages.length === 0 && (
+          <div className="space-y-4">
+            <div
+              className="rounded-3xl border px-4 py-4 shadow-sm"
+              style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg shadow-sm"
+                  style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
+                >
+                  🧓
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900">にちよさんに聞いてみる</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {shop.shopStrength?.trim() || `${shop.name} のおすすめや買い方のコツを、会話しながら案内します。`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {shop.products.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+                  よく出る商品
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {shop.products.slice(0, 6).map((product) => (
+                    <button
+                      key={product}
+                      type="button"
+                      onClick={() => handleAsk(`${product}のおすすめポイントを教えて`)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      {product}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
+                まずはここから
+              </p>
+              <div className="space-y-2">
+                {suggestedPrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => handleAsk(prompt)}
+                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
+                  >
+                    <span>{prompt}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1278,42 +1360,43 @@ function AiConsultPanel({
                 className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg shadow-sm"
                 style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
               >
-                {CHAR_EMOJI[msg.speakerId ?? ""] ?? "✨"}
+                ✨
               </div>
               <div className="max-w-[82%]">
-                {msg.speakerName && (
-                  <p className="mb-0.5 text-[10px] font-bold" style={{ color: theme.text }}>
-                    {msg.speakerName}
-                  </p>
-                )}
                 <div
                   className="rounded-2xl rounded-tl-sm border px-4 py-2.5 text-sm leading-relaxed text-slate-800"
                   style={{ borderColor: theme.border, backgroundColor: theme.bg }}
                 >
-                  {msg.text}
+                  {msg.text || (
+                    <span className="flex gap-1">
+                      {[0, 150, 300].map((d) => (
+                        <span
+                          key={d}
+                          className="inline-block h-2 w-2 animate-bounce rounded-full"
+                          style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  {loading && streamingIdRef.current === msg.id && msg.text && (
+                    <span
+                      className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse align-middle"
+                      style={{ backgroundColor: theme.accent }}
+                    />
+                  )}
                 </div>
               </div>
             </div>
           )
-        )}
-
-        {/* Follow-up loading dots */}
-        {loading && messages.length > 0 && (
-          <div className="flex items-center gap-1.5 pl-10">
-            {[0, 150, 300].map((d) => (
-              <span
-                key={d}
-                className="h-2 w-2 animate-bounce rounded-full"
-                style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
-              />
-            ))}
-          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* ── Input ───────────────────────────────────────────────────────────── */}
       <div className="shrink-0 border-t bg-white px-3 py-3" style={{ borderColor: theme.border }}>
+        {errorNotice && (
+          <p className="mb-2 text-xs text-rose-600">{errorNotice}</p>
+        )}
         <div className="flex gap-2">
           <input
             value={input}

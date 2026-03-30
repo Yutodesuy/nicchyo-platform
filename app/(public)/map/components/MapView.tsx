@@ -322,6 +322,22 @@ function MapStatusHud({
   );
 }
 
+function MapZoomGuideToast({ message }: { message: string | null }) {
+  return (
+    <div
+      className={`pointer-events-none absolute left-1/2 top-20 z-[1400] w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 transition-all duration-200 ${
+        message ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+      }`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <div className="rounded-full bg-slate-900/88 px-4 py-2 text-center text-sm font-medium text-white shadow-lg backdrop-blur">
+        {message ?? ""}
+      </div>
+    </div>
+  );
+}
+
 type MapViewProps = {
   shops?: Shop[];
   landmarks?: Landmark[];
@@ -552,10 +568,12 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
+  const [shopBannerSession, setShopBannerSession] = useState(0);
   const [isTracking, setIsTracking] = useState(true);
   const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
   const [autoRotation, setAutoRotation] = useState(initialMapRotation);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
+  const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
     const { innerWidth, innerHeight } = window;
@@ -568,6 +586,7 @@ const MapView = memo(function MapView({
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const isTouchGestureActiveRef = useRef(false);
+  const zoomGuideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【削除】visibleShops の計算を削除
@@ -601,6 +620,14 @@ const MapView = memo(function MapView({
     if (!mapInstance) return;
     mapInstance.invalidateSize(false);
   }, [mapInstance, mapShellSize]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setAutoRotation(initialMapRotation);
@@ -787,6 +814,7 @@ const MapView = memo(function MapView({
       if (typeof document !== "undefined") {
         document.body.classList.add("shop-banner-open");
       }
+      setShopBannerSession((prev) => prev + 1);
       setSelectedShop(clickedShop);
       setShopBannerOrigin(origin ?? null);
     } else {
@@ -819,10 +847,19 @@ const MapView = memo(function MapView({
       if (viewMode.mode === ViewMode.OVERVIEW) {
         // OVERVIEW → INTERMEDIATE（エリア探索）へ
         targetZoom = 18.0;
+        setZoomGuideMessage("このエリアを拡大しました");
       } else {
         // INTERMEDIATE → DETAIL（詳細閲覧）へ
         targetZoom = 18.5;
+        setZoomGuideMessage("もう一度タップするとお店の詳細を見られます");
       }
+
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+      zoomGuideTimerRef.current = setTimeout(() => {
+        setZoomGuideMessage(null);
+      }, 1800);
 
       mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
         duration: 0.75,
@@ -1126,6 +1163,7 @@ const MapView = memo(function MapView({
       </div>
 
       <TimeAmbientOverlay />
+      <MapZoomGuideToast message={zoomGuideMessage} />
       <MapControls
         map={mapInstance}
         isTracking={isTracking}
@@ -1149,7 +1187,9 @@ const MapView = memo(function MapView({
       {selectedShop && (
         <>
           <ShopDetailBanner
+            key={`${selectedShop.id}-${shopBannerSession}`}
             shop={selectedShop}
+            openNonce={shopBannerSession}
             onClose={() => {
               setSelectedShop(null);
               setShopBannerOrigin(null);

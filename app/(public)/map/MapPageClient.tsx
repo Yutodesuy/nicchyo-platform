@@ -127,10 +127,11 @@ export default function MapPageClient({
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
-  const [tutorialProgress, setTutorialProgress] = useState<number>(() => {
-    if (typeof window === "undefined") return 0;
-    return Math.min(10, parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10));
-  });
+  const [tutorialProgress, setTutorialProgress] = useState<number>(0);
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
+    setTutorialProgress(Math.min(10, stored));
+  }, []);
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{

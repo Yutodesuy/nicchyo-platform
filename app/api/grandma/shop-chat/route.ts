@@ -1,0 +1,132 @@
+import { NextRequest } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type ChatMessage = { role: "user" | "assistant"; text: string };
+
+function buildSystemPrompt(shopName: string, shopContext: {
+  category?: string;
+  catchphrase?: string;
+  shopStrength?: string;
+  products?: string[];
+  chome?: string;
+}): string {
+  const lines: string[] = [
+    "あなたは高知の日曜市（にちよさん）の案内役「にちよさん」です。",
+    "土佐弁を交えつつ、温かくて親しみやすいトーンで回答してください。",
+    "回答は簡潔に、200文字以内を目安にしてください。",
+    "",
+    "【お店情報】",
+    `・店名: ${shopName}`,
+  ];
+  if (shopContext.chome) lines.push(`・場所: ${shopContext.chome}`);
+  if (shopContext.category) lines.push(`・カテゴリ: ${shopContext.category}`);
+  if (shopContext.catchphrase) lines.push(`・キャッチコピー: ${shopContext.catchphrase}`);
+  if (shopContext.shopStrength) lines.push(`・こだわり: ${shopContext.shopStrength}`);
+  if (shopContext.products && shopContext.products.length > 0) {
+    lines.push(`・主な商品: ${shopContext.products.slice(0, 10).join("、")}`);
+  }
+  lines.push("", "このお店についての質問に、上記情報を元に答えてください。");
+  return lines.join("\n");
+}
+
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return new Response("Server configuration error", { status: 500 });
+  }
+
+  let body: {
+    shopName: string;
+    shopContext: {
+      category?: string;
+      catchphrase?: string;
+      shopStrength?: string;
+      products?: string[];
+      chome?: string;
+    };
+    history: ChatMessage[];
+    text: string;
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return new Response("Bad Request", { status: 400 });
+  }
+
+  const { shopName, shopContext, history, text } = body;
+  if (!shopName || !text) {
+    return new Response("Missing required fields", { status: 400 });
+  }
+
+  const systemPrompt = buildSystemPrompt(shopName, shopContext ?? {});
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({ role: m.role, content: m.text })),
+    { role: "user", content: text },
+  ];
+
+  const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 280,
+      temperature: 0.7,
+      stream: true,
+    }),
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    return new Response("Upstream error", { status: 502 });
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = upstream.body!.getReader();
+      let buffer = "";
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content ?? "";
+              if (delta) controller.enqueue(encoder.encode(delta));
+            } catch {
+              // skip malformed chunk
+            }
+          }
+        }
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Transfer-Encoding": "chunked",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}

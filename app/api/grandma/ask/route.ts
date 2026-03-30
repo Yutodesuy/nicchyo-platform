@@ -95,11 +95,20 @@ type ParsedRequest = {
   memorySummary: string;
   preferredCharacterId: ConsultCharacterId | null;
   visitorKey: string | null;
+  stream: boolean;
 };
 
 type StructuredConsultResponse = {
   summary: string;
   turns: { speakerId: ConsultCharacterId; text: string }[];
+  shopIds: number[];
+  imageUrl: string | null;
+  followUpQuestion: string;
+};
+
+type StreamedConsultPayload = {
+  summary: string;
+  turns: ConsultTurn[];
   shopIds: number[];
   imageUrl: string | null;
   followUpQuestion: string;
@@ -330,6 +339,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
   let memorySummary = "";
   let preferredCharacterId: ConsultCharacterId | null = null;
   let visitorKey: string | null = null;
+  let stream = false;
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
@@ -369,6 +379,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       const vk = String(form.get("visitorKey")).trim();
       visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
     }
+    if (typeof form.get("stream") === "string") {
+      const streamValue = String(form.get("stream")).trim().toLowerCase();
+      stream = streamValue === "1" || streamValue === "true";
+    }
     const formImage = form.get("image");
     if (formImage && typeof formImage === "object" && "arrayBuffer" in formImage) {
       const imageFile = formImage as File;
@@ -387,6 +401,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       memorySummary?: string;
       preferredCharacterId?: ConsultCharacterId | null;
       visitorKey?: string | null;
+      stream?: boolean;
     };
     text = payload.text ?? "";
     location = payload.location ?? null;
@@ -405,6 +420,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       const vk = payload.visitorKey.trim();
       visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
     }
+    stream = payload.stream === true;
   }
 
   return {
@@ -417,6 +433,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
     memorySummary,
     preferredCharacterId,
     visitorKey,
+    stream,
   };
 }
 
@@ -862,6 +879,438 @@ function buildConversationPatternPrompt(
   ].join("\n");
 }
 
+function buildStreamingFormatPrompt(
+  characters: ConsultCharacter[],
+  pattern: ConversationPattern
+) {
+  const speakerMap = characters.map((character) => `${character.id}=${character.name}`).join(", ");
+  return [
+    "出力は必ずプレーンテキストのみ。JSON、Markdown、前置きは禁止。",
+    `TURN 行を必ず ${pattern.turnCount} 行、最初に出力する。`,
+    `TURN 行の形式は TURN|speakerId|speakerName|text。speakerId は ${speakerMap} のいずれかを使う。`,
+    "text には改行を入れない。speakerName は対応する表示名を使う。",
+    "TURN 行の後に、次の行をこの順番で必ず1行ずつ出力する。",
+    "SHOP_IDS|1,2,3",
+    "IMAGE_URL|https://... または null",
+    "FOLLOW_UP|次にユーザーへ聞く質問",
+    "SUMMARY|会話の要約",
+    "END",
+    "候補がない時は SHOP_IDS| とする。画像がない時は IMAGE_URL|null とする。",
+    "余計な説明は絶対に足さない。",
+  ].join("\n");
+}
+
+function parseStreamingConsultOutput(
+  rawOutput: string,
+  selectedCharacters: ConsultCharacter[]
+): StreamedConsultPayload {
+  const turns: ConsultTurn[] = [];
+  let shopIds: number[] = [];
+  let imageUrl: string | null = null;
+  let followUpQuestion = "";
+  let summary = "";
+
+  const lines = rawOutput
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    if (line === "END") continue;
+    if (line.startsWith("TURN|")) {
+      const parts = line.split("|");
+      if (parts.length < 4) continue;
+      const requestedSpeakerId = parts[1].trim() as ConsultCharacterId;
+      const matchedCharacter =
+        CONSULT_CHARACTER_BY_ID.get(requestedSpeakerId) ??
+        selectedCharacters.find((character) => character.id === requestedSpeakerId) ??
+        selectedCharacters[turns.length % Math.max(selectedCharacters.length, 1)];
+      if (!matchedCharacter) continue;
+      const text = parts.slice(3).join("|").trim();
+      if (!text) continue;
+      turns.push({
+        speakerId: matchedCharacter.id,
+        speakerName: parts[2].trim() || matchedCharacter.name,
+        text,
+      });
+      continue;
+    }
+    if (line.startsWith("SHOP_IDS|")) {
+      shopIds = line
+        .slice("SHOP_IDS|".length)
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isFinite(value));
+      continue;
+    }
+    if (line.startsWith("IMAGE_URL|")) {
+      const value = line.slice("IMAGE_URL|".length).trim();
+      imageUrl = !value || /^null$/i.test(value) ? null : value;
+      continue;
+    }
+    if (line.startsWith("FOLLOW_UP|")) {
+      followUpQuestion = line.slice("FOLLOW_UP|".length).trim();
+      continue;
+    }
+    if (line.startsWith("SUMMARY|")) {
+      summary = line.slice("SUMMARY|".length).trim();
+    }
+  }
+
+  if (turns.length === 0) {
+    const fallbackText = rawOutput
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !/^(TURN|SHOP_IDS|IMAGE_URL|FOLLOW_UP|SUMMARY)\|/.test(line) && line !== "END")
+      .join("\n")
+      .trim();
+    const fallbackSpeaker = selectedCharacters[0];
+    if (fallbackText && fallbackSpeaker) {
+      turns.push({
+        speakerId: fallbackSpeaker.id,
+        speakerName: fallbackSpeaker.name,
+        text: fallbackText,
+      });
+    }
+  }
+
+  return {
+    summary,
+    turns,
+    shopIds,
+    imageUrl,
+    followUpQuestion,
+  };
+}
+
+function buildReplyFromTurns(turns: ConsultTurn[]) {
+  return turns.map((turn) => `${turn.speakerName}: ${turn.text}`).join("\n");
+}
+
+async function finalizeConsultResponse(options: {
+  request: Request;
+  supabase: SupabaseClient;
+  text: string;
+  keywords: string[];
+  location: { lat: number; lng: number } | null;
+  visitorKey: string | null;
+  targetShopName: string | null;
+  targetShop: Shop | null;
+  candidateShops: Shop[];
+  turns: ConsultTurn[];
+  shopIds: number[];
+  imageUrl: string | null;
+  followUpQuestion: string;
+  summary: string;
+  shopIntent: boolean;
+  memorySummary: string;
+}): Promise<ConsultAskResponse> {
+  const {
+    request,
+    supabase,
+    text,
+    keywords,
+    location,
+    visitorKey,
+    targetShopName,
+    targetShop,
+    candidateShops,
+    turns,
+    shopIds,
+    imageUrl,
+    followUpQuestion,
+    summary,
+    shopIntent,
+    memorySummary,
+  } = options;
+
+  const normalizedTurns = turns
+    .filter((turn) => turn.text.trim().length > 0)
+    .slice(0, 4);
+
+  const shopPool = targetShop
+    ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)]
+    : candidateShops;
+
+  const recommendedIds = sortShopIdsByDistance(
+    Array.from(
+      new Set(
+        shopIds
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+      )
+    ).slice(0, 3),
+    shopPool,
+    location
+  );
+
+  const recommendedShops = shopPool.filter((shop) => recommendedIds.includes(shop.id));
+  const finalRecommendedShops =
+    recommendedShops.length > 0 || !shopIntent
+      ? recommendedShops
+      : shopPool.slice(0, 3);
+
+  const reply =
+    buildReplyFromTurns(normalizedTurns) ||
+    "うまく答えがまとまらんかったき、もう一回聞いてみてね。";
+
+  const locationType = classifyLocationType(location);
+  const intentCategory = classifyIntent(text);
+  const logVendorIds = Array.from(
+    new Set(
+      finalRecommendedShops
+        .map((shop) => shop.vendorId)
+        .filter((value): value is string => !!value)
+    )
+  );
+  const logIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
+  if (logVendorIds.length > 0) {
+    const logs = logVendorIds.map((vendorId) => ({
+      store_id: vendorId,
+      question_text: text || "(画像のみ)",
+      intent_category: intentCategory,
+      keywords,
+      location_type: locationType,
+      is_recommendation: true,
+      ip_address: logIp,
+      visitor_key: visitorKey ?? null,
+    }));
+    supabase.from("ai_consult_logs").insert(logs).then(() => {});
+  } else {
+    supabase.from("ai_consult_logs").insert({
+      store_id: null,
+      question_text: text || "(画像のみ)",
+      intent_category: intentCategory,
+      keywords,
+      location_type: locationType,
+      is_recommendation: false,
+      ip_address: logIp,
+      visitor_key: visitorKey ?? null,
+    }).then(() => {});
+  }
+
+  const safeFollowUpQuestion = isValidFollowUpQuestion(followUpQuestion ?? "")
+    ? followUpQuestion.trim()
+    : buildFallbackFollowUpQuestion(text, targetShopName, finalRecommendedShops.length);
+
+  return {
+    reply,
+    imageUrl: imageUrl ?? undefined,
+    shopIds: finalRecommendedShops.map((shop) => shop.id),
+    shops: finalRecommendedShops,
+    turns: normalizedTurns,
+    followUpQuestion: safeFollowUpQuestion,
+    memorySummary: summary.trim() || memorySummary,
+    retryable: false,
+  };
+}
+
+async function createStreamingConsultResponse(options: {
+  openaiKey: string;
+  selectedCharacters: ConsultCharacter[];
+  conversationPattern: ConversationPattern;
+  userContent:
+    | string
+    | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
+  request: Request;
+  supabase: SupabaseClient;
+  text: string;
+  keywords: string[];
+  location: { lat: number; lng: number } | null;
+  visitorKey: string | null;
+  targetShopName: string | null;
+  targetShop: Shop | null;
+  candidateShops: Shop[];
+  shopIntent: boolean;
+  memorySummary: string;
+}): Promise<Response> {
+  const {
+    openaiKey,
+    selectedCharacters,
+    conversationPattern,
+    userContent,
+    request,
+    supabase,
+    text,
+    keywords,
+    location,
+    visitorKey,
+    targetShopName,
+    targetShop,
+    candidateShops,
+    shopIntent,
+    memorySummary,
+  } = options;
+
+  const upstream = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 500,
+      stream: true,
+      messages: [
+        {
+          role: "system",
+          content: buildGrandmaAiSystemPrompt(
+            selectedCharacters,
+            [
+              buildConversationPatternPrompt(selectedCharacters, conversationPattern),
+              buildStreamingFormatPrompt(selectedCharacters, conversationPattern),
+            ].join("\n\n")
+          ),
+        },
+        {
+          role: "user",
+          content: userContent,
+        },
+      ],
+    }),
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    return NextResponse.json(
+      buildErrorResponse(
+        "system_error",
+        selectedCharacters,
+        "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+        {
+          retryable: true,
+          errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+          memorySummary,
+        }
+      ),
+      { status: 500 }
+    );
+  }
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      const enqueue = (payload: unknown) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(payload)}\n`));
+      };
+
+      const reader = upstream.body!.getReader();
+      let sseBuffer = "";
+      let modelOutput = "";
+      let firstTurnStarted = false;
+      let firstTurnTextLength = 0;
+
+      const emitFirstTurnProgress = () => {
+        const firstLine = modelOutput.split(/\r?\n/, 1)[0]?.replace(/\r/g, "") ?? "";
+        if (!firstLine.startsWith("TURN|")) return;
+        const parts = firstLine.split("|");
+        if (parts.length < 4) return;
+        const requestedSpeakerId = parts[1].trim() as ConsultCharacterId;
+        const matchedCharacter =
+          CONSULT_CHARACTER_BY_ID.get(requestedSpeakerId) ??
+          selectedCharacters.find((character) => character.id === requestedSpeakerId) ??
+          selectedCharacters[0];
+        if (!matchedCharacter) return;
+        if (!firstTurnStarted) {
+          firstTurnStarted = true;
+          enqueue({
+            type: "first_turn_start",
+            speakerId: matchedCharacter.id,
+            speakerName: parts[2].trim() || matchedCharacter.name,
+          });
+        }
+        const currentText = parts.slice(3).join("|");
+        if (currentText.length <= firstTurnTextLength) return;
+        enqueue({
+          type: "first_turn_delta",
+          delta: currentText.slice(firstTurnTextLength),
+        });
+        firstTurnTextLength = currentText.length;
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sseBuffer += decoder.decode(value, { stream: true });
+          const lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data) as {
+                choices?: { delta?: { content?: string } }[];
+              };
+              const delta = parsed.choices?.[0]?.delta?.content ?? "";
+              if (!delta) continue;
+              modelOutput += delta;
+              emitFirstTurnProgress();
+            } catch {
+              // skip malformed chunks
+            }
+          }
+        }
+
+        const streamedPayload = parseStreamingConsultOutput(modelOutput, selectedCharacters);
+        const response = await finalizeConsultResponse({
+          request,
+          supabase,
+          text,
+          keywords,
+          location,
+          visitorKey,
+          targetShopName,
+          targetShop,
+          candidateShops,
+          turns: streamedPayload.turns,
+          shopIds: streamedPayload.shopIds,
+          imageUrl: streamedPayload.imageUrl,
+          followUpQuestion: streamedPayload.followUpQuestion,
+          summary: streamedPayload.summary,
+          shopIntent,
+          memorySummary,
+        });
+        enqueue({
+          type: "final",
+          response,
+        });
+      } catch {
+        enqueue({
+          type: "final",
+          response: buildErrorResponse(
+            "system_error",
+            selectedCharacters,
+            "いま少し混みゆうみたい。少しおいて、もう一回聞いてみてね。",
+            {
+              retryable: true,
+              errorMessage: "相談の送信に失敗しました。通信状況を確認して、もう一度試してください。",
+              memorySummary,
+            }
+          ),
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache",
+      "Transfer-Encoding": "chunked",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+
 function isValidFollowUpQuestion(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return false;
@@ -996,6 +1445,7 @@ export async function POST(request: Request) {
       memorySummary,
       preferredCharacterId,
       visitorKey,
+      stream,
     } = await parseRequest(request);
     const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
@@ -1269,12 +1719,35 @@ export async function POST(request: Request) {
       `選ばれた話者: ${selectedCharacters.map((character) => character.name).join(" / ")}`,
     ].join("\n\n");
 
-    const userContent = imageDataUrl
-      ? [
-          { type: "text", text: `${userContextText}\n画像が添付されています。` },
-          { type: "image_url", image_url: { url: imageDataUrl } },
-        ]
-      : userContextText;
+    const userContent:
+      | string
+      | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> =
+      imageDataUrl
+        ? [
+            { type: "text", text: `${userContextText}\n画像が添付されています。` },
+            { type: "image_url", image_url: { url: imageDataUrl } },
+          ]
+        : userContextText;
+
+    if (stream) {
+      return createStreamingConsultResponse({
+        openaiKey,
+        selectedCharacters,
+        conversationPattern,
+        userContent,
+        request,
+        supabase,
+        text,
+        keywords,
+        location,
+        visitorKey,
+        targetShopName,
+        targetShop,
+        candidateShops,
+        shopIntent,
+        memorySummary,
+      });
+    }
 
     const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -1337,82 +1810,24 @@ export async function POST(request: Request) {
       })
       .filter((turn): turn is ConsultTurn => !!turn && turn.text.length > 0)
       .slice(0, 4);
-
-    const recommendedIds = sortShopIdsByDistance(
-      Array.from(
-        new Set(
-          (structured.shopIds ?? [])
-            .map((value) => Number(value))
-            .filter((value) => Number.isFinite(value))
-        )
-      ).slice(0, 3),
-      targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops,
-      location
-    );
-
-    const recommendedShops = (
-      targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops
-    ).filter((shop) => recommendedIds.includes(shop.id));
-
-    const finalRecommendedShops =
-      recommendedShops.length > 0 || !shopIntent
-        ? recommendedShops
-        : (targetShop ? [targetShop, ...candidateShops.filter((shop) => shop.id !== targetShop.id)] : candidateShops).slice(0, 3);
-
-    const reply =
-      turns.map((turn) => `${turn.speakerName}: ${turn.text}`).join("\n") ||
-      "うまく答えがまとまらんかったき、もう一回聞いてみてね。";
-
-    const locationType = classifyLocationType(location);
-    const intentCategory = classifyIntent(text);
-    const logVendorIds = Array.from(
-      new Set(
-        finalRecommendedShops
-          .map((shop) => shop.vendorId)
-          .filter((value): value is string => !!value)
-      )
-    );
-    const logIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
-    if (logVendorIds.length > 0) {
-      const logs = logVendorIds.map((vendorId) => ({
-        store_id: vendorId,
-        question_text: text || "(画像のみ)",
-        intent_category: intentCategory,
-        keywords,
-        location_type: locationType,
-        is_recommendation: true,
-        ip_address: logIp,
-        visitor_key: visitorKey ?? null,
-      }));
-      supabase.from("ai_consult_logs").insert(logs).then(() => {});
-    } else {
-      // 店舗紹介なしでも IP ログを残す（レートリミット計算用）
-      supabase.from("ai_consult_logs").insert({
-        store_id: null,
-        question_text: text || "(画像のみ)",
-        intent_category: intentCategory,
-        keywords,
-        location_type: locationType,
-        is_recommendation: false,
-        ip_address: logIp,
-        visitor_key: visitorKey ?? null,
-      }).then(() => {});
-    }
-
-    const followUpQuestion = isValidFollowUpQuestion(structured.followUpQuestion ?? "")
-      ? structured.followUpQuestion.trim()
-      : buildFallbackFollowUpQuestion(text, targetShopName, finalRecommendedShops.length);
-
-    const response: ConsultAskResponse = {
-      reply,
-      imageUrl: structured.imageUrl ?? undefined,
-      shopIds: finalRecommendedShops.map((shop) => shop.id),
-      shops: finalRecommendedShops,
+    const response = await finalizeConsultResponse({
+      request,
+      supabase,
+      text,
+      keywords,
+      location,
+      visitorKey,
+      targetShopName,
+      targetShop,
+      candidateShops,
       turns,
-      followUpQuestion,
-      memorySummary: structured.summary?.trim() || memorySummary,
-      retryable: false,
-    };
+      shopIds: structured.shopIds ?? [],
+      imageUrl: structured.imageUrl,
+      followUpQuestion: structured.followUpQuestion ?? "",
+      summary: structured.summary ?? "",
+      shopIntent,
+      memorySummary,
+    });
 
     return NextResponse.json(response);
   } catch {
