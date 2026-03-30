@@ -17,6 +17,8 @@ import {
   Globe,
   X as XIcon,
   Pencil,
+  ArrowLeft,
+  Send,
 } from "lucide-react";
 import { Shop } from "../data/shops";
 import EmptyState from "@/components/EmptyState";
@@ -27,6 +29,7 @@ import { ingredientCatalog, recipes } from "../../../../lib/recipes";
 import {
   KOTODUTE_UPDATED_EVENT,
   loadKotodute,
+  saveKotodute,
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
 
@@ -118,6 +121,17 @@ function useCenterBounceTrigger(
   return isActive;
 }
 
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "たった今";
+  if (mins < 60) return `${mins}分前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  return `${days}日前`;
+}
+
 // ─── Category fallback ────────────────────────────────────────────────────────
 const CATEGORY_FALLBACK: Record<string, { emoji: string; gradient: string }> = {
   "食材":     { emoji: "🥦", gradient: "bg-gradient-to-br from-emerald-100 to-green-200" },
@@ -145,6 +159,7 @@ export default function ShopDetailBanner({
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
   const [toast, setToast] = useState<{ product: string } | null>(null);
+  const [activePanel, setActivePanel] = useState<"main" | "kotodute">("main");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
@@ -293,6 +308,7 @@ export default function ShopDetailBanner({
     setCurrentPostIndex(0);
     setHeroImageError(false);
     setToast(null);
+    setActivePanel("main");
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, [shop.id]);
 
@@ -345,21 +361,16 @@ export default function ShopDetailBanner({
       style={isInline ? undefined : { right: "var(--desktop-menu-offset, 0px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
-      {/* ── Scroll container ────────────────────────────────────────────────── */}
+      {/* ── Panel container (overflow-hidden for slide rail) ───────────────── */}
       <div
-        ref={scrollContainerRef}
-        onTouchStart={handleSwipeTouchStart}
-        onTouchEnd={handleSwipeTouchEnd}
         className={`
-          relative w-full overflow-y-auto bg-white
+          relative w-full overflow-hidden bg-white
           ${isInline
-            ? "h-[calc(100vh-3.5rem)] border-l border-slate-100 px-0 pb-16 pt-0 shadow-sm"
+            ? "h-[calc(100vh-3.5rem)] border-l border-slate-100 shadow-sm"
             : `
-              /* Mobile: bottom sheet — rounded top, max 90vh */
-              max-h-[90vh] rounded-t-3xl pb-10 shadow-2xl
-              /* Desktop: right side panel */
-              md:h-[calc(100vh-3.5rem)] md:max-h-none md:w-[520px] md:max-w-[520px]
-              md:rounded-none md:border-l md:border-slate-100 md:pb-16
+              h-[90vh] rounded-t-3xl shadow-2xl
+              md:h-[calc(100vh-3.5rem)] md:w-[520px] md:max-w-[520px]
+              md:rounded-none md:border-l md:border-slate-100
               md:pointer-events-auto
             `
           }
@@ -367,14 +378,7 @@ export default function ShopDetailBanner({
         `}
         style={isInline ? undefined : bannerStyle}
       >
-        {/* ── Drag handle (mobile only) ────────────────────────────────────── */}
-        {!isInline && (
-          <div className="sticky top-0 z-30 flex justify-center pb-1 pt-3 md:hidden">
-            <div className="h-1 w-10 rounded-full bg-slate-300" />
-          </div>
-        )}
-
-        {/* ── Close button ─────────────────────────────────────────────────── */}
+        {/* ── Close button (always visible above both panels) ──────────────── */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white shadow backdrop-blur-sm transition hover:bg-black/50"
@@ -383,6 +387,25 @@ export default function ShopDetailBanner({
         >
           <XIcon className="h-4 w-4" />
         </button>
+
+        {/* ── Slide rail ──────────────────────────────────────────────────── */}
+        <div
+          className="flex h-full transition-transform duration-300 ease-in-out"
+          style={{ width: "200%", transform: activePanel === "kotodute" ? "translateX(-50%)" : "translateX(0)" }}
+        >
+          {/* ── Main panel ─────────────────────────────────────────────── */}
+          <div
+            ref={scrollContainerRef}
+            onTouchStart={handleSwipeTouchStart}
+            onTouchEnd={handleSwipeTouchEnd}
+            className={`h-full w-1/2 overflow-y-auto ${isInline ? "px-0 pb-16 pt-0" : "pb-10 md:pb-16"}`}
+          >
+            {/* ── Drag handle (mobile only) ──────────────────────────── */}
+            {!isInline && (
+              <div className="sticky top-0 z-30 flex justify-center pb-1 pt-3 md:hidden">
+                <div className="h-1 w-10 rounded-full bg-slate-300" />
+              </div>
+            )}
 
         {/* ══════════════════════════════════════════════════════════════════
             HERO — Full-bleed cover with gradient overlay
@@ -723,28 +746,29 @@ export default function ShopDetailBanner({
                 )}
               </div>
               {kotoduteNotes.length > 0 && (
-                <Link href={`/kotodute?shopId=${shop.id}`} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
-                  もっと読む
+                <button type="button" onClick={() => setActivePanel("kotodute")} className="flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-slate-700">
+                  もっと見る
                   <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
+                </button>
               )}
             </div>
 
             {kotoduteNotes.length === 0 ? (
-              <Link
-                href={`/kotodute?shopId=${shop.id}`}
-                className="flex items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-4 transition hover:opacity-80 active:scale-[0.98]"
+              <button
+                type="button"
+                onClick={() => setActivePanel("kotodute")}
+                className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-4 transition hover:opacity-80 active:scale-[0.98]"
                 style={{ borderColor: theme.border, backgroundColor: theme.bg }}
               >
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: theme.light }}>
                   <MessageSquarePlus className="h-4 w-4" style={{ color: theme.accent }} />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 text-left">
                   <p className="text-sm font-bold" style={{ color: theme.text }}>一番乗りでコメントしよう！</p>
                   <p className="mt-0.5 text-xs text-slate-500">お店の感想やおすすめを教えてください</p>
                 </div>
                 <ChevronRight className="h-4 w-4 flex-shrink-0 text-slate-400" />
-              </Link>
+              </button>
             ) : (
               <div className="space-y-2">
                 {kotoduteNotes.slice(0, KOTODUTE_PREVIEW_LIMIT).map((note) => (
@@ -752,18 +776,29 @@ export default function ShopDetailBanner({
                     {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
                   </div>
                 ))}
-                <Link
-                  href={`/kotodute?shopId=${shop.id}`}
+                <button
+                  type="button"
+                  onClick={() => setActivePanel("kotodute")}
                   className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-bold transition hover:opacity-80"
                   style={{ borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }}
                 >
                   <MessageSquarePlus className="h-3.5 w-3.5" />
                   コメントを投稿する
-                </Link>
+                </button>
               </div>
             )}
           </div>
 
+        </div>{/* space-y-6 */}
+          </div>{/* main panel */}
+          {/* ── Kotodute panel ─────────────────────────────────────────── */}
+          <div className="h-full w-1/2 overflow-y-auto">
+            <KotodutePanel
+              shop={shop}
+              theme={theme}
+              onBack={() => setActivePanel("main")}
+            />
+          </div>
         </div>
       </div>
 
@@ -778,6 +813,173 @@ export default function ShopDetailBanner({
           >
             取り消す
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Kotodute Panel (2nd slide) ───────────────────────────────────────────────
+function KotodutePanel({
+  shop,
+  theme,
+  onBack,
+}: {
+  shop: Shop;
+  theme: { bg: string; accent: string; text: string; border: string; light: string };
+  onBack: () => void;
+}) {
+  const [allNotes, setAllNotes] = useState<KotoduteNote[]>([]);
+  const [text, setText] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const notes = useMemo(
+    () =>
+      allNotes
+        .filter((n) => n.shopId === shop.id)
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [allNotes, shop.id]
+  );
+
+  useEffect(() => {
+    setAllNotes(loadKotodute());
+    setText("");
+    setSubmitted(false);
+  }, [shop.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setAllNotes(loadKotodute());
+    const storageHandler = (e: StorageEvent) => {
+      if (e.key === "nicchyo-kotodute-notes") handler();
+    };
+    window.addEventListener(KOTODUTE_UPDATED_EVENT, handler);
+    window.addEventListener("storage", storageHandler);
+    return () => {
+      window.removeEventListener(KOTODUTE_UPDATED_EVENT, handler);
+      window.removeEventListener("storage", storageHandler);
+    };
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    const body = text.trim();
+    if (!body) return;
+    const next: KotoduteNote = {
+      id: crypto.randomUUID(),
+      shopId: shop.id,
+      text: body,
+      createdAt: Date.now(),
+    };
+    const updated = [next, ...loadKotodute()];
+    saveKotodute(updated);
+    setAllNotes(updated);
+    setText("");
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 2000);
+  }, [text, shop.id]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSubmit();
+    },
+    [handleSubmit]
+  );
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div
+        className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
+        style={{ borderColor: theme.border }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          戻る
+        </button>
+        <div className="flex flex-1 items-center justify-center gap-2">
+          <span className="text-sm font-bold text-slate-900">ことづて</span>
+          {notes.length > 0 && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-bold"
+              style={{ backgroundColor: theme.light, color: theme.text }}
+            >
+              {notes.length}
+            </span>
+          )}
+        </div>
+        <div className="w-14" /> {/* balance spacer */}
+      </div>
+
+      {/* ── Compose area ────────────────────────────────────────────────────── */}
+      <div className="border-b px-4 py-4" style={{ borderColor: theme.border }}>
+        <p className="mb-2 text-xs font-semibold" style={{ color: theme.text }}>
+          {shop.name}へひとことメモ
+        </p>
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="おすすめや感想をひとこと…"
+          rows={3}
+          className="w-full resize-none rounded-xl border bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:bg-white focus:outline-none focus:ring-2"
+          style={{
+            borderColor: theme.border,
+            // @ts-ignore
+            "--tw-ring-color": theme.accent + "55",
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!text.trim()}
+          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white shadow-sm transition disabled:opacity-40 hover:opacity-90 active:scale-[0.98]"
+          style={{ backgroundColor: submitted ? "#22c55e" : theme.accent }}
+        >
+          {submitted ? (
+            "✓ 投稿しました！"
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              投稿する
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* ── Notes list ──────────────────────────────────────────────────────── */}
+      {notes.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-full"
+            style={{ backgroundColor: theme.light }}
+          >
+            <MessageSquarePlus className="h-6 w-6" style={{ color: theme.accent }} />
+          </div>
+          <p className="text-sm font-bold text-slate-700">まだコメントがありません</p>
+          <p className="text-xs text-slate-400">最初の一言を投稿してみましょう！</p>
+        </div>
+      ) : (
+        <div className="space-y-2 px-4 py-4">
+          {notes.map((note) => (
+            <div
+              key={note.id}
+              className="rounded-2xl border px-4 py-3 text-sm"
+              style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+            >
+              <p className="leading-relaxed text-slate-800">
+                {note.text.replace(KOTODUTE_TAG_REGEX, "").trim()}
+              </p>
+              <p className="mt-1.5 text-[11px]" style={{ color: theme.text, opacity: 0.6 }}>
+                {formatRelativeTime(note.createdAt)}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </div>
