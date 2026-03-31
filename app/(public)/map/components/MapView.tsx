@@ -569,6 +569,8 @@ const MapView = memo(function MapView({
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
   const [shopBannerSession, setShopBannerSession] = useState(0);
+  const [shopBannerInitialSnapIndex, setShopBannerInitialSnapIndex] = useState<0 | 1>(1);
+  const [shopBannerMainSnapIndex, setShopBannerMainSnapIndex] = useState<0 | 1>(1);
   const [isTracking, setIsTracking] = useState(true);
   const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
   const [autoRotation, setAutoRotation] = useState(initialMapRotation);
@@ -814,6 +816,9 @@ const MapView = memo(function MapView({
       if (typeof document !== "undefined") {
         document.body.classList.add("shop-banner-open");
       }
+      const nextInitialSnapIndex: 0 | 1 =
+        selectedShop && shopBannerMainSnapIndex === 0 ? 0 : 1;
+      setShopBannerInitialSnapIndex(nextInitialSnapIndex);
       setShopBannerSession((prev) => prev + 1);
       setSelectedShop(clickedShop);
       setShopBannerOrigin(origin ?? null);
@@ -865,7 +870,7 @@ const MapView = memo(function MapView({
         duration: 0.75,
       });
     }
-  }, [onShopSelect, shops]);
+  }, [onShopSelect, selectedShop, shopBannerMainSnapIndex, shops]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
@@ -1190,9 +1195,13 @@ const MapView = memo(function MapView({
             key={`${selectedShop.id}-${shopBannerSession}`}
             shop={selectedShop}
             openNonce={shopBannerSession}
+            initialMobileSnapIndex={shopBannerInitialSnapIndex}
+            onMobileMainSnapChange={setShopBannerMainSnapIndex}
             onClose={() => {
               setSelectedShop(null);
               setShopBannerOrigin(null);
+              setShopBannerInitialSnapIndex(1);
+              setShopBannerMainSnapIndex(1);
             }}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
