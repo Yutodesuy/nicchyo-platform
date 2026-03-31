@@ -55,6 +55,8 @@ type ShopDetailBannerProps = {
   originRect?: { x: number; y: number; width: number; height: number };
   layout?: "overlay" | "inline";
   openNonce?: number;
+  initialMobileSnapIndex?: 0 | 1;
+  onMobileMainSnapChange?: (snapIndex: 0 | 1) => void;
 };
 
 type BagItem = {
@@ -71,7 +73,6 @@ const OSEKKAI_FALLBACK =
 const BOTTOM_NAV_HEIGHT = 56;
 const DRAWER_PEEK_HEIGHT = 150;
 const DRAWER_FULL_RATIO = 0.9;
-const DRAWER_CLOSE_VELOCITY = 800;
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
@@ -156,6 +157,8 @@ export default function ShopDetailBanner({
   originRect,
   layout = "overlay",
   openNonce = 0,
+  initialMobileSnapIndex = 1,
+  onMobileMainSnapChange,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -382,6 +385,7 @@ export default function ShopDetailBanner({
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
   const isInline = layout === "inline";
   const isMobileOverlay = layout === "overlay" && !isDesktopViewport;
+  const isExpandedMobileMain = isMobileOverlay && activePanel === "main" && drawerSnapIndex === 1;
 
   const getDrawerHeights = useCallback(() => {
     if (typeof window === "undefined") {
@@ -490,11 +494,6 @@ export default function ShopDetailBanner({
     const visibleHeight = drawerHeights.full - drawerTranslateRef.current;
     const snapHeights = [drawerHeights.peek, drawerHeights.full] as const;
 
-    if (velocity > DRAWER_CLOSE_VELOCITY) {
-      onClose?.();
-      return;
-    }
-
     let nextSnap: 0 | 1 = snapHeights.reduce<0 | 1>((closest, height, index) => {
       const currentDistance = Math.abs(height - visibleHeight);
       const closestDistance = Math.abs(snapHeights[closest] - visibleHeight);
@@ -508,7 +507,7 @@ export default function ShopDetailBanner({
     }
 
     snapDrawerTo(nextSnap);
-  }, [activePanel, drawerHeights.full, drawerHeights.peek, drawerSnapIndex, isMobileOverlay, onClose, snapDrawerTo]);
+  }, [activePanel, drawerHeights.full, drawerHeights.peek, drawerSnapIndex, isMobileOverlay, snapDrawerTo]);
 
   const handleDrawerHandleClick = useCallback(() => {
     if (!isMobileOverlay || activePanel !== "main") return;
@@ -563,17 +562,22 @@ export default function ShopDetailBanner({
     return () => window.removeEventListener("resize", updateDrawerHeights);
   }, [getDrawerHeights, getDrawerTranslateForSnap, isMobileOverlay]);
 
+  useEffect(() => {
+    if (!isMobileOverlay || activePanel !== "main") return;
+    onMobileMainSnapChange?.(drawerSnapIndex);
+  }, [activePanel, drawerSnapIndex, isMobileOverlay, onMobileMainSnapChange]);
+
   // useLayoutEffect で paint 前に同期的にDOMを更新 → 初回フラッシュを防ぐ
   // applyDrawerTranslate / drawerHeights を deps に入れない → 循環依存を断ち切る
   useLayoutEffect(() => {
     if (!isMobileOverlay) return;
-    const nextSnap: 0 = 0;
+    const nextSnap: 0 | 1 = initialMobileSnapIndex;
     drawerSnapIndexRef.current = nextSnap;
     setDrawerSnapIndex(nextSnap);
     const heights = getDrawerHeights();
     setDrawerHeights(heights);
-    const peekTranslate = heights.full - heights.peek;
-    drawerTranslateRef.current = peekTranslate;
+    const expandedTranslate = getDrawerTranslateForSnap(nextSnap, heights);
+    drawerTranslateRef.current = expandedTranslate;
 
     const body = sheetBodyRef.current;
     if (!body) return;
@@ -582,15 +586,15 @@ export default function ShopDetailBanner({
     body.style.transition = "none";
     body.style.transform = `translate3d(0, ${heights.full}px, 0)`;
 
-    // ② ペイント後、peek位置へスライドアップ（下から登場するアニメーション）
+    // ② ペイント後、展開位置へスライドアップ（下から登場するアニメーション）
     const rafId = requestAnimationFrame(() => {
       body.style.transition = "transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1)";
-      body.style.transform = `translate3d(0, ${peekTranslate}px, 0)`;
+      body.style.transform = `translate3d(0, ${expandedTranslate}px, 0)`;
     });
 
     return () => cancelAnimationFrame(rafId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobileOverlay, openNonce, shop.id]);
+  }, [initialMobileSnapIndex, isMobileOverlay, openNonce, shop.id]);
 
   useEffect(() => {
     return () => {
@@ -623,7 +627,6 @@ export default function ShopDetailBanner({
         // ナビゲーションバー分（3.5rem = 56px）＋ iOSセーフエリア分だけ上に持ち上げる
         paddingBottom: "calc(3.5rem + var(--safe-bottom, 0px))",
       }}
-      onClick={(e) => { if (e.target === e.currentTarget && drawerSnapIndex !== 0) onClose?.(); }}
     >
       {/* ── Panel container (overflow-hidden for slide rail) ───────────────── */}
       <div
@@ -687,7 +690,7 @@ export default function ShopDetailBanner({
               </button>
               {/* 店舗名・カテゴリ行 */}
               <div className="flex items-center gap-3 pr-12">
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
                   {heroImageError ? (
                     <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
                       {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
@@ -714,7 +717,7 @@ export default function ShopDetailBanner({
                       今日出店中
                     </span>
                   </div>
-                  <h2 className="mt-1 line-clamp-1 text-base font-extrabold leading-tight text-slate-900">
+                  <h2 className="mt-1 line-clamp-2 text-[17px] font-extrabold leading-tight text-slate-900">
                     {shop.name}
                   </h2>
                 </div>
@@ -804,6 +807,31 @@ export default function ShopDetailBanner({
             </div>
           </div>
         </div>
+        )}
+
+        {isExpandedMobileMain && (
+          <div className="px-5 pt-4">
+            <div className="relative h-52 overflow-hidden rounded-[28px] border border-slate-100 bg-slate-100 shadow-sm">
+              {heroImageError ? (
+                <div
+                  className={`flex h-full w-full items-center justify-center ${
+                    CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"
+                  }`}
+                >
+                  <span className="text-7xl">{CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}</span>
+                </div>
+              ) : (
+                <Image
+                  src={bannerImage}
+                  alt={`${shop.name}の写真`}
+                  fill
+                  className="object-cover object-center"
+                  onError={() => setHeroImageError(true)}
+                />
+              )}
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/35 to-transparent" />
+            </div>
+          </div>
         )}
 
         {/* ── Accent color bar ─────────────────────────────────────────────── */}
