@@ -1,7 +1,7 @@
 // app/(public)/map/components/ShopDetailBanner.tsx
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { CSSProperties, RefObject } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -12,13 +12,13 @@ import {
   ShoppingBag,
   Clock,
   ChevronRight,
-  Sparkles,
   Instagram,
   Globe,
   X as XIcon,
   Pencil,
   ArrowLeft,
   Send,
+  Sparkles,
 } from "lucide-react";
 import { Shop } from "../data/shops";
 import EmptyState from "@/components/EmptyState";
@@ -68,6 +68,10 @@ const KOTODUTE_PREVIEW_LIMIT = 3;
 const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 const OSEKKAI_FALLBACK =
   "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
+const BOTTOM_NAV_HEIGHT = 56;
+const DRAWER_PEEK_HEIGHT = 150;
+const DRAWER_FULL_RATIO = 0.9;
+const DRAWER_CLOSE_VELOCITY = 800;
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
@@ -168,6 +172,28 @@ export default function ShopDetailBanner({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activePostRef = useRef<HTMLDivElement | null>(null);
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
+  const sheetBodyRef = useRef<HTMLDivElement | null>(null);
+  const drawerRafRef = useRef<number | null>(null);
+  const drawerTranslateRef = useRef(0);
+  const drawerDragRef = useRef({
+    active: false,
+    startY: 0,
+    startTranslate: 0,
+    lastY: 0,
+    lastTime: 0,
+    velocity: 0,
+  });
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 768;
+  });
+  const [drawerSnapIndex, setDrawerSnapIndex] = useState<0 | 1>(0);
+  const drawerSnapIndexRef = useRef<0 | 1>(0);
+  drawerSnapIndexRef.current = drawerSnapIndex;
+  const [drawerHeights, setDrawerHeights] = useState({
+    peek: DRAWER_PEEK_HEIGHT,
+    full: 620,
+  });
 
   // body scroll lock
   useEffect(() => {
@@ -175,6 +201,16 @@ export default function ShopDetailBanner({
     document.body.classList.add("shop-banner-open");
     return () => { document.body.classList.remove("shop-banner-open"); };
   }, [layout]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setIsDesktopViewport(window.innerWidth >= 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // bag sync
   useEffect(() => {
@@ -345,36 +381,224 @@ export default function ShopDetailBanner({
 
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
   const isInline = layout === "inline";
+  const isMobileOverlay = layout === "overlay" && !isDesktopViewport;
+
+  const getDrawerHeights = useCallback(() => {
+    if (typeof window === "undefined") {
+      return { peek: DRAWER_PEEK_HEIGHT, full: 620 };
+    }
+    const rootStyle = getComputedStyle(document.documentElement);
+    const safeBottom = Number.parseFloat(rootStyle.getPropertyValue("--safe-bottom")) || 0;
+    const full = Math.max(
+      DRAWER_PEEK_HEIGHT + 220,
+      Math.min(
+        window.innerHeight - BOTTOM_NAV_HEIGHT - safeBottom,
+        Math.round(window.innerHeight * DRAWER_FULL_RATIO - BOTTOM_NAV_HEIGHT)
+      )
+    );
+    return {
+      peek: Math.min(DRAWER_PEEK_HEIGHT, full),
+      full,
+    };
+  }, []);
+
+  const getDrawerTranslateForSnap = useCallback((
+    snapIndex: 0 | 1,
+    heights: { peek: number; full: number }
+  ) => {
+    const visibleHeight = snapIndex === 0 ? heights.peek : heights.full;
+    return Math.max(0, heights.full - visibleHeight);
+  }, []);
+
+  const applyDrawerTranslate = useCallback((
+    nextTranslate: number,
+    options?: { immediate?: boolean }
+  ) => {
+    if (!isMobileOverlay) return;
+    const body = sheetBodyRef.current;
+    if (!body) return;
+    const clamped = Math.max(0, Math.min(drawerHeights.full - drawerHeights.peek, nextTranslate));
+    drawerTranslateRef.current = clamped;
+    if (options?.immediate) {
+      // 同期的にDOMを更新 → ブラウザの初回ペイント前に確実に反映
+      if (drawerRafRef.current !== null) {
+        cancelAnimationFrame(drawerRafRef.current);
+        drawerRafRef.current = null;
+      }
+      body.style.transition = "none";
+      body.style.transform = `translate3d(0, ${clamped}px, 0)`;
+    } else {
+      if (drawerRafRef.current !== null) {
+        cancelAnimationFrame(drawerRafRef.current);
+      }
+      drawerRafRef.current = requestAnimationFrame(() => {
+        const target = sheetBodyRef.current;
+        if (!target) return;
+        target.style.transition = "transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+        target.style.transform = `translate3d(0, ${clamped}px, 0)`;
+      });
+    }
+  }, [drawerHeights.full, drawerHeights.peek, isMobileOverlay]);
+
+  const snapDrawerTo = useCallback((
+    snapIndex: 0 | 1,
+    options?: { immediate?: boolean }
+  ) => {
+    if (!isMobileOverlay) return;
+    setDrawerSnapIndex(snapIndex);
+    applyDrawerTranslate(getDrawerTranslateForSnap(snapIndex, drawerHeights), options);
+  }, [applyDrawerTranslate, drawerHeights, getDrawerTranslateForSnap, isMobileOverlay]);
+
+  const handleDrawerTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobileOverlay || activePanel !== "main") return;
+    const touch = e.touches[0];
+    drawerDragRef.current = {
+      active: true,
+      startY: touch.clientY,
+      startTranslate: drawerTranslateRef.current,
+      lastY: touch.clientY,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    const body = sheetBodyRef.current;
+    if (body) body.style.transition = "none";
+  }, [activePanel, isMobileOverlay]);
+
+  const handleDrawerTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isMobileOverlay || !drawerDragRef.current.active || activePanel !== "main") return;
+    const touch = e.touches[0];
+    const now = performance.now();
+    const dySinceLast = touch.clientY - drawerDragRef.current.lastY;
+    const dt = now - drawerDragRef.current.lastTime;
+    if (dt > 0) {
+      drawerDragRef.current.velocity = (dySinceLast / dt) * 1000;
+    }
+    drawerDragRef.current.lastY = touch.clientY;
+    drawerDragRef.current.lastTime = now;
+    const nextTranslate =
+      drawerDragRef.current.startTranslate + (touch.clientY - drawerDragRef.current.startY);
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    applyDrawerTranslate(nextTranslate, { immediate: true });
+  }, [activePanel, applyDrawerTranslate, isMobileOverlay]);
+
+  const handleDrawerTouchEnd = useCallback(() => {
+    if (!isMobileOverlay || !drawerDragRef.current.active || activePanel !== "main") return;
+    drawerDragRef.current.active = false;
+    const velocity = drawerDragRef.current.velocity;
+    const visibleHeight = drawerHeights.full - drawerTranslateRef.current;
+    const snapHeights = [drawerHeights.peek, drawerHeights.full] as const;
+
+    if (velocity > DRAWER_CLOSE_VELOCITY) {
+      onClose?.();
+      return;
+    }
+
+    let nextSnap: 0 | 1 = snapHeights.reduce<0 | 1>((closest, height, index) => {
+      const currentDistance = Math.abs(height - visibleHeight);
+      const closestDistance = Math.abs(snapHeights[closest] - visibleHeight);
+      return currentDistance < closestDistance ? (index as 0 | 1) : closest;
+    }, drawerSnapIndex);
+
+    if (velocity < -220) {
+      nextSnap = 1;
+    } else if (velocity > 220) {
+      nextSnap = 0;
+    }
+
+    snapDrawerTo(nextSnap);
+  }, [activePanel, drawerHeights.full, drawerHeights.peek, drawerSnapIndex, isMobileOverlay, onClose, snapDrawerTo]);
+
+  const handleDrawerHandleClick = useCallback(() => {
+    if (!isMobileOverlay || activePanel !== "main") return;
+    const nextSnap: 0 | 1 = drawerSnapIndex === 0 ? 1 : 0;
+    snapDrawerTo(nextSnap);
+  }, [activePanel, drawerSnapIndex, isMobileOverlay, snapDrawerTo]);
+
   const handleBackToMain = useCallback(() => {
     setActivePanel("main");
     const container = scrollContainerRef.current;
     if (container) {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
+    if (isMobileOverlay) {
+      snapDrawerTo(1);
+    }
     armInteractionLock(420);
-  }, [armInteractionLock]);
-  const handleOpenAiPanel = useCallback(() => {
-    if (!contentInteractive) return;
-    setActivePanel("ai");
-  }, [contentInteractive]);
+  }, [armInteractionLock, isMobileOverlay, snapDrawerTo]);
+
   const handleOpenKotodutePanel = useCallback(() => {
     if (!contentInteractive) return;
     setActivePanel("kotodute");
-  }, [contentInteractive]);
+    if (isMobileOverlay) {
+      snapDrawerTo(1);
+    }
+  }, [contentInteractive, isMobileOverlay, snapDrawerTo]);
 
-  // スワイプダウンで閉じる (モバイル bottom-sheet のみ)
-  const swipeStartY = useRef<number | null>(null);
-  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
-    if (isInline) return;
-    swipeStartY.current = e.touches[0].clientY;
-  }, [isInline]);
-  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isInline || swipeStartY.current === null) return;
-    const dy = e.changedTouches[0].clientY - swipeStartY.current;
-    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0;
-    if (dy > 80 && scrollTop <= 0) onClose?.();
-    swipeStartY.current = null;
-  }, [isInline, onClose]);
+  const handleOpenAiPanel = useCallback(() => {
+    if (!contentInteractive) return;
+    setActivePanel("ai");
+    if (isMobileOverlay) {
+      snapDrawerTo(1);
+    }
+  }, [contentInteractive, isMobileOverlay, snapDrawerTo]);
+
+  useEffect(() => {
+    if (!isMobileOverlay) return;
+    const updateDrawerHeights = () => {
+      const nextHeights = getDrawerHeights();
+      setDrawerHeights(nextHeights);
+      // ref から読むことで stale closure / 循環依存を回避
+      const currentSnap = drawerSnapIndexRef.current;
+      drawerTranslateRef.current = getDrawerTranslateForSnap(currentSnap, nextHeights);
+      const body = sheetBodyRef.current;
+      if (body) {
+        body.style.transition = "none";
+        body.style.transform = `translate3d(0, ${drawerTranslateRef.current}px, 0)`;
+      }
+    };
+    updateDrawerHeights();
+    window.addEventListener("resize", updateDrawerHeights);
+    return () => window.removeEventListener("resize", updateDrawerHeights);
+  }, [getDrawerHeights, getDrawerTranslateForSnap, isMobileOverlay]);
+
+  // useLayoutEffect で paint 前に同期的にDOMを更新 → 初回フラッシュを防ぐ
+  // applyDrawerTranslate / drawerHeights を deps に入れない → 循環依存を断ち切る
+  useLayoutEffect(() => {
+    if (!isMobileOverlay) return;
+    const nextSnap: 0 = 0;
+    drawerSnapIndexRef.current = nextSnap;
+    setDrawerSnapIndex(nextSnap);
+    const heights = getDrawerHeights();
+    setDrawerHeights(heights);
+    const peekTranslate = heights.full - heights.peek;
+    drawerTranslateRef.current = peekTranslate;
+
+    const body = sheetBodyRef.current;
+    if (!body) return;
+
+    // ① ペイント前にパネルを完全に画面外（下）に配置
+    body.style.transition = "none";
+    body.style.transform = `translate3d(0, ${heights.full}px, 0)`;
+
+    // ② ペイント後、peek位置へスライドアップ（下から登場するアニメーション）
+    const rafId = requestAnimationFrame(() => {
+      body.style.transition = "transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+      body.style.transform = `translate3d(0, ${peekTranslate}px, 0)`;
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobileOverlay, openNonce, shop.id]);
+
+  useEffect(() => {
+    return () => {
+      if (drawerRafRef.current !== null) {
+        cancelAnimationFrame(drawerRafRef.current);
+      }
+    };
+  }, []);
 
   // ─── Theme ──────────────────────────────────────────────────────────────────
   const themeKey: ThemeKey = (shop.themeColor as ThemeKey) ?? "amber";
@@ -387,68 +611,155 @@ export default function ShopDetailBanner({
         isInline
           ? "relative min-h-[calc(100vh-7.5rem)]"
           // Mobile: bottom sheet / Desktop: side panel
-          : "fixed inset-0 z-[2000] flex flex-col items-end justify-end bg-black/40 backdrop-blur-[2px] md:items-stretch md:justify-center md:bg-slate-900/20 md:backdrop-blur-none"
+          // peek 状態ではバックドロップを透明＆pointer-events-none にしてマップを操作可能にする
+          : `fixed inset-0 z-[2000] flex flex-col items-end justify-end md:items-stretch md:justify-center md:!pb-0${
+              isMobileOverlay && drawerSnapIndex === 0
+                ? " bg-transparent backdrop-blur-none pointer-events-none"
+                : " bg-black/40 backdrop-blur-[2px] md:bg-slate-900/20 md:backdrop-blur-none"
+            }`
       }
-      style={isInline ? undefined : { right: "var(--desktop-menu-offset, 0px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      style={isInline ? undefined : {
+        right: "var(--desktop-menu-offset, 0px)",
+        // ナビゲーションバー分（3.5rem = 56px）＋ iOSセーフエリア分だけ上に持ち上げる
+        paddingBottom: "calc(3.5rem + var(--safe-bottom, 0px))",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget && drawerSnapIndex !== 0) onClose?.(); }}
     >
       {/* ── Panel container (overflow-hidden for slide rail) ───────────────── */}
       <div
+        ref={sheetBodyRef}
         className={`
-          relative w-full overflow-hidden bg-white
+          relative w-full overflow-hidden bg-white flex flex-col pointer-events-auto
+          ${isMobileOverlay ? "will-change-transform" : ""}
           ${isInline
             ? "h-[calc(100vh-3.5rem)] border-l border-slate-100 shadow-sm"
-            : `
-              h-[90vh] rounded-t-3xl shadow-2xl
-              md:h-[calc(100vh-3.5rem)] md:w-[520px] md:max-w-[520px]
-              md:rounded-none md:border-l md:border-slate-100
-              md:pointer-events-auto
-            `
+            : isMobileOverlay
+              ? "rounded-t-3xl shadow-2xl"
+              : `
+                h-[calc(100vh-3.5rem)] w-[520px] max-w-[520px]
+                rounded-none border-l border-slate-100
+              `
           }
-          ${originRect && !isInline ? "shop-banner-animate" : ""}
+          ${originRect && !isInline && !isMobileOverlay ? "shop-banner-animate" : ""}
         `}
-        style={isInline ? undefined : bannerStyle}
+        style={isInline ? undefined : {
+          ...bannerStyle,
+          ...(isMobileOverlay ? { height: `${drawerHeights.full}px`, maxHeight: `${drawerHeights.full}px` } : {}),
+        }}
       >
-        {/* ── Close button (always visible above both panels) ──────────────── */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white shadow backdrop-blur-sm transition hover:bg-black/50"
-          type="button"
-          aria-label="閉じる"
-        >
-          <XIcon className="h-4 w-4" />
-        </button>
-
-        {/* ── Slide rail (3 panels) ───────────────────────────────────────── */}
-        <div
-          className={`flex h-full transition-transform duration-300 ease-in-out ${
-            contentInteractive ? "pointer-events-auto" : "pointer-events-none"
-          }`}
-          style={{
-            width: "300%",
-            transform:
-              activePanel === "kotodute" ? "translateX(calc(-100% / 3))"
-              : activePanel === "ai"     ? "translateX(calc(-200% / 3))"
-              : "translateX(0)",
-          }}
-        >
-          {/* ── Main panel ─────────────────────────────────────────────── */}
-          <div
-            ref={scrollContainerRef}
-            onTouchStart={handleSwipeTouchStart}
-            onTouchEnd={handleSwipeTouchEnd}
-            className={`h-full w-1/3 overflow-y-auto ${isInline ? "px-0 pb-16 pt-0" : "pb-10 md:pb-16"}`}
+        {!isMobileOverlay && (
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white shadow backdrop-blur-sm transition hover:bg-black/50"
+            type="button"
+            aria-label="閉じる"
           >
-            {/* ── Drag handle (mobile only) ──────────────────────────── */}
-            {!isInline && (
-              <div className="sticky top-0 z-30 flex justify-center pb-1 pt-3 md:hidden">
-                <div className="h-1 w-10 rounded-full bg-slate-300" />
-              </div>
-            )}
+            <XIcon className="h-4 w-4" />
+          </button>
+        )}
 
+          {isMobileOverlay && (
+            <div
+              className="relative shrink-0 overflow-hidden border-b border-slate-100 bg-white px-4 pb-3 pt-2 touch-none"
+              style={{ height: `${DRAWER_PEEK_HEIGHT}px` }}
+              onTouchStart={handleDrawerTouchStart}
+              onTouchMove={handleDrawerTouchMove}
+              onTouchEnd={handleDrawerTouchEnd}
+              onTouchCancel={handleDrawerTouchEnd}
+            >
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleDrawerHandleClick}
+                  className="flex h-8 w-16 items-center justify-center"
+                  aria-label="ドロワーを展開"
+                >
+                  <span className="h-1.5 w-10 rounded-full bg-slate-300" />
+                </button>
+              </div>
+              <button
+                onClick={onClose}
+                className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-sm transition hover:bg-slate-200"
+                type="button"
+                aria-label="閉じる"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+              {/* 店舗名・カテゴリ行 */}
+              <div className="flex items-center gap-3 pr-12">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                  {heroImageError ? (
+                    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
+                      {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
+                    </div>
+                  ) : (
+                    <Image
+                      src={bannerImage}
+                      alt={`${shop.name}の写真`}
+                      fill
+                      className="object-cover object-center"
+                      onError={() => setHeroImageError(true)}
+                    />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                      style={{ backgroundColor: theme.light, color: theme.text }}
+                    >
+                      {shop.category || "ショップ"}
+                    </span>
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      今日出店中
+                    </span>
+                  </div>
+                  <h2 className="mt-1 line-clamp-1 text-base font-extrabold leading-tight text-slate-900">
+                    {shop.name}
+                  </h2>
+                </div>
+              </div>
+              {/* 商品チップ（peek 時のみ表示） */}
+              {!isKotodute && shop.products.length > 0 && (
+                <div className="mt-2 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                  {shop.products.slice(0, 6).map((product) => (
+                    <span
+                      key={product}
+                      className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+                    >
+                      {product}
+                    </span>
+                  ))}
+                  {shop.products.length > 6 && (
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">
+                      +{shop.products.length - 6}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="relative flex-1 overflow-hidden">
+            {/* ── Slide rail (2 panels: main + kotodute) ─────────────────────── */}
+            <div
+              className={`flex h-full transition-transform duration-300 ease-in-out ${
+                contentInteractive ? "pointer-events-auto" : "pointer-events-none"
+              }`}
+              style={{
+                width: "200%",
+                transform: activePanel === "kotodute" ? "translateX(-50%)" : "translateX(0)",
+              }}
+            >
+              {/* ── Main panel ─────────────────────────────────────────────── */}
+              <div
+                ref={scrollContainerRef}
+                className={`h-full w-1/2 overflow-y-auto ${isInline ? "px-0 pb-16 pt-0" : isMobileOverlay ? "pb-10" : "pb-10 md:pb-16"}`}
+              >
         {/* ══════════════════════════════════════════════════════════════════
             HERO — Full-bleed cover with gradient overlay
         ══════════════════════════════════════════════════════════════════ */}
+        {!isMobileOverlay && (
         <div className="relative h-56 w-full overflow-hidden md:h-64">
           {heroImageError ? (
             <div className={`flex h-full w-full items-center justify-center ${CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"}`}>
@@ -493,14 +804,107 @@ export default function ShopDetailBanner({
             </div>
           </div>
         </div>
+        )}
 
         {/* ── Accent color bar ─────────────────────────────────────────────── */}
         <div className="h-1 w-full" style={{ backgroundColor: theme.accent }} />
 
+        {!isKotodute && isMobileOverlay && (
+          <div className="px-5 pt-4">
+            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>
+                    今日の品
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {shop.products.slice(0, 4).map((product) => (
+                      <span
+                        key={product}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                      >
+                        {product}
+                      </span>
+                    ))}
+                    {shop.products.length > 4 && (
+                      <span className="rounded-full bg-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500">
+                        +{shop.products.length - 4}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {shop.products.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBagClick}
+                    className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100"
+                  >
+                    買い物リスト
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-slate-400" />
+                  <span>{shop.chome ?? "丁目未設定"}</span>
+                </div>
+                {(shop.businessHoursStart || shop.businessHoursEnd) && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-slate-400" />
+                    <span>
+                      {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenAiPanel}
+                  className="flex items-center gap-2 rounded-2xl border px-3.5 py-3 text-left transition hover:opacity-90 active:scale-[0.98]"
+                  style={{ borderColor: theme.border, backgroundColor: theme.light }}
+                >
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: theme.accent }}
+                  >
+                    <Sparkles className="h-[18px] w-[18px] text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold" style={{ color: theme.text }}>AI相談</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">お店のことを聞く</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenKotodutePanel}
+                  className="flex items-center gap-2 rounded-2xl border bg-white px-3.5 py-3 text-left transition hover:opacity-90 active:scale-[0.98]"
+                  style={{ borderColor: theme.border }}
+                >
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: theme.bg }}
+                  >
+                    <MessageSquarePlus className="h-[18px] w-[18px]" style={{ color: theme.accent }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold" style={{ color: theme.text }}>ことづて</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      {kotoduteNotes.length > 0 ? `${kotoduteNotes.length}件のコメント` : "感想を投稿する"}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ══════════════════════════════════════════════════════════════════
             PRODUCTS — 商品と値段（ヒーロー直下に移動）
         ══════════════════════════════════════════════════════════════════ */}
-        {!isKotodute && shop.products.length > 0 && (
+        {!isKotodute && !isMobileOverlay && shop.products.length > 0 && (
           <div className="px-5 pt-4 pb-2">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>
@@ -572,7 +976,7 @@ export default function ShopDetailBanner({
         {/* ══════════════════════════════════════════════════════════════════
             IDENTITY — Owner, location, quick info
         ══════════════════════════════════════════════════════════════════ */}
-        {!isKotodute && (
+        {!isKotodute && !isMobileOverlay && (
           <div className="px-5 pt-4 pb-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
               <span className="flex items-center gap-1">
@@ -624,9 +1028,9 @@ export default function ShopDetailBanner({
         )}
 
         {/* ── Divider ──────────────────────────────────────────────────────── */}
-        <div className="mx-5 my-3 border-t border-slate-100" />
+        {!isMobileOverlay && <div className="mx-5 my-3 border-t border-slate-100" />}
 
-        <div className="px-5 pb-6 space-y-6">
+        <div className={`px-5 pb-6 space-y-6 ${isMobileOverlay ? "pt-5" : ""}`}>
 
           {/* ════════════════════════════════════════════════════════════════
               TODAY'S ANNOUNCEMENT — Rich card
@@ -754,42 +1158,25 @@ export default function ShopDetailBanner({
           {/* ════════════════════════════════════════════════════════════════
               AI CONSULT — Dedicated card
           ════════════════════════════════════════════════════════════════ */}
-          {!isKotodute && (
-            <div
-              className="rounded-2xl border px-4 py-4 shadow-sm"
-              style={{ backgroundColor: theme.light, borderColor: theme.border }}
+          {!isKotodute && !isMobileOverlay && (
+            <button
+              type="button"
+              onClick={handleOpenAiPanel}
+              className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition hover:opacity-90 active:scale-[0.98]"
+              style={{ borderColor: theme.border, backgroundColor: theme.light }}
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm" style={{ backgroundColor: theme.accent }}>
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold" style={{ color: theme.text }}>ショップ相談</p>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                    このお店のおすすめ、旬、買い方のコツを会話しながら深掘りできます
-                  </p>
-                </div>
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: theme.accent }}
+              >
+                <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {shop.products.slice(0, 3).map((product) => (
-                  <span
-                    key={product}
-                    className="rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
-                  >
-                    {product}
-                  </span>
-                ))}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold" style={{ color: theme.text }}>AIに相談する</p>
+                <p className="mt-0.5 text-xs text-slate-500">このお店について何でも聞いてみよう</p>
               </div>
-                <button
-                  type="button"
-                  onClick={handleOpenAiPanel}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-                  style={{ color: theme.text }}
-                >
-                ショップ相談を開く
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+            </button>
           )}
 
           {/* ════════════════════════════════════════════════════════════════
@@ -851,22 +1238,28 @@ export default function ShopDetailBanner({
           </div>{/* space-y-6 */}
           </div>{/* main panel */}
           {/* ── Kotodute panel ─────────────────────────────────────────── */}
-          <div className="h-full w-1/3 overflow-y-auto">
+          <div className="h-full w-1/2 overflow-y-auto">
             <KotodutePanel
               shop={shop}
               theme={theme}
               onBack={handleBackToMain}
             />
           </div>
-          {/* ── AI consult panel ───────────────────────────────────────── */}
-          <div className="h-full w-1/3 overflow-hidden">
-            <AiConsultPanel
-              shop={shop}
-              theme={theme}
-              onBack={handleBackToMain}
-            />
-          </div>
         </div>
+
+        {/* ── AI panel (absolute overlay, independent of slide rail) ─────── */}
+        <div
+          className="absolute inset-0 z-20 bg-white transition-transform duration-300 ease-in-out"
+          style={{ transform: activePanel === "ai" ? "translateX(0)" : "translateX(100%)" }}
+        >
+          <AiConsultPanel
+            shop={shop}
+            theme={theme}
+            onBack={handleBackToMain}
+            isActive={activePanel === "ai"}
+          />
+        </div>
+          </div>
       </div>
 
       {/* ── Undo toast ───────────────────────────────────────────────────────── */}
@@ -882,6 +1275,416 @@ export default function ShopDetailBanner({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── AI Consult Panel ────────────────────────────────────────────────────────
+type ChatMsg = { role: "user" | "assistant"; text: string };
+
+const AI_SUGGESTED_PROMPTS = [
+  { icon: "🛍️", text: "どんな商品がありますか？" },
+  { icon: "⭐", text: "おすすめはなんですか？" },
+  { icon: "🕐", text: "何時まで営業していますか？" },
+  { icon: "💴", text: "支払いはカードで払えますか？" },
+  { icon: "🌧️", text: "雨の日でも出店していますか？" },
+];
+
+function AiConsultPanel({
+  shop,
+  theme,
+  onBack,
+  isActive: _isActive,
+}: {
+  shop: Shop;
+  theme: { bg: string; accent: string; text: string; border: string; light: string };
+  onBack: () => void;
+  isActive: boolean;
+}) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // ショップが変わったらリセット
+  useEffect(() => {
+    setMessages([]);
+    setInput("");
+    setStreaming(false);
+    abortRef.current?.abort();
+  }, [shop.id]);
+
+  // アンマウント時にストリーミングを中断
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
+  // 新メッセージが追加されたら最下部へスクロール
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // textarea の高さを内容に合わせて自動調整
+  const adjustTextarea = useCallback((el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
+      adjustTextarea(e.target);
+    },
+    [adjustTextarea]
+  );
+
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || streaming) return;
+
+      const history = messages;
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text: trimmed },
+        { role: "assistant", text: "" },
+      ]);
+      setInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+      setStreaming(true);
+
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      try {
+        const res = await fetch("/api/grandma/shop-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            shopName: shop.name,
+            shopContext: {
+              category: shop.category,
+              catchphrase: shop.catchphrase,
+              shopStrength: shop.shopStrength,
+              products: shop.products,
+              chome: shop.chome,
+            },
+            history,
+            text: trimmed,
+          }),
+        });
+        if (!res.ok || !res.body) throw new Error("upstream error");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last?.role === "assistant") {
+              copy[copy.length - 1] = { ...last, text: last.text + chunk };
+            }
+            return copy;
+          });
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last?.role === "assistant" && !last.text) {
+              copy[copy.length - 1] = {
+                ...last,
+                text: "ごめんよ、うまく答えられんかったわ…もう一回試してみてね。",
+              };
+            }
+            return copy;
+          });
+        }
+      } finally {
+        setStreaming(false);
+        abortRef.current = null;
+      }
+    },
+    [messages, shop, streaming]
+  );
+
+  const handleAbort = useCallback(() => {
+    abortRef.current?.abort();
+    setStreaming(false);
+  }, []);
+
+  const handleSubmit = useCallback(
+    () => sendMessage(input),
+    [input, sendMessage]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // IME確定中は無視（日本語入力対応）
+      if (e.nativeEvent.isComposing) return;
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
+
+  const isEmpty = messages.length === 0;
+  const lastMsg = messages[messages.length - 1];
+  const isTyping =
+    streaming && lastMsg?.role === "assistant" && !lastMsg.text;
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      {/* ── ヘッダー ──────────────────────────────────────────────── */}
+      <div
+        className="shrink-0 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
+        style={{ borderColor: theme.border }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          戻る
+        </button>
+
+        <div className="flex flex-1 items-center justify-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />
+          <span className="text-sm font-bold text-slate-900">AIに相談する</span>
+        </div>
+
+        {/* 会話クリアボタン（会話開始後のみ表示） */}
+        {!isEmpty ? (
+          <button
+            type="button"
+            onClick={() => { setMessages([]); setInput(""); }}
+            className="text-xs font-semibold text-slate-400 transition hover:text-slate-600 px-2 py-1.5 rounded-full hover:bg-slate-100"
+          >
+            クリア
+          </button>
+        ) : (
+          <div className="w-14" />
+        )}
+      </div>
+
+      {/* ── メッセージエリア ───────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        {isEmpty ? (
+          /* ── ウェルカム画面 ── */
+          <div className="flex flex-col items-center px-5 py-6 gap-5">
+            {/* キャラクター */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className="relative flex h-20 w-20 items-center justify-center rounded-full shadow-md"
+                style={{ backgroundColor: theme.light }}
+              >
+                <Image
+                  src="/images/obaasan_transparent.png"
+                  alt="にちよさん"
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 opacity-85"
+                />
+                {/* ステータスバッジ */}
+                <span
+                  className="absolute bottom-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white shadow"
+                  style={{ backgroundColor: theme.accent }}
+                >
+                  AI
+                </span>
+              </div>
+              <div className="text-center">
+                <p className="text-[15px] font-bold text-slate-800 leading-snug">
+                  {shop.name}のことなら何でも！
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  土佐弁で親切にお答えするがよ〜
+                </p>
+              </div>
+            </div>
+
+            {/* 区切り */}
+            <div className="flex w-full items-center gap-3">
+              <div className="flex-1 border-t border-slate-100" />
+              <p className="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
+                よく聞かれる質問
+              </p>
+              <div className="flex-1 border-t border-slate-100" />
+            </div>
+
+            {/* サジェストプロンプト */}
+            <div className="w-full space-y-2">
+              {AI_SUGGESTED_PROMPTS.map(({ icon, text }) => (
+                <button
+                  key={text}
+                  type="button"
+                  onClick={() => sendMessage(text)}
+                  className="flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition hover:opacity-80 active:scale-[0.98] text-left"
+                  style={{
+                    borderColor: theme.border,
+                    backgroundColor: theme.bg,
+                    color: theme.text,
+                  }}
+                >
+                  <span className="text-base leading-none">{icon}</span>
+                  <span className="flex-1">{text}</span>
+                  <ChevronRight
+                    className="h-3.5 w-3.5 shrink-0 opacity-40"
+                    style={{ color: theme.text }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[10px] text-slate-300 text-center leading-relaxed">
+              AIの回答はお店情報に基づく参考情報です。<br />
+              内容の正確性を保証するものではありません。
+            </p>
+          </div>
+        ) : (
+          /* ── チャット表示 ── */
+          <div className="space-y-3 px-4 py-5 pb-3">
+            {messages.map((msg, i) => {
+              const isUser = msg.role === "user";
+              const isLastAssistant =
+                !isUser && i === messages.length - 1;
+              const showTyping = isTyping && isLastAssistant;
+
+              return (
+                <div
+                  key={i}
+                  className={`flex items-end gap-2.5 animate-in fade-in slide-in-from-bottom-2 duration-200 ${
+                    isUser ? "flex-row-reverse" : "flex-row"
+                  }`}
+                >
+                  {/* アシスタントアバター */}
+                  {!isUser && (
+                    <div
+                      className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm"
+                      style={{ backgroundColor: theme.light }}
+                    >
+                      <Image
+                        src="/images/obaasan_transparent.png"
+                        alt="にちよさん"
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 opacity-85"
+                      />
+                    </div>
+                  )}
+
+                  {/* バブル */}
+                  <div
+                    className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+                      isUser
+                        ? "rounded-br-sm bg-slate-900 text-white"
+                        : "rounded-bl-sm border text-slate-800"
+                    }`}
+                    style={
+                      !isUser
+                        ? {
+                            borderColor: theme.border,
+                            backgroundColor: theme.bg,
+                          }
+                        : undefined
+                    }
+                  >
+                    {showTyping ? (
+                      /* タイピングインジケーター */
+                      <span className="inline-flex items-center gap-1 py-0.5 px-0.5">
+                        {[0, 160, 320].map((delay) => (
+                          <span
+                            key={delay}
+                            className="h-2 w-2 rounded-full animate-bounce"
+                            style={{
+                              backgroundColor: theme.accent,
+                              animationDelay: `${delay}ms`,
+                              opacity: 0.7,
+                            }}
+                          />
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="whitespace-pre-wrap">{msg.text}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {/* スクロール追従用アンカー */}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* ── 入力エリア ────────────────────────────────────────────── */}
+      <div
+        className="shrink-0 border-t bg-white px-3 pt-2 pb-3"
+        style={{ borderColor: theme.border }}
+      >
+        {/* 生成停止ボタン（ストリーミング中のみ） */}
+        {streaming && (
+          <div className="mb-2 flex justify-center">
+            <button
+              type="button"
+              onClick={handleAbort}
+              className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:bg-slate-50 active:scale-95"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: theme.accent }}
+              />
+              生成を停止
+            </button>
+          </div>
+        )}
+
+        {/* テキストエリア + 送信ボタン */}
+        <div
+          className="flex items-end gap-2 rounded-2xl border bg-slate-50 px-3.5 py-2.5 transition-shadow focus-within:shadow-md focus-within:bg-white"
+          style={{ borderColor: theme.border }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              streaming ? "回答中…" : "質問を入力（Shift+Enterで改行）"
+            }
+            disabled={streaming}
+            rows={1}
+            className="flex-1 resize-none bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+            style={{
+              lineHeight: "1.5",
+              maxHeight: 120,
+              overflowY: "auto",
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!input.trim() || streaming}
+            className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow transition disabled:opacity-30 hover:opacity-90 active:scale-95"
+            style={{ backgroundColor: theme.accent }}
+            aria-label="送信"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -985,7 +1788,7 @@ function KotodutePanel({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
+          className="pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           戻る
@@ -1107,322 +1910,6 @@ function KotodutePanel({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── AI Consult Panel (3rd slide) ─────────────────────────────────────────────
-type AiChatMsg = {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-  speakerId?: string;
-  speakerName?: string;
-};
-
-const CHAR_EMOJI: Record<string, string> = {
-  nichiyosan: "🧓",
-  yoichisan:  "👴",
-  miraikun:   "🌟",
-  yosakochan: "🌸",
-};
-
-
-function AiConsultPanel({
-  shop,
-  theme,
-  onBack,
-}: {
-  shop: Shop;
-  theme: { bg: string; accent: string; text: string; border: string; light: string };
-  onBack: () => void;
-}) {
-  const [messages, setMessages] = useState<AiChatMsg[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [errorNotice, setErrorNotice] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const historyRef = useRef<{ role: "user" | "assistant"; text: string }[]>([]);
-  const streamingIdRef = useRef<string | null>(null);
-
-  const shopContext = useMemo(() => ({
-    category: shop.category,
-    catchphrase: shop.catchphrase,
-    shopStrength: shop.shopStrength,
-    products: shop.products,
-    chome: shop.chome,
-  }), [shop.category, shop.catchphrase, shop.shopStrength, shop.products, shop.chome]);
-
-  // Reset state when shop changes
-  useEffect(() => {
-    setMessages([]);
-    historyRef.current = [];
-    setInput("");
-    setLoading(false);
-    setHasStarted(false);
-    setErrorNotice(null);
-    streamingIdRef.current = null;
-  }, [shop.id]);
-
-  const suggestedPrompts = useMemo(() => {
-    const prompts = [
-      "このお店のおすすめを教えて",
-      `${shop.name}で今おすすめの買い方は？`,
-      "初めて来た人に向いている商品は？",
-    ];
-    if (shop.products[0]) {
-      prompts.push(`${shop.products[0]}はどんな人におすすめ？`);
-    }
-    if (shop.category === "食材") {
-      prompts.push("旬の食材や食べ方のコツはある？");
-    }
-    return Array.from(new Set(prompts)).slice(0, 4);
-  }, [shop.category, shop.name, shop.products]);
-
-  const streamResponse = useCallback(async (text: string, msgId: string) => {
-    setLoading(true);
-    setErrorNotice(null);
-    streamingIdRef.current = msgId;
-    // Add empty AI message to stream into
-    setMessages((prev) => [...prev, { id: msgId, role: "assistant", text: "" }]);
-    try {
-      const res = await fetch("/api/grandma/shop-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          shopName: shop.name,
-          shopContext,
-          history: historyRef.current,
-          text,
-        }),
-      });
-      if (!res.ok || !res.body) throw new Error("stream error");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        const snapshot = accumulated;
-        setMessages((prev) =>
-          prev.map((m) => m.id === msgId ? { ...m, text: snapshot } : m)
-        );
-      }
-      historyRef.current = [
-        ...historyRef.current,
-        { role: "user", text },
-        { role: "assistant", text: accumulated },
-      ];
-    } catch {
-      setErrorNotice("返答の取得に失敗しました。少し時間をおいて再度お試しください。");
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msgId ? { ...m, text: "エラーが発生しました。もう一度お試しください。" } : m
-        )
-      );
-    } finally {
-      setLoading(false);
-      streamingIdRef.current = null;
-    }
-  }, [shop.name, shopContext]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  const handleAsk = useCallback(async (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed || loading) return;
-    setHasStarted(true);
-    setInput("");
-    const userMsg: AiChatMsg = { id: crypto.randomUUID(), role: "user", text: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
-    await streamResponse(trimmed, crypto.randomUUID());
-  }, [loading, streamResponse]);
-
-  const handleSend = useCallback(async () => {
-    await handleAsk(input);
-  }, [handleAsk, input]);
-
-  return (
-    <div className="flex h-full flex-col">
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div
-        className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
-        style={{ borderColor: theme.border }}
-      >
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          戻る
-        </button>
-        <div className="flex flex-1 items-center justify-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />
-          <span className="text-sm font-bold text-slate-900">ショップ相談</span>
-        </div>
-        <div className="w-14" />
-      </div>
-
-      {/* ── Shop context ────────────────────────────────────────────────────── */}
-      <div className="shrink-0 border-b px-4 py-3" style={{ borderColor: theme.border, backgroundColor: theme.bg }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: theme.text }}>
-          {shop.category || "ショップ相談"}
-        </p>
-        <p className="mt-1 text-sm text-slate-600">
-          <span className="font-bold text-slate-900">{shop.name}</span>
-          {" "}のおすすめやこだわりを深掘りできます
-        </p>
-      </div>
-
-      {/* ── Messages ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        {!hasStarted && messages.length === 0 && (
-          <div className="space-y-4">
-            <div
-              className="rounded-3xl border px-4 py-4 shadow-sm"
-              style={{ borderColor: theme.border, backgroundColor: theme.bg }}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg shadow-sm"
-                  style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
-                >
-                  🧓
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900">にちよさんに聞いてみる</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    {shop.shopStrength?.trim() || `${shop.name} のおすすめや買い方のコツを、会話しながら案内します。`}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {shop.products.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
-                  よく出る商品
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {shop.products.slice(0, 6).map((product) => (
-                    <button
-                      key={product}
-                      type="button"
-                      onClick={() => handleAsk(`${product}のおすすめポイントを教えて`)}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                    >
-                      {product}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">
-                まずはここから
-              </p>
-              <div className="space-y-2">
-                {suggestedPrompts.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    onClick={() => handleAsk(prompt)}
-                    className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition hover:border-amber-300 hover:bg-amber-50"
-                  >
-                    <span>{prompt}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Message list */}
-        {messages.map((msg) =>
-          msg.role === "user" ? (
-            <div key={msg.id} className="flex justify-end">
-              <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-slate-800 px-4 py-2.5 text-sm leading-relaxed text-white">
-                {msg.text}
-              </div>
-            </div>
-          ) : (
-            <div key={msg.id} className="flex items-start gap-2.5">
-              <div
-                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg shadow-sm"
-                style={{ backgroundColor: theme.light, border: `1.5px solid ${theme.border}` }}
-              >
-                ✨
-              </div>
-              <div className="max-w-[82%]">
-                <div
-                  className="rounded-2xl rounded-tl-sm border px-4 py-2.5 text-sm leading-relaxed text-slate-800"
-                  style={{ borderColor: theme.border, backgroundColor: theme.bg }}
-                >
-                  {msg.text || (
-                    <span className="flex gap-1">
-                      {[0, 150, 300].map((d) => (
-                        <span
-                          key={d}
-                          className="inline-block h-2 w-2 animate-bounce rounded-full"
-                          style={{ backgroundColor: theme.accent, animationDelay: `${d}ms` }}
-                        />
-                      ))}
-                    </span>
-                  )}
-                  {loading && streamingIdRef.current === msg.id && msg.text && (
-                    <span
-                      className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse align-middle"
-                      style={{ backgroundColor: theme.accent }}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* ── Input ───────────────────────────────────────────────────────────── */}
-      <div className="shrink-0 border-t bg-white px-3 py-3" style={{ borderColor: theme.border }}>
-        {errorNotice && (
-          <p className="mb-2 text-xs text-rose-600">{errorNotice}</p>
-        )}
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="質問を入力…"
-            disabled={loading}
-            className="min-w-0 flex-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 transition focus:bg-white focus:outline-none disabled:opacity-50"
-            style={{ borderColor: theme.border }}
-          />
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!input.trim() || loading}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm transition disabled:opacity-40 hover:opacity-90 active:scale-95"
-            style={{ backgroundColor: theme.accent }}
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
