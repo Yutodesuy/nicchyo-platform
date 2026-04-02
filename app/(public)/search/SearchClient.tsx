@@ -121,7 +121,7 @@ function formatPostCreatedAt(createdAt?: string): string {
   }).format(created);
 }
 
-export default function SearchClient({ shops, landmarks }: SearchClientProps) {
+export default function SearchClient({ shops, landmarks, embedded = false }: SearchClientProps & { embedded?: boolean }) {
   const router = useRouter();
   const itemsPerPage = 10;
   const [textQuery, setTextQuery] = useState('');
@@ -475,7 +475,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
         </section>
       </main>
 
-      <NavigationBar />
+      {!embedded && <NavigationBar />}
     </div>
   );
 }

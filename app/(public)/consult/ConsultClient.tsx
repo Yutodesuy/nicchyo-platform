@@ -16,7 +16,7 @@ import type { Shop } from "../map/data/shops";
 
 const PREFERRED_CHARACTER_STORAGE_KEY = "nicchyo-consult-preferred-character";
 
-export default function ConsultClient() {
+export default function ConsultClient({ embedded = false }: { embedded?: boolean }) {
   const [aiSuggestedShops, setAiSuggestedShops] = useState<Shop[]>([]);
   const [knownShops, setKnownShops] = useState<Shop[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
@@ -307,7 +307,7 @@ export default function ConsultClient() {
         </div>
       </main>
       {selectedShop && <ShopDetailBanner shop={selectedShop} onClose={() => setSelectedShop(null)} />}
-      <NavigationBar activeHref="/consult" />
+      {!embedded && <NavigationBar activeHref="/consult" />}
     </div>
   );
 }
