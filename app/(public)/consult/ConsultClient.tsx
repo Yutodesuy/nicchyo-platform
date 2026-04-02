@@ -261,9 +261,9 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
 
   return (
     <div
-      className="relative min-h-screen bg-[var(--consult-bg)]"
+      className={`relative min-h-screen ${embedded ? "bg-transparent" : "bg-[var(--consult-bg)]"}`}
     >
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />
+      {!embedded && <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />}
       <main className="relative z-10 flex w-full items-start justify-center px-3 pb-16 pt-4">
         <div className="flex w-full max-w-5xl flex-col gap-2.5">
           <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-4 text-center shadow-sm">
