@@ -794,26 +794,39 @@ export default function MapPageClient({
       {/* ── パネルオーバーレイ（相談・検索） ── */}
       <AnimatePresence>
         {activePanel && (
-          <motion.div
-            key={activePanel}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
-            style={{ height: "92dvh" }}
-          >
-            {/* ドラッグハンドル */}
-            <div className="pointer-events-none absolute left-1/2 top-3 h-1 w-10 -translate-x-1/2 rounded-full bg-gray-200" />
-            <div className="h-full overflow-y-auto overscroll-contain pt-6">
-              <Suspense fallback={null}>
-                {activePanel === "consult" && <ConsultClient embedded />}
-                {activePanel === "search" && (
-                  <SearchClient shops={shops} landmarks={landmarks} embedded />
-                )}
-              </Suspense>
-            </div>
-          </motion.div>
+          <>
+            {/* マップ暗幕 */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-[9989] bg-black/60"
+            />
+
+            {/* パネル本体（背景なし） */}
+            <motion.div
+              key={activePanel}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl"
+              style={{ height: "92dvh" }}
+            >
+              {/* ドラッグハンドル */}
+              <div className="pointer-events-none absolute left-1/2 top-3 h-1 w-10 -translate-x-1/2 rounded-full bg-white/40 z-10" />
+              <div className="h-full overflow-y-auto overscroll-contain pt-6">
+                <Suspense fallback={null}>
+                  {activePanel === "consult" && <ConsultClient embedded />}
+                  {activePanel === "search" && (
+                    <SearchClient shops={shops} landmarks={landmarks} embedded />
+                  )}
+                </Suspense>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

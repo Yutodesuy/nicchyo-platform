@@ -285,7 +285,7 @@ export default function SearchClient({ shops, landmarks, embedded = false }: Sea
   }, [isDesktop, router, selectedShop]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24 text-gray-900">
+    <div className={`flex min-h-screen flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
         <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
