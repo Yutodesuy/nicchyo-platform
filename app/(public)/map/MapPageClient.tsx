@@ -23,6 +23,7 @@ import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
+import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
@@ -129,6 +130,10 @@ export default function MapPageClient({
     lng: number;
   } | null>(null);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isInMarket === true) recordMarketEnter();
+    else if (isInMarket === false) recordMarketExit();
+  }, [isInMarket]);
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const [tutorialProgress, setTutorialProgress] = useState<number>(0);
@@ -805,14 +810,14 @@ export default function MapPageClient({
               className="fixed inset-0 z-[9989] bg-black/60"
             />
 
-            {/* パネル本体（背景なし） */}
+            {/* パネル本体（半透明背景） */}
             <motion.div
               key={activePanel}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 320 }}
-              className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl"
+              className={`fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl backdrop-blur-xl ${activePanel === "consult" ? "bg-white/70" : "bg-black/50"}`}
               style={{ height: "92dvh" }}
             >
               {/* ドラッグハンドル */}
