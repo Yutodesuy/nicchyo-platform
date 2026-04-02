@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -24,15 +25,28 @@ type MenuItem = {
   href: string;
   emoji: string;
   color: string;
+  textColor: string;
 };
 
-const baseMenuItems: MenuItem[] = [
-  { label: "バッグ",       href: "/bag",      emoji: "🛍️", color: "bg-amber-50"  },
-  { label: "バッジ",       href: "/badges",   emoji: "🏆", color: "bg-yellow-50" },
-  { label: "ことづて",     href: "/kotodute", emoji: "💬", color: "bg-green-50"  },
-  { label: "レシピ",       href: "/recipes",  emoji: "🍳", color: "bg-orange-50" },
-  { label: "nicchyoとは", href: "/about",    emoji: "ℹ️", color: "bg-sky-50"    },
-  { label: "マイページ",   href: "/my-profile", emoji: "👤", color: "bg-purple-50" },
+const mainMenuItems: MenuItem[] = [
+  { label: "バッグ",     href: "/bag",        emoji: "🛍️", color: "bg-amber-50",  textColor: "text-amber-800"  },
+  { label: "バッジ",     href: "/badges",     emoji: "🏆", color: "bg-yellow-50", textColor: "text-yellow-800" },
+  { label: "ことづて",   href: "/kotodute",   emoji: "💬", color: "bg-green-50",  textColor: "text-green-800"  },
+  { label: "レシピ",     href: "/recipes",    emoji: "🍳", color: "bg-orange-50", textColor: "text-orange-800" },
+  { label: "nicchyoとは", href: "/about",    emoji: "ℹ️", color: "bg-sky-50",    textColor: "text-sky-800"    },
+  { label: "マイページ", href: "/my-profile", emoji: "👤", color: "bg-purple-50", textColor: "text-purple-800" },
+];
+
+const vendorMenuItems = [
+  { label: "出店者ダッシュボード", href: "/vendor/dashboard",  emoji: "🏪" },
+  { label: "商品管理",            href: "/vendor/products",   emoji: "📦" },
+  { label: "注文管理",            href: "/vendor/orders",     emoji: "📋" },
+];
+
+const adminMenuItems = [
+  { label: "管理ダッシュボード", href: "/admin/dashboard",  emoji: "⚙️" },
+  { label: "ユーザー管理",       href: "/admin/users",      emoji: "👥" },
+  { label: "コンテンツ管理",     href: "/admin/content",    emoji: "📝" },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -49,7 +63,7 @@ export default function NavigationBar({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { permissions } = useAuth();
+  const { user, isLoggedIn, permissions, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const panel = searchParams?.get("panel");
@@ -64,6 +78,20 @@ export default function NavigationBar({
     setMenuOpen(false);
     router.push(href);
   };
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+    await logout();
+    router.push("/map");
+  };
+
+  const roleLabel = permissions.isSuperAdmin
+    ? { text: "管理者", color: "bg-red-100 text-red-700" }
+    : permissions.isModerator
+    ? { text: "モデレーター", color: "bg-purple-100 text-purple-700" }
+    : permissions.isVendor
+    ? { text: "出店者", color: "bg-amber-100 text-amber-700" }
+    : null;
 
   return (
     <>
@@ -88,29 +116,138 @@ export default function NavigationBar({
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed bottom-0 left-0 right-0 z-[9996] rounded-t-3xl bg-white px-5 pb-[calc(var(--safe-bottom,0px)+5.5rem)] pt-5 shadow-2xl"
+              transition={{ type: "spring", damping: 30, stiffness: 340 }}
+              className="fixed bottom-0 left-0 right-0 z-[9996] rounded-t-3xl bg-white shadow-2xl"
+              style={{ paddingBottom: "calc(var(--safe-bottom, 0px) + 5.5rem)" }}
             >
               {/* ドラッグハンドル */}
-              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-gray-200" />
+              <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-gray-200" />
 
-              {/* タイトル */}
-              <p className="mb-4 text-center text-xs font-bold tracking-widest text-gray-400 uppercase">
-                メニュー
-              </p>
+              {/* スクロール領域 */}
+              <div className="max-h-[75dvh] overflow-y-auto overscroll-contain px-5 pb-2 pt-3">
 
-              {/* グリッド */}
-              <div className="grid grid-cols-3 gap-3">
-                {baseMenuItems.map((item) => (
+                {/* ─ ユーザーセクション ─ */}
+                {isLoggedIn && user ? (
+                  <div className="mb-5 flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3">
+                    {user.avatarUrl ? (
+                      <Image
+                        src={user.avatarUrl}
+                        alt={user.name}
+                        width={44}
+                        height={44}
+                        className="h-11 w-11 rounded-full object-cover ring-2 ring-white"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-lg font-bold text-white ring-2 ring-white">
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-gray-900">{user.name}</p>
+                      {user.email && (
+                        <p className="truncate text-xs text-gray-500">{user.email}</p>
+                      )}
+                    </div>
+                    {roleLabel && (
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${roleLabel.color}`}>
+                        {roleLabel.text}
+                      </span>
+                    )}
+                  </div>
+                ) : (
                   <button
-                    key={item.href}
-                    onClick={() => handleMenuItemClick(item.href)}
-                    className={`flex flex-col items-center gap-2 rounded-2xl ${item.color} p-4 transition active:scale-95`}
+                    onClick={() => handleMenuItemClick("/login")}
+                    className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-left transition hover:bg-gray-50 active:scale-[0.98]"
                   >
-                    <span className="text-3xl leading-none">{item.emoji}</span>
-                    <span className="text-xs font-semibold text-gray-700">{item.label}</span>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">ログイン / 登録</p>
+                      <p className="text-xs text-gray-400">アカウントでもっと便利に</p>
+                    </div>
+                    <svg className="ml-auto h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
-                ))}
+                )}
+
+                {/* ─ メインメニュー グリッド ─ */}
+                <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">メニュー</p>
+                <div className="mb-5 grid grid-cols-3 gap-2.5">
+                  {mainMenuItems.map((item, i) => (
+                    <motion.button
+                      key={item.href}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.04, type: "spring", damping: 20, stiffness: 300 }}
+                      onClick={() => handleMenuItemClick(item.href)}
+                      className={`flex flex-col items-center gap-1.5 rounded-2xl ${item.color} px-2 py-3.5 transition active:scale-95`}
+                    >
+                      <span className="text-2xl leading-none">{item.emoji}</span>
+                      <span className={`text-[11px] font-semibold leading-tight ${item.textColor}`}>{item.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* ─ 出店者メニュー ─ */}
+                {(permissions.isVendor || permissions.isSuperAdmin) && (
+                  <div className="mb-4">
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-500">出店者</p>
+                    <div className="overflow-hidden rounded-2xl border border-amber-100 bg-amber-50/50">
+                      {vendorMenuItems.map((item, i) => (
+                        <button
+                          key={item.href}
+                          onClick={() => handleMenuItemClick(item.href)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-amber-50 active:scale-[0.99] ${i !== 0 ? "border-t border-amber-100" : ""}`}
+                        >
+                          <span className="text-base">{item.emoji}</span>
+                          <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
+                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ─ 管理メニュー ─ */}
+                {permissions.isSuperAdmin && (
+                  <div className="mb-4">
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-red-400">管理者</p>
+                    <div className="overflow-hidden rounded-2xl border border-red-100 bg-red-50/50">
+                      {adminMenuItems.map((item, i) => (
+                        <button
+                          key={item.href}
+                          onClick={() => handleMenuItemClick(item.href)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-red-50 active:scale-[0.99] ${i !== 0 ? "border-t border-red-100" : ""}`}
+                        >
+                          <span className="text-base">{item.emoji}</span>
+                          <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
+                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ─ ログアウト ─ */}
+                {isLoggedIn && (
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50 active:scale-[0.98]"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                    </svg>
+                    ログアウト
+                  </button>
+                )}
               </div>
             </motion.div>
           </>
