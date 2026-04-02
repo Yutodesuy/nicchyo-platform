@@ -2,8 +2,11 @@
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import ConsultClient from "../consult/ConsultClient";
+import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
@@ -103,6 +106,7 @@ export default function MapPageClient({
 }: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const activePanel = searchParams?.get("panel") as "consult" | "search" | null;
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
@@ -786,6 +790,32 @@ export default function MapPageClient({
             )}
           </div>
       </main>
+
+      {/* ── パネルオーバーレイ（相談・検索） ── */}
+      <AnimatePresence>
+        {activePanel && (
+          <motion.div
+            key={activePanel}
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl bg-white shadow-2xl"
+            style={{ height: "92dvh" }}
+          >
+            {/* ドラッグハンドル */}
+            <div className="pointer-events-none absolute left-1/2 top-3 h-1 w-10 -translate-x-1/2 rounded-full bg-gray-200" />
+            <div className="h-full overflow-y-auto overscroll-contain pt-6">
+              <Suspense fallback={null}>
+                {activePanel === "consult" && <ConsultClient embedded />}
+                {activePanel === "search" && (
+                  <SearchClient shops={shops} landmarks={landmarks} embedded />
+                )}
+              </Suspense>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <NavigationBar />
     </div>

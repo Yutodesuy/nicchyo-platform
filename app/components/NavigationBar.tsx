@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -14,8 +14,8 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-  { name: "相談", href: "/consult", icon: "chat" },
-  { name: "お店を探す", href: "/search", icon: "search" },
+  { name: "相談", href: "/map?panel=consult", icon: "chat" },
+  { name: "お店を探す", href: "/map?panel=search", icon: "search" },
 ];
 
 // ─── メニューシート項目 ────────────────────────────────────────────────────────
@@ -48,10 +48,12 @@ export default function NavigationBar({
 }: NavigationBarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { permissions } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isHome = (activeHref ?? pathname) === "/map";
+  const panel = searchParams?.get("panel");
+  const isHome = (activeHref ?? pathname) === "/map" && !panel;
 
   const navItems = permissions.isSuperAdmin
     ? [...baseNavItems, { name: "管理", href: "/admin/dashboard", icon: "admin" as const }]
@@ -180,7 +182,7 @@ function NavLinkItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   return (
     <Link
       href={item.href}
-      prefetch={item.href === "/search" || item.href === "/consult"}
+      prefetch={false}
       className={`group flex h-full flex-1 flex-col items-center justify-center gap-1 transition-all duration-200 ${
         isActive
           ? "text-amber-600"
