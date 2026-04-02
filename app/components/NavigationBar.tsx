@@ -51,6 +51,8 @@ export default function NavigationBar({
   const { permissions } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const isHome = (activeHref ?? pathname) === "/map";
+
   const navItems = permissions.isSuperAdmin
     ? [...baseNavItems, { name: "管理", href: "/admin/dashboard", icon: "admin" as const }]
     : baseNavItems;
@@ -117,41 +119,57 @@ export default function NavigationBar({
         className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/60 bg-white/90 backdrop-blur-md text-sm leading-none shadow-sm`}
         style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
-        <div className="mx-auto flex h-14 max-w-lg items-center">
-          {/* 左：相談 */}
-          <NavLinkItem
-            item={navItems[0]}
-            isActive={(activeHref ?? pathname) === navItems[0].href}
-          />
+        {isHome ? (
+          /* ── マップ：フルナビ ── */
+          <div className="mx-auto flex h-14 max-w-lg items-center">
+            {/* 左：相談 */}
+            <NavLinkItem
+              item={navItems[0]}
+              isActive={(activeHref ?? pathname) === navItems[0].href}
+            />
 
-          {/* 中央：メニューボタン */}
-          <div className="flex flex-1 items-center justify-center">
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className="flex flex-col items-center gap-1 transition-all duration-200 active:scale-95"
-            >
-              <motion.div
-                animate={menuOpen ? { rotate: 45, scale: 1.1 } : { rotate: 0, scale: 1 }}
-                transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-900 text-white shadow-md"
+            {/* 中央：メニューボタン */}
+            <div className="flex flex-1 items-center justify-center">
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex flex-col items-center gap-1 transition-all duration-200 active:scale-95"
               >
-                <MenuGridIcon className="h-5 w-5" />
-              </motion.div>
-              <span className="text-[10px] font-medium leading-none tracking-tight text-gray-500">
-                メニュー
-              </span>
+                <motion.div
+                  animate={menuOpen ? { rotate: 45, scale: 1.1 } : { rotate: 0, scale: 1 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-900 text-white shadow-md"
+                >
+                  <MenuGridIcon className="h-5 w-5" />
+                </motion.div>
+                <span className="text-[10px] font-medium leading-none tracking-tight text-gray-500">
+                  メニュー
+                </span>
+              </button>
+            </div>
+
+            {/* 右：お店を探す（+ 管理タブがあれば追加） */}
+            {navItems.slice(1).map((item) => (
+              <NavLinkItem
+                key={item.href}
+                item={item}
+                isActive={(activeHref ?? pathname) === item.href}
+              />
+            ))}
+          </div>
+        ) : (
+          /* ── サブページ：もどるバー ── */
+          <div className="mx-auto flex h-14 max-w-lg items-center px-4">
+            <button
+              onClick={() => router.push("/map")}
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-gray-600 transition active:scale-95 hover:bg-gray-100"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              マップにもどる
             </button>
           </div>
-
-          {/* 右：お店を探す（+ 管理タブがあれば追加） */}
-          {navItems.slice(1).map((item) => (
-            <NavLinkItem
-              key={item.href}
-              item={item}
-              isActive={(activeHref ?? pathname) === item.href}
-            />
-          ))}
-        </div>
+        )}
       </nav>
     </>
   );
