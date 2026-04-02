@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMapLoading } from "./MapLoadingProvider";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 type NavItem = {
@@ -13,7 +12,6 @@ type NavItem = {
 
 const baseNavItems: NavItem[] = [
   { name: "相談", href: "/consult", icon: "chat" },
-  { name: "マップ", href: "/map", icon: "map" },
   { name: "お店を探す", href: "/search", icon: "search" },
 ];
 
@@ -27,7 +25,6 @@ export default function NavigationBar({
   position = "fixed",
 }: NavigationBarProps) {
   const pathname = usePathname();
-  const { startMapLoading } = useMapLoading();
   const { permissions } = useAuth();
 
   // 管理者の場合は管理者ダッシュボードを追加
@@ -43,12 +40,10 @@ export default function NavigationBar({
       <div className="mx-auto flex h-14 max-w-lg items-center justify-around">
         {navItems.map((item) => {
           const isActive = (activeHref ?? pathname) === item.href;
-          const handleClick = item.href === "/map" ? startMapLoading : undefined;
           return (
             <Link
               key={item.name}
               href={item.href}
-              onClick={handleClick}
               prefetch={
                 item.href === "/search" ||
                 item.href === "/recipes" ||
