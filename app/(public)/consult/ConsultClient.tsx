@@ -264,21 +264,32 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
       className={`relative min-h-screen ${embedded ? "bg-transparent" : "bg-[var(--consult-bg)]"}`}
     >
       {!embedded && <div className="pointer-events-none absolute inset-0 z-0 bg-[var(--consult-bg)]" aria-hidden="true" />}
-      <main className="relative z-10 flex w-full items-start justify-center px-3 pb-16 pt-4">
-        <div className="flex w-full max-w-5xl flex-col gap-2.5">
-          <section className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-4 text-center shadow-sm">
-            <p className="text-lg font-semibold uppercase tracking-[0.14em] text-amber-700">
-              Consult
-            </p>
-            <h1 className="mt-1 text-3xl font-bold text-gray-900">にちよさんに相談する</h1>
-            <p className="mt-1 text-base text-gray-700">
-              お店探し、回り方、旬のもの、写真つきの質問までまとめて相談できます。
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm text-slate-600">
-                <span className="rounded-full bg-white px-3 py-1 shadow-sm">音声入力OK</span>
-                <span className="rounded-full bg-white px-3 py-1 shadow-sm">写真相談OK</span>
+      <main className="relative z-10 flex w-full items-start justify-center px-3 pb-16 pt-2">
+        <div className="flex w-full max-w-5xl flex-col gap-2">
+
+          {/* ヘッダー：embedded では小さく、standalone では通常サイズ */}
+          {embedded ? (
+            <div className="flex items-center gap-2 px-1 pb-1 pt-0.5">
+              <span className="text-base font-bold text-white drop-shadow">AI相談</span>
+              <div className="flex gap-1.5">
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">🎤 音声OK</span>
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">📷 写真OK</span>
+              </div>
             </div>
-          </section>
+          ) : (
+            <section className="rounded-2xl border border-amber-100 bg-white/95 px-5 py-4 text-center shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Consult</p>
+              <h1 className="mt-1 text-2xl font-bold text-gray-900">AIキャラに相談する</h1>
+              <p className="mt-1 text-sm leading-relaxed text-gray-600">
+                お店探し・回り方・旬のもの・写真つきの質問まで
+              </p>
+              <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+                <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">🎤 音声入力OK</span>
+                <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">📷 写真相談OK</span>
+              </div>
+            </section>
+          )}
+
           <GrandmaChatter
             titleLabel="にちよさん"
             fullWidth
