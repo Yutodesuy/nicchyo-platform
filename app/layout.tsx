@@ -5,7 +5,6 @@ import { AuthProvider } from "@/lib/auth/AuthContext";
 import { MenuProvider } from "@/lib/ui/MenuContext";
 import { BagProvider } from "@/lib/storage/BagContext";
 import AppHeader from "./components/AppHeader";
-import HamburgerMenu from "./components/HamburgerMenu";
 import MapLoadingProvider from "./components/MapLoadingProvider";
 import PageVisitTracker from "./components/PageVisitTracker";
 import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
@@ -35,7 +34,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MenuProvider>
               <MapLoadingProvider>
                 <AppHeader />
-                <HamburgerMenu />
                 <Suspense fallback={null}>
                   <PageVisitTracker />
                 </Suspense>
