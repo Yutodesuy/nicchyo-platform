@@ -54,6 +54,7 @@ export default function NavigationBar({
 
   const panel = searchParams?.get("panel");
   const isHome = (activeHref ?? pathname) === "/map" && !panel;
+  const isPanelOpen = pathname === "/map" && !!panel;
 
   const navItems = permissions.isSuperAdmin
     ? [...baseNavItems, { name: "管理", href: "/admin/dashboard", icon: "admin" as const }]
@@ -118,7 +119,12 @@ export default function NavigationBar({
 
       {/* ── ナビゲーションバー ──────────────────────────────────────────────── */}
       <nav
-        className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t border-gray-200/60 bg-white/90 backdrop-blur-md text-sm leading-none shadow-sm`}
+        onClick={isPanelOpen ? () => router.push("/map") : undefined}
+        className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t text-sm leading-none shadow-sm transition-colors duration-300 ${
+          isPanelOpen
+            ? "cursor-pointer border-green-500 bg-green-500"
+            : "border-gray-200/60 bg-white/90 backdrop-blur-md"
+        }`}
         style={{ paddingBottom: "var(--safe-bottom, 0px)" }}
       >
         {isHome ? (
@@ -157,6 +163,20 @@ export default function NavigationBar({
                 isActive={(activeHref ?? pathname) === item.href}
               />
             ))}
+          </div>
+        ) : isPanelOpen ? (
+          /* ── パネル表示中：緑バー × ── */
+          <div className="mx-auto flex h-14 max-w-lg items-center justify-center">
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <span className="text-[10px] font-medium leading-none tracking-tight text-white/80">
+                閉じる
+              </span>
+            </div>
           </div>
         ) : (
           /* ── サブページ：もどるバー ── */
