@@ -27,6 +27,7 @@ import EmptyState from "@/components/EmptyState";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
+import { incrementBannerOpens } from "../../../../lib/storage/marketStats";
 import { ingredientCatalog, recipes } from "../../../../lib/recipes";
 import {
   KOTODUTE_UPDATED_EVENT,
@@ -583,6 +584,11 @@ export default function ShopDetailBanner({
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
+
+  // バナー開封カウント
+  useEffect(() => {
+    incrementBannerOpens();
+  }, [shop.id, openNonce]);
 
   // kotodute sync
   useEffect(() => {

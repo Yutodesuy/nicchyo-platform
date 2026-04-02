@@ -3,9 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { useBag } from "@/lib/storage/BagContext";
+import { getBannerOpens, getAccumulatedMarketTimeMs } from "@/lib/storage/marketStats";
 
 // ─── サイドナビ項目 ────────────────────────────────────────────────────────────
 type NavItem = {
@@ -64,7 +66,17 @@ export default function NavigationBar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoggedIn, permissions, logout } = useAuth();
+  const { items: bagItems, totalPrice } = useBag();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stats, setStats] = useState({ bannerOpens: 0, marketTimeMs: 0 });
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    setStats({
+      bannerOpens: getBannerOpens(),
+      marketTimeMs: getAccumulatedMarketTimeMs(),
+    });
+  }, [menuOpen]);
 
   const panel = searchParams?.get("panel");
   const isHome = (activeHref ?? pathname) === "/map" && !panel;
@@ -173,6 +185,14 @@ export default function NavigationBar({
                     </svg>
                   </button>
                 )}
+
+                {/* ─ ダッシュボード ─ */}
+                <MarketDashboard
+                  bannerOpens={stats.bannerOpens}
+                  marketTimeMs={stats.marketTimeMs}
+                  totalPrice={totalPrice}
+                  bagItemCount={bagItems.length}
+                />
 
                 {/* ─ メインメニュー グリッド ─ */}
                 <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">メニュー</p>
@@ -415,4 +435,64 @@ function NavIcon({ name, className }: NavIconProps) {
     default:
       return null;
   }
+}
+
+// ─── MarketDashboard ──────────────────────────────────────────────────────────
+function formatMarketTime(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 1) return "0分";
+  if (totalMinutes < 60) return `${totalMinutes}分`;
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`;
+}
+
+type MarketDashboardProps = {
+  bannerOpens: number;
+  marketTimeMs: number;
+  totalPrice: number;
+  bagItemCount: number;
+};
+
+function MarketDashboard({ bannerOpens, marketTimeMs, totalPrice, bagItemCount }: MarketDashboardProps) {
+  const stats = [
+    {
+      emoji: "🏪",
+      label: "お店を見た",
+      value: `${bannerOpens}回`,
+      color: "from-amber-400 to-orange-400",
+    },
+    {
+      emoji: "🛍️",
+      label: totalPrice > 0 ? "購入合計" : "バッグ",
+      value: totalPrice > 0 ? `¥${totalPrice.toLocaleString()}` : `${bagItemCount}品`,
+      color: "from-green-400 to-emerald-500",
+    },
+    {
+      emoji: "⏱️",
+      label: "市場滞在",
+      value: formatMarketTime(marketTimeMs),
+      color: "from-sky-400 to-blue-500",
+    },
+  ];
+
+  return (
+    <div className="mb-5">
+      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">今日の日曜市</p>
+      <div className="grid grid-cols-3 gap-2">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="flex flex-col items-center gap-1 rounded-2xl bg-gray-50 p-3 text-center"
+          >
+            <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${stat.color} text-lg shadow-sm`}>
+              {stat.emoji}
+            </div>
+            <p className="text-sm font-bold text-gray-900 leading-tight">{stat.value}</p>
+            <p className="text-[10px] text-gray-500 leading-tight">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
