@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import type { CSSProperties, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +11,8 @@ import {
   MapPin,
   ShoppingBag,
   Clock,
+  ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Instagram,
   Globe,
@@ -44,6 +46,13 @@ const THEME_PRESETS = {
 } as const;
 
 type ThemeKey = keyof typeof THEME_PRESETS;
+type BannerTheme = { bg: string; accent: string; text: string; border: string; light: string };
+type MainSurface = "summary" | "detail";
+type BannerSurface = MainSurface | "kotodute" | "ai";
+
+function isMainSurface(surface: BannerSurface): surface is MainSurface {
+  return surface === "summary" || surface === "detail";
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ShopDetailBannerProps = {
@@ -55,13 +64,25 @@ type ShopDetailBannerProps = {
   originRect?: { x: number; y: number; width: number; height: number };
   layout?: "overlay" | "inline";
   openNonce?: number;
-  initialMobileSnapIndex?: 0 | 1;
-  onMobileMainSnapChange?: (snapIndex: 0 | 1) => void;
+  initialMobileSurface?: MainSurface;
+  onMobileMainSurfaceChange?: (surface: MainSurface) => void;
+  canNavigateBetweenShops?: boolean;
+  selectedShopPosition?: number;
+  totalShopCount?: number;
+  onSelectPreviousShop?: () => void;
+  onSelectNextShop?: () => void;
 };
 
 type BagItem = {
   name: string;
   fromShopId?: number;
+};
+
+type ActivePostItem = {
+  text: string;
+  imageUrl?: string;
+  expiresAt: string;
+  createdAt?: string;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -147,6 +168,324 @@ const CATEGORY_FALLBACK: Record<string, { emoji: string; gradient: string }> = {
   "飲食":     { emoji: "🍜", gradient: "bg-gradient-to-br from-orange-100 to-red-200" },
 };
 
+function ShopBannerHero({
+  shop,
+  bannerImage,
+  theme,
+  heroImageError,
+  onImageError,
+  mode,
+  isKotodute,
+  showProductPreview = false,
+  onEdit,
+}: {
+  shop: Shop;
+  bannerImage: string;
+  theme: BannerTheme;
+  heroImageError: boolean;
+  onImageError: () => void;
+  mode: "compact" | "expanded";
+  isKotodute: boolean;
+  showProductPreview?: boolean;
+  onEdit?: () => void;
+}) {
+  if (mode === "compact") {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 pr-12">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+            {heroImageError ? (
+              <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
+                {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
+              </div>
+            ) : (
+              <Image
+                src={bannerImage}
+                alt={`${shop.name}の写真`}
+                fill
+                className="object-cover object-center"
+                onError={onImageError}
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                style={{ backgroundColor: theme.light, color: theme.text }}
+              >
+                {shop.category || "ショップ"}
+              </span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                今日出店中
+              </span>
+            </div>
+            <h2 className="mt-1 line-clamp-2 text-[17px] font-extrabold leading-tight text-slate-900">
+              {shop.name}
+            </h2>
+            {!isKotodute && shop.catchphrase && (
+              <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{shop.catchphrase}</p>
+            )}
+          </div>
+        </div>
+        {showProductPreview && !isKotodute && shop.products.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {shop.products.slice(0, 6).map((product) => (
+              <span
+                key={product}
+                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+              >
+                {product}
+              </span>
+            ))}
+            {shop.products.length > 6 && (
+              <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">
+                +{shop.products.length - 6}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-56 overflow-hidden rounded-[28px] border border-slate-100 bg-slate-100 shadow-sm md:h-64 md:rounded-none md:border-0 md:shadow-none">
+      {heroImageError ? (
+        <div
+          className={`flex h-full w-full items-center justify-center ${
+            CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"
+          }`}
+        >
+          <span className="text-7xl">{CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}</span>
+        </div>
+      ) : (
+        <Image
+          src={bannerImage}
+          alt={`${shop.name}の写真`}
+          fill
+          className="object-cover object-center"
+          priority
+          onError={onImageError}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span
+                className="rounded-full bg-white/18 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm"
+              >
+                {shop.category || "ショップ"}
+              </span>
+              <span className="rounded-full bg-emerald-400/20 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
+                今日出店中
+              </span>
+            </div>
+            <h2 className="text-3xl font-extrabold leading-tight text-white drop-shadow-md md:text-4xl">
+              {shop.name}
+            </h2>
+            {!isKotodute && shop.catchphrase && (
+              <p className="mt-1 text-sm font-medium text-white/80 drop-shadow">
+                {shop.catchphrase}
+              </p>
+            )}
+          </div>
+          {onEdit && !isKotodute && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/30"
+            >
+              <Pencil className="h-3 w-3" />
+              編集
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShopSubviewHeader({
+  shop,
+  bannerImage,
+  theme,
+  heroImageError,
+  onImageError,
+  title,
+  titleIcon,
+  onBack,
+  onClose,
+  rightSlot,
+}: {
+  shop: Shop;
+  bannerImage: string;
+  theme: BannerTheme;
+  heroImageError: boolean;
+  onImageError: () => void;
+  title: string;
+  titleIcon?: ReactNode;
+  onBack: () => void;
+  onClose?: () => void;
+  rightSlot?: ReactNode;
+}) {
+  return (
+    <div
+      className="sticky top-0 z-10 shrink-0 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
+      style={{ borderColor: theme.border }}
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          戻る
+        </button>
+
+        <div className="flex flex-1 items-center justify-center gap-1.5 text-sm font-bold text-slate-900">
+          {titleIcon}
+          <span>{title}</span>
+        </div>
+
+        {rightSlot || onClose ? (
+          <div className="flex min-w-[3.5rem] items-center justify-end gap-1.5">
+            {rightSlot}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 shadow-sm transition hover:bg-slate-200"
+                aria-label="閉じる"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="w-14" />
+        )}
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+        <div className="flex items-center gap-3">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+            {heroImageError ? (
+              <div className="flex h-full w-full items-center justify-center bg-slate-100 text-base">
+                {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
+              </div>
+            ) : (
+              <Image
+                src={bannerImage}
+                alt={`${shop.name}の写真`}
+                fill
+                className="object-cover object-center"
+                onError={onImageError}
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                style={{ backgroundColor: theme.light, color: theme.text }}
+              >
+                {shop.category || "ショップ"}
+              </span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                今日出店中
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
+            {shop.catchphrase && (
+              <p className="line-clamp-1 text-xs text-slate-500">{shop.catchphrase}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BannerActivePostsCard({
+  activePosts,
+  theme,
+  currentPostIndex,
+  isActivePostCentered,
+  activePostRef,
+  activePostCarouselRef,
+}: {
+  activePosts: ActivePostItem[];
+  theme: BannerTheme;
+  currentPostIndex: number;
+  isActivePostCentered: boolean;
+  activePostRef: RefObject<HTMLDivElement | null>;
+  activePostCarouselRef: RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      ref={activePostRef}
+      className={`overflow-hidden rounded-2xl border shadow-sm ${isActivePostCentered ? "center-bounce-in" : ""}`}
+      style={{ borderColor: theme.border }}
+    >
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: theme.light }}>
+        <span className="text-base">📢</span>
+        <span className="text-sm font-bold" style={{ color: theme.text }}>今日のお知らせ</span>
+        {activePosts.length > 1 && (
+          <div className="ml-auto flex gap-1">
+            {activePosts.map((_, i) => (
+              <div
+                key={i}
+                className="h-1.5 w-1.5 rounded-full transition-colors"
+                style={{ backgroundColor: i === currentPostIndex ? theme.accent : theme.border }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div ref={activePostCarouselRef} className="flex snap-x snap-mandatory overflow-x-hidden scroll-smooth">
+        {activePosts.map((post, index) => (
+          <article key={index} className="w-full shrink-0 snap-center">
+            {post.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={post.imageUrl} alt="お知らせ画像" className="h-48 w-full object-cover" />
+            )}
+            <div className="px-4 py-3">
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800">{post.text}</p>
+              <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                <span>
+                  {(() => {
+                    const diff = new Date(post.expiresAt).getTime() - Date.now();
+                    if (diff <= 0) return "期限切れ";
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    return h > 0 ? `あと${h}時間` : `あと${m}分`;
+                  })()}
+                </span>
+                {post.createdAt && (
+                  <span>
+                    {new Intl.DateTimeFormat("ja-JP", {
+                      timeZone: "Asia/Tokyo",
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    }).format(new Date(post.createdAt))}
+                  </span>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShopDetailBanner({
   shop,
@@ -157,8 +496,13 @@ export default function ShopDetailBanner({
   originRect,
   layout = "overlay",
   openNonce = 0,
-  initialMobileSnapIndex = 1,
-  onMobileMainSnapChange,
+  initialMobileSurface = "detail",
+  onMobileMainSurfaceChange,
+  canNavigateBetweenShops = false,
+  selectedShopPosition = 0,
+  totalShopCount = 0,
+  onSelectPreviousShop,
+  onSelectNextShop,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -168,7 +512,7 @@ export default function ShopDetailBanner({
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
   const [toast, setToast] = useState<{ product: string } | null>(null);
-  const [activePanel, setActivePanel] = useState<"main" | "kotodute" | "ai">("main");
+  const [surface, setSurface] = useState<BannerSurface>(initialMobileSurface);
   const [contentInteractive, setContentInteractive] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const interactionLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -176,6 +520,8 @@ export default function ShopDetailBanner({
   const activePostRef = useRef<HTMLDivElement | null>(null);
   const activePostCarouselRef = useRef<HTMLDivElement | null>(null);
   const sheetBodyRef = useRef<HTMLDivElement | null>(null);
+  const mainScrollTopRef = useRef(0);
+  const lastMainSurfaceRef = useRef<MainSurface>(initialMobileSurface);
   const drawerRafRef = useRef<number | null>(null);
   const drawerTranslateRef = useRef(0);
   const drawerDragRef = useRef({
@@ -190,9 +536,9 @@ export default function ShopDetailBanner({
     if (typeof window === "undefined") return true;
     return window.innerWidth >= 768;
   });
-  const [drawerSnapIndex, setDrawerSnapIndex] = useState<0 | 1>(0);
-  const drawerSnapIndexRef = useRef<0 | 1>(0);
-  drawerSnapIndexRef.current = drawerSnapIndex;
+  const [drawerSurface, setDrawerSurface] = useState<MainSurface>(initialMobileSurface);
+  const drawerSurfaceRef = useRef<MainSurface>(initialMobileSurface);
+  drawerSurfaceRef.current = drawerSurface;
   const [drawerHeights, setDrawerHeights] = useState({
     peek: DRAWER_PEEK_HEIGHT,
     full: 620,
@@ -307,13 +653,6 @@ export default function ShopDetailBanner({
     return recipes.filter((r) => r.ingredientIds.some((id) => ids.has(id))).slice(0, 2);
   }, [matchedIngredientIds]);
 
-  const shopNameSizeClass = useMemo(() => {
-    const length = shop.name?.length ?? 0;
-    if (length >= 18) return "text-2xl";
-    if (length >= 14) return "text-3xl";
-    return "text-4xl";
-  }, [shop.name]);
-
   const canEditShop = permissions.canEditShop(shop.id);
   const bannerSeed = shop.position ?? shop.id;
   const bannerImage = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
@@ -343,8 +682,16 @@ export default function ShopDetailBanner({
     if (shop.activePost) {
       return [{ text: shop.activePost.text, imageUrl: shop.activePost.imageUrl, expiresAt: shop.activePost.expiresAt, createdAt: shop.activePost.createdAt ?? "" }];
     }
-    return [];
+    return [] as ActivePostItem[];
   }, [shop.activePost, shop.activePosts]);
+
+  const productDetailsByName = useMemo(() => {
+    const entries = (shop.productDetails ?? []).map((detail) => [
+      detail.name.trim().toLowerCase(),
+      detail,
+    ] as const);
+    return new Map(entries);
+  }, [shop.productDetails]);
 
   const armInteractionLock = useCallback((delayMs: number = 650) => {
     if (interactionLockTimerRef.current) clearTimeout(interactionLockTimerRef.current);
@@ -358,13 +705,15 @@ export default function ShopDetailBanner({
     setCurrentPostIndex(0);
     setHeroImageError(false);
     setToast(null);
-    setActivePanel("main");
+    setSurface(initialMobileSurface);
+    lastMainSurfaceRef.current = initialMobileSurface;
+    setDrawerSurface(initialMobileSurface);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     armInteractionLock();
     return () => {
       if (interactionLockTimerRef.current) clearTimeout(interactionLockTimerRef.current);
     };
-  }, [armInteractionLock, shop.id, openNonce]);
+  }, [armInteractionLock, initialMobileSurface, shop.id, openNonce]);
 
   useEffect(() => {
     if (activePosts.length <= 1) return;
@@ -385,7 +734,9 @@ export default function ShopDetailBanner({
   const isActivePostCentered = useCenterBounceTrigger(scrollContainerRef, activePostRef);
   const isInline = layout === "inline";
   const isMobileOverlay = layout === "overlay" && !isDesktopViewport;
-  const isExpandedMobileMain = isMobileOverlay && activePanel === "main" && drawerSnapIndex === 1;
+  const isExpandedMobileMain = isMobileOverlay && surface === "detail";
+  const showMobileSummaryHeader = isMobileOverlay && surface === "summary";
+  const showMobileDetailControls = isMobileOverlay && surface === "detail";
 
   const getDrawerHeights = useCallback(() => {
     if (typeof window === "undefined") {
@@ -406,11 +757,11 @@ export default function ShopDetailBanner({
     };
   }, []);
 
-  const getDrawerTranslateForSnap = useCallback((
-    snapIndex: 0 | 1,
+  const getDrawerTranslateForSurface = useCallback((
+    nextSurface: MainSurface | BannerSurface,
     heights: { peek: number; full: number }
   ) => {
-    const visibleHeight = snapIndex === 0 ? heights.peek : heights.full;
+    const visibleHeight = nextSurface === "summary" ? heights.peek : heights.full;
     return Math.max(0, heights.full - visibleHeight);
   }, []);
 
@@ -444,17 +795,18 @@ export default function ShopDetailBanner({
     }
   }, [drawerHeights.full, drawerHeights.peek, isMobileOverlay]);
 
-  const snapDrawerTo = useCallback((
-    snapIndex: 0 | 1,
+  const syncDrawerSurface = useCallback((
+    nextSurface: MainSurface,
     options?: { immediate?: boolean }
   ) => {
     if (!isMobileOverlay) return;
-    setDrawerSnapIndex(snapIndex);
-    applyDrawerTranslate(getDrawerTranslateForSnap(snapIndex, drawerHeights), options);
-  }, [applyDrawerTranslate, drawerHeights, getDrawerTranslateForSnap, isMobileOverlay]);
+    lastMainSurfaceRef.current = nextSurface;
+    setDrawerSurface(nextSurface);
+    applyDrawerTranslate(getDrawerTranslateForSurface(nextSurface, drawerHeights), options);
+  }, [applyDrawerTranslate, drawerHeights, getDrawerTranslateForSurface, isMobileOverlay]);
 
   const handleDrawerTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!isMobileOverlay || activePanel !== "main") return;
+    if (!isMobileOverlay || !isMainSurface(surface)) return;
     const touch = e.touches[0];
     drawerDragRef.current = {
       active: true,
@@ -466,10 +818,10 @@ export default function ShopDetailBanner({
     };
     const body = sheetBodyRef.current;
     if (body) body.style.transition = "none";
-  }, [activePanel, isMobileOverlay]);
+  }, [isMobileOverlay, surface]);
 
   const handleDrawerTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isMobileOverlay || !drawerDragRef.current.active || activePanel !== "main") return;
+    if (!isMobileOverlay || !drawerDragRef.current.active || !isMainSurface(surface)) return;
     const touch = e.touches[0];
     const now = performance.now();
     const dySinceLast = touch.clientY - drawerDragRef.current.lastY;
@@ -485,63 +837,82 @@ export default function ShopDetailBanner({
       e.preventDefault();
     }
     applyDrawerTranslate(nextTranslate, { immediate: true });
-  }, [activePanel, applyDrawerTranslate, isMobileOverlay]);
+  }, [applyDrawerTranslate, isMobileOverlay, surface]);
 
   const handleDrawerTouchEnd = useCallback(() => {
-    if (!isMobileOverlay || !drawerDragRef.current.active || activePanel !== "main") return;
+    if (!isMobileOverlay || !drawerDragRef.current.active || !isMainSurface(surface)) return;
     drawerDragRef.current.active = false;
     const velocity = drawerDragRef.current.velocity;
     const visibleHeight = drawerHeights.full - drawerTranslateRef.current;
     const snapHeights = [drawerHeights.peek, drawerHeights.full] as const;
 
-    let nextSnap: 0 | 1 = snapHeights.reduce<0 | 1>((closest, height, index) => {
+    let nextSurface: MainSurface = snapHeights.reduce<MainSurface>((closest, height, index) => {
       const currentDistance = Math.abs(height - visibleHeight);
-      const closestDistance = Math.abs(snapHeights[closest] - visibleHeight);
-      return currentDistance < closestDistance ? (index as 0 | 1) : closest;
-    }, drawerSnapIndex);
+      const closestDistance = Math.abs(
+        (closest === "summary" ? snapHeights[0] : snapHeights[1]) - visibleHeight
+      );
+      return currentDistance < closestDistance
+        ? index === 0
+          ? "summary"
+          : "detail"
+        : closest;
+    }, drawerSurface);
 
     if (velocity < -220) {
-      nextSnap = 1;
+      nextSurface = "detail";
     } else if (velocity > 220) {
-      nextSnap = 0;
+      nextSurface = "summary";
     }
 
-    snapDrawerTo(nextSnap);
-  }, [activePanel, drawerHeights.full, drawerHeights.peek, drawerSnapIndex, isMobileOverlay, snapDrawerTo]);
+    setSurface(nextSurface);
+    syncDrawerSurface(nextSurface);
+  }, [drawerHeights.full, drawerHeights.peek, drawerSurface, isMobileOverlay, surface, syncDrawerSurface]);
 
   const handleDrawerHandleClick = useCallback(() => {
-    if (!isMobileOverlay || activePanel !== "main") return;
-    const nextSnap: 0 | 1 = drawerSnapIndex === 0 ? 1 : 0;
-    snapDrawerTo(nextSnap);
-  }, [activePanel, drawerSnapIndex, isMobileOverlay, snapDrawerTo]);
+    if (!isMobileOverlay || !isMainSurface(surface)) return;
+    const nextSurface: MainSurface = drawerSurface === "summary" ? "detail" : "summary";
+    setSurface(nextSurface);
+    syncDrawerSurface(nextSurface);
+  }, [drawerSurface, isMobileOverlay, surface, syncDrawerSurface]);
 
   const handleBackToMain = useCallback(() => {
-    setActivePanel("main");
+    const nextSurface = lastMainSurfaceRef.current;
+    setSurface(nextSurface);
     const container = scrollContainerRef.current;
     if (container) {
-      container.scrollTo({ top: 0, behavior: "smooth" });
+      requestAnimationFrame(() => {
+        container.scrollTop = mainScrollTopRef.current;
+      });
     }
     if (isMobileOverlay) {
-      snapDrawerTo(1);
+      syncDrawerSurface(nextSurface, { immediate: false });
     }
     armInteractionLock(420);
-  }, [armInteractionLock, isMobileOverlay, snapDrawerTo]);
+  }, [armInteractionLock, isMobileOverlay, syncDrawerSurface]);
 
   const handleOpenKotodutePanel = useCallback(() => {
     if (!contentInteractive) return;
-    setActivePanel("kotodute");
-    if (isMobileOverlay) {
-      snapDrawerTo(1);
+    mainScrollTopRef.current = scrollContainerRef.current?.scrollTop ?? 0;
+    if (isMainSurface(surface)) {
+      lastMainSurfaceRef.current = surface;
     }
-  }, [contentInteractive, isMobileOverlay, snapDrawerTo]);
+    setSurface("kotodute");
+    if (isMobileOverlay) {
+      syncDrawerSurface("detail");
+    }
+  }, [contentInteractive, isMobileOverlay, surface, syncDrawerSurface]);
 
   const handleOpenAiPanel = useCallback(() => {
     if (!contentInteractive) return;
-    setActivePanel("ai");
-    if (isMobileOverlay) {
-      snapDrawerTo(1);
+    mainScrollTopRef.current = scrollContainerRef.current?.scrollTop ?? 0;
+    if (isMainSurface(surface)) {
+      lastMainSurfaceRef.current = surface;
     }
-  }, [contentInteractive, isMobileOverlay, snapDrawerTo]);
+    setSurface("ai");
+    if (isMobileOverlay) {
+      syncDrawerSurface("detail");
+    }
+  }, [contentInteractive, isMobileOverlay, surface, syncDrawerSurface]);
 
   useEffect(() => {
     if (!isMobileOverlay) return;
@@ -549,8 +920,8 @@ export default function ShopDetailBanner({
       const nextHeights = getDrawerHeights();
       setDrawerHeights(nextHeights);
       // ref から読むことで stale closure / 循環依存を回避
-      const currentSnap = drawerSnapIndexRef.current;
-      drawerTranslateRef.current = getDrawerTranslateForSnap(currentSnap, nextHeights);
+      const nextSurface = drawerSurfaceRef.current;
+      drawerTranslateRef.current = getDrawerTranslateForSurface(nextSurface, nextHeights);
       const body = sheetBodyRef.current;
       if (body) {
         body.style.transition = "none";
@@ -560,23 +931,25 @@ export default function ShopDetailBanner({
     updateDrawerHeights();
     window.addEventListener("resize", updateDrawerHeights);
     return () => window.removeEventListener("resize", updateDrawerHeights);
-  }, [getDrawerHeights, getDrawerTranslateForSnap, isMobileOverlay]);
+  }, [getDrawerHeights, getDrawerTranslateForSurface, isMobileOverlay]);
 
   useEffect(() => {
-    if (!isMobileOverlay || activePanel !== "main") return;
-    onMobileMainSnapChange?.(drawerSnapIndex);
-  }, [activePanel, drawerSnapIndex, isMobileOverlay, onMobileMainSnapChange]);
+    if (!isMobileOverlay || !isMainSurface(surface)) return;
+    onMobileMainSurfaceChange?.(surface);
+  }, [isMobileOverlay, onMobileMainSurfaceChange, surface]);
 
   // useLayoutEffect で paint 前に同期的にDOMを更新 → 初回フラッシュを防ぐ
   // applyDrawerTranslate / drawerHeights を deps に入れない → 循環依存を断ち切る
   useLayoutEffect(() => {
     if (!isMobileOverlay) return;
-    const nextSnap: 0 | 1 = initialMobileSnapIndex;
-    drawerSnapIndexRef.current = nextSnap;
-    setDrawerSnapIndex(nextSnap);
+    const nextSurface: MainSurface = initialMobileSurface;
+    lastMainSurfaceRef.current = nextSurface;
+    drawerSurfaceRef.current = nextSurface;
+    setDrawerSurface(nextSurface);
+    setSurface(nextSurface);
     const heights = getDrawerHeights();
     setDrawerHeights(heights);
-    const expandedTranslate = getDrawerTranslateForSnap(nextSnap, heights);
+    const expandedTranslate = getDrawerTranslateForSurface(nextSurface, heights);
     drawerTranslateRef.current = expandedTranslate;
 
     const body = sheetBodyRef.current;
@@ -594,7 +967,7 @@ export default function ShopDetailBanner({
 
     return () => cancelAnimationFrame(rafId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMobileSnapIndex, isMobileOverlay, openNonce, shop.id]);
+  }, [initialMobileSurface, isMobileOverlay, openNonce, shop.id]);
 
   useEffect(() => {
     return () => {
@@ -617,7 +990,7 @@ export default function ShopDetailBanner({
           // Mobile: bottom sheet / Desktop: side panel
           // peek 状態ではバックドロップを透明＆pointer-events-none にしてマップを操作可能にする
           : `fixed inset-0 z-[2000] flex flex-col items-end justify-end md:items-stretch md:justify-center md:!pb-0${
-              isMobileOverlay && drawerSnapIndex === 0
+              isMobileOverlay && surface === "summary"
                 ? " bg-transparent backdrop-blur-none pointer-events-none"
                 : " bg-black/40 backdrop-blur-[2px] md:bg-slate-900/20 md:backdrop-blur-none"
             }`
@@ -661,7 +1034,7 @@ export default function ShopDetailBanner({
           </button>
         )}
 
-          {isMobileOverlay && (
+          {showMobileSummaryHeader && (
             <div
               className="relative shrink-0 overflow-hidden border-b border-slate-100 bg-white px-4 pb-3 pt-2 touch-none"
               style={{ height: `${DRAWER_PEEK_HEIGHT}px` }}
@@ -688,58 +1061,41 @@ export default function ShopDetailBanner({
               >
                 <XIcon className="h-4 w-4" />
               </button>
-              {/* 店舗名・カテゴリ行 */}
-              <div className="flex items-center gap-3 pr-12">
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-                  {heroImageError ? (
-                    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
-                      {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
-                    </div>
-                  ) : (
-                    <Image
-                      src={bannerImage}
-                      alt={`${shop.name}の写真`}
-                      fill
-                      className="object-cover object-center"
-                      onError={() => setHeroImageError(true)}
-                    />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
-                      style={{ backgroundColor: theme.light, color: theme.text }}
-                    >
-                      {shop.category || "ショップ"}
-                    </span>
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                      今日出店中
-                    </span>
-                  </div>
-                  <h2 className="mt-1 line-clamp-2 text-[17px] font-extrabold leading-tight text-slate-900">
-                    {shop.name}
-                  </h2>
-                </div>
-              </div>
-              {/* 商品チップ（peek 時のみ表示） */}
-              {!isKotodute && shop.products.length > 0 && (
-                <div className="mt-2 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-                  {shop.products.slice(0, 6).map((product) => (
-                    <span
-                      key={product}
-                      className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
-                    >
-                      {product}
-                    </span>
-                  ))}
-                  {shop.products.length > 6 && (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">
-                      +{shop.products.length - 6}
-                    </span>
-                  )}
-                </div>
-              )}
+              <ShopBannerHero
+                shop={shop}
+                bannerImage={bannerImage}
+                theme={theme}
+                heroImageError={heroImageError}
+                onImageError={() => setHeroImageError(true)}
+                mode="compact"
+                isKotodute={isKotodute}
+                showProductPreview
+              />
+            </div>
+          )}
+
+          {showMobileDetailControls && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-start justify-center px-4 pt-3">
+              <button
+                type="button"
+                onClick={handleDrawerHandleClick}
+                className="pointer-events-auto flex h-8 w-16 items-center justify-center"
+                aria-label="ドロワーをたたむ"
+                onTouchStart={handleDrawerTouchStart}
+                onTouchMove={handleDrawerTouchMove}
+                onTouchEnd={handleDrawerTouchEnd}
+                onTouchCancel={handleDrawerTouchEnd}
+              >
+                <span className="h-1.5 w-10 rounded-full bg-white/80 shadow-sm backdrop-blur-sm" />
+              </button>
+              <button
+                onClick={handleDrawerHandleClick}
+                className="pointer-events-auto absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white shadow backdrop-blur-sm transition hover:bg-black/50"
+                type="button"
+                aria-label="展開をたたむ"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
             </div>
           )}
 
@@ -751,7 +1107,7 @@ export default function ShopDetailBanner({
               }`}
               style={{
                 width: "200%",
-                transform: activePanel === "kotodute" ? "translateX(-50%)" : "translateX(0)",
+                transform: surface === "kotodute" ? "translateX(-50%)" : "translateX(0)",
               }}
             >
               {/* ── Main panel ─────────────────────────────────────────────── */}
@@ -763,74 +1119,29 @@ export default function ShopDetailBanner({
             HERO — Full-bleed cover with gradient overlay
         ══════════════════════════════════════════════════════════════════ */}
         {!isMobileOverlay && (
-        <div className="relative h-56 w-full overflow-hidden md:h-64">
-          {heroImageError ? (
-            <div className={`flex h-full w-full items-center justify-center ${CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"}`}>
-              <span className="text-7xl">{CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}</span>
-            </div>
-          ) : (
-            <Image
-              src={bannerImage}
-              alt={`${shop.name}の写真`}
-              fill
-              className="object-cover object-center"
-              priority
-              onError={() => setHeroImageError(true)}
-            />
-          )}
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-          {/* Shop name overlay */}
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-            <div className="flex items-end justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <h2 className={`font-extrabold leading-tight text-white drop-shadow-md ${shopNameSizeClass}`}>
-                  {shop.name}
-                </h2>
-                {!isKotodute && shop.catchphrase && (
-                  <p className="mt-1 text-sm font-medium text-white/80 drop-shadow">
-                    {shop.catchphrase}
-                  </p>
-                )}
-              </div>
-              {!isKotodute && canEditShop && (
-                <button
-                  type="button"
-                  onClick={handleEditShop}
-                  className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-white/30"
-                >
-                  <Pencil className="h-3 w-3" />
-                  編集
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+          <ShopBannerHero
+            shop={shop}
+            bannerImage={bannerImage}
+            theme={theme}
+            heroImageError={heroImageError}
+            onImageError={() => setHeroImageError(true)}
+            mode="expanded"
+            isKotodute={isKotodute}
+            onEdit={canEditShop ? handleEditShop : undefined}
+          />
         )}
 
         {isExpandedMobileMain && (
           <div className="px-5 pt-4">
-            <div className="relative h-52 overflow-hidden rounded-[28px] border border-slate-100 bg-slate-100 shadow-sm">
-              {heroImageError ? (
-                <div
-                  className={`flex h-full w-full items-center justify-center ${
-                    CATEGORY_FALLBACK[shop.category ?? ""]?.gradient ?? "bg-gradient-to-br from-slate-100 to-slate-200"
-                  }`}
-                >
-                  <span className="text-7xl">{CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}</span>
-                </div>
-              ) : (
-                <Image
-                  src={bannerImage}
-                  alt={`${shop.name}の写真`}
-                  fill
-                  className="object-cover object-center"
-                  onError={() => setHeroImageError(true)}
-                />
-              )}
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/35 to-transparent" />
-            </div>
+            <ShopBannerHero
+              shop={shop}
+              bannerImage={bannerImage}
+              theme={theme}
+              heroImageError={heroImageError}
+              onImageError={() => setHeroImageError(true)}
+              mode="expanded"
+              isKotodute={isKotodute}
+            />
           </div>
         )}
 
@@ -838,92 +1149,165 @@ export default function ShopDetailBanner({
         <div className="h-1 w-full" style={{ backgroundColor: theme.accent }} />
 
         {!isKotodute && isMobileOverlay && (
-          <div className="px-5 pt-4">
-            <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.text }}>
-                    今日の品
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {shop.products.slice(0, 4).map((product) => (
-                      <span
-                        key={product}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
-                      >
-                        {product}
-                      </span>
-                    ))}
-                    {shop.products.length > 4 && (
-                      <span className="rounded-full bg-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-500">
-                        +{shop.products.length - 4}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {shop.products.length > 0 && (
+          <div className="space-y-4 px-5 pt-6">
+            {canNavigateBetweenShops && totalShopCount > 1 && (
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-sm">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleBagClick}
-                    className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100"
+                    onClick={onSelectPreviousShop}
+                    className="flex min-w-[92px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                   >
-                    買い物リスト
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    前の店
                   </button>
-                )}
-              </div>
-
-              <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-slate-400" />
-                  <span>{shop.chome ?? "丁目未設定"}</span>
-                </div>
-                {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-slate-400" />
-                    <span>
-                      {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={handleOpenAiPanel}
-                  className="flex items-center gap-2 rounded-2xl border px-3.5 py-3 text-left transition hover:opacity-90 active:scale-[0.98]"
-                  style={{ borderColor: theme.border, backgroundColor: theme.light }}
-                >
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: theme.accent }}
-                  >
-                    <Sparkles className="h-[18px] w-[18px] text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold" style={{ color: theme.text }}>AI相談</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">お店のことを聞く</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenKotodutePanel}
-                  className="flex items-center gap-2 rounded-2xl border bg-white px-3.5 py-3 text-left transition hover:opacity-90 active:scale-[0.98]"
-                  style={{ borderColor: theme.border }}
-                >
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: theme.bg }}
-                  >
-                    <MessageSquarePlus className="h-[18px] w-[18px]" style={{ color: theme.accent }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold" style={{ color: theme.text }}>ことづて</p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
-                      {kotoduteNotes.length > 0 ? `${kotoduteNotes.length}件のコメント` : "感想を投稿する"}
+                  <div className="min-w-0 flex-1 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                      Compare
+                    </p>
+                    <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
+                      {selectedShopPosition} / {totalShopCount}
                     </p>
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={onSelectNextShop}
+                    className="flex min-w-[92px] items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    次の店
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
+              <div className="space-y-5">
+                {activePosts.length > 0 && (
+                  <BannerActivePostsCard
+                    activePosts={activePosts}
+                    theme={theme}
+                    currentPostIndex={currentPostIndex}
+                    isActivePostCentered={isActivePostCentered}
+                    activePostRef={activePostRef}
+                    activePostCarouselRef={activePostCarouselRef}
+                  />
+                )}
+
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: theme.text }}>
+                        商品
+                      </p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        品ぞろえと価格を並びで見比べやすくしています
+                      </p>
+                    </div>
+                    {shop.products.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleBagClick}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-100"
+                      >
+                        <ShoppingBag className="h-3.5 w-3.5" />
+                        買い物リスト
+                      </button>
+                    )}
+                  </div>
+                  {shop.products.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {shop.products.map((product) => {
+                        const specificKey = buildBagKey(product, shop.id);
+                        const anyKey = buildBagKey(product, undefined);
+                        const isInBag = bagProductKeys.has(specificKey) || bagProductKeys.has(anyKey);
+                        const price = shop.productPrices?.[product] ?? null;
+                        const productImage = productDetailsByName.get(product.trim().toLowerCase())?.imageUrl;
+                        return (
+                          <div
+                            key={product}
+                            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                          >
+                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-200">
+                              {productImage ? (
+                                <Image
+                                  src={productImage}
+                                  alt={`${product}の写真`}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-slate-200 text-[11px] font-semibold text-slate-400">
+                                  画像
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-slate-900">{product}</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {price != null ? `¥${price.toLocaleString()}` : "価格は現地で確認"}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleProductTap(product)}
+                              className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold transition ${
+                                isInBag
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-slate-900 text-white"
+                              }`}
+                            >
+                              {isInBag ? "もう一つ" : "追加"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      商品情報は準備中です
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-3">
+                  <button
+                    type="button"
+                    onClick={handleOpenAiPanel}
+                    className="flex items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition hover:opacity-90 active:scale-[0.98]"
+                    style={{ borderColor: theme.border, backgroundColor: theme.light }}
+                  >
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: theme.accent }}
+                    >
+                      <Sparkles className="h-[18px] w-[18px] text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold" style={{ color: theme.text }}>AI相談</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">他のお店と迷った時も相談できます</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenKotodutePanel}
+                    className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3.5 text-left transition hover:opacity-90 active:scale-[0.98]"
+                    style={{ borderColor: theme.border }}
+                  >
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: theme.bg }}
+                    >
+                      <MessageSquarePlus className="h-[18px] w-[18px]" style={{ color: theme.accent }} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold" style={{ color: theme.text }}>ことづて</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        {kotoduteNotes.length > 0 ? `${kotoduteNotes.length}件のコメント` : "他の人の感想を見る"}
+                      </p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1058,57 +1442,20 @@ export default function ShopDetailBanner({
         {/* ── Divider ──────────────────────────────────────────────────────── */}
         {!isMobileOverlay && <div className="mx-5 my-3 border-t border-slate-100" />}
 
-        <div className={`px-5 pb-6 space-y-6 ${isMobileOverlay ? "pt-5" : ""}`}>
+        <div className={`px-5 ${isMobileOverlay ? "pb-8 pt-6 space-y-7" : "pb-6 space-y-6"}`}>
 
           {/* ════════════════════════════════════════════════════════════════
               TODAY'S ANNOUNCEMENT — Rich card
           ════════════════════════════════════════════════════════════════ */}
-          {!isKotodute && activePosts.length > 0 && (
-            <div ref={activePostRef} className={`overflow-hidden rounded-2xl border shadow-sm ${isActivePostCentered ? "center-bounce-in" : ""}`} style={{ borderColor: theme.border }}>
-              {/* Header */}
-              <div className="flex items-center gap-2 px-4 py-2.5" style={{ backgroundColor: theme.light }}>
-                <span className="text-base">📢</span>
-                <span className="text-sm font-bold" style={{ color: theme.text }}>今日のお知らせ</span>
-                {activePosts.length > 1 && (
-                  <div className="ml-auto flex gap-1">
-                    {activePosts.map((_, i) => (
-                      <div key={i} className="h-1.5 w-1.5 rounded-full transition-colors" style={{ backgroundColor: i === currentPostIndex ? theme.accent : theme.border }} />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Carousel */}
-              <div ref={activePostCarouselRef} className="flex snap-x snap-mandatory overflow-x-hidden scroll-smooth">
-                {activePosts.map((post, index) => (
-                  <article key={`${shop.id}-${post.createdAt || post.expiresAt}-${index}`} className="w-full shrink-0 snap-center">
-                    {post.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={post.imageUrl} alt="お知らせ画像" className="h-48 w-full object-cover" />
-                    )}
-                    <div className="px-4 py-3">
-                      <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-800">{post.text}</p>
-                      <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                        <span>
-                          {(() => {
-                            const diff = new Date(post.expiresAt).getTime() - Date.now();
-                            if (diff <= 0) return "期限切れ";
-                            const h = Math.floor(diff / 3600000);
-                            const m = Math.floor((diff % 3600000) / 60000);
-                            return h > 0 ? `あと${h}時間` : `あと${m}分`;
-                          })()}
-                        </span>
-                        {post.createdAt && (
-                          <span>
-                            {new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(post.createdAt))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
+          {!isKotodute && activePosts.length > 0 && !isMobileOverlay && (
+            <BannerActivePostsCard
+              activePosts={activePosts}
+              theme={theme}
+              currentPostIndex={currentPostIndex}
+              isActivePostCentered={isActivePostCentered}
+              activePostRef={activePostRef}
+              activePostCarouselRef={activePostCarouselRef}
+            />
           )}
 
           {/* ════════════════════════════════════════════════════════════════
@@ -1269,8 +1616,11 @@ export default function ShopDetailBanner({
           <div className="h-full w-1/2 overflow-y-auto">
             <KotodutePanel
               shop={shop}
+              bannerImage={bannerImage}
+              heroImageError={heroImageError}
               theme={theme}
               onBack={handleBackToMain}
+              onClose={isMobileOverlay ? onClose : undefined}
             />
           </div>
         </div>
@@ -1278,13 +1628,16 @@ export default function ShopDetailBanner({
         {/* ── AI panel (absolute overlay, independent of slide rail) ─────── */}
         <div
           className="absolute inset-0 z-20 bg-white transition-transform duration-300 ease-in-out"
-          style={{ transform: activePanel === "ai" ? "translateX(0)" : "translateX(100%)" }}
+          style={{ transform: surface === "ai" ? "translateX(0)" : "translateX(100%)" }}
         >
           <AiConsultPanel
             shop={shop}
+            bannerImage={bannerImage}
+            heroImageError={heroImageError}
             theme={theme}
             onBack={handleBackToMain}
-            isActive={activePanel === "ai"}
+            onClose={isMobileOverlay ? onClose : undefined}
+            isActive={surface === "ai"}
           />
         </div>
           </div>
@@ -1320,13 +1673,19 @@ const AI_SUGGESTED_PROMPTS = [
 
 function AiConsultPanel({
   shop,
+  bannerImage,
+  heroImageError,
   theme,
   onBack,
+  onClose,
   isActive: _isActive,
 }: {
   shop: Shop;
-  theme: { bg: string; accent: string; text: string; border: string; light: string };
+  bannerImage: string;
+  heroImageError: boolean;
+  theme: BannerTheme;
   onBack: () => void;
+  onClose?: () => void;
   isActive: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -1474,38 +1833,28 @@ function AiConsultPanel({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* ── ヘッダー ──────────────────────────────────────────────── */}
-      <div
-        className="shrink-0 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
-        style={{ borderColor: theme.border }}
-      >
-        <button
-          type="button"
-          onClick={onBack}
-          className="pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          戻る
-        </button>
-
-        <div className="flex flex-1 items-center justify-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />
-          <span className="text-sm font-bold text-slate-900">AIに相談する</span>
-        </div>
-
-        {/* 会話クリアボタン（会話開始後のみ表示） */}
-        {!isEmpty ? (
-          <button
-            type="button"
-            onClick={() => { setMessages([]); setInput(""); }}
-            className="text-xs font-semibold text-slate-400 transition hover:text-slate-600 px-2 py-1.5 rounded-full hover:bg-slate-100"
-          >
-            クリア
-          </button>
-        ) : (
-          <div className="w-14" />
-        )}
-      </div>
+      <ShopSubviewHeader
+        shop={shop}
+        bannerImage={bannerImage}
+        heroImageError={heroImageError}
+        onImageError={() => {}}
+        theme={theme}
+        title="AIに相談する"
+        titleIcon={<Sparkles className="h-3.5 w-3.5" style={{ color: theme.accent }} />}
+        onBack={onBack}
+        onClose={onClose}
+        rightSlot={
+          !isEmpty ? (
+            <button
+              type="button"
+              onClick={() => { setMessages([]); setInput(""); }}
+              className="text-xs font-semibold text-slate-400 transition hover:text-slate-600 px-2 py-1.5 rounded-full hover:bg-slate-100"
+            >
+              クリア
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* ── メッセージエリア ───────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -1730,12 +2079,18 @@ const CHAR_STORAGE_KEY = "nicchyo-kotodute-character";
 // ─── Kotodute Panel (2nd slide) ───────────────────────────────────────────────
 function KotodutePanel({
   shop,
+  bannerImage,
+  heroImageError,
   theme,
   onBack,
+  onClose,
 }: {
   shop: Shop;
-  theme: { bg: string; accent: string; text: string; border: string; light: string };
+  bannerImage: string;
+  heroImageError: boolean;
+  theme: BannerTheme;
   onBack: () => void;
+  onClose?: () => void;
 }) {
   const [allNotes, setAllNotes] = useState<KotoduteNote[]>([]);
   const [text, setText] = useState("");
@@ -1808,32 +2163,26 @@ function KotodutePanel({
 
   return (
     <div className="flex h-full flex-col">
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div
-        className="sticky top-0 z-10 flex items-center gap-2 border-b bg-white/95 px-3 py-3 backdrop-blur-sm"
-        style={{ borderColor: theme.border }}
-      >
-        <button
-          type="button"
-          onClick={onBack}
-          className="pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 active:scale-95"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          戻る
-        </button>
-        <div className="flex flex-1 items-center justify-center gap-2">
-          <span className="text-sm font-bold text-slate-900">ことづて</span>
-          {notes.length > 0 && (
+      <ShopSubviewHeader
+        shop={shop}
+        bannerImage={bannerImage}
+        heroImageError={heroImageError}
+        onImageError={() => {}}
+        theme={theme}
+        title="ことづて"
+        onBack={onBack}
+        onClose={onClose}
+        rightSlot={
+          notes.length > 0 ? (
             <span
               className="rounded-full px-2 py-0.5 text-[11px] font-bold"
               style={{ backgroundColor: theme.light, color: theme.text }}
             >
               {notes.length}
             </span>
-          )}
-        </div>
-        <div className="w-14" /> {/* balance spacer */}
-      </div>
+          ) : undefined
+        }
+      />
 
       {/* ── Compose area ────────────────────────────────────────────────────── */}
       <div className="border-b px-4 py-4" style={{ borderColor: theme.border }}>
