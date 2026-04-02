@@ -294,6 +294,7 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
             titleLabel="にちよさん"
             fullWidth
             variant="consult"
+            embedded={embedded}
             comments={grandmaComments}
             onAsk={handleGrandmaAsk}
             onAskStream={handleGrandmaAskStream}
