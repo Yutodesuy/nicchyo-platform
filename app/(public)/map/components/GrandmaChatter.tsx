@@ -105,6 +105,7 @@ type GrandmaChatterProps = {
   preferredCharacterId?: ConsultCharacterId | null;
   onPreferredCharacterChange?: (characterId: ConsultCharacterId | null) => void;
   onCommentSeen?: (id: string, genre: string) => void;
+  embedded?: boolean;
 };
 
 export default function GrandmaChatter({
@@ -137,6 +138,7 @@ export default function GrandmaChatter({
   preferredCharacterId,
   onPreferredCharacterChange,
   onCommentSeen,
+  embedded = false,
 }: GrandmaChatterProps) {
   const isConsultVariant = variant === "consult";
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -1314,10 +1316,10 @@ export default function GrandmaChatter({
                     />
                   </div>
                   <div className="text-center">
-                    <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                    <div className={`text-lg font-bold ${isConsultVariant ? (embedded ? "text-white drop-shadow" : "text-slate-700") : "text-amber-800"}`}>
                       {isConsultVariant ? activeConsultHero.name : "にちよさん"}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className={`text-sm ${embedded ? "text-white/70" : "text-gray-600"}`}>
                       {isConsultVariant ? activeConsultHero.subtitle : "日曜市のことをなんでも聞いてね"}
                     </div>
                   </div>
@@ -1354,7 +1356,7 @@ export default function GrandmaChatter({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2 pl-1">
-                          <span className="text-base font-semibold text-slate-700">{speakerName}</span>
+                          <span className={`text-base font-semibold ${embedded ? "text-white drop-shadow" : "text-slate-700"}`}>{speakerName}</span>
                         </div>
                         <MessageBubble
                           role={message.role}
