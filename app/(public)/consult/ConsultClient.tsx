@@ -297,7 +297,6 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
             embedded={embedded}
             comments={grandmaComments}
             onAsk={handleGrandmaAsk}
-            onAskStream={handleGrandmaAskStream}
             allShops={knownShops}
             aiSuggestedShops={aiSuggestedShops}
             onSelectShop={(shopId, shopFromCard) => {

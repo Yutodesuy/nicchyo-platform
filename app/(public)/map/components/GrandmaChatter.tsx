@@ -1809,7 +1809,7 @@ export default function GrandmaChatter({
           <Card
             className={`${
               isConsultVariant
-                ? "rounded-[18px] border border-[var(--consult-border)] bg-white/92 p-2 shadow-sm"
+                ? `rounded-[18px] border border-[var(--consult-border)] p-2 shadow-sm ${embedded ? "bg-white/55 backdrop-blur-md" : "bg-white/92"}`
                 : "rounded-2xl border-2 border-amber-300 bg-white/95 p-3"
             } ${
               isConsultVariant ? "transition-colors duration-150" : "transition-transform duration-200"
@@ -1925,7 +1925,7 @@ export default function GrandmaChatter({
                   onClick={() => imageInputRef.current?.click()}
                   className={`${
                     isConsultVariant
-                      ? "h-11 w-11 rounded-full border-[var(--consult-border)] bg-slate-50 text-lg font-semibold text-slate-600 hover:bg-white"
+                      ? `h-11 w-11 rounded-full border-[var(--consult-border)] text-lg font-semibold text-slate-600 ${embedded ? "bg-white/50 hover:bg-white/70" : "bg-slate-50 hover:bg-white"}`
                       : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
                   }`}
                   aria-label="写真を選ぶ"
@@ -1965,7 +1965,7 @@ export default function GrandmaChatter({
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "min-h-[46px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300"
+                        ? `min-h-[46px] rounded-[16px] border-[var(--consult-border)] px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300 ${embedded ? "bg-white/60 placeholder:text-gray-500" : "bg-white"}`
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={consultPlaceholder}
