@@ -203,13 +203,6 @@ export default function MapPageClient({
     }
   }, [activePanel, closeMapCharacterConsult, router]);
 
-  // キャラ起動時にマップをキャラクターの位置にフォーカス
-  useEffect(() => {
-    if (!mapCharacterConsultActive || !mapInstance) return;
-    // キャラのデフォルト位置中心にズームイン
-    mapInstance.flyTo([33.5615, 133.5313], 18, { animate: true, duration: 1.2 });
-  }, [mapCharacterConsultActive, mapInstance]);
-
   const vendorShopId = user?.vendorId ?? null;
   const activeEvent = useMemo(() => {
     if (!showGrandma) return null;
