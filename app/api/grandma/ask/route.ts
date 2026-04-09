@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildGrandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
-import { detectAbuse, RATE_LIMIT_PER_HOUR } from "@/lib/security/abuseDetector";
+import { detectAbuse } from "@/lib/security/abuseDetector";
 import {
   CONSULT_CHARACTER_BY_ID,
   pickConsultCharacters,
@@ -1342,7 +1342,7 @@ async function handleAbuseDetection(
   ip: string,
   text: string,
   visitorKey?: string
-): Promise<"blocked" | "rate_limited" | "ok"> {
+): Promise<"blocked" | "ok"> {
   // ① ブロックリスト確認（IP または visitor_key でブロック）
   const blockQuery = supabase
     .from("ai_abuse_blocks")
@@ -1356,53 +1356,7 @@ async function handleAbuseDetection(
   const { data: blockData } = await blockQuery.or(orConditions.join(","));
   if (blockData && blockData.length > 0) return "blocked";
 
-  // ② レートリミット確認（IP と visitor_key の両方をチェック、厳しい方を採用）
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  const [ipCountRes, visitorCountRes] = await Promise.all([
-    supabase
-      .from("ai_consult_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("ip_address", ip)
-      .gte("created_at", oneHourAgo),
-    visitorKey
-      ? supabase
-          .from("ai_consult_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("visitor_key", visitorKey)
-          .gte("created_at", oneHourAgo)
-      : Promise.resolve({ count: 0 }),
-  ]);
-
-  const ipCount = ipCountRes.count ?? 0;
-  const visitorCount = visitorKey ? (visitorCountRes.count ?? 0) : 0;
-  const maxCount = Math.max(ipCount, visitorCount);
-  const countLabel = visitorCount > ipCount ? `visitor_key:${visitorKey}` : `IP:${ip}`;
-
-  if (maxCount >= RATE_LIMIT_PER_HOUR) {
-    await supabase.from("ai_abuse_events").insert({
-      ip_address: ip,
-      visitor_key: visitorKey ?? null,
-      event_type: "rate_limit",
-      message: `1時間に${maxCount}回のリクエスト（${countLabel}）`,
-      severity: 2,
-      blocked: true,
-    });
-    await supabase.from("ai_abuse_blocks").insert({
-      ip_address: ip,
-      visitor_key: visitorKey ?? null,
-      reason: "レートリミット超過",
-    });
-    await supabase.from("admin_notifications").insert({
-      type: "ai_abuse",
-      title: "AIレートリミット超過でブロック",
-      body: `${countLabel} が1時間に${maxCount}回リクエスト`,
-      link: "/admin/audit-logs",
-    });
-    return "rate_limited";
-  }
-
-  // ③ 不正パターン検知
+  // ② 不正パターン検知
   const abuse = detectAbuse(text);
   if (abuse) {
     const shouldBlock = abuse.severity >= 3;
@@ -1475,16 +1429,6 @@ export async function POST(request: Request) {
             "申し訳ありませんが、このアクセスはご利用いただけません。"
           ),
           { status: 403 }
-        );
-      }
-      if (abuseResult === "rate_limited") {
-        return NextResponse.json(
-          buildErrorResponse(
-            "unsupported_request",
-            selectedCharacters,
-            "1時間のご利用上限に達しました。しばらくしてからまた聞いてみてね。"
-          ),
-          { status: 429 }
         );
       }
     }
