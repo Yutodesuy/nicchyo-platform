@@ -12,8 +12,9 @@
  * - 紹介店舗があれば、同じ4秒周期で1店舗ずつフォーカスする
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
+import { Textarea } from '@/components/ui/textarea';
 import {
   CONSULT_CHARACTER_BY_ID,
   pickConsultCharacters,
@@ -26,6 +27,8 @@ import { getOrCreateConsultVisitorKey } from '../../../../lib/consultVisitorKey'
 const RESPONSE_STEP_MS = 4000;
 const CHAR_W = 60;
 const CHAR_H = 96;
+const INPUT_MIN_HEIGHT = 58;
+const INPUT_MAX_HEIGHT = 140;
 
 type Status = 'idle' | 'loading' | 'playing' | 'error';
 
@@ -58,37 +61,36 @@ function CharacterSprite({
   return (
     <div className="pointer-events-none relative" style={{ width: CHAR_W }}>
       {showBubble && (
-        <div className="absolute bottom-full left-0 mb-3 w-56">
+        <div className="absolute bottom-full left-0 mb-3 w-72 max-w-[calc(100vw-2rem)]">
           <div
-            className={`relative rounded-2xl px-3.5 py-2.5 shadow-xl ring-1 backdrop-blur transition-colors duration-300 ${
+            className={`relative rounded-[22px] border px-4 py-3 shadow-[0_20px_40px_rgba(15,23,42,0.16)] transition-colors duration-300 ${
               isError
-                ? 'bg-red-50/96 ring-red-200'
-                : 'bg-white/96 ring-slate-900/8'
+                ? 'border-red-200 bg-red-50'
+                : 'border-amber-200 bg-[#fff9ef]'
             }`}
           >
             {isThinking ? (
-              <div className="flex items-center gap-1.5 py-0.5">
+              <div className="flex items-center gap-1.5 py-1">
                 {[0, 1, 2].map((i) => (
                   <span
                     key={i}
-                    className="block h-2 w-2 rounded-full bg-amber-400"
+                    className="block h-2.5 w-2.5 rounded-full bg-amber-500"
                     style={{ animation: `dot-pulse 0.75s ease-in-out ${i * 0.18}s infinite` }}
                   />
                 ))}
               </div>
             ) : (
-              <p className={`text-[12px] leading-snug ${isError ? 'text-red-700' : 'text-slate-800'}`}>
+              <p className={`text-[13px] font-medium leading-[1.5] ${isError ? 'text-red-700' : 'text-slate-900'}`}>
                 {text}
               </p>
             )}
-            <p className={`mt-1.5 text-[10px] font-bold ${isError ? 'text-red-500' : 'text-amber-600'}`}>
+            <p className={`mt-2 text-[10px] font-black uppercase tracking-[0.16em] ${isError ? 'text-red-500' : 'text-amber-700'}`}>
               {character.name}
             </p>
             <div
-              className={`absolute -bottom-[7px] left-5 h-3.5 w-3.5 rotate-45 ${
-                isError ? 'bg-red-50/96' : 'bg-white/96'
+              className={`absolute -bottom-[7px] left-5 h-3.5 w-3.5 rotate-45 border-r border-b ${
+                isError ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-[#fff9ef]'
               }`}
-              style={{ boxShadow: '1px 1px 3px rgba(0,0,0,0.06)' }}
             />
           </div>
         </div>
@@ -132,6 +134,24 @@ function Spinner() {
   );
 }
 
+function getStarterPrompts(historyLength: number): string[] {
+  if (historyLength > 0) {
+    return ['近い順で教えて', '休める場所も知りたい', 'ほかの候補もある？'];
+  }
+
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) {
+    return ['朝ごはんのおすすめは？', '今の混み具合は？', 'サクッと回るコツある？'];
+  }
+  if (hour >= 11 && hour < 15) {
+    return ['ランチならどこ？', '食べ歩き向けは？', '子ども連れでも回りやすい？'];
+  }
+  if (hour >= 15 && hour < 18) {
+    return ['休憩できる場所ある？', 'おやつに向くお店は？', '写真映えする場所は？'];
+  }
+  return ['晩ご飯のおかず探したい', 'お土産向きは？', '今からでも寄れるお店は？'];
+}
+
 export default function MapCharacterConsult({
   map,
   shops,
@@ -156,12 +176,15 @@ export default function MapCharacterConsult({
   const [history, setHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
 
   const shopMap = useRef(new Map(shops.map((shop) => [shop.id, shop])));
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playbackSequenceRef = useRef(0);
 
   const isBusy = status === 'loading' || status === 'playing';
+  const starterPrompts = useMemo(() => getStarterPrompts(history.length), [history.length]);
+  const showIntroChrome = history.length === 0 && status === 'idle';
 
   const clearPlayback = useCallback(() => {
     playbackSequenceRef.current += 1;
@@ -284,6 +307,14 @@ export default function MapCharacterConsult({
   useEffect(() => {
     shopMap.current = new Map(shops.map((shop) => [shop.id, shop]));
   }, [shops]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = '0px';
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, INPUT_MIN_HEIGHT), INPUT_MAX_HEIGHT);
+    textarea.style.height = `${nextHeight}px`;
+  }, [inputText]);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -409,6 +440,9 @@ export default function MapCharacterConsult({
   }, [clearPlayback, handleSend, lastUserMsg]);
 
   const statusLabel = getStatusLabel(status, elapsedSeconds);
+  const helperTextId = 'map-consult-helper';
+  const statusTextId = 'map-consult-status';
+  const inputDescription = statusLabel ? `${helperTextId} ${statusTextId}` : helperTextId;
 
   return (
     <div className="pointer-events-none absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[1300]">
@@ -429,106 +463,190 @@ export default function MapCharacterConsult({
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
-        {statusLabel && (
-          <div className="mb-1.5 flex items-center justify-center">
-            <span
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
-                status === 'error'
-                  ? 'bg-red-100 text-red-600'
-                  : 'bg-amber-100 text-amber-700'
-              }`}
-            >
-              {statusLabel}
-            </span>
-          </div>
-        )}
-
         <div
-          className={`flex items-center gap-2 rounded-2xl px-3.5 py-3 shadow-2xl ring-1 backdrop-blur transition-all duration-300 ${
+          className={`mx-auto max-w-xl overflow-hidden border shadow-[0_28px_60px_rgba(15,23,42,0.22)] transition-all duration-300 ${
+            showIntroChrome ? 'rounded-[28px]' : 'rounded-[24px]'
+          } ${
             status === 'error'
-              ? 'bg-red-50/95 ring-red-300'
+              ? 'border-red-300 bg-[#fff6f6]'
               : isBusy
-                ? 'bg-white/95 ring-amber-400 animate-pulse-border'
-                : 'bg-white/95 ring-amber-200/80'
+                ? 'border-amber-300 bg-white'
+                : 'border-amber-200 bg-white'
           }`}
         >
-          <div className="shrink-0">
-            {activeCharacter ? (
-              <div className="h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-amber-50 shadow-sm">
-                <img
-                  src={activeCharacter.image}
-                  alt={activeCharacter.name}
-                  className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
-                  style={{ objectPosition: activeCharacter.imagePosition }}
-                  draggable={false}
-                />
+          {showIntroChrome ? (
+            <>
+              <div className="bg-[linear-gradient(135deg,#fff8e8_0%,#fff3d8_48%,#fde6ba_100%)] px-4 py-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0">
+                    {activeCharacter ? (
+                      <div className="h-11 w-11 overflow-hidden rounded-2xl border border-white/80 bg-white shadow-sm">
+                        <img
+                          src={activeCharacter.image}
+                          alt={activeCharacter.name}
+                          className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
+                          style={{ objectPosition: activeCharacter.imagePosition }}
+                          draggable={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-11 w-11 rounded-2xl border border-white/80 bg-white shadow-sm" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+                        AI相談
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-600">
+                        お店・食べ歩き・休憩・イベント
+                      </span>
+                    </div>
+                    <label
+                      htmlFor="map-consult-input"
+                      className="mt-2 block text-[15px] font-bold leading-tight text-slate-900"
+                    >
+                      市場のことを、ひとことで相談できます
+                    </label>
+                    <p id={helperTextId} className="mt-1.5 text-[12px] leading-relaxed text-slate-600">
+                      例をタップして始めるか、そのまま入力してください。
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="shrink-0 rounded-full border border-white/80 bg-white/90 px-3 py-2 text-[11px] font-bold text-slate-600 shadow-sm transition hover:bg-white active:scale-95"
+                    aria-label="相談を終わる"
+                  >
+                    閉じる
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="h-8 w-8 rounded-full border-2 border-white bg-amber-50 shadow-sm" />
-            )}
-          </div>
 
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            placeholder={isBusy ? '返答を待っています…' : '何でも聞いてね…'}
-            className={`min-w-0 flex-1 bg-transparent text-[14px] placeholder-slate-400 outline-none transition-colors ${
-              status === 'error' ? 'text-red-700' : 'text-slate-800'
-            }`}
-            disabled={isBusy}
-          />
-
-          {status === 'error' && lastUserMsg && (
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="shrink-0 rounded-full bg-red-100 px-3 py-1.5 text-[11px] font-bold text-red-600 active:scale-90 transition-transform"
-            >
-              再試行
-            </button>
+              {!isBusy && starterPrompts.length > 0 && (
+                <div className="border-b border-slate-200/70 px-3 pb-3 pt-3">
+                  <div className="mb-2 flex items-center gap-2 px-1">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                      すぐ聞けること
+                    </span>
+                    <span className="text-[11px] text-slate-400">最初の一言を選べます</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto px-1 pb-1">
+                    {starterPrompts.slice(0, 3).map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => handleSend(prompt)}
+                        className="shrink-0 rounded-full border border-amber-200 bg-[#fff8ee] px-3.5 py-2 text-left text-[12px] font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-white active:scale-[0.98]"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="sr-only" id={helperTextId}>
+              市場のことを相談できます。
+            </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => (isBusy ? undefined : handleSend())}
-            disabled={!isBusy && !inputText.trim()}
-            className={`shrink-0 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-all ${
-              isBusy
-                ? 'bg-amber-400 cursor-default'
-                : status === 'error'
-                  ? 'bg-red-400 opacity-40'
-                  : 'bg-amber-500 disabled:opacity-40 active:scale-90'
-            }`}
-            aria-label={isBusy ? '送信中' : '送信'}
-          >
-            {status === 'loading' ? (
-              <Spinner />
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12h14M13 6l6 6-6 6" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
+          {!showIntroChrome && statusLabel && (
+            <div className="sr-only" id={statusTextId} aria-live="polite">
+              {statusLabel}
+            </div>
+          )}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-90 transition-transform"
-            aria-label="相談を終わる"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-            </svg>
-          </button>
+          <div className={showIntroChrome ? 'px-3 pb-3 pt-3' : 'px-2.5 py-2.5'}>
+            <div
+              className={`rounded-[24px] border p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-colors ${
+                status === 'error'
+                  ? 'border-red-200 bg-white'
+                  : isBusy
+                    ? 'border-amber-300 bg-[#fffaf1]'
+                    : 'border-slate-200 bg-white'
+              }`}
+            >
+              <div className="flex items-end gap-2">
+                {!showIntroChrome ? (
+                  <div className="mb-0.5 shrink-0">
+                    {activeCharacter ? (
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm">
+                        <img
+                          src={activeCharacter.image}
+                          alt={activeCharacter.name}
+                          className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
+                          style={{ objectPosition: activeCharacter.imagePosition }}
+                          draggable={false}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-11 w-11 rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm" />
+                    )}
+                  </div>
+                ) : null}
+
+                <Textarea
+                  id="map-consult-input"
+                  ref={textareaRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  aria-describedby={inputDescription}
+                  placeholder={isBusy ? '返答を待っています…' : '気になることを入力'}
+                  rows={1}
+                  className={`min-h-[58px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-[15px] leading-6 shadow-none focus-visible:ring-0 ${
+                    status === 'error'
+                      ? 'text-red-700 placeholder:text-red-300'
+                      : 'text-slate-900 placeholder:text-slate-400'
+                  }`}
+                  disabled={isBusy}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => (isBusy ? undefined : handleSend())}
+                  disabled={isBusy || !inputText.trim()}
+                  className={`mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all ${
+                    isBusy
+                      ? 'bg-amber-400'
+                      : 'bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]'
+                  }`}
+                  aria-label={isBusy ? '送信中' : '送信'}
+                >
+                  {status === 'loading' ? <Spinner /> : null}
+                  <span>{status === 'loading' ? '送信中' : status === 'playing' ? '案内中' : '送信'}</span>
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-slate-500">
+                <span>{showIntroChrome ? '短い質問でも大丈夫です' : activeCharacter?.name ?? 'AI相談'}</span>
+                <span>{inputText.trim().length > 0 ? `${inputText.trim().length}文字` : showIntroChrome ? '1行で始められます' : 'Enterで送信'}</span>
+              </div>
+            </div>
+
+            {status === 'error' && lastUserMsg && (
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="rounded-full bg-red-100 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-200 active:scale-95"
+                >
+                  直前の相談を再試行
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
