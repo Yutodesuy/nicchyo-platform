@@ -771,7 +771,7 @@ export default function MapPageClient({
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
             />
-            {showGrandma && !searchMarkerPayload && !mapSearchShopIds && (
+            {showGrandma && !searchMarkerPayload && !mapSearchShopIds && !mapCharacterConsultActive && (
               <>
                 <GrandmaChatter
                   titleLabel="にちよさん"
