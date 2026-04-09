@@ -4,12 +4,12 @@ import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import ConsultClient from "../consult/ConsultClient";
 import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
-import { loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { clearSearchMapPayload, loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
@@ -24,6 +24,8 @@ import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
+import { buildSearchIndex } from "../search/lib/searchIndex";
+import { useShopSearch } from "../search/hooks/useShopSearch";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
@@ -134,19 +136,49 @@ export default function MapPageClient({
     if (isInMarket === true) recordMarketEnter();
     else if (isInMarket === false) recordMarketExit();
   }, [isInMarket]);
+  // マーカーglow用（コメント表示中のお店を追跡）
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
+  // スポットライトモード用（タップ時のみ、2秒で自動解除）
+  const [spotlightShopId, setSpotlightShopId] = useState<number | null>(null);
+  const spotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activateSpotlight = useCallback((shopId: number) => {
+    if (spotlightTimerRef.current) clearTimeout(spotlightTimerRef.current);
+    setSpotlightShopId(shopId);
+    spotlightTimerRef.current = setTimeout(() => {
+      setSpotlightShopId(null);
+      spotlightTimerRef.current = null;
+    }, 2000);
+  }, []);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const [tutorialProgress, setTutorialProgress] = useState<number>(0);
   useEffect(() => {
     const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
     setTutorialProgress(Math.min(10, stored));
   }, []);
+  const dragControls = useDragControls();
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [mapSearchCategory, setMapSearchCategory] = useState<string | null>(null);
+  const mapSearchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
+  const mapSearchResults = useShopSearch({
+    shops,
+    searchIndex: mapSearchIndex,
+    textQuery: mapSearchQuery,
+    category: mapSearchCategory,
+    chome: null,
+  });
+  const mapSearchShopIds = useMemo(
+    () =>
+      mapSearchQuery.trim() || mapSearchCategory
+        ? mapSearchResults.map((s) => s.id)
+        : undefined,
+    [mapSearchCategory, mapSearchQuery, mapSearchResults],
+  );
   const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
     label: string;
@@ -398,6 +430,7 @@ export default function MapPageClient({
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
       prefetchShopImage(shopId);
+      activateSpotlight(shopId);
       const maxZoom = map.getMaxZoom() ?? 19;
       map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
@@ -405,7 +438,7 @@ export default function MapPageClient({
         easeLinearity: 0.25,
       });
     },
-    [prefetchShopImage, shopById]
+    [activateSpotlight, prefetchShopImage, shopById]
   );
 
   const handleCommentShopOpen = useCallback(
@@ -667,9 +700,20 @@ export default function MapPageClient({
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids}
+              searchShopIds={searchMarkerPayload?.ids ?? mapSearchShopIds}
               aiShopIds={aiMarkerPayload?.ids}
-              searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
+              searchLabel={
+                searchMarkerPayload?.label ??
+                (mapSearchQuery.trim() || mapSearchCategory || aiMarkerPayload?.label)
+              }
+              searchQuery={mapSearchQuery}
+              onSearchQuery={(q) => {
+                setMapSearchQuery(q);
+                if (searchMarkerPayload) {
+                  clearSearchMapPayload();
+                  setSearchMarkerPayload(null);
+                }
+              }}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
               highlightEventTargets={showGrandma ? isHoldActive : false}
@@ -679,13 +723,20 @@ export default function MapPageClient({
                 setIsInMarket(coords.inMarket);
               }}
               commentShopId={commentHighlightShopId ?? undefined}
+              spotlightShopId={spotlightShopId ?? undefined}
+              onClearSearch={() => {
+                clearSearchMapPayload();
+                setSearchMarkerPayload(null);
+                setMapSearchQuery('');
+                setMapSearchCategory(null);
+              }}
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
             />
-            {showGrandma && (
+            {showGrandma && !searchMarkerPayload && !mapSearchShopIds && (
               <>
                 <GrandmaChatter
                   titleLabel="にちよさん"
@@ -817,16 +868,53 @@ export default function MapPageClient({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 320 }}
-              className={`fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl backdrop-blur-xl ${activePanel === "consult" ? "bg-white/70" : "bg-black/50"}`}
-              style={{ height: "92dvh" }}
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.3 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  router.push("/map");
+                }
+              }}
+              className={`fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl backdrop-blur-xl ${activePanel === "consult" ? "bg-orange-100/85" : "bg-black/50"}`}
+              style={{
+                height: "92dvh",
+                ...(activePanel === "consult" && {
+                  backgroundImage: "url('/images/ai-consult-bg.png')",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center top",
+                }),
+              }}
             >
               {/* ドラッグハンドル */}
-              <div className="pointer-events-none absolute left-1/2 top-3 h-1 w-10 -translate-x-1/2 rounded-full bg-white/40 z-10" />
+              <div
+                className="absolute left-1/2 top-0 z-10 flex h-8 w-full -translate-x-1/2 cursor-grab items-center justify-center active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+                style={{ touchAction: "none" }}
+              >
+                <div className="h-1 w-10 rounded-full bg-white/40" />
+              </div>
               <div className="h-full overflow-y-auto overscroll-contain pt-6">
                 <Suspense fallback={null}>
                   {activePanel === "consult" && <ConsultClient embedded />}
                   {activePanel === "search" && (
-                    <SearchClient shops={shops} landmarks={landmarks} embedded />
+                    <SearchClient
+                      shops={shops}
+                      landmarks={landmarks}
+                      embedded
+                      initialQuery={mapSearchQuery}
+                      initialCategory={mapSearchCategory}
+                      onQueryChange={(q, cat) => {
+                        setMapSearchQuery(q);
+                        setMapSearchCategory(cat);
+                        if (searchMarkerPayload) {
+                          clearSearchMapPayload();
+                          setSearchMarkerPayload(null);
+                        }
+                      }}
+                    />
                   )}
                 </Suspense>
               </div>
