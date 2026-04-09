@@ -132,12 +132,12 @@ function TimeAmbientOverlay() {
 
 // ===== テーパー型縦ズームスライダー =====
 // 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
-const VZ_PAD = 12;        // 上下パディング（サムがはみ出ないように）
-const VZ_TRACK_H = 130;   // トラック高さ
-const VZ_SVG_W = 28;
+const VZ_PAD = 18;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 195;   // トラック高さ
+const VZ_SVG_W = 42;
 const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
-const VZ_WIDE = 18;       // 上端（拡大）の幅
-const VZ_NARROW = 7;      // 下端（縮小）の幅
+const VZ_WIDE = 27;       // 上端（拡大）の幅
+const VZ_NARROW = 10.5;   // 下端（縮小）の幅
 const VZ_CX = VZ_SVG_W / 2;
 const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
 const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
@@ -218,7 +218,7 @@ function VerticalZoomSlider({
       {/* アンバー塗り（現在のズームレベルを表す） */}
       <polygon points={fillPts} fill="#d97706" opacity="0.65" />
       {/* サム */}
-      <circle cx={VZ_CX} cy={thumbY} r={7} fill="white" stroke="#d97706" strokeWidth="2.5" />
+      <circle cx={VZ_CX} cy={thumbY} r={10.5} fill="white" stroke="#d97706" strokeWidth="3.75" />
     </svg>
   );
 }
