@@ -13,6 +13,7 @@ import type {
   ConsultHistoryEntry,
 } from "./types/consultConversation";
 import type { Shop } from "../map/data/shops";
+import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
 
 const PREFERRED_CHARACTER_STORAGE_KEY = "nicchyo-consult-preferred-character";
 
@@ -57,6 +58,7 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
     memorySummary?: string,
     stream?: boolean
   ) => {
+    const visitorKey = getOrCreateConsultVisitorKey();
     const useForm = !!imageFile;
     const body = useForm
       ? (() => {
@@ -69,6 +71,9 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
           form.append("memorySummary", memorySummary ?? "");
           if (preferredCharacterId) {
             form.append("preferredCharacterId", preferredCharacterId);
+          }
+          if (visitorKey) {
+            form.append("visitorKey", visitorKey);
           }
           if (stream) {
             form.append("stream", "1");
@@ -84,6 +89,7 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
           history: history ?? [],
           memorySummary: memorySummary ?? "",
           preferredCharacterId,
+          visitorKey,
           stream: !!stream,
         });
 
