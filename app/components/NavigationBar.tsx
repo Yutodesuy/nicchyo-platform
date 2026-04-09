@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBag } from "@/lib/storage/BagContext";
@@ -17,7 +17,7 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-  { name: "相談", href: "/map?panel=consult", icon: "chat" },
+  { name: "相談", href: "/map", icon: "chat" },
   { name: "お店を探す", href: "/map?panel=search", icon: "search" },
 ];
 
@@ -56,6 +56,9 @@ type NavigationBarProps = {
   activeHref?: string;
   position?: "fixed" | "absolute";
   onMenuOpenChange?: (open: boolean) => void;
+  closeModeActive?: boolean;
+  onCloseMode?: () => void;
+  onConsultClick?: () => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -63,6 +66,9 @@ function NavigationBarInner({
   activeHref,
   position = "fixed",
   onMenuOpenChange,
+  closeModeActive = false,
+  onCloseMode,
+  onConsultClick,
 }: NavigationBarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -85,8 +91,9 @@ function NavigationBarInner({
   }, [menuOpen, onMenuOpenChange]);
 
   const panel = searchParams?.get("panel");
-  const isHome = (activeHref ?? pathname) === "/map" && !panel;
   const isPanelOpen = pathname === "/map" && !!panel;
+  const isCloseUxActive = isPanelOpen || closeModeActive;
+  const isHome = (activeHref ?? pathname) === "/map" && !panel && !isCloseUxActive;
 
   const navItems = permissions.isSuperAdmin
     ? [...baseNavItems, { name: "管理", href: "/admin/dashboard", icon: "admin" as const }]
@@ -96,6 +103,16 @@ function NavigationBarInner({
     setMenuOpen(false);
     router.push(href);
   };
+
+  const handleCloseMode = useCallback(() => {
+    if (onCloseMode) {
+      onCloseMode();
+      return;
+    }
+    if (isPanelOpen) {
+      router.push("/map");
+    }
+  }, [isPanelOpen, onCloseMode, router]);
 
   const handleLogout = async () => {
     setMenuOpen(false);
@@ -282,9 +299,9 @@ function NavigationBarInner({
 
       {/* ── ナビゲーションバー ──────────────────────────────────────────────── */}
       <nav
-        onClick={isPanelOpen ? () => router.push("/map") : undefined}
+        onClick={isCloseUxActive ? handleCloseMode : undefined}
         className={`navigation-bar ${position} bottom-0 left-0 right-0 z-[9997] border-t text-sm leading-none shadow-sm transition-colors duration-300 ${
-          isPanelOpen
+          isCloseUxActive
             ? "cursor-pointer border-green-500 bg-green-500"
             : "border-gray-200/60 bg-white/90 backdrop-blur-md"
         }`}
@@ -294,10 +311,26 @@ function NavigationBarInner({
           /* ── マップ：フルナビ ── */
           <div className="mx-auto flex h-14 max-w-lg items-center">
             {/* 左：相談 */}
-            <NavLinkItem
-              item={navItems[0]}
-              isActive={(activeHref ?? pathname) === navItems[0].href}
-            />
+            {onConsultClick ? (
+              <button
+                type="button"
+                onClick={onConsultClick}
+                className="group flex h-full flex-1 flex-col items-center justify-center gap-1 text-gray-400 transition-all duration-200 hover:bg-gray-50/50 hover:text-gray-600"
+              >
+                <NavIcon
+                  name={navItems[0].icon}
+                  className="h-6 w-6 transition-transform duration-200 group-hover:scale-105"
+                />
+                <span className="text-[10px] font-medium leading-none tracking-tight">
+                  {navItems[0].name}
+                </span>
+              </button>
+            ) : (
+              <NavLinkItem
+                item={navItems[0]}
+                isActive={(activeHref ?? pathname) === navItems[0].href}
+              />
+            )}
 
             {/* 中央：メニューボタン */}
             <div className="flex flex-1 items-center justify-center">
@@ -327,7 +360,7 @@ function NavigationBarInner({
               />
             ))}
           </div>
-        ) : isPanelOpen ? (
+        ) : isCloseUxActive ? (
           /* ── パネル表示中：緑バー × ── */
           <div className="mx-auto flex h-14 max-w-lg items-center justify-center">
             <div className="flex flex-col items-center gap-1">

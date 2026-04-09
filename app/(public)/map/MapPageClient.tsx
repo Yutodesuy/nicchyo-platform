@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import ConsultClient from "../consult/ConsultClient";
 import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
@@ -111,7 +110,7 @@ export default function MapPageClient({
 }: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const activePanel = searchParams?.get("panel") as "consult" | "search" | null;
+  const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
@@ -187,21 +186,37 @@ export default function MapPageClient({
     ids: number[];
     label: string;
   } | null>(null);
+  const clearMapSearchState = useCallback(() => {
+    clearSearchMapPayload();
+    setSearchMarkerPayload(null);
+    setMapSearchQuery('');
+    setMapSearchCategory(null);
+  }, []);
   const closeMapCharacterConsult = useCallback(() => {
     setMapCharacterConsultActive(false);
     setAiMarkerPayload(null);
   }, []);
-  // panel=consult → キャラ相談モードに切り替え（パネルは表示しない）
+  const startMapCharacterConsult = useCallback(() => {
+    clearMapSearchState();
+    setMapCharacterConsultActive(true);
+    router.replace('/map');
+  }, [clearMapSearchState, router]);
+  const closeMapInteractionMode = useCallback(() => {
+    clearMapSearchState();
+    closeMapCharacterConsult();
+    router.push('/map');
+  }, [clearMapSearchState, closeMapCharacterConsult, router]);
+
+  // 旧 URL 互換: /map?panel=consult が来ても直接 AI 相談モードを起動する
   useEffect(() => {
-    if (activePanel === 'consult') {
-      setMapCharacterConsultActive(true);
-      router.replace('/map');
+    if (searchParams?.get("panel") === "consult") {
+      startMapCharacterConsult();
       return;
     }
     if (activePanel === 'search') {
       closeMapCharacterConsult();
     }
-  }, [activePanel, closeMapCharacterConsult, router]);
+  }, [activePanel, closeMapCharacterConsult, searchParams, startMapCharacterConsult]);
 
   const vendorShopId = user?.vendorId ?? null;
   const activeEvent = useMemo(() => {
@@ -516,6 +531,15 @@ export default function MapPageClient({
     const shopSet = new Set(aiMarkerPayload.ids);
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
+  const hasSearchMode =
+    activePanel === 'search' ||
+    !!searchMarkerPayload ||
+    !!mapSearchQuery.trim() ||
+    !!mapSearchCategory ||
+    !!mapSearchShopIds?.length;
+  const hasAiMode =
+    mapCharacterConsultActive ||
+    !!aiMarkerPayload;
 
   const introImageUrl = useMemo(() => {
     if (!commentHighlightShopId) return null;
@@ -967,6 +991,9 @@ export default function MapPageClient({
             closeMapCharacterConsult();
           }
         }}
+        onConsultClick={startMapCharacterConsult}
+        closeModeActive={hasSearchMode || hasAiMode}
+        onCloseMode={closeMapInteractionMode}
       />
     </div>
   );
