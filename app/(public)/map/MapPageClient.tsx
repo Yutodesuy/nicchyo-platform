@@ -434,31 +434,6 @@ export default function MapPageClient({
     }
   }, [userLocation]);
 
-  // キャラ相談モード用のask（history付き）
-  const handleCharacterAsk = useCallback(async (
-    text: string,
-    history: Array<{ role: 'user' | 'assistant'; text: string }>,
-  ): Promise<{ reply: string; shopIds?: number[] }> => {
-    try {
-      const response = await fetch('/api/grandma/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          location: userLocation,
-          history: history.slice(-6),
-        }),
-      });
-      if (!response.ok) return { reply: 'ごめんね、今は答えを出せんかった。時間をおいて試してね。' };
-      const payload = (await response.json()) as { reply?: string; shopIds?: number[] };
-      const rawReply = payload.reply ?? 'ごめんね、今は答えを出せんかった。時間をおいて試してね。';
-      const cleaned = rawReply.replace(/SHOP_IDS:\s*([0-9,\s]+)/i, '').trim();
-      return { reply: cleaned || rawReply, shopIds: payload.shopIds };
-    } catch {
-      return { reply: 'ごめんね、今は答えを出せんかった。時間をおいて試してね。' };
-    }
-  }, [userLocation]);
-
   const handleCommentShopFocus = useCallback(
     (shopId: number) => {
       const map = mapRef.current;
@@ -885,7 +860,6 @@ export default function MapPageClient({
               <MapCharacterConsult
                 map={mapRef.current}
                 shops={shops}
-                onAsk={handleCharacterAsk}
                 onShopsRecommended={(shopIds) => {
                   setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
                 }}
