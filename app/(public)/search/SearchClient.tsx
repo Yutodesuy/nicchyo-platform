@@ -291,19 +291,19 @@ export default function SearchClient({
     router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
   }, [filteredShops, router, searchLabel]);
 
-  // 埋め込み時: 検索条件変更を親に通知してパネルを閉じる
-  useEffect(() => {
-    if (!embedded || !onQueryChange) return;
-    if (skipNextEmbeddedSyncRef.current) {
-      skipNextEmbeddedSyncRef.current = false;
-      return;
-    }
-    const timer = setTimeout(() => {
-      onQueryChange(textQuery, category);
-      if (hasQuery) router.push('/map');
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [textQuery, category, embedded, onQueryChange, hasQuery, router]);
+  const syncEmbeddedSearch = useCallback(
+    (nextQuery: string, nextCategory: string | null) => {
+      if (!embedded || !onQueryChange) return;
+      if (skipNextEmbeddedSyncRef.current) {
+        skipNextEmbeddedSyncRef.current = false;
+      }
+      onQueryChange(nextQuery, nextCategory);
+      if (nextQuery.trim() || nextCategory) {
+        router.push('/map');
+      }
+    },
+    [embedded, onQueryChange, router]
+  );
 
   // スタンドアロン(/search)モバイル: 自動でマップへ遷移
   useEffect(() => {
@@ -323,6 +323,16 @@ export default function SearchClient({
     setCategory(cat);
     setTextQuery('');
   }, []);
+
+  const handleTextQueryChange = useCallback((nextQuery: string) => {
+    setTextQuery(nextQuery);
+    syncEmbeddedSearch(nextQuery, category);
+  }, [category, syncEmbeddedSearch]);
+
+  const handleCategoryChange = useCallback((nextCategory: string | null) => {
+    setCategory(nextCategory);
+    syncEmbeddedSearch(textQuery, nextCategory);
+  }, [syncEmbeddedSearch, textQuery]);
 
   const handleFocusShop = useCallback((shop: Shop) => {
     if (isDesktop) {
@@ -391,7 +401,11 @@ export default function SearchClient({
 
               {/* テキスト検索 */}
               <div className="mt-1">
-                <SearchInput value={textQuery} onChange={setTextQuery} />
+                <SearchInput
+                  value={textQuery}
+                  onChange={handleTextQueryChange}
+                  debounceMs={embedded ? 0 : 300}
+                />
               </div>
 
               {/* コンテンツ切り替え: 未入力時はDiscovery、入力時はFilter+Results */}
@@ -399,7 +413,7 @@ export default function SearchClient({
                 <SearchDiscovery
                   categories={categories}
                   onCategorySelect={(cat) => {
-                    setCategory(cat);
+                    handleCategoryChange(cat);
                   }}
                 />
               ) : (
@@ -407,7 +421,7 @@ export default function SearchClient({
                   {/* カテゴリーフィルター */}
                   <CategoryFilter
                     selectedCategory={category}
-                    onCategoryChange={setCategory}
+                    onCategoryChange={handleCategoryChange}
                     categories={categories}
                   />
 
@@ -419,7 +433,7 @@ export default function SearchClient({
               )}
             </div>
 
-            {hasQuery && filteredLatestPosts.length > 0 && (
+            {!embedded && hasQuery && filteredLatestPosts.length > 0 && (
               <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
                 <div className="mb-3 flex items-center gap-2 text-amber-800">
                   <span className="text-base" aria-hidden>📢</span>
@@ -462,7 +476,7 @@ export default function SearchClient({
               </div>
             )}
 
-            {hasQuery && (
+            {!embedded && hasQuery && (
               <SearchResults
                 shops={pagedShops}
                 totalCount={filteredShops.length}
@@ -481,7 +495,7 @@ export default function SearchClient({
               />
             )}
 
-            {!hasQuery && latestPosts.length > 0 && (
+            {!embedded && !hasQuery && latestPosts.length > 0 && (
               <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-amber-800">
                   <span className="text-base" aria-hidden>📢</span>
