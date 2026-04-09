@@ -349,6 +349,11 @@ body.grandma-chat-open .leaflet-container {
   to   { transform: scaleX(0); }
 }
 
+@keyframes character-idle {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+
 @keyframes shop-comment-pulse {
   0%, 100% {
     filter:
