@@ -18,8 +18,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
 import { pickConsultCharacters } from '../../consult/data/consultCharacters';
 import type { ConsultCharacter } from '../../consult/data/consultCharacters';
-import type { ConsultAskStreamEvent } from '../../consult/types/consultConversation';
+import type { ConsultAskResponse, ConsultAskStreamEvent } from '../../consult/types/consultConversation';
 import type { Shop } from '../data/shops';
+import { getOrCreateConsultVisitorKey } from '../../../../lib/consultVisitorKey';
 
 // ── 日曜市の市場中央付近のデフォルト配置位置 ──────────────────────────────
 const DEFAULT_POSITIONS: [[number, number], [number, number]] = [
@@ -28,6 +29,12 @@ const DEFAULT_POSITIONS: [[number, number], [number, number]] = [
 ];
 
 type Status = 'idle' | 'connecting' | 'streaming' | 'error';
+
+type AskErrorPayload = {
+  reply?: string;
+  errorMessage?: string;
+  turns?: ConsultAskResponse['turns'];
+};
 
 // ── lat/lng → コンテナ内ピクセル変換フック ────────────────────────────────
 function useLatLngToPixel(
@@ -208,16 +215,19 @@ export default function MapCharacterConsult({
 
     const controller = new AbortController();
     abortRef.current = controller;
+    const visitorKey = getOrCreateConsultVisitorKey();
 
     setInputText('');
     setStatus('connecting');
     setElapsedSeconds(0);
+    let hadError = false;
 
     // 経過時間カウンター
     const startTime = Date.now();
-    tickerRef.current = setInterval(() => {
+    const ticker = setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
+    tickerRef.current = ticker;
 
     const userMsg = { role: 'user' as const, text };
     const nextHistory = [...history, userMsg];
@@ -235,12 +245,36 @@ export default function MapCharacterConsult({
           text,
           location: null,
           history: nextHistory.slice(-6),
+          visitorKey,
           stream: true,
         }),
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        hadError = true;
+        const payload = await res.json().catch(() => null) as AskErrorPayload | null;
+        const primaryText =
+          payload?.turns?.[0]?.text ??
+          payload?.reply ??
+          payload?.errorMessage ??
+          `HTTP ${res.status}`;
+        const secondaryText = payload?.turns?.[1]?.text ?? null;
+        setStatus('error');
+        setChar1({
+          text: primaryText,
+          isThinking: false,
+          isError: true,
+        });
+        setChar2({
+          text: secondaryText,
+          isThinking: false,
+          isError: Boolean(secondaryText),
+        });
+        return;
+      }
+
+      if (!res.body) throw new Error(`HTTP ${res.status}`);
 
       setStatus('streaming');
 
@@ -311,11 +345,10 @@ export default function MapCharacterConsult({
       }
 
       setHistory([...nextHistory, { role: 'assistant', text: finalReply }]);
-      setStatus('idle');
-
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
 
+      hadError = true;
       setStatus('error');
       setChar1({
         text: 'うまく聞こえんかった…通信状況を確認してからもう一度試してみてね。',
@@ -324,11 +357,18 @@ export default function MapCharacterConsult({
       });
       setChar2({ text: null, isThinking: false, isError: false });
     } finally {
-      if (tickerRef.current) { clearInterval(tickerRef.current); tickerRef.current = null; }
-      abortRef.current = null;
-      if (status !== 'error') setStatus('idle');
+      clearInterval(ticker);
+      if (tickerRef.current === ticker) {
+        tickerRef.current = null;
+      }
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        if (!hadError) {
+          setStatus('idle');
+        }
+      }
     }
-  }, [inputText, isLoading, history, map, onShopsRecommended, status]);
+  }, [history, inputText, isLoading, map, onShopsRecommended]);
 
   // リトライ
   const lastUserMsg = history.findLast?.((m) => m.role === 'user')?.text ?? null;

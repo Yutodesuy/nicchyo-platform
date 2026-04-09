@@ -1339,22 +1339,26 @@ function buildFallbackFollowUpQuestion(
 
 async function handleAbuseDetection(
   supabase: SupabaseClient,
-  ip: string,
+  ip: string | null,
   text: string,
   visitorKey?: string
 ): Promise<"blocked" | "ok"> {
-  // ① ブロックリスト確認（IP または visitor_key でブロック）
-  const blockQuery = supabase
-    .from("ai_abuse_blocks")
-    .select("id")
-    .eq("is_active", true)
-    .limit(1);
+  const blockIpValue = ip ?? "__visitor_key__";
 
-  const orConditions = [`ip_address.eq.${ip}`];
+  // ① ブロックリスト確認（IP または visitor_key でブロック）
+  const orConditions: string[] = [];
+  if (ip) orConditions.push(`ip_address.eq.${ip}`);
   if (visitorKey) orConditions.push(`visitor_key.eq.${visitorKey}`);
 
-  const { data: blockData } = await blockQuery.or(orConditions.join(","));
-  if (blockData && blockData.length > 0) return "blocked";
+  if (orConditions.length > 0) {
+    const { data: blockData } = await supabase
+      .from("ai_abuse_blocks")
+      .select("id")
+      .eq("is_active", true)
+      .limit(1)
+      .or(orConditions.join(","));
+    if (blockData && blockData.length > 0) return "blocked";
+  }
 
   // ② 不正パターン検知
   const abuse = detectAbuse(text);
@@ -1368,16 +1372,16 @@ async function handleAbuseDetection(
       severity: abuse.severity,
       blocked: shouldBlock,
     });
-    if (shouldBlock) {
+    if (shouldBlock && (ip || visitorKey)) {
       await supabase.from("ai_abuse_blocks").insert({
-        ip_address: ip,
+        ip_address: blockIpValue,
         visitor_key: visitorKey ?? null,
         reason: abuse.reason,
       });
       await supabase.from("admin_notifications").insert({
         type: "ai_abuse",
         title: `AI不正アクセスをブロック（${abuse.type}）`,
-        body: `IP: ${ip} | visitor: ${visitorKey ?? "不明"} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
+        body: `IP: ${ip ?? "不明"} | visitor: ${visitorKey ?? "不明"} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
         link: "/admin/audit-logs",
       });
       return "blocked";
@@ -1416,10 +1420,11 @@ export async function POST(request: Request) {
       const secClient = createClient(supabaseUrl, serviceRoleKey);
       // x-real-ip はVercelが設定する信頼できるヘッダー（スプーフィング不可）
       // x-forwarded-for の末尾はプロキシが追加した値で比較的信頼できる
-      const ip =
+      const forwardedIp =
         request.headers.get("x-real-ip") ??
         request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
-        "unknown";
+        null;
+      const ip = forwardedIp && forwardedIp !== "unknown" ? forwardedIp : null;
       const abuseResult = await handleAbuseDetection(secClient, ip, text, visitorKey ?? undefined);
       if (abuseResult === "blocked") {
         return NextResponse.json(

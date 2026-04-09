@@ -26,6 +26,7 @@ import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
 import { buildSearchIndex } from "../search/lib/searchIndex";
 import { useShopSearch } from "../search/hooks/useShopSearch";
+import { getOrCreateConsultVisitorKey } from "../../../lib/consultVisitorKey";
 import MapCharacterConsult from "./components/MapCharacterConsult";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
@@ -391,6 +392,7 @@ export default function MapPageClient({
     _memorySummary?: string
   ) => {
     try {
+      const visitorKey = getOrCreateConsultVisitorKey();
       const useForm = !!imageFile;
       const body = useForm
         ? (() => {
@@ -399,6 +401,7 @@ export default function MapPageClient({
             form.append("location", JSON.stringify(userLocation ?? null));
             if (context?.shopId) form.append("shopId", String(context.shopId));
             if (context?.shopName) form.append("shopName", context.shopName);
+            if (visitorKey) form.append("visitorKey", visitorKey);
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
@@ -407,22 +410,27 @@ export default function MapPageClient({
             location: userLocation,
             shopId: context?.shopId ?? null,
             shopName: context?.shopName ?? null,
+            visitorKey,
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
         headers: useForm ? undefined : { "Content-Type": "application/json" },
         body,
       });
-      if (!response.ok) {
-        return {
-          reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        };
-      }
       const payload = (await response.json()) as {
         reply?: string;
         imageUrl?: string;
         shopIds?: number[];
+        errorMessage?: string;
       };
+      if (!response.ok) {
+        return {
+          reply:
+            payload.reply ??
+            payload.errorMessage ??
+            "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        };
+      }
       const rawReply =
         payload.reply ?? "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
       if (payload.shopIds && payload.shopIds.length > 0) {
