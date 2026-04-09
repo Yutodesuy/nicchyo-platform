@@ -605,6 +605,8 @@ type MapViewProps = {
   onClearSearch?: () => void;
   searchQuery?: string;
   onSearchQuery?: (q: string) => void;
+  /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
+  overlaySlot?: React.ReactNode;
 };
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
@@ -732,6 +734,7 @@ const MapView = memo(function MapView({
   onClearSearch,
   searchQuery,
   onSearchQuery,
+  overlaySlot,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -1476,6 +1479,9 @@ const MapView = memo(function MapView({
         onToggle={onAgentToggle}
         hideLauncher
       />
+
+      {/* 外部から注入するオーバーレイ（マップ座標系内） */}
+      {overlaySlot}
     </div>
   );
 });

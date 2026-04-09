@@ -158,6 +158,7 @@ export default function MapPageClient({
   }, []);
   const dragControls = useDragControls();
   const [mapCharacterConsultActive, setMapCharacterConsultActive] = useState(false);
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
@@ -192,6 +193,13 @@ export default function MapPageClient({
       router.replace('/map');
     }
   }, [activePanel, router]);
+
+  // キャラ起動時にマップをキャラクターの位置にフォーカス
+  useEffect(() => {
+    if (!mapCharacterConsultActive || !mapInstance) return;
+    // キャラのデフォルト位置中心にズームイン
+    mapInstance.flyTo([33.5615, 133.5313], 18, { animate: true, duration: 1.2 });
+  }, [mapCharacterConsultActive, mapInstance]);
 
   const vendorShopId = user?.vendorId ?? null;
   const activeEvent = useMemo(() => {
@@ -240,6 +248,7 @@ export default function MapPageClient({
   }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
+    setMapInstance(map);
   }, []);
 
   const vendorShop = useMemo(() => {
@@ -745,6 +754,21 @@ export default function MapPageClient({
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
+              overlaySlot={
+                mapCharacterConsultActive ? (
+                  <MapCharacterConsult
+                    map={mapInstance}
+                    shops={shops}
+                    onShopsRecommended={(shopIds) => {
+                      setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
+                    }}
+                    onClose={() => {
+                      setMapCharacterConsultActive(false);
+                      setAiMarkerPayload(null);
+                    }}
+                  />
+                ) : undefined
+              }
             />
             {showGrandma && !searchMarkerPayload && !mapSearchShopIds && !mapCharacterConsultActive && (
               <>
@@ -855,20 +879,6 @@ export default function MapPageClient({
               </>
             )}
 
-            {/* ── マップキャラクター相談モード ── */}
-            {mapCharacterConsultActive && (
-              <MapCharacterConsult
-                map={mapRef.current}
-                shops={shops}
-                onShopsRecommended={(shopIds) => {
-                  setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
-                }}
-                onClose={() => {
-                  setMapCharacterConsultActive(false);
-                  setAiMarkerPayload(null);
-                }}
-              />
-            )}
           </div>
       </main>
 
