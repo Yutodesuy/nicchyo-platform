@@ -8,8 +8,8 @@
  * UX:
  * - キャラクターは入力バー直上の左端に固定表示
  * - 回答は非ストリーミングで、全体が揃ってから再生
- * - 2人のキャラクターが3秒ごとに交代しながら話す
- * - 紹介店舗があれば、同じ3秒周期で1店舗ずつフォーカスする
+ * - 2人のキャラクターが4秒ごとに交代しながら話す
+ * - 紹介店舗があれば、同じ4秒周期で1店舗ずつフォーカスする
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -23,7 +23,7 @@ import type { ConsultAskResponse, ConsultTurn } from '../../consult/types/consul
 import type { Shop } from '../data/shops';
 import { getOrCreateConsultVisitorKey } from '../../../../lib/consultVisitorKey';
 
-const RESPONSE_STEP_MS = 3000;
+const RESPONSE_STEP_MS = 4000;
 const CHAR_W = 60;
 const CHAR_H = 96;
 

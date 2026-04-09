@@ -368,13 +368,14 @@ body.grandma-chat-open .leaflet-container {
 }
 
 /* 検索スポットライトモード: 検索結果以外のマーカーを薄暗くする */
-.map-search-spotlight-mode .custom-shop-marker:not(.shop-marker-search) {
+.map-search-spotlight-mode .custom-shop-marker:not(.shop-marker-search):not(.shop-marker-ai) {
   opacity: 0.25;
   filter: saturate(0.15);
   transition: opacity 0.4s ease, filter 0.4s ease;
 }
 
-.map-search-spotlight-mode .custom-shop-marker.shop-marker-search {
+.map-search-spotlight-mode .custom-shop-marker.shop-marker-search,
+.map-search-spotlight-mode .custom-shop-marker.shop-marker-ai {
   transition: transform 0.3s ease, filter 0.3s ease;
 }
 

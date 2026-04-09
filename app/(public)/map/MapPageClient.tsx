@@ -187,13 +187,21 @@ export default function MapPageClient({
     ids: number[];
     label: string;
   } | null>(null);
+  const closeMapCharacterConsult = useCallback(() => {
+    setMapCharacterConsultActive(false);
+    setAiMarkerPayload(null);
+  }, []);
   // panel=consult → キャラ相談モードに切り替え（パネルは表示しない）
   useEffect(() => {
     if (activePanel === 'consult') {
       setMapCharacterConsultActive(true);
       router.replace('/map');
+      return;
     }
-  }, [activePanel, router]);
+    if (activePanel === 'search') {
+      closeMapCharacterConsult();
+    }
+  }, [activePanel, closeMapCharacterConsult, router]);
 
   // キャラ起動時にマップをキャラクターの位置にフォーカス
   useEffect(() => {
@@ -740,6 +748,9 @@ export default function MapPageClient({
                   clearSearchMapPayload();
                   setSearchMarkerPayload(null);
                 }
+                if (aiMarkerPayload) {
+                  setAiMarkerPayload(null);
+                }
               }}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
@@ -756,6 +767,7 @@ export default function MapPageClient({
                 setSearchMarkerPayload(null);
                 setMapSearchQuery('');
                 setMapSearchCategory(null);
+                setAiMarkerPayload(null);
               }}
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
@@ -770,10 +782,7 @@ export default function MapPageClient({
                     onShopsRecommended={(shopIds) => {
                       setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
                     }}
-                    onClose={() => {
-                      setMapCharacterConsultActive(false);
-                      setAiMarkerPayload(null);
-                    }}
+                    onClose={closeMapCharacterConsult}
                   />
                 ) : undefined
               }
@@ -947,6 +956,9 @@ export default function MapPageClient({
                         clearSearchMapPayload();
                         setSearchMarkerPayload(null);
                       }
+                      if (aiMarkerPayload) {
+                        setAiMarkerPayload(null);
+                      }
                     }}
                   />
                 </Suspense>
@@ -956,7 +968,13 @@ export default function MapPageClient({
         )}
       </AnimatePresence>
 
-      <NavigationBar />
+      <NavigationBar
+        onMenuOpenChange={(open) => {
+          if (open) {
+            closeMapCharacterConsult();
+          }
+        }}
+      />
     </div>
   );
 }

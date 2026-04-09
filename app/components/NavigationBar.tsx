@@ -55,12 +55,14 @@ const adminMenuItems = [
 type NavigationBarProps = {
   activeHref?: string;
   position?: "fixed" | "absolute";
+  onMenuOpenChange?: (open: boolean) => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 function NavigationBarInner({
   activeHref,
   position = "fixed",
+  onMenuOpenChange,
 }: NavigationBarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -77,6 +79,10 @@ function NavigationBarInner({
       marketTimeMs: getAccumulatedMarketTimeMs(),
     });
   }, [menuOpen]);
+
+  useEffect(() => {
+    onMenuOpenChange?.(menuOpen);
+  }, [menuOpen, onMenuOpenChange]);
 
   const panel = searchParams?.get("panel");
   const isHome = (activeHref ?? pathname) === "/map" && !panel;
