@@ -243,11 +243,13 @@ function SearchResultsSheet({
   searchShopIds,
   map,
   onClearSearch,
+  badgeBottom,
 }: {
   shops: Shop[];
   searchShopIds: number[];
   map: L.Map | null;
   onClearSearch?: () => void;
+  badgeBottom?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedId, setFocusedId] = useState<number | null>(null);
@@ -293,35 +295,40 @@ function SearchResultsSheet({
       {focusedId != null && <SpotlightCountdownBar shopId={focusedId} />}
 
       {/* バッジピル: 件数タップでシートを開く */}
-      <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] left-1/2 -translate-x-1/2 z-[1100] pointer-events-auto">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
-          onTouchStart={(e) => e.stopPropagation()}
-          className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg active:scale-95 transition-transform"
+      {!isOpen && (
+        <div
+          className="absolute left-1/2 z-[1100] -translate-x-1/2 pointer-events-auto"
+          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)' }}
         >
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
-            <circle cx="5.5" cy="5.5" r="4.5" stroke="white" strokeWidth="1.8"/>
-            <path d="M9 9l3 3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-          </svg>
-          <span className="text-[13px] font-bold">{searchShops.length}件のお店</span>
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0 opacity-80">
-            <path d="M1 5L5 1L9 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
+              <circle cx="5.5" cy="5.5" r="4.5" stroke="white" strokeWidth="1.8"/>
+              <path d="M9 9l3 3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[13px] font-bold">{searchShops.length}件のお店</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0 opacity-80">
+              <path d="M1 5L5 1L9 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* 背景オーバーレイ */}
       {isOpen && (
         <div
-          className="absolute inset-0 z-[1150] bg-black/20 pointer-events-auto"
+          className="absolute inset-0 z-[1620] bg-black/20 pointer-events-auto"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* ボトムシート本体 */}
       <div
-        className={`absolute left-0 right-0 z-[1200] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`absolute left-0 right-0 z-[1650] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ bottom: 0, maxHeight: '55vh', display: 'flex', flexDirection: 'column' }}
@@ -1238,6 +1245,18 @@ const MapView = memo(function MapView({
       }),
     [isMinimumZoomMode, majorPlaceLabels, shouldRenderMajorLabels]
   );
+  const activeHighlightShopIds = useMemo(() => {
+    if (searchShopIds && searchShopIds.length > 0) {
+      return searchShopIds;
+    }
+    if (aiShopIds && aiShopIds.length > 0) {
+      return aiShopIds;
+    }
+    return undefined;
+  }, [aiShopIds, searchShopIds]);
+  const resultsBadgeBottom = overlaySlot
+    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem)'
+    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)';
 
   const visibleLandmarkSpecs = useMemo(() => {
     if (!shouldRenderLandmarks) {
@@ -1284,7 +1303,7 @@ const MapView = memo(function MapView({
 
   return (
     <div
-      className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${searchShopIds && searchShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
+      className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${activeHighlightShopIds && activeHighlightShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
         ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
       }}
@@ -1421,7 +1440,7 @@ const MapView = memo(function MapView({
         maxZoom={MAX_ZOOM}
       />
       <MapSearchBar
-        searchShopIds={searchShopIds}
+        searchShopIds={activeHighlightShopIds}
         searchLabel={searchLabel}
         searchQuery={searchQuery}
         onSearchQuery={onSearchQuery}
@@ -1430,12 +1449,13 @@ const MapView = memo(function MapView({
 
       {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
 
-      {searchShopIds && searchShopIds.length > 0 && (
+      {activeHighlightShopIds && activeHighlightShopIds.length > 0 && (
         <SearchResultsSheet
           shops={displayShops}
-          searchShopIds={searchShopIds}
+          searchShopIds={activeHighlightShopIds}
           map={mapInstance}
           onClearSearch={onClearSearch}
+          badgeBottom={resultsBadgeBottom}
         />
       )}
 
