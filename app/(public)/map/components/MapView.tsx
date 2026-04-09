@@ -1279,7 +1279,7 @@ const MapView = memo(function MapView({
     setAutoRotation,
   });
 
-  const { isTouchGestureActive, gestureHandlers } = useMapGestures({
+  const { isTouchGestureActive, gestureTargetRef, gestureHandlers } = useMapGestures({
     mapRef,
     gestureActiveRef: isTouchGestureActiveRef,
     interactionDisabled,
@@ -1305,10 +1305,11 @@ const MapView = memo(function MapView({
     <div
       className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${activeHighlightShopIds && activeHighlightShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
-        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
       }}
     >
       <div
+        ref={gestureTargetRef}
         className="absolute left-1/2 top-1/2 z-0"
         {...gestureHandlers}
         style={{
