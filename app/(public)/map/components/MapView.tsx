@@ -237,46 +237,8 @@ function SpotlightCountdownBar({ shopId }: { shopId: number }) {
   );
 }
 
-// ===== Search result card =====
-function SearchShopCard({
-  shop,
-  focused,
-  onTap,
-}: {
-  shop: Shop;
-  focused: boolean;
-  onTap: () => void;
-}) {
-  const bannerSeed = shop.position ?? shop.id;
-  const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
-
-  return (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onTap(); }}
-      className={`flex-shrink-0 w-32 overflow-hidden rounded-2xl bg-white/96 shadow-lg ring-1 backdrop-blur transition-all duration-200 active:scale-95 ${
-        focused
-          ? "ring-amber-400 scale-105 shadow-xl"
-          : "ring-white/50 hover:scale-102"
-      }`}
-    >
-      <div className="h-20 w-full overflow-hidden bg-slate-100">
-        {imageUrl && (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
-        )}
-      </div>
-      <div className="px-2.5 py-2">
-        <p className="truncate text-xs font-bold leading-tight text-slate-900">{shop.name}</p>
-        {shop.category && (
-          <p className="mt-0.5 truncate text-[10px] text-slate-500">{shop.category}</p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// ===== Search results bar: horizontal scroll strip at bottom =====
-function SearchResultsBar({
+// ===== Search results bottom sheet =====
+function SearchResultsSheet({
   shops,
   searchShopIds,
   map,
@@ -287,8 +249,10 @@ function SearchResultsBar({
   map: L.Map | null;
   onClearSearch?: () => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartY = useRef<number | null>(null);
 
   const searchShopSet = useMemo(() => new Set(searchShopIds), [searchShopIds]);
   const searchShops = useMemo(
@@ -296,59 +260,136 @@ function SearchResultsBar({
     [shops, searchShopSet],
   );
 
-  const handleCardTap = useCallback(
-    (shop: Shop) => {
-      if (!map) return;
-      if (timerRef.current) clearTimeout(timerRef.current);
-      setFocusedId(shop.id);
-      map.flyTo([shop.lat, shop.lng], map.getMaxZoom(), { animate: true, duration: 0.8, easeLinearity: 0.25 });
-      timerRef.current = setTimeout(() => {
-        setFocusedId(null);
-        timerRef.current = null;
-      }, 2000);
-    },
-    [map],
-  );
-
-  const handleClear = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+  // 検索結果が変わったらシートを閉じる
+  useEffect(() => {
+    setIsOpen(false);
     setFocusedId(null);
-    onClearSearch?.();
-  }, [onClearSearch]);
+  }, [searchShopIds]);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const handleRowTap = useCallback((shop: Shop) => {
+    if (!map) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setFocusedId(shop.id);
+    map.flyTo([shop.lat, shop.lng], map.getMaxZoom(), { animate: true, duration: 0.8, easeLinearity: 0.25 });
+    timerRef.current = setTimeout(() => {
+      setFocusedId(null);
+      timerRef.current = null;
+    }, 2000);
+    setIsOpen(false);
+  }, [map]);
+
+  const handleDragStart = (clientY: number) => { dragStartY.current = clientY; };
+  const handleDragEnd = (clientY: number) => {
+    if (dragStartY.current !== null && clientY - dragStartY.current > 60) setIsOpen(false);
+    dragStartY.current = null;
+  };
 
   if (searchShops.length === 0) return null;
 
   return (
     <>
       {focusedId != null && <SpotlightCountdownBar shopId={focusedId} />}
-      <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)-3.875rem)] left-0 right-0 z-[1100] pointer-events-auto">
-        <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 pb-3 pt-2">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
-            className="flex h-[7.5rem] w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-100 via-orange-50 to-white px-3 text-center shadow-lg ring-1 ring-amber-300/60 backdrop-blur transition-all duration-200 active:scale-95"
-            aria-label="検索を解除"
-          >
-            <span className="text-xl font-bold leading-none text-amber-700">×</span>
-            <span className="mt-2 text-sm font-bold text-amber-900">解除</span>
-            <span className="mt-1 text-[10px] font-medium text-amber-700">検索を閉じる</span>
-          </button>
-          {searchShops.map((shop) => (
-            <SearchShopCard
-              key={shop.id}
-              shop={shop}
-              focused={focusedId === shop.id}
-              onTap={() => handleCardTap(shop)}
-            />
-          ))}
+
+      {/* バッジピル: 件数タップでシートを開く */}
+      <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] left-1/2 -translate-x-1/2 z-[1100] pointer-events-auto">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg active:scale-95 transition-transform"
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
+            <circle cx="5.5" cy="5.5" r="4.5" stroke="white" strokeWidth="1.8"/>
+            <path d="M9 9l3 3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          <span className="text-[13px] font-bold">{searchShops.length}件のお店</span>
+          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0 opacity-80">
+            <path d="M1 5L5 1L9 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* 背景オーバーレイ */}
+      {isOpen && (
+        <div
+          className="absolute inset-0 z-[1150] bg-black/20 pointer-events-auto"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* ボトムシート本体 */}
+      <div
+        className={`absolute left-0 right-0 z-[1200] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ bottom: 0, maxHeight: '55vh', display: 'flex', flexDirection: 'column' }}
+        onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+        onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ドラッグハンドル + ヘッダー */}
+        <div
+          className="shrink-0 cursor-grab active:cursor-grabbing"
+          onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+          onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
+        >
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-slate-300" />
+          </div>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Search Results</p>
+              <h3 className="text-base font-bold text-slate-900">{searchShops.length}件のお店</h3>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClearSearch?.(); setIsOpen(false); }}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-[12px] font-medium text-slate-600 active:bg-slate-200 transition-colors"
+            >
+              検索を解除
+            </button>
+          </div>
+        </div>
+
+        {/* 縦スクロールリスト */}
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+          {searchShops.map((shop, i) => {
+            const bannerSeed = shop.position ?? shop.id;
+            const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
+            return (
+              <button
+                key={shop.id}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleRowTap(shop); }}
+                className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors active:bg-amber-50 border-b border-slate-100/80 ${
+                  focusedId === shop.id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                }`}
+              >
+                <div className="shrink-0 h-12 w-12 overflow-hidden rounded-xl bg-slate-100">
+                  {imageUrl && (
+                    <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-bold text-slate-900 leading-tight">{shop.name}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    {shop.category && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">{shop.category}</span>
+                    )}
+                    {shop.position && (
+                      <span className="text-[11px] text-slate-400">{shop.position}番</span>
+                    )}
+                  </div>
+                </div>
+                <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="shrink-0 text-slate-300">
+                  <path d="M1 1l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            );
+          })}
         </div>
       </div>
     </>
@@ -1387,7 +1428,7 @@ const MapView = memo(function MapView({
       {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
 
       {searchShopIds && searchShopIds.length > 0 && (
-        <SearchResultsBar
+        <SearchResultsSheet
           shops={displayShops}
           searchShopIds={searchShopIds}
           map={mapInstance}
