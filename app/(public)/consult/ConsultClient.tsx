@@ -267,16 +267,8 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
       <main className="relative z-10 flex w-full items-start justify-center px-3 pb-16 pt-2">
         <div className="flex w-full max-w-5xl flex-col gap-2">
 
-          {/* ヘッダー：embedded では小さく、standalone では通常サイズ */}
-          {embedded ? (
-            <div className="flex items-center gap-2 px-1 pb-1 pt-0.5">
-              <span className="text-base font-bold text-white drop-shadow">AI相談</span>
-              <div className="flex gap-1.5">
-                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">🎤 音声OK</span>
-                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">📷 写真OK</span>
-              </div>
-            </div>
-          ) : (
+          {/* ヘッダー：standalone のみ表示 */}
+          {!embedded && (
             <section className="rounded-2xl border border-amber-100 bg-white/95 px-5 py-4 text-center shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Consult</p>
               <h1 className="mt-1 text-2xl font-bold text-gray-900">AIキャラに相談する</h1>

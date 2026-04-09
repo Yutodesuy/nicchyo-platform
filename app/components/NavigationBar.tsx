@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBag } from "@/lib/storage/BagContext";
@@ -31,12 +31,12 @@ type MenuItem = {
 };
 
 const mainMenuItems: MenuItem[] = [
-  { label: "バッグ",     href: "/bag",        emoji: "🛍️", color: "bg-amber-50",  textColor: "text-amber-800"  },
-  { label: "バッジ",     href: "/badges",     emoji: "🏆", color: "bg-yellow-50", textColor: "text-yellow-800" },
-  { label: "ことづて",   href: "/kotodute",   emoji: "💬", color: "bg-green-50",  textColor: "text-green-800"  },
-  { label: "レシピ",     href: "/recipes",    emoji: "🍳", color: "bg-orange-50", textColor: "text-orange-800" },
-  { label: "nicchyoとは", href: "/about",    emoji: "ℹ️", color: "bg-sky-50",    textColor: "text-sky-800"    },
-  { label: "マイページ", href: "/my-profile", emoji: "👤", color: "bg-purple-50", textColor: "text-purple-800" },
+  { label: "バッグ",      href: "/bag",        emoji: "🛍️", color: "bg-amber-100",  textColor: "text-amber-900"  },
+  { label: "バッジ",      href: "/badges",     emoji: "🏆", color: "bg-yellow-100", textColor: "text-yellow-900" },
+  { label: "ことづて",    href: "/kotodute",   emoji: "💬", color: "bg-emerald-100",textColor: "text-emerald-900"},
+  { label: "レシピ",      href: "/recipes",    emoji: "🍳", color: "bg-orange-100", textColor: "text-orange-900" },
+  { label: "nicchyoとは", href: "/about",      emoji: "ℹ️", color: "bg-sky-100",    textColor: "text-sky-900"    },
+  { label: "マイページ",  href: "/my-profile", emoji: "👤", color: "bg-violet-100", textColor: "text-violet-900" },
 ];
 
 const vendorMenuItems = [
@@ -58,7 +58,7 @@ type NavigationBarProps = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function NavigationBar({
+function NavigationBarInner({
   activeHref,
   position = "fixed",
 }: NavigationBarProps) {
@@ -128,40 +128,40 @@ export default function NavigationBar({
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 340 }}
-              className="fixed bottom-0 left-0 right-0 z-[9996] rounded-t-3xl bg-white shadow-2xl"
+              transition={{ type: "spring", damping: 32, stiffness: 340 }}
+              className="fixed bottom-0 left-0 right-0 z-[9996] rounded-t-[2rem] bg-[#FFFCF7] shadow-2xl"
               style={{ paddingBottom: "calc(var(--safe-bottom, 0px) + 5.5rem)" }}
             >
               {/* ドラッグハンドル */}
-              <div className="mx-auto mt-3 mb-1 h-1 w-10 rounded-full bg-gray-200" />
+              <div className="mx-auto mt-3.5 mb-0 h-[5px] w-12 rounded-full bg-gray-200/80" />
 
               {/* スクロール領域 */}
-              <div className="max-h-[75dvh] overflow-y-auto overscroll-contain px-5 pb-2 pt-3">
+              <div className="max-h-[78dvh] overflow-y-auto overscroll-contain px-4 pb-3 pt-4">
 
                 {/* ─ ユーザーセクション ─ */}
                 {isLoggedIn && user ? (
-                  <div className="mb-5 flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3">
+                  <div className="mb-4 flex items-center gap-3.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3.5 ring-1 ring-amber-100">
                     {user.avatarUrl ? (
                       <Image
                         src={user.avatarUrl}
                         alt={user.name}
-                        width={44}
-                        height={44}
-                        className="h-11 w-11 rounded-full object-cover ring-2 ring-white"
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full object-cover ring-2 ring-white shadow-sm"
                       />
                     ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-lg font-bold text-white ring-2 ring-white">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-xl font-bold text-white shadow-sm ring-2 ring-white">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-gray-900">{user.name}</p>
+                      <p className="truncate text-[15px] font-bold text-gray-900">{user.name}</p>
                       {user.email && (
-                        <p className="truncate text-xs text-gray-500">{user.email}</p>
+                        <p className="truncate text-[12px] text-gray-500 mt-0.5">{user.email}</p>
                       )}
                     </div>
                     {roleLabel && (
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${roleLabel.color}`}>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold ${roleLabel.color}`}>
                         {roleLabel.text}
                       </span>
                     )}
@@ -169,18 +169,18 @@ export default function NavigationBar({
                 ) : (
                   <button
                     onClick={() => handleMenuItemClick("/login")}
-                    className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-left transition hover:bg-gray-50 active:scale-[0.98]"
+                    className="mb-4 flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-amber-200 bg-amber-50/50 px-4 py-4 text-left transition active:scale-[0.98] active:bg-amber-50"
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                      <svg className="h-6 w-6 text-amber-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">ログイン / 登録</p>
-                      <p className="text-xs text-gray-400">アカウントでもっと便利に</p>
+                      <p className="text-[15px] font-bold text-gray-800">ログイン / 登録</p>
+                      <p className="mt-0.5 text-[12px] text-gray-400">アカウントでもっと便利に</p>
                     </div>
-                    <svg className="ml-auto h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                    <svg className="ml-auto h-5 w-5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -195,19 +195,19 @@ export default function NavigationBar({
                 />
 
                 {/* ─ メインメニュー グリッド ─ */}
-                <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">メニュー</p>
-                <div className="mb-5 grid grid-cols-3 gap-2.5">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">メニュー</p>
+                <div className="mb-5 grid grid-cols-3 gap-3">
                   {mainMenuItems.map((item, i) => (
                     <motion.button
                       key={item.href}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04, type: "spring", damping: 20, stiffness: 300 }}
+                      initial={{ opacity: 0, scale: 0.88 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.045, type: "spring", damping: 18, stiffness: 280 }}
                       onClick={() => handleMenuItemClick(item.href)}
-                      className={`flex flex-col items-center gap-1.5 rounded-2xl ${item.color} px-2 py-3.5 transition active:scale-95`}
+                      className={`flex flex-col items-center justify-center gap-2 rounded-2xl ${item.color} min-h-[84px] px-2 py-4 transition active:scale-95 active:brightness-95`}
                     >
-                      <span className="text-2xl leading-none">{item.emoji}</span>
-                      <span className={`text-[11px] font-semibold leading-tight ${item.textColor}`}>{item.label}</span>
+                      <span className="text-[28px] leading-none">{item.emoji}</span>
+                      <span className={`text-[12px] font-bold leading-tight ${item.textColor}`}>{item.label}</span>
                     </motion.button>
                   ))}
                 </div>
@@ -215,17 +215,17 @@ export default function NavigationBar({
                 {/* ─ 出店者メニュー ─ */}
                 {(permissions.isVendor || permissions.isSuperAdmin) && (
                   <div className="mb-4">
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-amber-500">出店者</p>
-                    <div className="overflow-hidden rounded-2xl border border-amber-100 bg-amber-50/50">
+                    <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-500">出店者</p>
+                    <div className="overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-sm">
                       {vendorMenuItems.map((item, i) => (
                         <button
                           key={item.href}
                           onClick={() => handleMenuItemClick(item.href)}
-                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-amber-50 active:scale-[0.99] ${i !== 0 ? "border-t border-amber-100" : ""}`}
+                          className={`flex w-full items-center gap-4 px-4 py-[14px] text-left transition active:bg-amber-50 ${i !== 0 ? "border-t border-gray-100" : ""}`}
                         >
-                          <span className="text-base">{item.emoji}</span>
-                          <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
-                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                          <span className="text-xl">{item.emoji}</span>
+                          <span className="flex-1 text-[14px] font-semibold text-gray-800">{item.label}</span>
+                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -237,17 +237,17 @@ export default function NavigationBar({
                 {/* ─ 管理メニュー ─ */}
                 {permissions.isSuperAdmin && (
                   <div className="mb-4">
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-red-400">管理者</p>
-                    <div className="overflow-hidden rounded-2xl border border-red-100 bg-red-50/50">
+                    <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-red-400">管理者</p>
+                    <div className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
                       {adminMenuItems.map((item, i) => (
                         <button
                           key={item.href}
                           onClick={() => handleMenuItemClick(item.href)}
-                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-red-50 active:scale-[0.99] ${i !== 0 ? "border-t border-red-100" : ""}`}
+                          className={`flex w-full items-center gap-4 px-4 py-[14px] text-left transition active:bg-red-50 ${i !== 0 ? "border-t border-gray-100" : ""}`}
                         >
-                          <span className="text-base">{item.emoji}</span>
-                          <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
-                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                          <span className="text-xl">{item.emoji}</span>
+                          <span className="flex-1 text-[14px] font-semibold text-gray-800">{item.label}</span>
+                          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -260,9 +260,9 @@ export default function NavigationBar({
                 {isLoggedIn && (
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50 active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-gray-200 bg-white py-[14px] text-[14px] font-semibold text-gray-500 shadow-sm transition active:bg-gray-50 active:scale-[0.98]"
                   >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                     </svg>
                     ログアウト
@@ -379,6 +379,14 @@ function NavLinkItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   );
 }
 
+export default function NavigationBar(props: NavigationBarProps) {
+  return (
+    <Suspense>
+      <NavigationBarInner {...props} />
+    </Suspense>
+  );
+}
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 function MenuGridIcon({ className }: { className?: string }) {
   return (
@@ -477,19 +485,19 @@ function MarketDashboard({ bannerOpens, marketTimeMs, totalPrice, bagItemCount }
   ];
 
   return (
-    <div className="mb-5">
-      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-widest text-gray-400">今日の日曜市</p>
-      <div className="grid grid-cols-3 gap-2">
+    <div className="mb-4">
+      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">今日の日曜市</p>
+      <div className="grid grid-cols-3 gap-2.5">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="flex flex-col items-center gap-1 rounded-2xl bg-gray-50 p-3 text-center"
+            className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-3.5 text-center shadow-sm ring-1 ring-gray-100"
           >
-            <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${stat.color} text-lg shadow-sm`}>
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${stat.color} text-lg shadow-sm`}>
               {stat.emoji}
             </div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">{stat.value}</p>
-            <p className="text-[10px] text-gray-500 leading-tight">{stat.label}</p>
+            <p className="text-[15px] font-bold text-gray-900 leading-tight">{stat.value}</p>
+            <p className="text-[10px] text-gray-400 leading-tight">{stat.label}</p>
           </div>
         ))}
       </div>
