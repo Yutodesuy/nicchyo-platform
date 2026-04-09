@@ -26,6 +26,7 @@ import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
 import { buildSearchIndex } from "../search/lib/searchIndex";
 import { useShopSearch } from "../search/hooks/useShopSearch";
+import MapCharacterConsult from "./components/MapCharacterConsult";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
@@ -156,6 +157,7 @@ export default function MapPageClient({
     setTutorialProgress(Math.min(10, stored));
   }, []);
   const dragControls = useDragControls();
+  const [mapCharacterConsultActive, setMapCharacterConsultActive] = useState(false);
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
@@ -183,6 +185,14 @@ export default function MapPageClient({
     ids: number[];
     label: string;
   } | null>(null);
+  // panel=consult → キャラ相談モードに切り替え（パネルは表示しない）
+  useEffect(() => {
+    if (activePanel === 'consult') {
+      setMapCharacterConsultActive(true);
+      router.replace('/map');
+    }
+  }, [activePanel, router]);
+
   const vendorShopId = user?.vendorId ?? null;
   const activeEvent = useMemo(() => {
     if (!showGrandma) return null;
@@ -421,6 +431,31 @@ export default function MapPageClient({
       return {
         reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
       };
+    }
+  }, [userLocation]);
+
+  // キャラ相談モード用のask（history付き）
+  const handleCharacterAsk = useCallback(async (
+    text: string,
+    history: Array<{ role: 'user' | 'assistant'; text: string }>,
+  ): Promise<{ reply: string; shopIds?: number[] }> => {
+    try {
+      const response = await fetch('/api/grandma/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          location: userLocation,
+          history: history.slice(-6),
+        }),
+      });
+      if (!response.ok) return { reply: 'ごめんね、今は答えを出せんかった。時間をおいて試してね。' };
+      const payload = (await response.json()) as { reply?: string; shopIds?: number[] };
+      const rawReply = payload.reply ?? 'ごめんね、今は答えを出せんかった。時間をおいて試してね。';
+      const cleaned = rawReply.replace(/SHOP_IDS:\s*([0-9,\s]+)/i, '').trim();
+      return { reply: cleaned || rawReply, shopIds: payload.shopIds };
+    } catch {
+      return { reply: 'ごめんね、今は答えを出せんかった。時間をおいて試してね。' };
     }
   }, [userLocation]);
 
@@ -844,12 +879,28 @@ export default function MapPageClient({
                 )}
               </>
             )}
+
+            {/* ── マップキャラクター相談モード ── */}
+            {mapCharacterConsultActive && (
+              <MapCharacterConsult
+                map={mapRef.current}
+                shops={shops}
+                onAsk={handleCharacterAsk}
+                onShopsRecommended={(shopIds) => {
+                  setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
+                }}
+                onClose={() => {
+                  setMapCharacterConsultActive(false);
+                  setAiMarkerPayload(null);
+                }}
+              />
+            )}
           </div>
       </main>
 
-      {/* ── パネルオーバーレイ（相談・検索） ── */}
+      {/* ── パネルオーバーレイ（検索のみ） ── */}
       <AnimatePresence>
-        {activePanel && (
+        {activePanel === 'search' && (
           <>
             {/* マップ暗幕 */}
             <motion.div
@@ -878,15 +929,8 @@ export default function MapPageClient({
                   router.push("/map");
                 }
               }}
-              className={`fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl backdrop-blur-xl ${activePanel === "consult" ? "bg-orange-100/85" : "bg-black/50"}`}
-              style={{
-                height: "92dvh",
-                ...(activePanel === "consult" && {
-                  backgroundImage: "url('/images/ai-consult-bg.png')",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center top",
-                }),
-              }}
+              className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl bg-black/50 backdrop-blur-xl"
+              style={{ height: "92dvh" }}
             >
               {/* ドラッグハンドル */}
               <div
@@ -898,24 +942,21 @@ export default function MapPageClient({
               </div>
               <div className="h-full overflow-y-auto overscroll-contain pt-6">
                 <Suspense fallback={null}>
-                  {activePanel === "consult" && <ConsultClient embedded />}
-                  {activePanel === "search" && (
-                    <SearchClient
-                      shops={shops}
-                      landmarks={landmarks}
-                      embedded
-                      initialQuery={mapSearchQuery}
-                      initialCategory={mapSearchCategory}
-                      onQueryChange={(q, cat) => {
-                        setMapSearchQuery(q);
-                        setMapSearchCategory(cat);
-                        if (searchMarkerPayload) {
-                          clearSearchMapPayload();
-                          setSearchMarkerPayload(null);
-                        }
-                      }}
-                    />
-                  )}
+                  <SearchClient
+                    shops={shops}
+                    landmarks={landmarks}
+                    embedded
+                    initialQuery={mapSearchQuery}
+                    initialCategory={mapSearchCategory}
+                    onQueryChange={(q, cat) => {
+                      setMapSearchQuery(q);
+                      setMapSearchCategory(cat);
+                      if (searchMarkerPayload) {
+                        clearSearchMapPayload();
+                        setSearchMarkerPayload(null);
+                      }
+                    }}
+                  />
                 </Suspense>
               </div>
             </motion.div>
