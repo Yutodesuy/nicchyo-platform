@@ -60,6 +60,7 @@ import {
 } from "../utils/mapRouteGeometry";
 import { useMapGestures } from "../hooks/useMapGestures";
 import { useMapCameraController } from "../hooks/useMapCameraController";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -222,25 +223,153 @@ function VerticalZoomSlider({
   );
 }
 
-// ===== Left-side controls: vertical zoom slider + tracking button =====
-function MapControls({
+// ===== Spotlight countdown bar: 2s amber progress bar shown during spotlight mode =====
+function SpotlightCountdownBar({ shopId }: { shopId: number }) {
+  return (
+    <div
+      key={shopId}
+      className="pointer-events-none absolute left-0 right-0 top-0 z-[1200] h-1 overflow-hidden"
+    >
+      <div className="h-full w-full origin-left bg-amber-400 opacity-80"
+        style={{ animation: "spotlight-drain 2s linear forwards" }}
+      />
+    </div>
+  );
+}
+
+// ===== Search result card =====
+function SearchShopCard({
+  shop,
+  focused,
+  onTap,
+}: {
+  shop: Shop;
+  focused: boolean;
+  onTap: () => void;
+}) {
+  const bannerSeed = shop.position ?? shop.id;
+  const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onTap(); }}
+      className={`flex-shrink-0 w-32 overflow-hidden rounded-2xl bg-white/96 shadow-lg ring-1 backdrop-blur transition-all duration-200 active:scale-95 ${
+        focused
+          ? "ring-amber-400 scale-105 shadow-xl"
+          : "ring-white/50 hover:scale-102"
+      }`}
+    >
+      <div className="h-20 w-full overflow-hidden bg-slate-100">
+        {imageUrl && (
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+        )}
+      </div>
+      <div className="px-2.5 py-2">
+        <p className="truncate text-xs font-bold leading-tight text-slate-900">{shop.name}</p>
+        {shop.category && (
+          <p className="mt-0.5 truncate text-[10px] text-slate-500">{shop.category}</p>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ===== Search results bar: horizontal scroll strip at bottom =====
+function SearchResultsBar({
+  shops,
+  searchShopIds,
   map,
-  isTracking,
-  onToggleTracking,
+  onClearSearch,
+}: {
+  shops: Shop[];
+  searchShopIds: number[];
+  map: L.Map | null;
+  onClearSearch?: () => void;
+}) {
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchShopSet = useMemo(() => new Set(searchShopIds), [searchShopIds]);
+  const searchShops = useMemo(
+    () => shops.filter((s) => searchShopSet.has(s.id)),
+    [shops, searchShopSet],
+  );
+
+  const handleCardTap = useCallback(
+    (shop: Shop) => {
+      if (!map) return;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setFocusedId(shop.id);
+      map.flyTo([shop.lat, shop.lng], map.getMaxZoom(), { animate: true, duration: 0.8, easeLinearity: 0.25 });
+      timerRef.current = setTimeout(() => {
+        setFocusedId(null);
+        timerRef.current = null;
+      }, 2000);
+    },
+    [map],
+  );
+
+  const handleClear = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setFocusedId(null);
+    onClearSearch?.();
+  }, [onClearSearch]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  if (searchShops.length === 0) return null;
+
+  return (
+    <>
+      {focusedId != null && <SpotlightCountdownBar shopId={focusedId} />}
+      <div className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)-3.875rem)] left-0 right-0 z-[1100] pointer-events-auto">
+        <div className="flex gap-3 overflow-x-auto scrollbar-none px-4 pb-3 pt-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
+            className="flex h-[7.5rem] w-24 flex-shrink-0 flex-col items-center justify-center rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-100 via-orange-50 to-white px-3 text-center shadow-lg ring-1 ring-amber-300/60 backdrop-blur transition-all duration-200 active:scale-95"
+            aria-label="検索を解除"
+          >
+            <span className="text-xl font-bold leading-none text-amber-700">×</span>
+            <span className="mt-2 text-sm font-bold text-amber-900">解除</span>
+            <span className="mt-1 text-[10px] font-medium text-amber-700">検索を閉じる</span>
+          </button>
+          {searchShops.map((shop) => (
+            <SearchShopCard
+              key={shop.id}
+              shop={shop}
+              focused={focusedId === shop.id}
+              onTap={() => handleCardTap(shop)}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ===== Bottom-right: vertical zoom slider =====
+function MapZoomControls({
+  map,
   currentZoom,
   minZoom,
   maxZoom,
 }: {
   map: L.Map | null;
-  isTracking: boolean;
-  onToggleTracking: () => void;
   currentZoom: number;
   minZoom: number;
   maxZoom: number;
 }) {
   return (
     <div
-      className="absolute top-4 left-4 z-[1000] flex flex-col items-center gap-3"
+      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onTouchStart={(e) => { e.stopPropagation(); }}
@@ -256,8 +385,25 @@ function MapControls({
         />
         <span className="select-none text-[11px] font-bold leading-none text-slate-400">−</span>
       </div>
+    </div>
+  );
+}
 
-      {/* 現在地追従ボタン */}
+// ===== Top-left: location tracking button =====
+function MapTrackingButton({
+  isTracking,
+  onToggleTracking,
+}: {
+  isTracking: boolean;
+  onToggleTracking: () => void;
+}) {
+  return (
+    <div
+      className="absolute top-4 left-4 z-[1000]"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => { e.stopPropagation(); }}
+    >
       <button
         type="button"
         onClick={(e) => {
@@ -275,49 +421,90 @@ function MapControls({
   );
 }
 
-function MapStatusHud({
+// ===== Combined controls (kept for call-site compatibility) =====
+function MapControls({
+  map,
   isTracking,
-  isInMarket,
-  shopLoadProgress,
+  onToggleTracking,
+  currentZoom,
+  minZoom,
+  maxZoom,
 }: {
+  map: L.Map | null;
   isTracking: boolean;
-  isInMarket: boolean | null;
-  shopLoadProgress: { processed: number; total: number; done: boolean };
+  onToggleTracking: () => void;
+  currentZoom: number;
+  minZoom: number;
+  maxZoom: number;
 }) {
-  const showShopProgress = shopLoadProgress.total > 0 && !shopLoadProgress.done;
-  const trackingLabel = isTracking ? "現在地を追従中" : "地図を閲覧中";
-  const marketLabel =
-    isInMarket === null
-      ? "位置を確認中"
-      : isInMarket
-        ? "通路上に現在地を表示中"
-        : "通路外のため現在地は非表示";
+  return (
+    <>
+      <MapZoomControls map={map} currentZoom={currentZoom} minZoom={minZoom} maxZoom={maxZoom} />
+      <MapTrackingButton isTracking={isTracking} onToggleTracking={onToggleTracking} />
+    </>
+  );
+}
+
+// ===== Top-right: inline search bar =====
+function MapSearchBar({
+  searchShopIds,
+  searchLabel,
+  searchQuery,
+  onSearchQuery,
+  onClearSearch,
+}: {
+  searchShopIds?: number[];
+  searchLabel?: string;
+  searchQuery?: string;
+  onSearchQuery?: (q: string) => void;
+  onClearSearch?: () => void;
+}) {
+  const hasSearch = Boolean(
+    (searchShopIds && searchShopIds.length > 0) ||
+    (searchQuery && searchQuery.trim()) ||
+    (searchLabel && searchLabel.trim())
+  );
 
   return (
-    <div className="pointer-events-none absolute right-4 top-4 z-[1000] flex max-w-[240px] flex-col gap-2">
-      <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Map Status</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">{trackingLabel}</p>
-        <p className="mt-1 text-xs leading-5 text-slate-600">{marketLabel}</p>
+    <div
+      className="absolute right-4 top-4 z-[1000]"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      <div className={`flex items-center gap-1.5 rounded-full pl-3 pr-2 py-2 shadow-md ring-1 backdrop-blur transition-all duration-200 ${
+        hasSearch
+          ? 'bg-gradient-to-r from-amber-200/95 via-amber-100/95 to-orange-50/95 ring-amber-500/45 shadow-[0_12px_28px_-16px_rgba(217,119,6,0.75)]'
+          : 'bg-white/75 ring-slate-900/6'
+      }`}>
+        <span className={`shrink-0 text-[13px] ${hasSearch ? 'text-amber-700' : 'text-slate-400'}`}>🔍</span>
+        <input
+          type="text"
+          value={searchQuery ?? ''}
+          onChange={(e) => { e.stopPropagation(); onSearchQuery?.(e.target.value); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          placeholder="お店を探す"
+          className={`w-28 bg-transparent text-[13px] outline-none ${hasSearch ? 'font-medium text-amber-900 placeholder:text-amber-700/70' : 'text-slate-700 placeholder:text-slate-400'}`}
+        />
+        {hasSearch && searchShopIds && searchShopIds.length > 0 && (
+          <span className="shrink-0 rounded-full bg-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+            {searchShopIds.length}件
+          </span>
+        )}
+        {hasSearch && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClearSearch?.(); }}
+            className="shrink-0 rounded-full bg-white/85 p-1.5 text-amber-700 hover:bg-white active:scale-90 transition-all"
+            aria-label="検索をクリア"
+          >
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
-      {showShopProgress && (
-        <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-          <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
-            <span className="font-medium text-slate-800">店舗を読み込み中</span>
-            <span>{shopLoadProgress.processed}/{shopLoadProgress.total}</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-[width] duration-200"
-              style={{
-                width: `${shopLoadProgress.total > 0
-                  ? Math.min(100, (shopLoadProgress.processed / shopLoadProgress.total) * 100)
-                  : 0}%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -373,6 +560,10 @@ type MapViewProps = {
   onZoomChange?: (zoom: number) => void;
   suppressInitialLocationFocus?: boolean;
   onShopSelect?: (shop: Shop) => void;
+  spotlightShopId?: number;
+  onClearSearch?: () => void;
+  searchQuery?: string;
+  onSearchQuery?: (q: string) => void;
 };
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
@@ -496,6 +687,10 @@ const MapView = memo(function MapView({
   onZoomChange,
   suppressInitialLocationFocus = false,
   onShopSelect,
+  spotlightShopId,
+  onClearSearch,
+  searchQuery,
+  onSearchQuery,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -1045,7 +1240,7 @@ const MapView = memo(function MapView({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden"
+      className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${searchShopIds && searchShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
         ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
       }}
@@ -1181,11 +1376,24 @@ const MapView = memo(function MapView({
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
       />
-      <MapStatusHud
-        isTracking={isTracking}
-        isInMarket={isInMarket}
-        shopLoadProgress={shopLoadProgress}
+      <MapSearchBar
+        searchShopIds={searchShopIds}
+        searchLabel={searchLabel}
+        searchQuery={searchQuery}
+        onSearchQuery={onSearchQuery}
+        onClearSearch={onClearSearch}
       />
+
+      {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
+
+      {searchShopIds && searchShopIds.length > 0 && (
+        <SearchResultsBar
+          shops={displayShops}
+          searchShopIds={searchShopIds}
+          map={mapInstance}
+          onClearSearch={onClearSearch}
+        />
+      )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離

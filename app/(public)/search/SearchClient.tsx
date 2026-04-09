@@ -121,16 +121,31 @@ function formatPostCreatedAt(createdAt?: string): string {
   }).format(created);
 }
 
-export default function SearchClient({ shops, landmarks, embedded = false }: SearchClientProps & { embedded?: boolean }) {
+export default function SearchClient({
+  shops,
+  landmarks,
+  embedded = false,
+  initialQuery = '',
+  initialCategory = null,
+  onQueryChange,
+}: SearchClientProps & {
+  embedded?: boolean;
+  initialQuery?: string;
+  initialCategory?: string | null;
+  onQueryChange?: (query: string, category: string | null) => void;
+}) {
   const router = useRouter();
   const itemsPerPage = 10;
-  const [textQuery, setTextQuery] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [textQuery, setTextQuery] = useState(initialQuery);
+  const [category, setCategory] = useState<string | null>(initialCategory);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [openedShop, setOpenedShop] = useState<Shop | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDesktop, setIsDesktop] = useState(false);
+  const skipNextEmbeddedSyncRef = useRef(embedded);
+  const prevInitialQueryRef = useRef(initialQuery);
+  const prevInitialCategoryRef = useRef(initialCategory);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -158,6 +173,18 @@ export default function SearchClient({ shops, landmarks, embedded = false }: Sea
       document.body.classList.remove('search-inline-shop-banner-open');
     };
   }, [isDesktop, openedShop]);
+
+  useEffect(() => {
+    const propsChanged =
+      prevInitialQueryRef.current !== initialQuery ||
+      prevInitialCategoryRef.current !== initialCategory;
+    if (!propsChanged) return;
+    prevInitialQueryRef.current = initialQuery;
+    prevInitialCategoryRef.current = initialCategory;
+    skipNextEmbeddedSyncRef.current = true;
+    setTextQuery(initialQuery);
+    setCategory(initialCategory);
+  }, [initialCategory, initialQuery]);
 
   const handleToggleFavorite = (shopId: number) => {
     const next = toggleFavoriteShopId(shopId);
@@ -263,6 +290,33 @@ export default function SearchClient({ shops, landmarks, embedded = false }: Sea
     });
     router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
   }, [filteredShops, router, searchLabel]);
+
+  // 埋め込み時: 検索条件変更を親に通知してパネルを閉じる
+  useEffect(() => {
+    if (!embedded || !onQueryChange) return;
+    if (skipNextEmbeddedSyncRef.current) {
+      skipNextEmbeddedSyncRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      onQueryChange(textQuery, category);
+      if (hasQuery) router.push('/map');
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [textQuery, category, embedded, onQueryChange, hasQuery, router]);
+
+  // スタンドアロン(/search)モバイル: 自動でマップへ遷移
+  useEffect(() => {
+    if (embedded || isDesktop || !hasQuery || filteredShops.length === 0) return;
+    const timer = setTimeout(() => {
+      saveSearchMapPayload({
+        ids: filteredShops.map((s) => s.id),
+        label: searchLabel,
+      });
+      router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [hasQuery, embedded, isDesktop, filteredShops, searchLabel, router]);
 
   // 検索結果0件時の提案クリックハンドラ：テキスト検索をクリアしてカテゴリー検索のみにする
   const handleSuggestionClick = useCallback((cat: string) => {
@@ -469,6 +523,7 @@ export default function SearchClient({ shops, landmarks, embedded = false }: Sea
                 </div>
               </div>
             )}
+
               </>
             )}
           </div>
