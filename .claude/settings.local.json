@@ -19,7 +19,9 @@
       "Bash(xargs grep:*)",
       "Bash(npm run:*)",
       "Bash(npx next:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(node -e \"require\\('child_process'\\).execSync\\('npx tsc --noEmit', {cwd: 'C:/Users/miyuk/nicchyo-platform', encoding: 'utf8', stdio: 'pipe'}\\)\")",
+      "Bash(node -e ':*)"
     ]
   }
 }
