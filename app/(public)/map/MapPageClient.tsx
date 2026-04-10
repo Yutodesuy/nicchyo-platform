@@ -152,9 +152,23 @@ export default function MapPageClient({
   }, []);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const [tutorialProgress, setTutorialProgress] = useState<number>(0);
+  const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
   useEffect(() => {
     const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
     setTutorialProgress(Math.min(10, stored));
+  }, []);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const updateBannerState = () => {
+      setIsShopBannerOpen(document.body.classList.contains("shop-banner-open"));
+    };
+    updateBannerState();
+    const observer = new MutationObserver(updateBannerState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
   }, []);
   const dragControls = useDragControls();
   const [mapCharacterConsultActive, setMapCharacterConsultActive] = useState(false);
@@ -804,7 +818,11 @@ export default function MapPageClient({
                 ) : undefined
               }
             />
-            {showGrandma && !searchMarkerPayload && !mapSearchShopIds && !mapCharacterConsultActive && (
+            {showGrandma &&
+              !searchMarkerPayload &&
+              !mapSearchShopIds &&
+              !mapCharacterConsultActive &&
+              !isShopBannerOpen && (
               <>
                 <GrandmaChatter
                   titleLabel="にちよさん"
