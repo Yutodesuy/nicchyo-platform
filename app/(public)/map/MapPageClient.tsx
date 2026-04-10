@@ -287,6 +287,10 @@ export default function MapPageClient({
     couponVendorIds: mapSearchCouponVendorIds,
   });
   const activeCouponTypeId = couponData?.active_coupon?.coupon_type_id ?? undefined;
+  const stampedVendorIds = useMemo(
+    () => couponData?.stamps?.map((s) => s.vendor_id) ?? [],
+    [couponData]
+  );
   const mapSearchLabel = useMemo(() => {
     const parts: string[] = [];
     if (mapSearchQuery.trim()) parts.push(mapSearchQuery.trim());
@@ -880,6 +884,7 @@ export default function MapPageClient({
               searchQuery={mapSearchQuery}
               couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
               activeCouponTypeId={activeCouponTypeId}
+              stampedVendorIds={stampedVendorIds}
               onSearchQuery={(q) => {
                 setMapSearchQuery(q);
                 if (searchMarkerPayload) {
