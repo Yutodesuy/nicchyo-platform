@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { MapPin, Loader2, TicketX } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import NavigationBar from "@/app/components/NavigationBar";
 import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
 import type { MyCouponsResponse, CouponIssuance, CouponType } from "@/lib/coupons/types";
@@ -106,8 +107,8 @@ export default function CouponsPage() {
               今日のクーポン
             </p>
 
-            {activeCoupon ? (
-              <ActiveCouponCard coupon={activeCoupon} visitorKey={visitorKey ?? ""} />
+            {activeCoupon && visitorKey ? (
+              <ActiveCouponCard coupon={activeCoupon} visitorKey={visitorKey} />
             ) : (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 bg-white px-5 py-6 text-center shadow-sm">
                 <TicketX className="h-10 w-10 text-gray-300" />
@@ -217,7 +218,7 @@ export default function CouponsPage() {
   );
 }
 
-// ─── アクティブなクーポンカード ───────────────────────────────────────────────
+// ─── アクティブなクーポンカード（QRコード表示） ──────────────────────────────
 function ActiveCouponCard({
   coupon,
   visitorKey,
@@ -225,8 +226,6 @@ function ActiveCouponCard({
   coupon: ActiveCoupon;
   visitorKey: string;
 }) {
-  const [showCode, setShowCode] = useState(false);
-
   return (
     <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm">
       {/* クーポン種類 */}
@@ -239,34 +238,28 @@ function ActiveCouponCard({
       </div>
 
       {/* 金額 */}
-      <div className="flex items-baseline gap-1 mb-2">
-        <span className="text-5xl font-extrabold text-green-600">
-          {coupon.amount}
-        </span>
+      <div className="flex items-baseline gap-1 mb-1">
+        <span className="text-5xl font-extrabold text-green-600">{coupon.amount}</span>
         <span className="text-2xl font-bold text-green-600">円引き</span>
       </div>
 
       {/* 有効期限 */}
-      <p className="mb-4 text-sm text-gray-400">
+      <p className="mb-5 text-sm text-gray-400">
         有効期限: {formatExpiresAt(coupon.expires_at)}
       </p>
 
-      {/* クーポンコード（お店に見せるもの） */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-        <p className="mb-1.5 text-xs font-semibold text-gray-500">
-          お店のスタッフにお見せください
+      {/* QRコード */}
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 py-5 px-4">
+        <QRCodeSVG
+          value={visitorKey}
+          size={180}
+          level="M"
+          bgColor="#F9FAFB"
+          fgColor="#111827"
+        />
+        <p className="text-xs text-center text-gray-500 leading-relaxed">
+          お店のスタッフにこのQRコードを<br />読み取ってもらってください
         </p>
-        {showCode ? (
-          <p className="break-all font-mono text-xs text-gray-700">{visitorKey}</p>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowCode(true)}
-            className="w-full rounded-lg border border-green-200 bg-green-50 py-2.5 text-sm font-bold text-green-700 transition hover:bg-green-100"
-          >
-            クーポンコードを表示する
-          </button>
-        )}
       </div>
     </div>
   );
