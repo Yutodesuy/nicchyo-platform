@@ -128,7 +128,7 @@ function NavigationBarInner({
     : null;
 
   const activeCoupon = couponData?.active_coupon ?? null;
-  const isMarketDay = couponData?.is_market_day ?? false;
+  const isMarketDay = true; // TODO: 開発中は常に開催日扱い。本番前に `couponData?.is_market_day ?? false` に戻す
 
   return (
     <>
