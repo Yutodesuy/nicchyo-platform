@@ -40,6 +40,7 @@ export const MapOverlays = memo(function MapOverlays({
   recipeIngredientIconsByShop,
   attendanceLabelsByShop,
   bagShopIds,
+  couponEligibleVendorIds,
   shouldRenderRecipeOverlay,
   shopsWithIngredients,
   recipeIngredients,
@@ -70,6 +71,7 @@ export const MapOverlays = memo(function MapOverlays({
   recipeIngredientIconsByShop: Record<number, string[]>;
   attendanceLabelsByShop: Record<number, string>;
   bagShopIds: number[];
+  couponEligibleVendorIds?: string[];
   shouldRenderRecipeOverlay: boolean;
   shopsWithIngredients: Shop[];
   recipeIngredients: Array<{ name: string; icon: string }>;
@@ -183,6 +185,7 @@ export const MapOverlays = memo(function MapOverlays({
           recipeIngredientIconsByShop={recipeIngredientIconsByShop}
           attendanceLabelsByShop={attendanceLabelsByShop}
           bagShopIds={bagShopIds}
+          couponEligibleVendorIds={couponEligibleVendorIds}
         />
       )}
 

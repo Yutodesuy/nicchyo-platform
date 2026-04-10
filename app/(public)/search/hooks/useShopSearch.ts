@@ -11,6 +11,7 @@ interface UseShopSearchParams {
   textQuery: string;
   category: string | null;
   chome: string | null;
+  couponVendorIds?: Set<string>;
 }
 
 /**
@@ -30,6 +31,7 @@ export function useShopSearch({
   textQuery,
   category,
   chome,
+  couponVendorIds,
 }: UseShopSearchParams): Shop[] {
   return useMemo(() => {
     // 1. インデックスをフィルタリング
@@ -58,6 +60,11 @@ export function useShopSearch({
 
     // 2. 元の Shop オブジェクトを返す
     const resultIds = new Set(filtered.map(idx => idx.id));
-    return shops.filter(shop => resultIds.has(shop.id));
-  }, [shops, searchIndex, textQuery, category, chome]);
+    return shops.filter((shop) => {
+      if (!resultIds.has(shop.id)) return false;
+      if (!couponVendorIds) return true;
+      if (!shop.vendorId) return false;
+      return couponVendorIds.has(shop.vendorId);
+    });
+  }, [shops, searchIndex, textQuery, category, chome, couponVendorIds]);
 }

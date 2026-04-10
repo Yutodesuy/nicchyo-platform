@@ -41,8 +41,6 @@ export default function QrScanner({ onScan, active }: Props) {
           supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
           rememberLastUsedCamera: true,
           showTorchButtonIfSupported: true,
-          // ライブラリ内の英語テキストをCSSで隠してカスタムUIで代替
-          hideMotivationText: true,
         },
         false
       );

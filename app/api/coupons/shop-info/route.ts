@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     const { data: settings } = await supabase
       .from("vendor_coupon_settings")
-      .select("coupon_type_id, min_purchase_amount, coupon_types(name, emoji)")
+      .select("coupon_type_id, min_purchase_amount, coupon_types(name, emoji, amount)")
       .eq("vendor_id", vendor_id)
       .eq("is_participating", true);
 
@@ -40,12 +40,13 @@ export async function GET(request: Request) {
       const rawType = s.coupon_types;
       const typeData =
         rawType && !Array.isArray(rawType) && typeof rawType === "object"
-          ? (rawType as { name: string; emoji: string })
+          ? (rawType as { name: string; emoji: string; amount?: number })
           : null;
       return {
         coupon_type_id: s.coupon_type_id as string,
         coupon_type_name: typeData?.name ?? "",
         coupon_type_emoji: typeData?.emoji ?? "🎟️",
+        coupon_type_amount: typeData?.amount ?? 50,
         min_purchase_amount: s.min_purchase_amount as number,
       };
     });

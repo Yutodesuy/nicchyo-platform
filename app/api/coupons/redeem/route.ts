@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import type { RedeemResponse } from "@/lib/coupons/types";
+import { isCouponQrTokenValid, parseCouponQrToken } from "@/lib/coupons/qrToken";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,10 +43,10 @@ export async function POST(request: Request) {
       visitor_key?: string;
       market_date?: string;
     };
-    const visitor_key = body.visitor_key?.trim();
+    const visitorToken = body.visitor_key?.trim();
     const market_date = body.market_date?.trim();
 
-    if (!visitor_key || !market_date) {
+    if (!visitorToken || !market_date) {
       return NextResponse.json(
         { error: "visitor_key and market_date are required" },
         { status: 400 }
@@ -54,6 +55,23 @@ export async function POST(request: Request) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(market_date)) {
       return NextResponse.json({ error: "Invalid market_date format" }, { status: 400 });
     }
+
+    if (!isCouponQrTokenValid(visitorToken)) {
+      return NextResponse.json(
+        { error: "QR code is invalid or expired" },
+        { status: 400 }
+      );
+    }
+
+    const parsedToken = parseCouponQrToken(visitorToken);
+    if (!parsedToken) {
+      return NextResponse.json(
+        { error: "QR code is invalid or expired" },
+        { status: 400 }
+      );
+    }
+
+    const visitor_key = parsedToken.visitorKey;
 
     // market_date は今日でないと受け付けない
     const todayJST = new Date(

@@ -72,6 +72,7 @@ type ShopDetailBannerProps = {
   totalShopCount?: number;
   onSelectPreviousShop?: () => void;
   onSelectNextShop?: () => void;
+  activeCouponTypeId?: string;
 };
 
 type BagItem = {
@@ -504,6 +505,7 @@ export default function ShopDetailBanner({
   totalShopCount = 0,
   onSelectPreviousShop,
   onSelectNextShop,
+  activeCouponTypeId,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -516,6 +518,7 @@ export default function ShopDetailBanner({
       coupon_type_id: string;
       coupon_type_name: string;
       coupon_type_emoji: string;
+      coupon_type_amount: number;
       min_purchase_amount: number;
     }>;
   } | null>(null);
@@ -1549,19 +1552,32 @@ export default function ShopDetailBanner({
               {couponInfo?.is_participating && couponInfo.settings.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">クーポン</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2">
                     {couponInfo.settings.map((s) => (
                       <div
                         key={s.coupon_type_id}
-                        className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1"
+                        className={`rounded-2xl border px-3 py-3 ${
+                          activeCouponTypeId === s.coupon_type_id
+                            ? "border-green-300 bg-green-50"
+                            : "border-green-100 bg-white"
+                        }`}
                       >
-                        <span className="text-sm">{s.coupon_type_emoji}</span>
-                        <span className="text-xs font-semibold text-green-800">
-                          {s.coupon_type_name}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm">{s.coupon_type_emoji}</span>
+                          <span className="text-xs font-semibold text-green-800">
+                            {s.coupon_type_name}
+                          </span>
+                          {activeCouponTypeId === s.coupon_type_id && (
+                            <span className="rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                              今すぐ使える！
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">
                           {s.min_purchase_amount > 0
-                            ? `（${s.min_purchase_amount.toLocaleString()}円以上で50円引き）`
-                            : "（50円引き）"}
-                        </span>
+                            ? `${s.min_purchase_amount.toLocaleString()}円以上で${s.coupon_type_amount.toLocaleString()}円引き`
+                            : `${s.coupon_type_amount.toLocaleString()}円引き`}
+                        </p>
                       </div>
                     ))}
                   </div>

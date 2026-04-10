@@ -19,7 +19,6 @@ import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
 import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
-import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
@@ -27,6 +26,15 @@ import { buildSearchIndex } from "../search/lib/searchIndex";
 import { useShopSearch } from "../search/hooks/useShopSearch";
 import { getOrCreateConsultVisitorKey } from "../../../lib/consultVisitorKey";
 import MapCharacterConsult from "./components/MapCharacterConsult";
+import {
+  buildCouponVendorIdsByType,
+  COUPON_LOTTERY_PENDING_KEY,
+  fetchCouponTypes,
+  fetchMyCoupons,
+  getEligibleCouponVendorIds,
+  todayJstString,
+} from "../../../lib/coupons/client";
+import type { CouponTypeWithParticipants, MyCouponsResponse } from "../../../lib/coupons/types";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
@@ -153,28 +161,79 @@ export default function MapPageClient({
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const [tutorialProgress, setTutorialProgress] = useState<number>(0);
   const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
+  const [couponData, setCouponData] = useState<MyCouponsResponse | null>(null);
+  const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
+  const [mapSearchCouponTypeId, setMapSearchCouponTypeId] = useState<string | null>(null);
   useEffect(() => {
     const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
     setTutorialProgress(Math.min(10, stored));
+  }, []);
+
+  const refreshCouponData = useCallback(async (visitorKey?: string) => {
+    const resolvedVisitorKey = visitorKey ?? getOrCreateConsultVisitorKey();
+    if (!resolvedVisitorKey) return;
+    try {
+      const next = await fetchMyCoupons(resolvedVisitorKey, todayJstString());
+      setCouponData(next);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCouponTypes()
+      .then((nextCouponTypes) => {
+        setCouponTypes(nextCouponTypes.filter((couponType) => couponType.participant_count > 0));
+      })
+      .catch(() => {
+        setCouponTypes([]);
+      });
   }, []);
 
   // 初回クーポン発行（マップを開いた日に1回だけ。失敗しても無視する）
   useEffect(() => {
     const visitorKey = getOrCreateConsultVisitorKey();
     if (!visitorKey) return;
-    const marketDate = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-    )
-      .toISOString()
-      .slice(0, 10);
+    const marketDate = todayJstString();
     fetch("/api/coupons/issue-initial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visitor_key: visitorKey, market_date: marketDate }),
-    }).catch(() => {
-      // 通信エラーは無視（クーポンは副次機能）
-    });
-  }, []);
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { issued?: boolean };
+      })
+      .then((payload) => {
+        if (payload?.issued && typeof window !== "undefined") {
+          window.localStorage.setItem(COUPON_LOTTERY_PENDING_KEY, "1");
+        }
+      })
+      .catch(() => {
+        // 通信エラーは無視（クーポンは副次機能）
+      })
+      .finally(() => {
+        refreshCouponData(visitorKey);
+      });
+  }, [refreshCouponData]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const handleFocus = () => {
+      refreshCouponData();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshCouponData();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshCouponData]);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const updateBannerState = () => {
@@ -199,6 +258,25 @@ export default function MapPageClient({
   } | null>(null);
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [mapSearchCategory, setMapSearchCategory] = useState<string | null>(null);
+  const couponEligibleVendorIds = useMemo(
+    () => getEligibleCouponVendorIds(couponData),
+    [couponData]
+  );
+  const couponVendorIdsByType = useMemo(
+    () => buildCouponVendorIdsByType(couponTypes),
+    [couponTypes]
+  );
+  const mapSearchCouponVendorIds = useMemo(
+    () =>
+      mapSearchCouponTypeId
+        ? couponVendorIdsByType.get(mapSearchCouponTypeId)
+        : undefined,
+    [couponVendorIdsByType, mapSearchCouponTypeId]
+  );
+  const mapSearchCouponType = useMemo(
+    () => couponTypes.find((couponType) => couponType.id === mapSearchCouponTypeId) ?? null,
+    [couponTypes, mapSearchCouponTypeId]
+  );
   const mapSearchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
   const mapSearchResults = useShopSearch({
     shops,
@@ -206,13 +284,22 @@ export default function MapPageClient({
     textQuery: mapSearchQuery,
     category: mapSearchCategory,
     chome: null,
+    couponVendorIds: mapSearchCouponVendorIds,
   });
+  const activeCouponTypeId = couponData?.active_coupon?.coupon_type_id ?? undefined;
+  const mapSearchLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (mapSearchQuery.trim()) parts.push(mapSearchQuery.trim());
+    if (mapSearchCategory) parts.push(mapSearchCategory);
+    if (mapSearchCouponType) parts.push(`${mapSearchCouponType.emoji} ${mapSearchCouponType.name}`);
+    return parts.join(" / ");
+  }, [mapSearchCategory, mapSearchCouponType, mapSearchQuery]);
   const mapSearchShopIds = useMemo(
     () =>
-      mapSearchQuery.trim() || mapSearchCategory
+      mapSearchQuery.trim() || mapSearchCategory || mapSearchCouponTypeId
         ? mapSearchResults.map((s) => s.id)
         : undefined,
-    [mapSearchCategory, mapSearchQuery, mapSearchResults],
+    [mapSearchCategory, mapSearchCouponTypeId, mapSearchQuery, mapSearchResults],
   );
   const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
@@ -223,6 +310,7 @@ export default function MapPageClient({
     setSearchMarkerPayload(null);
     setMapSearchQuery('');
     setMapSearchCategory(null);
+    setMapSearchCouponTypeId(null);
   }, []);
   const closeMapCharacterConsult = useCallback(() => {
     setMapCharacterConsultActive(false);
@@ -302,8 +390,7 @@ export default function MapPageClient({
 
   const vendorShop = useMemo(() => {
     if (!vendorShopId) return null;
-    const merged = applyShopEdits(shops);
-    return merged.find((shop) => shop.id === vendorShopId) ?? null;
+    return shops.find((shop) => shop.id === vendorShopId) ?? null;
   }, [shops, vendorShopId]);
 
   useEffect(() => {
@@ -788,9 +875,11 @@ export default function MapPageClient({
               aiShopIds={aiMarkerPayload?.ids}
               searchLabel={
                 searchMarkerPayload?.label ??
-                (mapSearchQuery.trim() || mapSearchCategory || aiMarkerPayload?.label)
+                (mapSearchLabel || aiMarkerPayload?.label)
               }
               searchQuery={mapSearchQuery}
+              couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
+              activeCouponTypeId={activeCouponTypeId}
               onSearchQuery={(q) => {
                 setMapSearchQuery(q);
                 if (searchMarkerPayload) {
@@ -816,6 +905,7 @@ export default function MapPageClient({
                 setSearchMarkerPayload(null);
                 setMapSearchQuery('');
                 setMapSearchCategory(null);
+                setMapSearchCouponTypeId(null);
                 setAiMarkerPayload(null);
               }}
               kotoduteShopIds={kotoduteShopIds}
@@ -1002,9 +1092,11 @@ export default function MapPageClient({
                     embedded
                     initialQuery={mapSearchQuery}
                     initialCategory={mapSearchCategory}
-                    onQueryChange={(q, cat) => {
+                    initialCouponTypeId={mapSearchCouponTypeId}
+                    onQueryChange={(q, cat, couponTypeId) => {
                       setMapSearchQuery(q);
                       setMapSearchCategory(cat);
+                      setMapSearchCouponTypeId(couponTypeId);
                       if (searchMarkerPayload) {
                         clearSearchMapPayload();
                         setSearchMarkerPayload(null);
