@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, Ticket, CheckCircle2, XCircle, Loader2, Star } from "lucide-react";
+import { ArrowLeft, Ticket, CheckCircle2, XCircle, Loader2, Star, ScanLine, RotateCcw } from "lucide-react";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
 import type { RedeemResponse } from "@/lib/coupons/types";
 
+// html5-qrcodeはブラウザAPIのためSSRを無効化
+const QrScanner = dynamic(() => import("./QrScanner"), { ssr: false });
+
 type RedeemState =
   | { status: "idle" }
-  | { status: "loading" }
+  | { status: "scanning" }
+  | { status: "loading"; visitorKey: string }
   | { status: "success"; result: RedeemResponse }
   | { status: "error"; message: string };
 
@@ -23,21 +28,22 @@ function todayJST(): string {
 
 export default function MyShopCouponPage() {
   const { isLoggedIn, isLoading } = useAuth();
-  const [visitorKey, setVisitorKey] = useState("");
   const [redeemState, setRedeemState] = useState<RedeemState>({ status: "idle" });
 
-  const handleRedeem = async () => {
-    const key = visitorKey.trim();
-    if (!key) return;
+  const handleScan = useCallback(async (visitorKey: string) => {
+    // スキャン済み or 処理中は無視
+    if (redeemState.status !== "scanning") return;
 
-    setRedeemState({ status: "loading" });
+    setRedeemState({ status: "loading", visitorKey });
+
     try {
       const res = await fetch("/api/coupons/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visitor_key: key, market_date: todayJST() }),
+        body: JSON.stringify({ visitor_key: visitorKey, market_date: todayJST() }),
       });
       const json = await res.json();
+
       if (!res.ok) {
         const msgMap: Record<number, string> = {
           401: "ログインが必要です",
@@ -50,13 +56,14 @@ export default function MyShopCouponPage() {
         });
         return;
       }
+
       setRedeemState({ status: "success", result: json as RedeemResponse });
-      setVisitorKey("");
     } catch {
       setRedeemState({ status: "error", message: "通信エラーが発生しました" });
     }
-  };
+  }, [redeemState.status]);
 
+  const startScanning = () => setRedeemState({ status: "scanning" });
   const reset = () => setRedeemState({ status: "idle" });
 
   if (isLoading) {
@@ -94,72 +101,90 @@ export default function MyShopCouponPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-slate-900">クーポンを確定する</h1>
-            <p className="text-xs text-gray-500">お客様のクーポンを使用済みにします</p>
+            <p className="text-xs text-gray-500">お客様のQRコードを読み取ります</p>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-md px-4 pt-6 space-y-5">
 
-        {/* 使い方説明 */}
-        <div className="rounded-2xl border border-green-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
-          <ol className="list-decimal list-inside space-y-1">
-            <li>お客様のクーポンページを開いてもらう</li>
-            <li>画面に表示されている「クーポンコード」を確認する</li>
-            <li>下のボックスにコードを入力して「確定」を押す</li>
-          </ol>
-        </div>
-
-        {/* 入力フォーム */}
-        {redeemState.status !== "success" && (
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
-            <div>
-              <label
-                htmlFor="visitor-key"
-                className="mb-1.5 block text-sm font-semibold text-gray-700"
-              >
-                クーポンコード
-              </label>
-              <input
-                id="visitor-key"
-                type="text"
-                value={visitorKey}
-                onChange={(e) => {
-                  setVisitorKey(e.target.value);
-                  if (redeemState.status === "error") setRedeemState({ status: "idle" });
-                }}
-                placeholder="お客様の画面に表示されているコードを入力"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-mono text-gray-800 placeholder-gray-400 focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-              />
+        {/* ─ 待機中 ─ */}
+        {redeemState.status === "idle" && (
+          <>
+            <div className="rounded-2xl border border-green-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
+              <ol className="list-decimal list-inside space-y-1">
+                <li>「スキャンを開始する」を押す</li>
+                <li>お客様の「クーポン」ページのQRコードにカメラを向ける</li>
+                <li>読み取り完了で自動的に確定されます</li>
+              </ol>
             </div>
-
-            {redeemState.status === "error" && (
-              <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                <XCircle size={16} className="flex-shrink-0" />
-                {redeemState.message}
-              </div>
-            )}
-
             <button
               type="button"
-              onClick={handleRedeem}
-              disabled={!visitorKey.trim() || redeemState.status === "loading"}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-4 text-base font-bold text-white shadow transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={startScanning}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-500 py-4 text-base font-bold text-white shadow transition hover:bg-green-600"
             >
-              {redeemState.status === "loading" ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                <Ticket size={18} />
-              )}
-              {redeemState.status === "loading" ? "処理中..." : "クーポンを確定する"}
+              <ScanLine size={20} />
+              スキャンを開始する
+            </button>
+          </>
+        )}
+
+        {/* ─ スキャン中 ─ */}
+        {redeemState.status === "scanning" && (
+          <>
+            <p className="text-center text-sm font-semibold text-gray-600">
+              お客様のQRコードを枠内に合わせてください
+            </p>
+            <QrScanner onScan={handleScan} active />
+            <button
+              type="button"
+              onClick={reset}
+              className="w-full rounded-2xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50"
+            >
+              キャンセル
+            </button>
+          </>
+        )}
+
+        {/* ─ 処理中 ─ */}
+        {redeemState.status === "loading" && (
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-gray-100 bg-white py-10 shadow-sm">
+            <Loader2 size={36} className="animate-spin text-green-500" />
+            <p className="text-sm font-semibold text-gray-600">クーポンを確定中...</p>
+          </div>
+        )}
+
+        {/* ─ エラー ─ */}
+        {redeemState.status === "error" && (
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                <XCircle size={30} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-slate-900">確定できませんでした</p>
+                <p className="mt-1 text-sm text-red-600">{redeemState.message}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={startScanning}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
+            >
+              <RotateCcw size={16} />
+              もう一度スキャンする
+            </button>
+            <button
+              type="button"
+              onClick={reset}
+              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50"
+            >
+              戻る
             </button>
           </div>
         )}
 
-        {/* 成功表示 */}
+        {/* ─ 成功 ─ */}
         {redeemState.status === "success" && (
           <div className="rounded-2xl border border-green-200 bg-white p-6 shadow-sm space-y-4">
             <div className="flex flex-col items-center gap-3 text-center">
@@ -200,12 +225,27 @@ export default function MyShopCouponPage() {
 
             <button
               type="button"
+              onClick={startScanning}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
+            >
+              <ScanLine size={16} />
+              続けてスキャンする
+            </button>
+            <button
+              type="button"
               onClick={reset}
               className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
             >
-              続けてクーポンを確定する
+              戻る
             </button>
           </div>
+        )}
+
+        {/* ─ 待機中のみ：クーポンを確定する旨のボタン下の補足 ─ */}
+        {redeemState.status === "idle" && (
+          <p className="text-center text-xs text-gray-400">
+            カメラへのアクセス許可が必要です
+          </p>
         )}
       </div>
 
