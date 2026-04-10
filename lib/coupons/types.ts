@@ -15,6 +15,17 @@ export interface CouponType {
   display_order: number;
 }
 
+export interface CouponTypeParticipant {
+  vendor_id: string;
+  vendor_name: string;
+  min_purchase_amount: MinPurchaseAmount;
+}
+
+export interface CouponTypeWithParticipants extends CouponType {
+  participants: CouponTypeParticipant[];
+  participant_count: number;
+}
+
 /** 出店者のクーポン参加設定（1行 = 1種類への参加設定） */
 export interface VendorCouponSetting {
   id: string;
@@ -88,11 +99,21 @@ export interface MyCouponsResponse {
     coupon_type_id: string;
     coupon_type_name: string;
     coupon_type_emoji: string;
+    coupon_type_amount: number;
     min_purchase_amount: MinPurchaseAmount;
     is_stamped: boolean;
   }>;
   /** 今日が開催日かどうか */
   is_market_day: boolean;
+}
+
+export interface CouponQrTokenResponse {
+  token: string;
+  expires_in_seconds: number;
+}
+
+export interface CouponTypesResponse {
+  coupon_types: CouponTypeWithParticipants[];
 }
 
 /** POST /api/coupons/issue-initial のレスポンス */

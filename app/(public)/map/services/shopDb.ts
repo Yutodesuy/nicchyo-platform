@@ -55,6 +55,10 @@ type AssignmentRow = {
   market_date: string | null;
 };
 
+type VisibleShopRow = Shop & {
+  assignmentMarketDate: string | null;
+};
+
 const CHOME_VALUES = new Set([
   "一丁目",
   "二丁目",
@@ -165,7 +169,7 @@ export async function fetchVendorShopsFromDb(
   });
 
   const shops = vendors
-    .map((vendor): Shop | null => {
+    .map((vendor): VisibleShopRow | null => {
       const assignment = latestAssignmentByVendor.get(vendor.id);
       if (!assignment?.location_id) return null;
       const location = locationById.get(assignment.location_id);
@@ -236,12 +240,35 @@ export async function fetchVendorShopsFromDb(
         lat: Number(location.latitude ?? 0),
         lng: Number(location.longitude ?? 0),
         chome: normalizeChome(location.district),
+        assignmentMarketDate: assignment.market_date ?? null,
       };
     })
-    .filter((row): row is Shop => row !== null)
-    .sort((a, b) => a.id - b.id);
+    .filter((row): row is VisibleShopRow => row !== null);
 
-  return shops;
+  const dedupedByStoreNumber = new Map<number, VisibleShopRow>();
+  for (const shop of shops) {
+    const current = dedupedByStoreNumber.get(shop.id);
+    if (!current) {
+      dedupedByStoreNumber.set(shop.id, shop);
+      continue;
+    }
+
+    const currentDate = current.assignmentMarketDate ? new Date(current.assignmentMarketDate) : null;
+    const nextDate = shop.assignmentMarketDate ? new Date(shop.assignmentMarketDate) : null;
+    const shouldReplace = !currentDate || (nextDate && nextDate > currentDate);
+
+    console.warn(
+      `[fetchVendorShopsFromDb] duplicate store_number detected: ${shop.id} (${current.name} / ${shop.name})`
+    );
+
+    if (shouldReplace) {
+      dedupedByStoreNumber.set(shop.id, shop);
+    }
+  }
+
+  return Array.from(dedupedByStoreNumber.values())
+    .sort((a, b) => a.id - b.id)
+    .map(({ assignmentMarketDate: _assignmentMarketDate, ...shop }) => shop);
 }
 
 export const fetchShopsFromDb = fetchVendorShopsFromDb;

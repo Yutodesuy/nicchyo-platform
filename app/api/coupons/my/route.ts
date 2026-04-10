@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     // ④ 参加店一覧（クーポン機能ON の出店者）
     const { data: settingRows } = await supabase
       .from("vendor_coupon_settings")
-      .select("vendor_id, coupon_type_id, min_purchase_amount, vendors(shop_name), coupon_types(name, emoji)")
+      .select("vendor_id, coupon_type_id, min_purchase_amount, vendors(shop_name), coupon_types(name, emoji, amount)")
       .eq("is_participating", true);
 
     const participating_vendors = (settingRows ?? []).map((s) => {
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
       const rawType = s.coupon_types;
       const typeData =
         rawType && !Array.isArray(rawType) && typeof rawType === "object"
-          ? (rawType as { name: string; emoji: string })
+          ? (rawType as { name: string; emoji: string; amount?: number })
           : null;
       return {
         vendor_id: s.vendor_id as string,
@@ -107,6 +107,10 @@ export async function GET(request: Request) {
         coupon_type_id: s.coupon_type_id as string,
         coupon_type_name: typeData?.name ?? "",
         coupon_type_emoji: typeData?.emoji ?? "🎟️",
+        coupon_type_amount:
+          rawType && !Array.isArray(rawType) && typeof rawType === "object"
+            ? ((rawType as { amount?: number }).amount ?? 50)
+            : 50,
         min_purchase_amount: s.min_purchase_amount as 0 | 300 | 500 | 1000,
         is_stamped: stampedVendorIds.has(s.vendor_id as string),
       };

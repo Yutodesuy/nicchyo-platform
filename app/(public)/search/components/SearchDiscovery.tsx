@@ -1,10 +1,14 @@
 'use client';
 
 import { Tag } from 'lucide-react';
+import type { CouponTypeWithParticipants } from '@/lib/coupons/types';
 
 interface SearchDiscoveryProps {
   categories: string[];
   onCategorySelect: (category: string) => void;
+  couponTypes?: CouponTypeWithParticipants[];
+  selectedCouponTypeId?: string | null;
+  onCouponTypeSelect?: (couponTypeId: string | null) => void;
 }
 
 /**
@@ -15,9 +19,40 @@ interface SearchDiscoveryProps {
 export default function SearchDiscovery({
   categories,
   onCategorySelect,
+  couponTypes = [],
+  selectedCouponTypeId = null,
+  onCouponTypeSelect,
 }: SearchDiscoveryProps) {
   return (
     <div className="space-y-8 py-4 animate-in fade-in duration-500">
+      {couponTypes.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center gap-2 text-emerald-800">
+            <span aria-hidden className="text-sm">🎟️</span>
+            <h3 className="text-sm font-bold tracking-wider uppercase">クーポン種類から探す</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {couponTypes.map((couponType) => {
+              const isActive = selectedCouponTypeId === couponType.id;
+              return (
+                <button
+                  key={couponType.id}
+                  type="button"
+                  onClick={() => onCouponTypeSelect?.(isActive ? null : couponType.id)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+                    isActive
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                  }`}
+                  aria-pressed={isActive}
+                >
+                  <span>{couponType.emoji} {couponType.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <section>
         <div className="mb-3 flex items-center gap-2 text-amber-800">
           <Tag className="h-4 w-4" />

@@ -46,6 +46,7 @@ export default function MyShopCouponPage() {
 
       if (!res.ok) {
         const msgMap: Record<number, string> = {
+          400: "QRコードの有効期限が切れたか、読み取りに失敗しました",
           401: "ログインが必要です",
           403: "このお店はクーポン参加店ではありません",
           409: "このお客様はクーポンをお持ちではありません",
@@ -231,6 +232,15 @@ export default function MyShopCouponPage() {
               <ScanLine size={16} />
               続けてスキャンする
             </button>
+            {redeemState.result.next_coupon_issued && (
+              <Link
+                href="/coupons?lottery=1"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 py-3 text-sm font-bold text-amber-800 transition hover:bg-amber-100"
+              >
+                <Ticket size={16} />
+                クーポンを確認する
+              </Link>
+            )}
             <button
               type="button"
               onClick={reset}

@@ -23,10 +23,7 @@ type FormState = {
   stallStyle: string;
   highlight: string;
   imageMain: string;
-  imageThumb: string;
-  imageAdditional: string;
   instagram: string;
-  facebook: string;
   twitter: string;
   website: string;
 };
@@ -77,10 +74,7 @@ const EMPTY_FORM: FormState = {
   stallStyle: "",
   highlight: "",
   imageMain: "",
-  imageThumb: "",
-  imageAdditional: "",
   instagram: "",
-  facebook: "",
   twitter: "",
   website: "",
 };
@@ -137,7 +131,7 @@ export default function MyShopDetailPage() {
 
       const { data: vendor, error: vendorError } = await supabase
         .from("vendors")
-        .select("id, shop_name, owner_name, strength, style, category_id")
+        .select("id, shop_name, owner_name, strength, style, category_id, shop_image_url, sns_instagram, sns_x, sns_hp")
         .eq("id", vendorId)
         .single();
 
@@ -194,13 +188,10 @@ export default function MyShopDetailPage() {
         category: categoryName,
         stallStyle: vendor.style ?? "",
         highlight: vendor.strength ?? "",
-        imageMain: "",
-        imageThumb: "",
-        imageAdditional: "",
-        instagram: "",
-        facebook: "",
-        twitter: "",
-        website: "",
+        imageMain: vendor.shop_image_url ?? "",
+        instagram: vendor.sns_instagram ?? "",
+        twitter: vendor.sns_x ?? "",
+        website: vendor.sns_hp ?? "",
       });
 
       setProducts(
@@ -328,6 +319,10 @@ export default function MyShopDetailPage() {
         strength: form.highlight.trim() || null,
         style: form.stallStyle.trim() || null,
         category_id: categoryId,
+        shop_image_url: form.imageMain.trim() || null,
+        sns_instagram: form.instagram.trim() || null,
+        sns_x: form.twitter.trim() || null,
+        sns_hp: form.website.trim() || null,
         updated_at: new Date().toISOString(),
       };
       const { error: vendorError } = await supabase
@@ -814,12 +809,12 @@ export default function MyShopDetailPage() {
                 </div>
                 {!editImages ? (
                   <div className="mt-3 text-sm text-slate-600">
-                    {form.imageMain || form.imageThumb || form.imageAdditional
+                    {form.imageMain
                       ? "登録済みの写真URLがあります。"
                       : "写真URLが未入力です。"}
                   </div>
                 ) : (
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="mt-3 grid gap-3">
                     <label className="block text-sm text-slate-700">
                       メイン画像URL
                       <input
@@ -829,28 +824,8 @@ export default function MyShopDetailPage() {
                         placeholder="https://example.com/main.jpg"
                         className={fieldClass("imageMain")}
                       />
-                    </label>
-                    <label className="block text-sm text-slate-700">
-                      サムネイルURL
-                      <input
-                        type="url"
-                        value={form.imageThumb}
-                        onChange={handleChange("imageThumb")}
-                        placeholder="https://example.com/thumb.jpg"
-                        className={fieldClass("imageThumb")}
-                      />
-                    </label>
-                    <label className="block text-sm text-slate-700 md:col-span-2">
-                      追加画像URL
-                      <input
-                        type="text"
-                        value={form.imageAdditional}
-                        onChange={handleChange("imageAdditional")}
-                        placeholder="https://example.com/1.jpg, https://example.com/2.jpg"
-                        className={fieldClass("imageAdditional")}
-                      />
                       <span className="mt-1 block text-[11px] text-slate-500">
-                        カンマ区切りで最大5枚まで。
+                        このURLは店舗バナーやマップ表示にそのまま反映されます。
                       </span>
                     </label>
                   </div>
@@ -870,7 +845,7 @@ export default function MyShopDetailPage() {
                 </div>
                 {!editLinks ? (
                   <div className="mt-3 text-sm text-slate-600">
-                    {form.instagram || form.facebook || form.twitter || form.website
+                    {form.instagram || form.twitter || form.website
                       ? "登録済みのリンクがあります。"
                       : "リンクが未入力です。"}
                   </div>
@@ -884,16 +859,6 @@ export default function MyShopDetailPage() {
                         onChange={handleChange("instagram")}
                         placeholder="https://instagram.com/..."
                         className={fieldClass("instagram")}
-                      />
-                    </label>
-                    <label className="block text-sm text-slate-700">
-                      Facebook
-                      <input
-                        type="url"
-                        value={form.facebook}
-                        onChange={handleChange("facebook")}
-                        placeholder="https://facebook.com/..."
-                        className={fieldClass("facebook")}
                       />
                     </label>
                     <label className="block text-sm text-slate-700">
@@ -928,18 +893,12 @@ export default function MyShopDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <button
-              type="button"
-              className="rounded-full border border-orange-200 bg-white px-5 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-            >
-              下書き保存
-            </button>
+          <div className="flex justify-end">
             <button
               type="submit"
               className="rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
             >
-              送信する
+              変更を保存する
             </button>
           </div>
         </form>

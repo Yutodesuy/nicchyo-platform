@@ -10,6 +10,7 @@ import { getShopBannerImage } from "../../../../lib/shopImages";
 interface ShopResultCardProps {
   shop: Shop;
   isFavorite: boolean;
+  hasCoupon?: boolean;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   compact?: boolean;
@@ -24,6 +25,7 @@ interface ShopResultCardProps {
 function ShopResultCard({
   shop,
   isFavorite,
+  hasCoupon = false,
   onToggleFavorite,
   onSelectShop,
   compact = false,
@@ -74,6 +76,15 @@ function ShopResultCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {hasCoupon && (
+            <span
+              className={`rounded-full border border-green-200 bg-green-50 px-2 py-1 font-semibold text-green-800 ${
+                compact ? "text-[10px]" : "text-[11px]"
+              }`}
+            >
+              🎟️ クーポン対応
+            </span>
+          )}
           <button
             type="button"
             onClick={() => onToggleFavorite?.(shop.id)}
