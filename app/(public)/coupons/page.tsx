@@ -144,7 +144,7 @@ export default function CouponsPage() {
               {participating.map((v) => {
                 const isStamped = stampedIds.has(v.vendor_id);
                 return (
-                  <div key={v.vendor_id} className="flex items-center gap-3 px-4 py-3.5">
+                  <div key={`${v.vendor_id}-${v.coupon_type_id}`} className="flex items-center gap-3 px-4 py-3.5">
                     <span className="text-xl">{isStamped ? "✅" : "⬜"}</span>
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-semibold text-gray-800">
@@ -179,7 +179,7 @@ export default function CouponsPage() {
             </p>
             <div className="rounded-2xl border border-green-100 bg-white shadow-sm divide-y divide-gray-50">
               {unstampedVendors.slice(0, 3).map((v) => (
-                <div key={v.vendor_id} className="flex items-center gap-3 px-4 py-3.5">
+                <div key={`${v.vendor_id}-${v.coupon_type_id}`} className="flex items-center gap-3 px-4 py-3.5">
                   <span className="text-2xl">{v.coupon_type_emoji}</span>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-800">
