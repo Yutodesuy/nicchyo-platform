@@ -510,6 +510,15 @@ export default function ShopDetailBanner({
   const { addItem, removeItem, items: bagContextItems } = useBag();
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
+  const [couponInfo, setCouponInfo] = useState<{
+    is_participating: boolean;
+    settings: Array<{
+      coupon_type_id: string;
+      coupon_type_name: string;
+      coupon_type_emoji: string;
+      min_purchase_amount: number;
+    }>;
+  } | null>(null);
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
   const [toast, setToast] = useState<{ product: string } | null>(null);
@@ -589,6 +598,23 @@ export default function ShopDetailBanner({
   useEffect(() => {
     incrementBannerOpens();
   }, [shop.id, openNonce]);
+
+  // クーポン参加情報を取得（vendorIdがある出店者のみ）
+  useEffect(() => {
+    const vendorId = shop.vendorId;
+    if (!vendorId) {
+      setCouponInfo(null);
+      return;
+    }
+    fetch(`/api/coupons/shop-info?vendor_id=${encodeURIComponent(vendorId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setCouponInfo(data);
+      })
+      .catch(() => {
+        // クーポン情報取得失敗は無視
+      });
+  }, [shop.vendorId, openNonce]);
 
   // kotodute sync
   useEffect(() => {
@@ -1516,6 +1542,29 @@ export default function ShopDetailBanner({
                       {shop.rainPolicy === "cancel" && "❌ 雨天中止"}
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* Coupon badge */}
+              {couponInfo?.is_participating && couponInfo.settings.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">クーポン</p>
+                  <div className="flex flex-wrap gap-2">
+                    {couponInfo.settings.map((s) => (
+                      <div
+                        key={s.coupon_type_id}
+                        className="flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1"
+                      >
+                        <span className="text-sm">{s.coupon_type_emoji}</span>
+                        <span className="text-xs font-semibold text-green-800">
+                          {s.coupon_type_name}
+                          {s.min_purchase_amount > 0
+                            ? `（${s.min_purchase_amount.toLocaleString()}円以上で50円引き）`
+                            : "（50円引き）"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

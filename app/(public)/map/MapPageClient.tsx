@@ -157,6 +157,24 @@ export default function MapPageClient({
     const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
     setTutorialProgress(Math.min(10, stored));
   }, []);
+
+  // 初回クーポン発行（マップを開いた日に1回だけ。失敗しても無視する）
+  useEffect(() => {
+    const visitorKey = getOrCreateConsultVisitorKey();
+    if (!visitorKey) return;
+    const marketDate = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+    )
+      .toISOString()
+      .slice(0, 10);
+    fetch("/api/coupons/issue-initial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitor_key: visitorKey, market_date: marketDate }),
+    }).catch(() => {
+      // 通信エラーは無視（クーポンは副次機能）
+    });
+  }, []);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const updateBannerState = () => {
