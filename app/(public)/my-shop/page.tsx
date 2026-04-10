@@ -42,6 +42,23 @@ const MENU_ITEMS: {
     image: "/images/home/posters/HomePagePoster2.png",
   },
   {
+    title: "クーポン参加設定",
+    description: "参加クーポン種類・利用条件の設定",
+    href: "/vendor/coupon-settings",
+    accent: "from-green-400/40 via-green-100/70 to-white",
+    icon: Sparkles,
+    image: "/images/home/posters/HomePagePoster2.png",
+    badge: "NEW",
+  },
+  {
+    title: "クーポンを確定する",
+    description: "お客様のクーポン利用を確定する",
+    href: "/my-shop/coupon",
+    accent: "from-teal-400/40 via-teal-100/70 to-white",
+    icon: Sparkles,
+    image: "/images/home/posters/HomePagePoster3.jpeg",
+  },
+  {
     title: "AIばあちゃんに教える",
     description: "お店の情報をAIに学習させる",
     href: "/vendor/ai-knowledge",

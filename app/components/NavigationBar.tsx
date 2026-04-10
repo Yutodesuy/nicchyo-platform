@@ -32,6 +32,7 @@ type MenuItem = {
 
 const mainMenuItems: MenuItem[] = [
   { label: "バッグ",      href: "/bag",        emoji: "🛍️", color: "bg-amber-100",  textColor: "text-amber-900"  },
+  { label: "クーポン",    href: "/coupons",    emoji: "🎟️", color: "bg-green-100",  textColor: "text-green-900"  },
   { label: "バッジ",      href: "/badges",     emoji: "🏆", color: "bg-yellow-100", textColor: "text-yellow-900" },
   { label: "ことづて",    href: "/kotodute",   emoji: "💬", color: "bg-emerald-100",textColor: "text-emerald-900"},
   { label: "レシピ",      href: "/recipes",    emoji: "🍳", color: "bg-orange-100", textColor: "text-orange-900" },
