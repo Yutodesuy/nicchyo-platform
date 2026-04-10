@@ -38,7 +38,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // 全ページ共通: カメラはデフォルト無効
+        // 全ページ共通セキュリティヘッダー
         source: '/:path*',
         headers: [
           {
@@ -56,11 +56,6 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin'
-          },
-          {
-            // カメラはデフォルト無効（スキャナーページで上書き）
-            key: 'Permissions-Policy',
-            value: 'camera=()',
           },
         ],
       },
