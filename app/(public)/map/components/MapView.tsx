@@ -874,7 +874,8 @@ const MapView = memo(function MapView({
 
   useEffect(() => {
     if (!mapInstance) return;
-    mapInstance.invalidateSize(false);
+    const timer = setTimeout(() => { mapInstance.invalidateSize(false); }, 150);
+    return () => clearTimeout(timer);
   }, [mapInstance, mapShellSize]);
 
   useEffect(() => {
@@ -986,10 +987,24 @@ const MapView = memo(function MapView({
       }));
   }, [bagIngredientIds, selectedRecipe]);
 
+  // レシピ食材を持つ店舗（絞り込み済み）
+  const shopsWithIngredients = useMemo(() => {
+    if (!selectedRecipe || recipeIngredients.length === 0) return [];
+    return shops.filter((shop) =>
+      shop.products.some((product) =>
+        recipeIngredients.some((ing) =>
+          product.toLowerCase().includes(ing.name.toLowerCase()) ||
+          ing.name.toLowerCase().includes(product.toLowerCase())
+        )
+      )
+    );
+  }, [selectedRecipe, recipeIngredients, shops]);
+
+  // shopsWithIngredients を再利用して全 shops ループを回避
   const recipeIngredientIconsByShop = useMemo(() => {
     if (!showRecipeOverlay || !selectedRecipe || recipeIngredients.length === 0) return {};
     const byShop: Record<number, string[]> = {};
-    shops.forEach((shop) => {
+    shopsWithIngredients.forEach((shop) => {
       const icons = recipeIngredients
         .filter((ing) =>
           shop.products.some((product) =>
@@ -1004,19 +1019,7 @@ const MapView = memo(function MapView({
       }
     });
     return byShop;
-  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shops]);
-
-  const shopsWithIngredients = useMemo(() => {
-    if (!selectedRecipe || recipeIngredients.length === 0) return [];
-    return shops.filter((shop) =>
-      shop.products.some((product) =>
-        recipeIngredients.some((ing) =>
-          product.toLowerCase().includes(ing.name.toLowerCase()) ||
-          ing.name.toLowerCase().includes(product.toLowerCase())
-        )
-      )
-    );
-  }, [selectedRecipe, recipeIngredients, shops]);
+  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shopsWithIngredients]);
 
   const attendanceLabelsByShop = useMemo(() => {
     const labels: Record<number, string> = {};

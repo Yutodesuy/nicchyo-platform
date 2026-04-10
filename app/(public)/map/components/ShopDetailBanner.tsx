@@ -528,6 +528,8 @@ export default function ShopDetailBanner({
       min_purchase_amount: number;
     }>;
   } | null>(null);
+  // セッション中のクーポン情報キャッシュ（vendorId → データ）
+  const couponInfoCacheRef = useRef<Map<string, typeof couponInfo>>(new Map());
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
 
@@ -620,22 +622,29 @@ export default function ShopDetailBanner({
     incrementBannerOpens();
   }, [shop.id, openNonce]);
 
-  // クーポン参加情報を取得（vendorIdがある出店者のみ）
+  // クーポン参加情報を取得（vendorIdがある出店者のみ、セッション中キャッシュ付き）
   useEffect(() => {
     const vendorId = shop.vendorId;
     if (!vendorId) {
       setCouponInfo(null);
       return;
     }
+    const cached = couponInfoCacheRef.current.get(vendorId);
+    if (cached !== undefined) {
+      setCouponInfo(cached);
+      return;
+    }
     fetch(`/api/coupons/shop-info?vendor_id=${encodeURIComponent(vendorId)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setCouponInfo(data);
+        const value = data ?? null;
+        couponInfoCacheRef.current.set(vendorId, value);
+        setCouponInfo(value);
       })
       .catch(() => {
         // クーポン情報取得失敗は無視
       });
-  }, [shop.vendorId, openNonce]);
+  }, [shop.vendorId]);
 
   // kotodute sync
   useEffect(() => {
