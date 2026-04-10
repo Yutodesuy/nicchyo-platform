@@ -185,7 +185,7 @@ export default function SearchClient({
         const eligibleVendors = getEligibleCouponVendorIds(couponData);
         setCouponEligibleVendorIds(eligibleVendors);
         setCouponTypes(availableCouponTypes);
-        setShowCouponTypeFilters((couponData?.is_market_day ?? false) && availableCouponTypes.length > 0);
+        setShowCouponTypeFilters(availableCouponTypes.length > 0); // TODO: 開発中は常に表示。本番前に `(couponData?.is_market_day ?? false) &&` を先頭に戻す
         setActiveCouponTypeId(couponData?.active_coupon?.coupon_type_id ?? undefined);
       })
       .catch(() => {
