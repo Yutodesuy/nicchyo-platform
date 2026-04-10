@@ -618,6 +618,7 @@ type MapViewProps = {
   onSearchQuery?: (q: string) => void;
   couponEligibleVendorIds?: string[];
   activeCouponTypeId?: string;
+  stampedVendorIds?: string[];
   /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
   overlaySlot?: React.ReactNode;
 };
@@ -749,6 +750,7 @@ const MapView = memo(function MapView({
   onSearchQuery,
   couponEligibleVendorIds,
   activeCouponTypeId,
+  stampedVendorIds,
   overlaySlot,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
@@ -1479,6 +1481,7 @@ const MapView = memo(function MapView({
             variant={shopBannerVariant}
             originRect={shopBannerOrigin ?? undefined}
             activeCouponTypeId={activeCouponTypeId}
+            stampedVendorIds={stampedVendorIds}
           />
         </>
       )}
