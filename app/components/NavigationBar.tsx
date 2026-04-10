@@ -7,9 +7,10 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBag } from "@/lib/storage/BagContext";
-import { getBannerOpens, getAccumulatedMarketTimeMs } from "@/lib/storage/marketStats";
+import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
+import type { MyCouponsResponse } from "@/lib/coupons/types";
 
-// ─── サイドナビ項目 ────────────────────────────────────────────────────────────
+// ─── ナビゲーション項目 ────────────────────────────────────────────────────────
 type NavItem = {
   name: string;
   href: string;
@@ -21,36 +22,31 @@ const baseNavItems: NavItem[] = [
   { name: "お店を探す", href: "/map?panel=search", icon: "search" },
 ];
 
-// ─── メニューシート項目 ────────────────────────────────────────────────────────
-type MenuItem = {
-  label: string;
-  href: string;
-  emoji: string;
-  color: string;
-  textColor: string;
-};
-
-const mainMenuItems: MenuItem[] = [
-  { label: "バッグ",      href: "/bag",        emoji: "🛍️", color: "bg-amber-100",  textColor: "text-amber-900"  },
-  { label: "クーポン",    href: "/coupons",    emoji: "🎟️", color: "bg-green-100",  textColor: "text-green-900"  },
-  { label: "バッジ",      href: "/badges",     emoji: "🏆", color: "bg-yellow-100", textColor: "text-yellow-900" },
-  { label: "ことづて",    href: "/kotodute",   emoji: "💬", color: "bg-emerald-100",textColor: "text-emerald-900"},
-  { label: "レシピ",      href: "/recipes",    emoji: "🍳", color: "bg-orange-100", textColor: "text-orange-900" },
-  { label: "nicchyoとは", href: "/about",      emoji: "ℹ️", color: "bg-sky-100",    textColor: "text-sky-900"    },
-  { label: "マイページ",  href: "/my-profile", emoji: "👤", color: "bg-violet-100", textColor: "text-violet-900" },
+// ─── セカンダリメニュー項目（2列グリッド） ────────────────────────────────────
+const secondaryMenuItems = [
+  { label: "バッジ",      href: "/badges",     emoji: "🏆", color: "bg-yellow-50",  textColor: "text-yellow-800", border: "border-yellow-100" },
+  { label: "マイページ",  href: "/my-profile", emoji: "👤", color: "bg-violet-50",  textColor: "text-violet-800", border: "border-violet-100" },
+  { label: "nicchyoとは", href: "/about",      emoji: "ℹ️", color: "bg-sky-50",     textColor: "text-sky-800",    border: "border-sky-100"    },
 ];
 
+// ─── 出店者・管理者メニュー ────────────────────────────────────────────────────
 const vendorMenuItems = [
-  { label: "出店者ダッシュボード", href: "/vendor/dashboard",  emoji: "🏪" },
-  { label: "商品管理",            href: "/vendor/products",   emoji: "📦" },
-  { label: "注文管理",            href: "/vendor/orders",     emoji: "📋" },
+  { label: "出店者ダッシュボード", href: "/vendor/dashboard", emoji: "🏪" },
+  { label: "商品管理",            href: "/vendor/products",  emoji: "📦" },
+  { label: "注文管理",            href: "/vendor/orders",    emoji: "📋" },
 ];
 
 const adminMenuItems = [
-  { label: "管理ダッシュボード", href: "/admin/dashboard",  emoji: "⚙️" },
-  { label: "ユーザー管理",       href: "/admin/users",      emoji: "👥" },
-  { label: "コンテンツ管理",     href: "/admin/content",    emoji: "📝" },
+  { label: "管理ダッシュボード", href: "/admin/dashboard", emoji: "⚙️" },
+  { label: "ユーザー管理",       href: "/admin/users",     emoji: "👥" },
+  { label: "コンテンツ管理",     href: "/admin/content",   emoji: "📝" },
 ];
+
+function todayJST(): string {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }))
+    .toISOString()
+    .slice(0, 10);
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 type NavigationBarProps = {
@@ -75,16 +71,23 @@ function NavigationBarInner({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoggedIn, permissions, logout } = useAuth();
-  const { items: bagItems, totalPrice } = useBag();
+  const { items: bagItems } = useBag();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [stats, setStats] = useState({ bannerOpens: 0, marketTimeMs: 0 });
+  // undefined = 未取得, null = 取得失敗/非対応, MyCouponsResponse = 取得済み
+  const [couponData, setCouponData] = useState<MyCouponsResponse | null | undefined>(undefined);
 
+  // メニューを開いたときにクーポン情報を取得
   useEffect(() => {
-    if (!menuOpen) return;
-    setStats({
-      bannerOpens: getBannerOpens(),
-      marketTimeMs: getAccumulatedMarketTimeMs(),
-    });
+    if (!menuOpen) {
+      setCouponData(undefined);
+      return;
+    }
+    const vk = getOrCreateConsultVisitorKey();
+    if (!vk) { setCouponData(null); return; }
+    fetch(`/api/coupons/my?visitor_key=${encodeURIComponent(vk)}&market_date=${todayJST()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setCouponData(data as MyCouponsResponse | null))
+      .catch(() => setCouponData(null));
   }, [menuOpen]);
 
   useEffect(() => {
@@ -106,13 +109,8 @@ function NavigationBarInner({
   };
 
   const handleCloseMode = useCallback(() => {
-    if (onCloseMode) {
-      onCloseMode();
-      return;
-    }
-    if (isPanelOpen) {
-      router.push("/map");
-    }
+    if (onCloseMode) { onCloseMode(); return; }
+    if (isPanelOpen) { router.push("/map"); }
   }, [isPanelOpen, onCloseMode, router]);
 
   const handleLogout = async () => {
@@ -128,6 +126,9 @@ function NavigationBarInner({
     : permissions.isVendor
     ? { text: "出店者", color: "bg-amber-100 text-amber-700" }
     : null;
+
+  const activeCoupon = couponData?.active_coupon ?? null;
+  const isMarketDay = couponData?.is_market_day ?? false;
 
   return (
     <>
@@ -210,31 +211,129 @@ function NavigationBarInner({
                   </button>
                 )}
 
-                {/* ─ ダッシュボード ─ */}
-                <MarketDashboard
-                  bannerOpens={stats.bannerOpens}
-                  marketTimeMs={stats.marketTimeMs}
-                  totalPrice={totalPrice}
-                  bagItemCount={bagItems.length}
-                />
+                {/* ─ プライマリ：クーポン ─ */}
+                {couponData === undefined ? (
+                  /* ローディングスケルトン */
+                  <div className="mb-3 h-[76px] animate-pulse rounded-2xl bg-gray-100" />
+                ) : activeCoupon && isMarketDay ? (
+                  /* 今すぐ使えるクーポン */
+                  <button
+                    onClick={() => handleMenuItemClick("/coupons")}
+                    className="mb-3 flex w-full items-center gap-4 rounded-2xl bg-green-500 px-4 py-4 text-left shadow-sm transition hover:bg-green-600 active:scale-[0.98]"
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 text-2xl">
+                      🎟️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[13px] font-bold text-white/90">
+                          {activeCoupon.coupon_type?.name ?? "クーポン"}
+                        </p>
+                        <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold text-white">
+                          今すぐ使える
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[22px] font-extrabold leading-tight text-white">
+                        {activeCoupon.amount.toLocaleString()}円引き
+                      </p>
+                    </div>
+                    <svg className="h-5 w-5 shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ) : isMarketDay ? (
+                  /* 開催日・クーポン未保有 */
+                  <button
+                    onClick={() => handleMenuItemClick("/coupons")}
+                    className="mb-3 flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-green-200 bg-green-50/50 px-4 py-4 text-left transition active:scale-[0.98]"
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-100 text-2xl">
+                      🎟️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-green-800">クーポン</p>
+                      <p className="mt-0.5 text-[12px] text-green-600">
+                        まだクーポンを持っていません
+                      </p>
+                    </div>
+                    <svg className="h-5 w-5 shrink-0 text-green-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ) : (
+                  /* 非開催日・または取得失敗：通常メニュー項目 */
+                  <button
+                    onClick={() => handleMenuItemClick("/coupons")}
+                    className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-green-100 bg-green-50 px-4 py-3.5 text-left transition active:scale-[0.98]"
+                  >
+                    <span className="text-xl">🎟️</span>
+                    <span className="flex-1 text-[14px] font-bold text-green-800">クーポン</span>
+                    <svg className="h-4 w-4 text-green-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
 
-                {/* ─ メインメニュー グリッド ─ */}
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">メニュー</p>
-                <div className="mb-5 grid grid-cols-3 gap-3">
-                  {mainMenuItems.map((item, i) => (
+                {/* ─ プライマリ：バッグ ─ */}
+                <button
+                  onClick={() => handleMenuItemClick("/bag")}
+                  className={`mb-4 flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition active:scale-[0.98] ${
+                    bagItems.length > 0
+                      ? "border border-amber-200 bg-amber-50"
+                      : "border border-slate-100 bg-white shadow-sm"
+                  }`}
+                >
+                  <div className="relative shrink-0">
+                    <span className="text-xl">🛍️</span>
+                    {bagItems.length > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-white">
+                        {bagItems.length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[14px] font-bold ${bagItems.length > 0 ? "text-amber-800" : "text-gray-700"}`}>
+                      バッグ
+                    </p>
+                    {bagItems.length > 0 && (
+                      <p className="text-[12px] text-amber-600">{bagItems.length}品入っています</p>
+                    )}
+                  </div>
+                  <svg className="h-4 w-4 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                <hr className="mb-4 border-slate-100" />
+
+                {/* ─ セカンダリ：2列グリッド ─ */}
+                <div className="mb-4 grid grid-cols-2 gap-3">
+                  {secondaryMenuItems.map((item, i) => (
                     <motion.button
                       key={item.href}
-                      initial={{ opacity: 0, scale: 0.88 }}
+                      initial={{ opacity: 0, scale: 0.92 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.045, type: "spring", damping: 18, stiffness: 280 }}
+                      transition={{ delay: i * 0.05, type: "spring", damping: 18, stiffness: 280 }}
                       onClick={() => handleMenuItemClick(item.href)}
-                      className={`flex flex-col items-center justify-center gap-2 rounded-2xl ${item.color} min-h-[84px] px-2 py-4 transition active:scale-95 active:brightness-95`}
+                      className={`flex items-center gap-3 rounded-2xl border ${item.border} ${item.color} px-4 py-3.5 transition active:scale-[0.97]`}
                     >
-                      <span className="text-[28px] leading-none">{item.emoji}</span>
-                      <span className={`text-[12px] font-bold leading-tight ${item.textColor}`}>{item.label}</span>
+                      <span className="text-xl">{item.emoji}</span>
+                      <span className={`text-[13px] font-bold ${item.textColor}`}>{item.label}</span>
                     </motion.button>
                   ))}
                 </div>
+
+                {/* ─ 補足：テキストリンク ─ */}
+                <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 px-1">
+                  <button
+                    onClick={() => handleMenuItemClick("/recipes")}
+                    className="text-[13px] text-slate-400 transition hover:text-slate-600"
+                  >
+                    🍳 レシピ
+                  </button>
+                </div>
+
+                <hr className="mb-4 border-slate-100" />
 
                 {/* ─ 出店者メニュー ─ */}
                 {(permissions.isVendor || permissions.isSuperAdmin) && (
@@ -483,64 +582,4 @@ function NavIcon({ name, className }: NavIconProps) {
     default:
       return null;
   }
-}
-
-// ─── MarketDashboard ──────────────────────────────────────────────────────────
-function formatMarketTime(ms: number): string {
-  const totalMinutes = Math.floor(ms / 60000);
-  if (totalMinutes < 1) return "0分";
-  if (totalMinutes < 60) return `${totalMinutes}分`;
-  const hours = Math.floor(totalMinutes / 60);
-  const mins = totalMinutes % 60;
-  return mins > 0 ? `${hours}時間${mins}分` : `${hours}時間`;
-}
-
-type MarketDashboardProps = {
-  bannerOpens: number;
-  marketTimeMs: number;
-  totalPrice: number;
-  bagItemCount: number;
-};
-
-function MarketDashboard({ bannerOpens, marketTimeMs, totalPrice, bagItemCount }: MarketDashboardProps) {
-  const stats = [
-    {
-      emoji: "🏪",
-      label: "お店を見た",
-      value: `${bannerOpens}回`,
-      color: "from-amber-400 to-orange-400",
-    },
-    {
-      emoji: "🛍️",
-      label: totalPrice > 0 ? "購入合計" : "バッグ",
-      value: totalPrice > 0 ? `¥${totalPrice.toLocaleString()}` : `${bagItemCount}品`,
-      color: "from-green-400 to-emerald-500",
-    },
-    {
-      emoji: "⏱️",
-      label: "市場滞在",
-      value: formatMarketTime(marketTimeMs),
-      color: "from-sky-400 to-blue-500",
-    },
-  ];
-
-  return (
-    <div className="mb-4">
-      <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">今日の日曜市</p>
-      <div className="grid grid-cols-3 gap-2.5">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-3.5 text-center shadow-sm ring-1 ring-gray-100"
-          >
-            <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${stat.color} text-lg shadow-sm`}>
-              {stat.emoji}
-            </div>
-            <p className="text-[15px] font-bold text-gray-900 leading-tight">{stat.value}</p>
-            <p className="text-[10px] text-gray-400 leading-tight">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
