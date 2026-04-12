@@ -13,12 +13,15 @@ import MessageBubble from "../../consult/components/MessageBubble";
 import {
   CONSULT_CHARACTERS,
   CONSULT_CHARACTER_BY_ID,
+  pickConsultCharacters,
+  type ConsultCharacter,
   type ConsultCharacterId,
 } from "../../consult/data/consultCharacters";
 import type {
   ConsultAskResponse,
   ConsultErrorCode,
   ConsultHistoryEntry,
+  ConsultAskStreamEvent,
 } from "../../consult/types/consultConversation";
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
@@ -74,6 +77,14 @@ type GrandmaChatterProps = {
     history?: ConsultHistoryEntry[],
     memorySummary?: string
   ) => Promise<ConsultAskResponse>;
+  onAskStream?: (
+    text: string,
+    imageFile: File | null | undefined,
+    context: AskContext | undefined,
+    history: ConsultHistoryEntry[] | undefined,
+    memorySummary: string | undefined,
+    onEvent: (event: ConsultAskStreamEvent) => void
+  ) => Promise<ConsultAskResponse>;
   allShops?: Shop[];
   aiSuggestedShops?: Shop[];
   onSelectShop?: (shopId: number, shop?: Shop) => void;
@@ -95,7 +106,85 @@ type GrandmaChatterProps = {
   variant?: "default" | "consult";
   preferredCharacterId?: ConsultCharacterId | null;
   onPreferredCharacterChange?: (characterId: ConsultCharacterId | null) => void;
+  onCommentSeen?: (id: string, genre: string) => void;
+  embedded?: boolean;
 };
+
+// ─── キャラクター相談中アニメーション ────────────────────────────────────────
+const EMOTION_SYMBOLS = ["!", "?", "!!", "！？", "?!", "？"];
+
+type ThinkingEntry = { character: ConsultCharacter; symbol: string };
+
+function pickThinkingData(preferredId?: ConsultCharacterId | null): ThinkingEntry[] {
+  const chars = pickConsultCharacters(preferredId ?? undefined);
+  return chars.map((c) => ({
+    character: c,
+    symbol: EMOTION_SYMBOLS[Math.floor(Math.random() * EMOTION_SYMBOLS.length)],
+  }));
+}
+
+function ThinkingDiscussion({ data }: { data: ThinkingEntry[] }) {
+  const cycleDuration = data.length * 0.9;
+
+  return (
+    <div className="flex flex-col items-center gap-4 py-6">
+      <div className="flex items-end justify-center gap-6">
+        {data.map(({ character: char, symbol }, i) => (
+          <div key={char.id} className="relative flex flex-col items-center gap-1">
+
+            {/* 感情バブル (!, ? など) — メインバブルから少し遅れて出現 */}
+            <div
+              className="absolute -top-7 -right-1 min-w-[1.75rem] rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-center text-[11px] font-black leading-none text-amber-600 shadow-sm"
+              style={{
+                animation: `discussion-bubble ${cycleDuration}s ease-in-out ${i * 0.9 + 0.38}s infinite`,
+              }}
+            >
+              {symbol}
+            </div>
+
+            {/* ... 吹き出し */}
+            <div
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm"
+              style={{
+                animation: `discussion-bubble ${cycleDuration}s ease-in-out ${i * 0.9}s infinite`,
+              }}
+            >
+              <div className="flex items-center gap-1">
+                {[0, 1, 2].map((j) => (
+                  <span
+                    key={j}
+                    className="block h-1.5 w-1.5 rounded-full bg-slate-400"
+                    style={{ animation: `dot-pulse 0.75s ease-in-out ${j * 0.18}s infinite` }}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* 矢印 */}
+            <div
+              className="-mt-0.5 h-0 w-0 border-x-[5px] border-t-[5px] border-x-transparent border-t-white"
+              style={{
+                animation: `discussion-bubble ${cycleDuration}s ease-in-out ${i * 0.9}s infinite`,
+                filter: "drop-shadow(0 1px 0 rgba(148,163,184,0.25))",
+              }}
+            />
+            {/* アバター */}
+            <div className="h-14 w-14 overflow-hidden rounded-full border-2 border-amber-200 bg-amber-50 shadow-sm">
+              <img
+                src={char.image}
+                alt={char.name}
+                className={`h-full w-full object-cover ${char.imageScale}`}
+                style={{ objectPosition: char.imagePosition }}
+                draggable={false}
+              />
+            </div>
+            <span className="text-[10px] font-medium text-slate-400">{char.name}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[12px] font-medium text-slate-400">みんなで相談しています…</p>
+    </div>
+  );
+}
 
 export default function GrandmaChatter({
   comments,
@@ -104,6 +193,7 @@ export default function GrandmaChatter({
   onPriorityClick,
   onPriorityDismiss,
   onAsk,
+  onAskStream,
   allShops,
   aiSuggestedShops,
   onSelectShop,
@@ -125,6 +215,8 @@ export default function GrandmaChatter({
   variant = "default",
   preferredCharacterId,
   onPreferredCharacterChange,
+  onCommentSeen,
+  embedded = false,
 }: GrandmaChatterProps) {
   const isConsultVariant = variant === "consult";
   const pool = comments && comments.length > 0 ? comments : grandmaCommentPool;
@@ -176,6 +268,8 @@ export default function GrandmaChatter({
   const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [activeStreamingMessageId, setActiveStreamingMessageId] = useState<string | null>(null);
+  const [thinkingData, setThinkingData] = useState<ThinkingEntry[]>(() => pickThinkingData());
   const chatStorageKeyRef = useRef<string | null>(null);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -330,6 +424,11 @@ export default function GrandmaChatter({
     if (!pool.length) return;
     setCurrentId((prev) => pickNextComment(pool, prev)?.id ?? pool[0]?.id);
   }, [pool]);
+
+  useEffect(() => {
+    if (currentId && current) onCommentSeen?.(currentId, current.genre);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId]);
 
   useEffect(() => {
     if (layout !== "page") return;
@@ -517,16 +616,15 @@ export default function GrandmaChatter({
           source: "suggestion",
         });
       }
-      // レイアウトがpageの場合は最初から開いているので即座に、
-      // floatingの場合は開いてから少し待って送信するなどの制御ができるが、
-      // ここではシンプルに少し遅延させて送信する
       if (!isChatOpen) setIsChatOpen(true);
 
-      setTimeout(() => {
+      const autoAskDelayMs = layout === "page" ? 0 : 600;
+      const timer = window.setTimeout(() => {
         handleAskSubmit(autoAskText, autoAskContext);
-      }, 600);
+      }, autoAskDelayMs);
+      return () => window.clearTimeout(timer);
     }
-  }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen]);
+  }, [autoAskText, autoAskContext, hasProcessedAutoAsk, isChatOpen, layout]);
 
   useEffect(() => {
     if (layout === "page") {
@@ -680,10 +778,13 @@ export default function GrandmaChatter({
       },
     ]);
     setHasUserAsked(true);
+    setThinkingData(pickThinkingData(preferredCharacterId));
     setAiStatus("thinking");
     setAiBubbleText("ちょっと待ってね、考えよるよ。");
     setAiImageUrl(null);
+    setActiveStreamingMessageId(null);
     const requestId = ++askRequestRef.current;
+    let streamedFirstMessageId: string | null = null;
     const historyForRequest: ConsultHistoryEntry[] = chatMessages
       .slice(-8)
       .map((message) => ({
@@ -693,15 +794,54 @@ export default function GrandmaChatter({
         speakerName: message.speakerName ?? null,
       }));
     try {
-      const response = onAsk
-        ? await onAsk(
+      const handleStreamEvent = (event: ConsultAskStreamEvent) => {
+        if (requestId !== askRequestRef.current) return;
+        if (event.type === "first_turn_start") {
+          if (streamedFirstMessageId) return;
+          streamedFirstMessageId = `assistant-stream-${Date.now()}`;
+          setActiveStreamingMessageId(streamedFirstMessageId);
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              id: streamedFirstMessageId!,
+              role: "assistant",
+              text: "",
+              speakerId: event.speakerId,
+              speakerName: event.speakerName,
+            },
+          ]);
+          return;
+        }
+        if (event.type === "first_turn_delta") {
+          if (!streamedFirstMessageId || !event.delta) return;
+          setChatMessages((prev) =>
+            prev.map((message) =>
+              message.id === streamedFirstMessageId
+                ? { ...message, text: `${message.text}${event.delta}` }
+                : message
+            )
+          );
+        }
+      };
+
+      const response = onAskStream
+        ? await onAskStream(
             value,
             imageFile ?? undefined,
             submission.context,
             historyForRequest,
-            conversationSummary
+            conversationSummary,
+            handleStreamEvent
           )
-        : { reply: "いま準備中やき、もう少し待っててね。" };
+        : onAsk
+          ? await onAsk(
+              value,
+              imageFile ?? undefined,
+              submission.context,
+              historyForRequest,
+              conversationSummary
+            )
+          : { reply: "いま準備中やき、もう少し待っててね。" };
       if (requestId !== askRequestRef.current) return;
       const reply =
         response.reply || "うまく答えが出せんかった。もう一回聞いてみてね。";
@@ -726,26 +866,67 @@ export default function GrandmaChatter({
                 text: reply,
               },
             ];
-      for (let index = 0; index < turns.length; index += 1) {
-        const turn = turns[index];
+      const appendAssistantTurn = (
+        turn: (typeof turns)[number],
+        index: number,
+        options?: {
+          messageId?: string;
+          includeResponseMeta?: boolean;
+        }
+      ) => {
+        const includeResponseMeta = options?.includeResponseMeta ?? index === turns.length - 1;
         setChatMessages((prev) => [
           ...prev,
           {
-            id: `assistant-${Date.now()}-${index}`,
+            id: options?.messageId ?? `assistant-${Date.now()}-${index}`,
             role: "assistant",
             text: turn.text,
-            imageUrl: index === turns.length - 1 ? response.imageUrl : undefined,
-            shopIds: index === turns.length - 1 ? response.shopIds : undefined,
-            shops: index === turns.length - 1 ? response.shops : undefined,
+            imageUrl: includeResponseMeta ? response.imageUrl : undefined,
+            shopIds: includeResponseMeta ? response.shopIds : undefined,
+            shops: includeResponseMeta ? response.shops : undefined,
             speakerId: turn.speakerId,
             speakerName: turn.speakerName,
-            followUpQuestion:
-              index === turns.length - 1 ? response.followUpQuestion : undefined,
+            followUpQuestion: includeResponseMeta ? response.followUpQuestion : undefined,
           },
         ]);
-        if (index < turns.length - 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      };
+
+      if (streamedFirstMessageId && turns.length > 0) {
+        const [firstTurn, ...remainingTurns] = turns;
+        setChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === streamedFirstMessageId
+              ? {
+                  ...message,
+                  text: firstTurn.text,
+                  imageUrl: remainingTurns.length === 0 ? response.imageUrl : undefined,
+                  shopIds: remainingTurns.length === 0 ? response.shopIds : undefined,
+                  shops: remainingTurns.length === 0 ? response.shops : undefined,
+                  speakerId: firstTurn.speakerId,
+                  speakerName: firstTurn.speakerName,
+                  followUpQuestion:
+                    remainingTurns.length === 0 ? response.followUpQuestion : undefined,
+                }
+              : message
+          )
+        );
+        setActiveStreamingMessageId(null);
+        for (let index = 0; index < remainingTurns.length; index += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
           if (requestId !== askRequestRef.current) return;
+          appendAssistantTurn(remainingTurns[index], index + 1, {
+            includeResponseMeta: index === remainingTurns.length - 1,
+          });
+        }
+      } else {
+        if (turns.length > 0) {
+          appendAssistantTurn(turns[0], 0);
+        }
+
+        for (let index = 1; index < turns.length; index += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          if (requestId !== askRequestRef.current) return;
+          appendAssistantTurn(turns[index], index);
         }
       }
     } catch {
@@ -753,18 +934,32 @@ export default function GrandmaChatter({
       setAiStatus("error");
       setAiBubbleText("ごめんね、今は答えを出せんかった。時間をおいて試してね。");
       setAiImageUrl(null);
+      setActiveStreamingMessageId(null);
       setErrorNotice("接続に失敗しました。少し時間をおいて、もう一度試してください。");
       setErrorCode("system_error");
       setErrorHelperQuestions([]);
       setLastFailedSubmission(submission);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        },
-      ]);
+      if (streamedFirstMessageId) {
+        setChatMessages((prev) =>
+          prev.map((message) =>
+            message.id === streamedFirstMessageId
+              ? {
+                  ...message,
+                  text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+                }
+              : message
+          )
+        );
+      } else {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: "assistant",
+            text: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+          },
+        ]);
+      }
     }
   };
 
@@ -1121,35 +1316,6 @@ export default function GrandmaChatter({
           </div>
         )}
 
-        {/* スマート提案チップ (チャットが閉じている時かつ吹き出しモードでない時) */}
-        {!isChatOpen && !priorityMessage && smartSuggestionChips.length > 0 && layout === "floating" && (
-           <div className="absolute bottom-full right-0 mb-3 flex flex-col items-end gap-2 pointer-events-auto z-[1010]">
-             {smartSuggestionChips.slice(0, 1).map((label, i) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const params = new URLSearchParams();
-                    params.set("q", label);
-                    if (current?.shopId) {
-                      params.set("shopId", String(current.shopId));
-                      const shopName = shopLookup.get(current.shopId)?.name;
-                      if (shopName) {
-                        params.set("shopName", shopName);
-                      }
-                    }
-                    router.push(`/consult?${params.toString()}`);
-                  }}
-                  className={`rounded-full border px-4 py-2 text-sm font-bold backdrop-blur-sm transition ${isConsultVariant ? "border-[var(--consult-border)] bg-[var(--consult-surface)] text-slate-700 hover:bg-white" : "border-amber-200 bg-white/90 text-amber-800 shadow-md hover:bg-white hover:scale-105 active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-500"}` }
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <span className="mr-1">💡</span>
-                  {label}
-                </button>
-             ))}
-           </div>
-        )}
 
         {isChatOpen ? (
           <div
@@ -1158,7 +1324,7 @@ export default function GrandmaChatter({
           >
             <div className="flex items-center justify-between gap-3 pb-3">
               <div className={`text-sm font-semibold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
-                {isConsultVariant ? "日曜市のみんな" : "にちよさんAI"}
+                {isConsultVariant ? "AIキャラに相談する" : "にちよさんAI"}
               </div>
               <div className="flex items-center gap-3">
                 {aiStatus !== "idle" && (
@@ -1176,9 +1342,11 @@ export default function GrandmaChatter({
                     : "max-h-[calc(100vh-240px)]"
                 }`}
               >
-                <div className="flex flex-col items-center justify-center gap-2 py-8 opacity-90">
+                <div className={`flex flex-col items-center justify-center gap-2 opacity-90 ${embedded ? "py-4" : "py-8"}`}>
                   <div
-                    className={`h-32 w-32 overflow-hidden rounded-[2rem] border-4 shadow-sm transition-all duration-500 ${
+                    className={`overflow-hidden rounded-[2rem] border-4 shadow-sm transition-all duration-500 ${
+                      embedded ? "h-20 w-20" : "h-32 w-32"
+                    } ${
                       isConsultVariant
                         ? isPreferredHero
                           ? "border-orange-400 bg-[var(--consult-surface)]"
@@ -1201,10 +1369,10 @@ export default function GrandmaChatter({
                     />
                   </div>
                   <div className="text-center">
-                    <div className={`text-lg font-bold ${isConsultVariant ? "text-slate-700" : "text-amber-800"}`}>
+                    <div className={`font-bold ${embedded ? "text-base text-green-700 text-stroke-dark" : "text-lg"} ${isConsultVariant ? (embedded ? "" : "text-slate-700") : "text-amber-800"}`}>
                       {isConsultVariant ? activeConsultHero.name : "にちよさん"}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className={`text-sm ${embedded ? "text-green-700/90 text-stroke-dark" : "text-gray-600"}`}>
                       {isConsultVariant ? activeConsultHero.subtitle : "日曜市のことをなんでも聞いてね"}
                     </div>
                   </div>
@@ -1241,7 +1409,7 @@ export default function GrandmaChatter({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="mb-1 flex items-center gap-2 pl-1">
-                          <span className="text-base font-semibold text-slate-700">{speakerName}</span>
+                          <span className={`text-base font-semibold ${embedded ? "text-green-700 text-stroke-dark" : "text-slate-700"}`}>{speakerName}</span>
                         </div>
                         <MessageBubble
                           role={message.role}
@@ -1385,41 +1553,9 @@ export default function GrandmaChatter({
                   )}
                 </div>
               )})}
-              {aiStatus === "thinking" && (
+              {aiStatus === "thinking" && !activeStreamingMessageId && (
                 isConsultVariant ? (
-                  <div className="flex max-w-[min(48rem,calc(100%-1rem))] items-start gap-3">
-                    <div className="mt-1 flex-shrink-0">
-                      <div
-                        className={`h-11 w-11 overflow-hidden rounded-full border bg-amber-50 shadow-sm ring-2 ring-white ${
-                          preferredCharacterId && activeConsultHero.id === preferredCharacterId
-                            ? "border-orange-400"
-                            : "border-amber-200"
-                        }`}
-                      >
-                        <img
-                          src={activeConsultHero.image}
-                          alt={activeConsultHero.name}
-                          className={`h-full w-full object-cover ${activeConsultHero.imageScale}`}
-                          style={{ objectPosition: activeConsultHero.imagePosition }}
-                          draggable={false}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex items-center gap-2 pl-1">
-                        <span className="text-base font-semibold text-slate-700">{activeConsultHero.name}</span>
-                      </div>
-                      <div className="rounded-2xl border border-amber-200 bg-[#fffaf2] px-5 py-4 text-[15px] text-slate-800 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-transparent"
-                            aria-label="考え中"
-                          />
-                          <span className="text-base text-slate-600">考え中…</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <ThinkingDiscussion data={thinkingData} />
                 ) : (
                   <div className="flex justify-start items-start gap-2">
                     <div className="flex-shrink-0">
@@ -1694,7 +1830,7 @@ export default function GrandmaChatter({
           <Card
             className={`${
               isConsultVariant
-                ? "rounded-[18px] border border-[var(--consult-border)] bg-white/92 p-2 shadow-sm"
+                ? `rounded-[18px] border border-[var(--consult-border)] p-2 shadow-sm ${embedded ? "bg-white/75" : "bg-white/92"}`
                 : "rounded-2xl border-2 border-amber-300 bg-white/95 p-3"
             } ${
               isConsultVariant ? "transition-colors duration-150" : "transition-transform duration-200"
@@ -1810,7 +1946,7 @@ export default function GrandmaChatter({
                   onClick={() => imageInputRef.current?.click()}
                   className={`${
                     isConsultVariant
-                      ? "h-11 w-11 rounded-full border-[var(--consult-border)] bg-slate-50 text-lg font-semibold text-slate-600 hover:bg-white"
+                      ? `h-11 w-11 rounded-full border-[var(--consult-border)] text-lg font-semibold text-slate-600 ${embedded ? "bg-white/50 hover:bg-white/70" : "bg-slate-50 hover:bg-white"}`
                       : "border-amber-200 bg-white text-lg font-semibold text-amber-700 hover:bg-amber-50"
                   }`}
                   aria-label="写真を選ぶ"
@@ -1850,7 +1986,7 @@ export default function GrandmaChatter({
                     aiStatus === "thinking"
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isConsultVariant
-                        ? "min-h-[46px] rounded-[16px] border-[var(--consult-border)] bg-white px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300"
+                        ? `min-h-[46px] rounded-[16px] border-[var(--consult-border)] px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300 ${embedded ? "bg-white/60 placeholder:text-gray-500" : "bg-white"}`
                         : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={consultPlaceholder}

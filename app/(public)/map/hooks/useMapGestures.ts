@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, MutableRefObject, TouchEvent as ReactTouchEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, MutableRefObject } from "react";
 import L from "leaflet";
 
 const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
@@ -82,7 +82,17 @@ export function useMapGestures({
   onGestureEnd,
 }: UseMapGesturesArgs) {
   const [isTouchGestureActive, setIsTouchGestureActive] = useState(false);
+  const [gestureTarget, setGestureTarget] = useState<HTMLDivElement | null>(null);
+  const gestureTargetRef = useCallback((node: HTMLDivElement | null) => {
+    setGestureTarget(node);
+  }, []);
   const debugEnabledRef = useRef(false);
+  const interactionDisabledRef = useRef(interactionDisabled);
+  const mapRotationRef = useRef(mapRotation);
+  const isTouchGestureActiveRef = useRef(false);
+  const onPanStartRef = useRef(onPanStart);
+  const onRotationChangeRef = useRef(onRotationChange);
+  const onGestureEndRef = useRef(onGestureEnd);
   const touchPanRef = useRef<PointerPanState | null>(null);
   const mousePanRef = useRef<PointerPanState | null>(null);
   const touchGestureRef = useRef<TouchGestureState | null>(null);
@@ -91,11 +101,32 @@ export function useMapGestures({
 
   useEffect(() => {
     gestureActiveRef.current = isTouchGestureActive;
+    isTouchGestureActiveRef.current = isTouchGestureActive;
   }, [gestureActiveRef, isTouchGestureActive]);
 
   useEffect(() => {
     debugEnabledRef.current = isDebugEnabled();
   }, []);
+
+  useEffect(() => {
+    interactionDisabledRef.current = interactionDisabled;
+  }, [interactionDisabled]);
+
+  useEffect(() => {
+    mapRotationRef.current = mapRotation;
+  }, [mapRotation]);
+
+  useEffect(() => {
+    onPanStartRef.current = onPanStart;
+  }, [onPanStart]);
+
+  useEffect(() => {
+    onRotationChangeRef.current = onRotationChange;
+  }, [onRotationChange]);
+
+  useEffect(() => {
+    onGestureEndRef.current = onGestureEnd;
+  }, [onGestureEnd]);
 
   const debugLog = useCallback((event: string, data?: Record<string, unknown>) => {
     if (!debugEnabledRef.current) return;
@@ -107,15 +138,14 @@ export function useMapGestures({
   }, []);
 
   const panMapByScreenDelta = useCallback((dx: number, dy: number) => {
-    if (interactionDisabled) return;
     const map = mapRef.current;
-    if (!map) return;
-    const adjusted = rotateVector(-dx, -dy, -mapRotation);
+    if (!map || interactionDisabledRef.current) return;
+    const adjusted = rotateVector(-dx, -dy, -mapRotationRef.current);
     map.panBy([adjusted.x, adjusted.y], {
       animate: false,
       noMoveStart: true,
     });
-  }, [interactionDisabled, mapRef, mapRotation]);
+  }, [mapRef]);
 
   const flushPendingZoom = useCallback(() => {
     const map = mapRef.current;
@@ -137,8 +167,8 @@ export function useMapGestures({
     });
   }, [flushPendingZoom]);
 
-  const handleTouchStartCapture = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
+  const handleNativeTouchStart = useCallback((e: TouchEvent) => {
+    if (interactionDisabledRef.current) return;
 
     if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -166,18 +196,18 @@ export function useMapGestures({
       mode: "pending",
       startAngle: Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX),
       startDistance: getTouchDistance(t0, t1),
-      startRotation: mapRotation,
+      startRotation: mapRotationRef.current,
       startZoom: map.getZoom(),
       lastMidpoint: getTouchMidpoint(t0, t1),
     };
     setIsTouchGestureActive(true);
-    debugLog("touch:start", { rotation: mapRotation, zoom: map.getZoom() });
-  }, [debugLog, interactionDisabled, mapRef, mapRotation]);
+    debugLog("touch:start", { rotation: mapRotationRef.current, zoom: map.getZoom() });
+  }, [debugLog, mapRef]);
 
-  const handleTouchMoveCapture = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
+  const handleNativeTouchMove = useCallback((e: TouchEvent) => {
+    if (interactionDisabledRef.current) return;
 
-    if (e.touches.length === 1 && touchPanRef.current && !isTouchGestureActive) {
+    if (e.touches.length === 1 && touchPanRef.current && !isTouchGestureActiveRef.current) {
       const touch = e.touches[0];
       const dx = touch.clientX - touchPanRef.current.lastX;
       const dy = touch.clientY - touchPanRef.current.lastY;
@@ -187,8 +217,10 @@ export function useMapGestures({
       touchPanRef.current.hasMoved = true;
       touchPanRef.current.lastX = touch.clientX;
       touchPanRef.current.lastY = touch.clientY;
-      onPanStart();
-      e.preventDefault();
+      onPanStartRef.current();
+      if (e.cancelable) {
+        e.preventDefault();
+      }
       panMapByScreenDelta(dx, dy);
       return;
     }
@@ -215,8 +247,8 @@ export function useMapGestures({
         return;
       }
 
-      gesture.mode =
-        Math.abs(distanceDelta) >= Math.abs(deltaDeg) * 2 ? "zoom" : "rotate";
+      // ピンチズームは無効 — 2本指操作は常に回転として扱う
+      gesture.mode = "rotate";
 
       debugLog("touch:mode", {
         mode: gesture.mode,
@@ -225,12 +257,14 @@ export function useMapGestures({
       });
     }
 
-    e.preventDefault();
+    if (e.cancelable) {
+      e.preventDefault();
+    }
     e.stopPropagation();
-    onPanStart();
+    onPanStartRef.current();
 
     if (gesture.mode === "rotate") {
-      onRotationChange(normalizeRotationDeg(gesture.startRotation + deltaDeg));
+      onRotationChangeRef.current(normalizeRotationDeg(gesture.startRotation + deltaDeg));
       return;
     }
 
@@ -253,18 +287,14 @@ export function useMapGestures({
     gesture.lastMidpoint = midpoint;
     scheduleZoom(nextZoom, midpoint);
   }, [
-    interactionDisabled,
-    isTouchGestureActive,
     mapRef,
-    onPanStart,
-    onRotationChange,
     panMapByScreenDelta,
     debugLog,
     scheduleZoom,
   ]);
 
-  const handleTouchEndCapture = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
+  const handleNativeTouchEnd = useCallback((e: TouchEvent) => {
+    if (interactionDisabledRef.current) return;
 
     const activeGesture = touchGestureRef.current;
 
@@ -288,21 +318,21 @@ export function useMapGestures({
       window.cancelAnimationFrame(zoomFrameRef.current);
       flushPendingZoom();
     }
-    if (isTouchGestureActive) {
+    if (isTouchGestureActiveRef.current) {
       debugLog("touch:end", { mode: activeGesture?.mode ?? "unknown" });
-      onGestureEnd();
+      onGestureEndRef.current();
     }
     setIsTouchGestureActive(false);
-  }, [debugLog, interactionDisabled, isTouchGestureActive, onGestureEnd]);
+  }, [debugLog, flushPendingZoom]);
 
   const handleMouseDownCapture = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-    if (interactionDisabled || isTouchGestureActive || e.button !== 0) return;
+    if (interactionDisabledRef.current || isTouchGestureActiveRef.current || e.button !== 0) return;
     mousePanRef.current = {
       lastX: e.clientX,
       lastY: e.clientY,
       hasMoved: false,
     };
-  }, [interactionDisabled, isTouchGestureActive]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -313,8 +343,28 @@ export function useMapGestures({
   }, []);
 
   useEffect(() => {
+    if (!gestureTarget) return;
+
+    const touchStartOptions: AddEventListenerOptions = { capture: true, passive: true };
+    const touchMoveOptions: AddEventListenerOptions = { capture: true, passive: false };
+    const touchEndOptions: AddEventListenerOptions = { capture: true, passive: true };
+
+    gestureTarget.addEventListener("touchstart", handleNativeTouchStart, touchStartOptions);
+    gestureTarget.addEventListener("touchmove", handleNativeTouchMove, touchMoveOptions);
+    gestureTarget.addEventListener("touchend", handleNativeTouchEnd, touchEndOptions);
+    gestureTarget.addEventListener("touchcancel", handleNativeTouchEnd, touchEndOptions);
+
+    return () => {
+      gestureTarget.removeEventListener("touchstart", handleNativeTouchStart, touchStartOptions);
+      gestureTarget.removeEventListener("touchmove", handleNativeTouchMove, touchMoveOptions);
+      gestureTarget.removeEventListener("touchend", handleNativeTouchEnd, touchEndOptions);
+      gestureTarget.removeEventListener("touchcancel", handleNativeTouchEnd, touchEndOptions);
+    };
+  }, [gestureTarget, handleNativeTouchEnd, handleNativeTouchMove, handleNativeTouchStart]);
+
+  useEffect(() => {
     const handleMove = (e: MouseEvent) => {
-      if (!mousePanRef.current || interactionDisabled || isTouchGestureActive) return;
+      if (!mousePanRef.current || interactionDisabledRef.current || isTouchGestureActiveRef.current) return;
 
       const dx = e.clientX - mousePanRef.current.lastX;
       const dy = e.clientY - mousePanRef.current.lastY;
@@ -325,7 +375,7 @@ export function useMapGestures({
       mousePanRef.current.hasMoved = true;
       mousePanRef.current.lastX = e.clientX;
       mousePanRef.current.lastY = e.clientY;
-      onPanStart();
+      onPanStartRef.current();
       panMapByScreenDelta(dx, dy);
     };
 
@@ -339,15 +389,12 @@ export function useMapGestures({
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [interactionDisabled, isTouchGestureActive, onPanStart, panMapByScreenDelta]);
+  }, [panMapByScreenDelta]);
 
   return {
     isTouchGestureActive,
+    gestureTargetRef,
     gestureHandlers: {
-      onTouchStartCapture: handleTouchStartCapture,
-      onTouchMoveCapture: handleTouchMoveCapture,
-      onTouchEndCapture: handleTouchEndCapture,
-      onTouchCancelCapture: handleTouchEndCapture,
       onMouseDownCapture: handleMouseDownCapture,
     },
   };

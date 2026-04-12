@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Navigation, Plus, Minus } from "lucide-react";
+import { Navigation } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
@@ -60,6 +60,7 @@ import {
 } from "../utils/mapRouteGeometry";
 import { useMapGestures } from "../hooks/useMapGestures";
 import { useMapCameraController } from "../hooks/useMapCameraController";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -103,136 +104,471 @@ function isIngredientName(name: string) {
   );
 }
 
-// ===== Mobile zoom buttons =====
-function MapControls({
+// ===== 時間帯に応じたアンビエントオーバーレイ =====
+function TimeAmbientOverlay() {
+  const hour = new Date().getHours();
+
+  let background: string | null = null;
+  if (hour >= 6 && hour < 9) {
+    // 朝 — 朝霧・柔らかい白い光
+    background = 'linear-gradient(to bottom, rgba(255,252,235,0.18), rgba(255,248,220,0.07))';
+  } else if (hour >= 14 && hour < 17) {
+    // 昼後半 — 陽光の暖かみ
+    background = 'rgba(255,195,70,0.06)';
+  } else if (hour >= 17 && hour < 19) {
+    // 夕方 — 橙色の斜光
+    background = 'linear-gradient(to bottom, rgba(255,140,30,0.12), rgba(255,90,10,0.05))';
+  }
+
+  if (!background) return null;
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[500]"
+      style={{ background }}
+    />
+  );
+}
+
+// ===== テーパー型縦ズームスライダー =====
+// 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
+const VZ_PAD = 18;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 195;   // トラック高さ
+const VZ_SVG_W = 42;
+const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
+const VZ_WIDE = 27;       // 上端（拡大）の幅
+const VZ_NARROW = 10.5;   // 下端（縮小）の幅
+const VZ_CX = VZ_SVG_W / 2;
+const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
+const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
+const VZ_L_BOT = VZ_CX - VZ_NARROW / 2;
+const VZ_R_BOT = VZ_CX + VZ_NARROW / 2;
+
+function VerticalZoomSlider({
+  value,
+  min,
+  max,
+  onValueChange,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onValueChange: (v: number) => void;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const isDragging = useRef(false);
+
+  const trackTop = VZ_PAD;
+  const trackBot = VZ_PAD + VZ_TRACK_H;
+
+  const pct = (value - min) / (max - min);           // 0=最小, 1=最大
+  const thumbY = trackTop + VZ_TRACK_H * (1 - pct); // 上=拡大, 下=縮小
+
+  // アンバー塗り: サムから下端まで（塗りが多い＝よりズームインしている）
+  const fillRatio = (thumbY - trackTop) / VZ_TRACK_H;
+  const fillTL = VZ_L_TOP + (VZ_L_BOT - VZ_L_TOP) * fillRatio;
+  const fillTR = VZ_R_TOP + (VZ_R_BOT - VZ_R_TOP) * fillRatio;
+  const trackPts = `${VZ_L_TOP},${trackTop} ${VZ_R_TOP},${trackTop} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+  const fillPts  = `${fillTL},${thumbY} ${fillTR},${thumbY} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+
+  const getValueFromY = useCallback(
+    (clientY: number): number => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return value;
+      const relY = Math.max(0, Math.min(VZ_TRACK_H, clientY - rect.top - VZ_PAD));
+      return min + (1 - relY / VZ_TRACK_H) * (max - min);
+    },
+    [min, max, value],
+  );
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = true;
+    svgRef.current?.setPointerCapture(e.pointerId);
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isDragging.current) return;
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = false;
+    e.stopPropagation();
+  };
+
+  return (
+    <svg
+      ref={svgRef}
+      width={VZ_SVG_W}
+      height={VZ_SVG_H}
+      style={{ cursor: "ns-resize", touchAction: "none", display: "block" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      role="slider"
+      aria-label="ズーム"
+      aria-valuenow={value}
+      aria-valuemin={min}
+      aria-valuemax={max}
+    >
+      {/* グレーのトラック（くさび形） */}
+      <polygon points={trackPts} fill="#e5e7eb" />
+      {/* アンバー塗り（現在のズームレベルを表す） */}
+      <polygon points={fillPts} fill="#d97706" opacity="0.65" />
+      {/* サム */}
+      <circle cx={VZ_CX} cy={thumbY} r={10.5} fill="white" stroke="#d97706" strokeWidth="3.75" />
+    </svg>
+  );
+}
+
+// ===== Spotlight countdown bar: 2s amber progress bar shown during spotlight mode =====
+function SpotlightCountdownBar({ shopId }: { shopId: number }) {
+  return (
+    <div
+      key={shopId}
+      className="pointer-events-none absolute left-0 right-0 top-0 z-[1200] h-1 overflow-hidden"
+    >
+      <div className="h-full w-full origin-left bg-amber-400 opacity-80"
+        style={{ animation: "spotlight-drain 2s linear forwards" }}
+      />
+    </div>
+  );
+}
+
+// ===== Search results bottom sheet =====
+function SearchResultsSheet({
+  shops,
+  searchShopIds,
   map,
-  isMobile,
+  onClearSearch,
+  badgeBottom,
+}: {
+  shops: Shop[];
+  searchShopIds: number[];
+  map: L.Map | null;
+  onClearSearch?: () => void;
+  badgeBottom?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartY = useRef<number | null>(null);
+
+  const searchShopSet = useMemo(() => new Set(searchShopIds), [searchShopIds]);
+  const searchShops = useMemo(
+    () => shops.filter((s) => searchShopSet.has(s.id)),
+    [shops, searchShopSet],
+  );
+
+  // 検索結果が変わったらシートを閉じる
+  useEffect(() => {
+    setIsOpen(false);
+    setFocusedId(null);
+  }, [searchShopIds]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const handleRowTap = useCallback((shop: Shop) => {
+    if (!map) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setFocusedId(shop.id);
+    map.flyTo([shop.lat, shop.lng], map.getMaxZoom(), { animate: true, duration: 0.8, easeLinearity: 0.25 });
+    timerRef.current = setTimeout(() => {
+      setFocusedId(null);
+      timerRef.current = null;
+    }, 2000);
+    setIsOpen(false);
+  }, [map]);
+
+  const handleDragStart = (clientY: number) => { dragStartY.current = clientY; };
+  const handleDragEnd = (clientY: number) => {
+    if (dragStartY.current !== null && clientY - dragStartY.current > 60) setIsOpen(false);
+    dragStartY.current = null;
+  };
+
+  if (searchShops.length === 0) return null;
+
+  return (
+    <>
+      {focusedId != null && <SpotlightCountdownBar shopId={focusedId} />}
+
+      {/* バッジピル: 件数タップでシートを開く */}
+      {!isOpen && (
+        <div
+          className="absolute left-1/2 z-[1100] -translate-x-1/2 pointer-events-auto"
+          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)' }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
+              <circle cx="5.5" cy="5.5" r="4.5" stroke="white" strokeWidth="1.8"/>
+              <path d="M9 9l3 3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[13px] font-bold">{searchShops.length}件のお店</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0 opacity-80">
+              <path d="M1 5L5 1L9 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* 背景オーバーレイ */}
+      {isOpen && (
+        <div
+          className="absolute inset-0 z-[1620] bg-black/20 pointer-events-auto"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* ボトムシート本体 */}
+      <div
+        className={`absolute left-0 right-0 z-[1650] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ bottom: 0, maxHeight: '55vh', display: 'flex', flexDirection: 'column' }}
+        onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+        onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ドラッグハンドル + ヘッダー */}
+        <div
+          className="shrink-0 cursor-grab active:cursor-grabbing"
+          onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+          onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
+        >
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-slate-300" />
+          </div>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Search Results</p>
+              <h3 className="text-base font-bold text-slate-900">{searchShops.length}件のお店</h3>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClearSearch?.(); setIsOpen(false); }}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-[12px] font-medium text-slate-600 active:bg-slate-200 transition-colors"
+            >
+              検索を解除
+            </button>
+          </div>
+        </div>
+
+        {/* 縦スクロールリスト */}
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+          {searchShops.map((shop, i) => {
+            const bannerSeed = shop.position ?? shop.id;
+            const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
+            return (
+              <button
+                key={shop.id}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleRowTap(shop); }}
+                className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors active:bg-amber-50 border-b border-slate-100/80 ${
+                  focusedId === shop.id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                }`}
+              >
+                <div className="shrink-0 h-12 w-12 overflow-hidden rounded-xl bg-slate-100">
+                  {imageUrl && (
+                    <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-bold text-slate-900 leading-tight">{shop.name}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    {shop.category && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">{shop.category}</span>
+                    )}
+                    {shop.position && (
+                      <span className="text-[11px] text-slate-400">{shop.position}番</span>
+                    )}
+                  </div>
+                </div>
+                <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="shrink-0 text-slate-300">
+                  <path d="M1 1l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ===== Bottom-right: vertical zoom slider =====
+function MapZoomControls({
+  map,
+  currentZoom,
+  minZoom,
+  maxZoom,
+}: {
+  map: L.Map | null;
+  currentZoom: number;
+  minZoom: number;
+  maxZoom: number;
+}) {
+  return (
+    <div
+      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => { e.stopPropagation(); }}
+    >
+      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
+      <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+        <span className="select-none text-[11px] font-bold leading-none text-slate-400">+</span>
+        <VerticalZoomSlider
+          value={currentZoom}
+          min={minZoom}
+          max={maxZoom}
+          onValueChange={(v) => map?.setZoom(v, { animate: false })}
+        />
+        <span className="select-none text-[11px] font-bold leading-none text-slate-400">−</span>
+      </div>
+    </div>
+  );
+}
+
+// ===== Top-left: location tracking button =====
+function MapTrackingButton({
   isTracking,
   onToggleTracking,
 }: {
-  map: L.Map | null;
-  isMobile: boolean;
   isTracking: boolean;
   onToggleTracking: () => void;
 }) {
-  // Mobile: Only tracking button at top-left
-  if (isMobile) {
-    return (
-      <div
-        className="absolute top-4 left-4 z-[1000]"
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleTracking();
-          }}
-          className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-            isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-          aria-label={isTracking ? "追従中" : "追従オフ"}
-        >
-          <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-        </button>
-      </div>
-    );
-  }
-
-  // Desktop: Unified stack at top-left
   return (
     <div
-      className="absolute top-4 left-4 z-[1000] flex flex-col overflow-hidden rounded-lg bg-white shadow-md ring-1 ring-gray-900/5"
+      className="absolute top-4 left-4 z-[1000]"
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      onTouchStart={(e) => { e.stopPropagation(); }}
     >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomIn();
-          }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームイン"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomOut();
-          }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームアウト"
-      >
-        <Minus className="h-5 w-5" />
-      </button>
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggleTracking();
         }}
-        className={`flex h-9 w-9 items-center justify-center transition-colors ${
-          isTracking
-            ? "bg-blue-50 text-blue-600"
-            : "bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+        className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
+          isTracking ? "bg-blue-500 text-white" : "bg-white/92 text-gray-700 hover:bg-gray-50"
         }`}
         aria-label={isTracking ? "追従中" : "追従オフ"}
       >
-        <Navigation className={`h-4 w-4 ${isTracking ? "fill-current" : ""}`} />
+        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
       </button>
     </div>
   );
 }
 
-function MapStatusHud({
+// ===== Combined controls (kept for call-site compatibility) =====
+function MapControls({
+  map,
   isTracking,
-  isInMarket,
-  shopLoadProgress,
+  onToggleTracking,
+  currentZoom,
+  minZoom,
+  maxZoom,
 }: {
+  map: L.Map | null;
   isTracking: boolean;
-  isInMarket: boolean | null;
-  shopLoadProgress: { processed: number; total: number; done: boolean };
+  onToggleTracking: () => void;
+  currentZoom: number;
+  minZoom: number;
+  maxZoom: number;
 }) {
-  const showShopProgress = shopLoadProgress.total > 0 && !shopLoadProgress.done;
-  const trackingLabel = isTracking ? "現在地を追従中" : "地図を閲覧中";
-  const marketLabel =
-    isInMarket === null
-      ? "位置を確認中"
-      : isInMarket
-        ? "通路上に現在地を表示中"
-        : "通路外のため現在地は非表示";
+  return (
+    <>
+      <MapZoomControls map={map} currentZoom={currentZoom} minZoom={minZoom} maxZoom={maxZoom} />
+      <MapTrackingButton isTracking={isTracking} onToggleTracking={onToggleTracking} />
+    </>
+  );
+}
+
+// ===== Top-right: inline search bar =====
+function MapSearchBar({
+  searchShopIds,
+  searchLabel,
+  searchQuery,
+  onSearchQuery,
+  onClearSearch,
+}: {
+  searchShopIds?: number[];
+  searchLabel?: string;
+  searchQuery?: string;
+  onSearchQuery?: (q: string) => void;
+  onClearSearch?: () => void;
+}) {
+  const hasSearch = Boolean(
+    (searchShopIds && searchShopIds.length > 0) ||
+    (searchQuery && searchQuery.trim()) ||
+    (searchLabel && searchLabel.trim())
+  );
 
   return (
-    <div className="pointer-events-none absolute right-4 top-4 z-[1000] flex max-w-[240px] flex-col gap-2">
-      <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Map Status</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">{trackingLabel}</p>
-        <p className="mt-1 text-xs leading-5 text-slate-600">{marketLabel}</p>
+    <div
+      className="absolute right-4 top-4 z-[1000]"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      <div className={`flex items-center gap-1.5 rounded-full pl-3 pr-2 py-2 shadow-md ring-1 backdrop-blur transition-all duration-200 ${
+        hasSearch
+          ? 'bg-gradient-to-r from-amber-200/95 via-amber-100/95 to-orange-50/95 ring-amber-500/45 shadow-[0_12px_28px_-16px_rgba(217,119,6,0.75)]'
+          : 'bg-white/75 ring-slate-900/6'
+      }`}>
+        <span className={`shrink-0 text-[13px] ${hasSearch ? 'text-amber-700' : 'text-slate-400'}`}>🔍</span>
+        <input
+          type="text"
+          value={searchQuery ?? ''}
+          onChange={(e) => { e.stopPropagation(); onSearchQuery?.(e.target.value); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          placeholder="お店を探す"
+          className={`w-28 bg-transparent text-[13px] outline-none ${hasSearch ? 'font-medium text-amber-900 placeholder:text-amber-700/70' : 'text-slate-700 placeholder:text-slate-400'}`}
+        />
+        {hasSearch && searchShopIds && searchShopIds.length > 0 && (
+          <span className="shrink-0 rounded-full bg-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+            {searchShopIds.length}件
+          </span>
+        )}
+        {hasSearch && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClearSearch?.(); }}
+            className="shrink-0 rounded-full bg-white/85 p-1.5 text-amber-700 hover:bg-white active:scale-90 transition-all"
+            aria-label="検索をクリア"
+          >
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
       </div>
-      {showShopProgress && (
-        <div className="rounded-2xl bg-white/92 px-3 py-2 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-          <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
-            <span className="font-medium text-slate-800">店舗を読み込み中</span>
-            <span>{shopLoadProgress.processed}/{shopLoadProgress.total}</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-[width] duration-200"
-              style={{
-                width: `${shopLoadProgress.total > 0
-                  ? Math.min(100, (shopLoadProgress.processed / shopLoadProgress.total) * 100)
-                  : 0}%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
+    </div>
+  );
+}
+
+function MapZoomGuideToast({ message }: { message: string | null }) {
+  return (
+    <div
+      className={`pointer-events-none absolute left-1/2 top-20 z-[1400] w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 transition-all duration-200 ${
+        message ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+      }`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <div className="rounded-full bg-slate-900/88 px-4 py-2 text-center text-sm font-medium text-white shadow-lg backdrop-blur">
+        {message ?? ""}
+      </div>
     </div>
   );
 }
@@ -272,12 +608,20 @@ type MapViewProps = {
   onZoomChange?: (zoom: number) => void;
   suppressInitialLocationFocus?: boolean;
   onShopSelect?: (shop: Shop) => void;
+  spotlightShopId?: number;
+  onClearSearch?: () => void;
+  searchQuery?: string;
+  onSearchQuery?: (q: string) => void;
+  /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
+  overlaySlot?: React.ReactNode;
 };
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
+/** zoom < OVERVIEW_ZONE_MAX_ZOOM のとき丁目エリアマーカーを表示（クラスター廃止） */
+const OVERVIEW_ZONE_MAX_ZOOM = 18;
 const SKIPPED_ZOOM_LEVELS = [18];
-const SKIPPED_ZOOM_TOLERANCE = 0.01;
+const SKIPPED_ZOOM_TOLERANCE = 0.026; // step(0.05) の半分より少し大きく設定
 
 function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => void }) {
   const map = useMap();
@@ -308,8 +652,9 @@ function MapZoomConstraint() {
         (level) => Math.abs(zoom - level) <= SKIPPED_ZOOM_TOLERANCE
       );
       if (skippedZoom !== undefined) {
+        // スムーズスライダー対応: ±1 の大ジャンプをやめ、スキップゾーンを抜ける最小幅(0.1)だけ移動
         const targetZoom =
-          lastAcceptedZoom > zoom ? skippedZoom - 1 : skippedZoom + 1;
+          lastAcceptedZoom > zoom ? skippedZoom - 0.1 : skippedZoom + 0.1;
         map.setZoom(targetZoom, { animate: false });
         lastAcceptedZoom = targetZoom;
         return;
@@ -392,6 +737,11 @@ const MapView = memo(function MapView({
   onZoomChange,
   suppressInitialLocationFocus = false,
   onShopSelect,
+  spotlightShopId,
+  onClearSearch,
+  searchQuery,
+  onSearchQuery,
+  overlaySlot,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -464,10 +814,14 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
+  const [shopBannerSession, setShopBannerSession] = useState(0);
+  const [shopBannerInitialSurface, setShopBannerInitialSurface] = useState<"summary" | "detail">("detail");
+  const [shopBannerMainSurface, setShopBannerMainSurface] = useState<"summary" | "detail">("detail");
   const [isTracking, setIsTracking] = useState(true);
   const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
   const [autoRotation, setAutoRotation] = useState(initialMapRotation);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
+  const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
     const { innerWidth, innerHeight } = window;
@@ -480,6 +834,7 @@ const MapView = memo(function MapView({
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const isTouchGestureActiveRef = useRef(false);
+  const zoomGuideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【削除】visibleShops の計算を削除
@@ -513,6 +868,14 @@ const MapView = memo(function MapView({
     if (!mapInstance) return;
     mapInstance.invalidateSize(false);
   }, [mapInstance, mapShellSize]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setAutoRotation(initialMapRotation);
@@ -699,6 +1062,14 @@ const MapView = memo(function MapView({
       if (typeof document !== "undefined") {
         document.body.classList.add("shop-banner-open");
       }
+      const nextInitialSurface: "summary" | "detail" =
+        selectedShop &&
+        shopBannerMainSurface === "summary" &&
+        selectedShop.id !== clickedShop.id
+          ? "summary"
+          : "detail";
+      setShopBannerInitialSurface(nextInitialSurface);
+      setShopBannerSession((prev) => prev + 1);
       setSelectedShop(clickedShop);
       setShopBannerOrigin(origin ?? null);
     } else {
@@ -731,16 +1102,25 @@ const MapView = memo(function MapView({
       if (viewMode.mode === ViewMode.OVERVIEW) {
         // OVERVIEW → INTERMEDIATE（エリア探索）へ
         targetZoom = 18.0;
+        setZoomGuideMessage("このエリアを拡大しました");
       } else {
         // INTERMEDIATE → DETAIL（詳細閲覧）へ
         targetZoom = 18.5;
+        setZoomGuideMessage("もう一度タップするとお店の詳細を見られます");
       }
+
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+      zoomGuideTimerRef.current = setTimeout(() => {
+        setZoomGuideMessage(null);
+      }, 1800);
 
       mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
         duration: 0.75,
       });
     }
-  }, [onShopSelect, shops]);
+  }, [onShopSelect, selectedShop, shopBannerMainSurface, shops]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
@@ -789,6 +1169,7 @@ const MapView = memo(function MapView({
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
   const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
+  const isOverviewZoneMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
   const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
   const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
@@ -864,6 +1245,18 @@ const MapView = memo(function MapView({
       }),
     [isMinimumZoomMode, majorPlaceLabels, shouldRenderMajorLabels]
   );
+  const activeHighlightShopIds = useMemo(() => {
+    if (searchShopIds && searchShopIds.length > 0) {
+      return searchShopIds;
+    }
+    if (aiShopIds && aiShopIds.length > 0) {
+      return aiShopIds;
+    }
+    return undefined;
+  }, [aiShopIds, searchShopIds]);
+  const resultsBadgeBottom = overlaySlot
+    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem)'
+    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)';
 
   const visibleLandmarkSpecs = useMemo(() => {
     if (!shouldRenderLandmarks) {
@@ -886,7 +1279,7 @@ const MapView = memo(function MapView({
     setAutoRotation,
   });
 
-  const { isTouchGestureActive, gestureHandlers } = useMapGestures({
+  const { isTouchGestureActive, gestureTargetRef, gestureHandlers } = useMapGestures({
     mapRef,
     gestureActiveRef: isTouchGestureActiveRef,
     interactionDisabled,
@@ -910,12 +1303,13 @@ const MapView = memo(function MapView({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden"
+      className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${activeHighlightShopIds && activeHighlightShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
-        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
       }}
     >
       <div
+        ref={gestureTargetRef}
         className="absolute left-1/2 top-1/2 z-0"
         {...gestureHandlers}
         style={{
@@ -933,7 +1327,7 @@ const MapView = memo(function MapView({
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
           preferCanvas
-          zoomSnap={0.2}
+          zoomSnap={0.05}
           zoomDelta={0.35}
           wheelPxPerZoomLevel={130}
           zoomAnimation
@@ -991,6 +1385,7 @@ const MapView = memo(function MapView({
             visibleLandmarkSpecs={visibleLandmarkSpecs}
             landmarkIcons={landmarkIcons}
             isMinimumZoomMode={isMinimumZoomMode}
+            isOverviewZoneMode={isOverviewZoneMode}
             shops={shops}
             onShopClick={handleShopClick}
             onChunkProgress={handleShopChunkProgress}
@@ -1035,17 +1430,35 @@ const MapView = memo(function MapView({
         </MapContainer>
       </div>
 
+      <TimeAmbientOverlay />
+      <MapZoomGuideToast message={zoomGuideMessage} />
       <MapControls
         map={mapInstance}
-        isMobile={isMobile}
         isTracking={isTracking}
         onToggleTracking={() => setIsTracking((prev) => !prev)}
+        currentZoom={mapUiZoom}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
       />
-      <MapStatusHud
-        isTracking={isTracking}
-        isInMarket={isInMarket}
-        shopLoadProgress={shopLoadProgress}
+      <MapSearchBar
+        searchShopIds={activeHighlightShopIds}
+        searchLabel={searchLabel}
+        searchQuery={searchQuery}
+        onSearchQuery={onSearchQuery}
+        onClearSearch={onClearSearch}
       />
+
+      {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
+
+      {activeHighlightShopIds && activeHighlightShopIds.length > 0 && (
+        <SearchResultsSheet
+          shops={displayShops}
+          searchShopIds={activeHighlightShopIds}
+          map={mapInstance}
+          onClearSearch={onClearSearch}
+          badgeBottom={resultsBadgeBottom}
+        />
+      )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離
@@ -1056,10 +1469,21 @@ const MapView = memo(function MapView({
       {selectedShop && (
         <>
           <ShopDetailBanner
+            key={`${selectedShop.id}-${shopBannerSession}`}
             shop={selectedShop}
+            openNonce={shopBannerSession}
+            initialMobileSurface={shopBannerInitialSurface}
+            onMobileMainSurfaceChange={setShopBannerMainSurface}
+            canNavigateBetweenShops={canNavigate}
+            selectedShopPosition={selectedShopIndex + 1}
+            totalShopCount={shops.length}
+            onSelectPreviousShop={() => handleSelectByOffset(-1)}
+            onSelectNextShop={() => handleSelectByOffset(1)}
             onClose={() => {
               setSelectedShop(null);
               setShopBannerOrigin(null);
+              setShopBannerInitialSurface("detail");
+              setShopBannerMainSurface("detail");
             }}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
@@ -1076,6 +1500,9 @@ const MapView = memo(function MapView({
         onToggle={onAgentToggle}
         hideLauncher
       />
+
+      {/* 外部から注入するオーバーレイ（マップ座標系内） */}
+      {overlaySlot}
     </div>
   );
 });

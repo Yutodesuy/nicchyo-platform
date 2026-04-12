@@ -2,11 +2,13 @@
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
-import { loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import { clearSearchMapPayload, loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
 import GrandmaChatter from "./components/GrandmaChatter";
 import { useTimeBadge } from "./hooks/useTimeBadge";
@@ -15,12 +17,18 @@ import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
 import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
-import { grandmaComments } from "./data/grandmaComments";
+import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
-import FirstVisitGuide from "./components/FirstVisitGuide";
+import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
+import { buildSearchIndex } from "../search/lib/searchIndex";
+import { useShopSearch } from "../search/hooks/useShopSearch";
+import { getOrCreateConsultVisitorKey } from "../../../lib/consultVisitorKey";
+import MapCharacterConsult from "./components/MapCharacterConsult";
+
+const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -102,6 +110,7 @@ export default function MapPageClient({
 }: MapPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
@@ -124,18 +133,105 @@ export default function MapPageClient({
     lng: number;
   } | null>(null);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isInMarket === true) recordMarketEnter();
+    else if (isInMarket === false) recordMarketExit();
+  }, [isInMarket]);
+  // マーカーglow用（コメント表示中のお店を追跡）
   const [commentHighlightShopId, setCommentHighlightShopId] = useState<number | null>(null);
+  // スポットライトモード用（タップ時のみ、2秒で自動解除）
+  const [spotlightShopId, setSpotlightShopId] = useState<number | null>(null);
+  const spotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activateSpotlight = useCallback((shopId: number) => {
+    if (spotlightTimerRef.current) clearTimeout(spotlightTimerRef.current);
+    setSpotlightShopId(shopId);
+    spotlightTimerRef.current = setTimeout(() => {
+      setSpotlightShopId(null);
+      spotlightTimerRef.current = null;
+    }, 2000);
+  }, []);
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
+  const [tutorialProgress, setTutorialProgress] = useState<number>(0);
+  const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
+    setTutorialProgress(Math.min(10, stored));
+  }, []);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const updateBannerState = () => {
+      setIsShopBannerOpen(document.body.classList.contains("shop-banner-open"));
+    };
+    updateBannerState();
+    const observer = new MutationObserver(updateBannerState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  const dragControls = useDragControls();
+  const [mapCharacterConsultActive, setMapCharacterConsultActive] = useState(false);
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [mapSearchCategory, setMapSearchCategory] = useState<string | null>(null);
+  const mapSearchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
+  const mapSearchResults = useShopSearch({
+    shops,
+    searchIndex: mapSearchIndex,
+    textQuery: mapSearchQuery,
+    category: mapSearchCategory,
+    chome: null,
+  });
+  const mapSearchShopIds = useMemo(
+    () =>
+      mapSearchQuery.trim() || mapSearchCategory
+        ? mapSearchResults.map((s) => s.id)
+        : undefined,
+    [mapSearchCategory, mapSearchQuery, mapSearchResults],
+  );
   const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
+  const clearMapSearchState = useCallback(() => {
+    clearSearchMapPayload();
+    setSearchMarkerPayload(null);
+    setMapSearchQuery('');
+    setMapSearchCategory(null);
+  }, []);
+  const closeMapCharacterConsult = useCallback(() => {
+    setMapCharacterConsultActive(false);
+    setAiMarkerPayload(null);
+  }, []);
+  const startMapCharacterConsult = useCallback(() => {
+    clearMapSearchState();
+    setMapCharacterConsultActive(true);
+    router.replace('/map');
+  }, [clearMapSearchState, router]);
+  const closeMapInteractionMode = useCallback(() => {
+    clearMapSearchState();
+    closeMapCharacterConsult();
+    router.push('/map');
+  }, [clearMapSearchState, closeMapCharacterConsult, router]);
+
+  // 旧 URL 互換: /map?panel=consult が来ても直接 AI 相談モードを起動する
+  useEffect(() => {
+    if (searchParams?.get("panel") === "consult") {
+      startMapCharacterConsult();
+      return;
+    }
+    if (activePanel === 'search') {
+      closeMapCharacterConsult();
+    }
+  }, [activePanel, closeMapCharacterConsult, searchParams, startMapCharacterConsult]);
+
   const vendorShopId = user?.vendorId ?? null;
   const activeEvent = useMemo(() => {
     if (!showGrandma) return null;
@@ -183,6 +279,7 @@ export default function MapPageClient({
   }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
+    setMapInstance(map);
   }, []);
 
   const vendorShop = useMemo(() => {
@@ -325,6 +422,7 @@ export default function MapPageClient({
     _memorySummary?: string
   ) => {
     try {
+      const visitorKey = getOrCreateConsultVisitorKey();
       const useForm = !!imageFile;
       const body = useForm
         ? (() => {
@@ -333,6 +431,7 @@ export default function MapPageClient({
             form.append("location", JSON.stringify(userLocation ?? null));
             if (context?.shopId) form.append("shopId", String(context.shopId));
             if (context?.shopName) form.append("shopName", context.shopName);
+            if (visitorKey) form.append("visitorKey", visitorKey);
             if (imageFile) form.append("image", imageFile);
             return form;
           })()
@@ -341,22 +440,27 @@ export default function MapPageClient({
             location: userLocation,
             shopId: context?.shopId ?? null,
             shopName: context?.shopName ?? null,
+            visitorKey,
           });
       const response = await fetch("/api/grandma/ask", {
         method: "POST",
         headers: useForm ? undefined : { "Content-Type": "application/json" },
         body,
       });
-      if (!response.ok) {
-        return {
-          reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        };
-      }
       const payload = (await response.json()) as {
         reply?: string;
         imageUrl?: string;
         shopIds?: number[];
+        errorMessage?: string;
       };
+      if (!response.ok) {
+        return {
+          reply:
+            payload.reply ??
+            payload.errorMessage ??
+            "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        };
+      }
       const rawReply =
         payload.reply ?? "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
       if (payload.shopIds && payload.shopIds.length > 0) {
@@ -383,6 +487,7 @@ export default function MapPageClient({
       const shop = shopById.get(shopId);
       if (!map || !shop) return;
       prefetchShopImage(shopId);
+      activateSpotlight(shopId);
       const maxZoom = map.getMaxZoom() ?? 19;
       map.flyTo([shop.lat, shop.lng], maxZoom, {
         animate: true,
@@ -390,7 +495,7 @@ export default function MapPageClient({
         easeLinearity: 0.25,
       });
     },
-    [prefetchShopImage, shopById]
+    [activateSpotlight, prefetchShopImage, shopById]
   );
 
   const handleCommentShopOpen = useCallback(
@@ -440,6 +545,15 @@ export default function MapPageClient({
     const shopSet = new Set(aiMarkerPayload.ids);
     return shops.filter((shop) => shopSet.has(shop.id));
   }, [aiMarkerPayload, shops]);
+  const hasSearchMode =
+    activePanel === 'search' ||
+    !!searchMarkerPayload ||
+    !!mapSearchQuery.trim() ||
+    !!mapSearchCategory ||
+    !!mapSearchShopIds?.length;
+  const hasAiMode =
+    mapCharacterConsultActive ||
+    !!aiMarkerPayload;
 
   const introImageUrl = useMemo(() => {
     if (!commentHighlightShopId) return null;
@@ -497,15 +611,29 @@ export default function MapPageClient({
 
   const commentPool = useMemo(() => {
     if (!showGrandma) return [];
-    if (shopIntroComments.length > 0) {
-      return interleaveComments(grandmaComments, shopIntroComments);
-    }
-    return grandmaComments;
-  }, [isInMarket, shopIntroComments, showGrandma]);
+    const tutorials = mapTutorialComments.slice(tutorialProgress);
+    const base = shopIntroComments.length > 0
+      ? interleaveComments(grandmaComments, shopIntroComments)
+      : grandmaComments;
+    return [...tutorials, ...base];
+  }, [isInMarket, shopIntroComments, showGrandma, tutorialProgress]);
+
+  const handleCommentSeen = useCallback((id: string, genre: string) => {
+    if (genre !== "tutorial") return;
+    const idx = mapTutorialComments.findIndex((c) => c.id === id);
+    if (idx < 0) return;
+    setTutorialProgress((prev) => {
+      const next = Math.min(10, idx + 1);
+      if (next > prev) {
+        localStorage.setItem(TUTORIAL_STORAGE_KEY, String(next));
+        return next;
+      }
+      return prev;
+    });
+  }, []);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      <FirstVisitGuide />
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
@@ -638,9 +766,23 @@ export default function MapPageClient({
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids}
+              searchShopIds={searchMarkerPayload?.ids ?? mapSearchShopIds}
               aiShopIds={aiMarkerPayload?.ids}
-              searchLabel={searchMarkerPayload?.label ?? aiMarkerPayload?.label}
+              searchLabel={
+                searchMarkerPayload?.label ??
+                (mapSearchQuery.trim() || mapSearchCategory || aiMarkerPayload?.label)
+              }
+              searchQuery={mapSearchQuery}
+              onSearchQuery={(q) => {
+                setMapSearchQuery(q);
+                if (searchMarkerPayload) {
+                  clearSearchMapPayload();
+                  setSearchMarkerPayload(null);
+                }
+                if (aiMarkerPayload) {
+                  setAiMarkerPayload(null);
+                }
+              }}
               onMapReady={markMapReady}
               eventTargets={eventTargets}
               highlightEventTargets={showGrandma ? isHoldActive : false}
@@ -650,13 +792,37 @@ export default function MapPageClient({
                 setIsInMarket(coords.inMarket);
               }}
               commentShopId={commentHighlightShopId ?? undefined}
+              spotlightShopId={spotlightShopId ?? undefined}
+              onClearSearch={() => {
+                clearSearchMapPayload();
+                setSearchMarkerPayload(null);
+                setMapSearchQuery('');
+                setMapSearchCategory(null);
+                setAiMarkerPayload(null);
+              }}
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
+              overlaySlot={
+                mapCharacterConsultActive ? (
+                  <MapCharacterConsult
+                    map={mapInstance}
+                    shops={shops}
+                    onShopsRecommended={(shopIds) => {
+                      setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
+                    }}
+                    onClose={closeMapCharacterConsult}
+                  />
+                ) : undefined
+              }
             />
-            {showGrandma && (
+            {showGrandma &&
+              !searchMarkerPayload &&
+              !mapSearchShopIds &&
+              !mapCharacterConsultActive &&
+              !isShopBannerOpen && (
               <>
                 <GrandmaChatter
                   titleLabel="にちよさん"
@@ -671,6 +837,7 @@ export default function MapPageClient({
                   onActiveShopChange={setCommentHighlightShopId}
                   onCommentShopFocus={handleCommentShopFocus}
                   onCommentShopOpen={handleCommentShopOpen}
+                  onCommentSeen={handleCommentSeen}
                   introImageUrl={introImageUrl}
                   onAiImageClick={handleAiImageClick}
                   currentZoom={currentZoom}
@@ -763,10 +930,89 @@ export default function MapPageClient({
                 )}
               </>
             )}
+
           </div>
       </main>
 
-      <NavigationBar />
+      {/* ── パネルオーバーレイ（検索のみ） ── */}
+      <AnimatePresence>
+        {activePanel === 'search' && (
+          <>
+            {/* マップ暗幕 */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-[9989] bg-black/60"
+            />
+
+            {/* パネル本体（半透明背景） */}
+            <motion.div
+              key={activePanel}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.3 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  router.push("/map");
+                }
+              }}
+              className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl bg-black/50 backdrop-blur-xl"
+              style={{ height: "92dvh" }}
+            >
+              {/* ドラッグハンドル */}
+              <div
+                className="absolute left-1/2 top-0 z-10 flex h-8 w-full -translate-x-1/2 cursor-grab items-center justify-center active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+                style={{ touchAction: "none" }}
+              >
+                <div className="h-1 w-10 rounded-full bg-white/40" />
+              </div>
+              <div className="h-full overflow-y-auto overscroll-contain pt-6">
+                <Suspense fallback={null}>
+                  <SearchClient
+                    shops={shops}
+                    landmarks={landmarks}
+                    embedded
+                    initialQuery={mapSearchQuery}
+                    initialCategory={mapSearchCategory}
+                    onQueryChange={(q, cat) => {
+                      setMapSearchQuery(q);
+                      setMapSearchCategory(cat);
+                      if (searchMarkerPayload) {
+                        clearSearchMapPayload();
+                        setSearchMarkerPayload(null);
+                      }
+                      if (aiMarkerPayload) {
+                        setAiMarkerPayload(null);
+                      }
+                    }}
+                  />
+                </Suspense>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <NavigationBar
+        onMenuOpenChange={(open) => {
+          if (open) {
+            closeMapCharacterConsult();
+          }
+        }}
+        onConsultClick={startMapCharacterConsult}
+        closeModeActive={hasSearchMode || hasAiMode}
+        onCloseMode={closeMapInteractionMode}
+      />
     </div>
   );
 }

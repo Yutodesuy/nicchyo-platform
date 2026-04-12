@@ -24,11 +24,13 @@ export type BagItem = {
   qty?: string;
   note?: string;
   photo?: string;
+  price?: number;
   createdAt: number;
 };
 
 type BagContextType = {
   items: BagItem[];
+  totalPrice: number;
   addItem: (item: Omit<BagItem, 'id' | 'createdAt'>) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<BagItem>) => void;
@@ -196,10 +198,13 @@ export function BagProvider({ children }: { children: ReactNode }) {
     setItems([]);
   }, []);
 
+  const totalPrice = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
+
   return (
     <BagContext.Provider
       value={{
         items,
+        totalPrice,
         addItem,
         removeItem,
         updateItem,

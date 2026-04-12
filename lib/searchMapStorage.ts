@@ -37,6 +37,15 @@ export function saveAiMapPayload(payload: SearchMapPayload) {
   }
 }
 
+export function clearSearchMapPayload() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(SEARCH_MAP_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function loadAiMapPayload(): SearchMapPayload | null {
   if (typeof window === "undefined") return null;
   try {
