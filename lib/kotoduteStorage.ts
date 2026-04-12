@@ -3,6 +3,7 @@ export type KotoduteNote = {
   shopId: number | "all";
   text: string;
   createdAt: number;
+  authorEmoji?: string;
 };
 
 const STORAGE_KEY = "nicchyo-kotodute-notes";

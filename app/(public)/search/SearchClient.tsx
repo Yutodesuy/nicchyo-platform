@@ -121,16 +121,31 @@ function formatPostCreatedAt(createdAt?: string): string {
   }).format(created);
 }
 
-export default function SearchClient({ shops, landmarks }: SearchClientProps) {
+export default function SearchClient({
+  shops,
+  landmarks,
+  embedded = false,
+  initialQuery = '',
+  initialCategory = null,
+  onQueryChange,
+}: SearchClientProps & {
+  embedded?: boolean;
+  initialQuery?: string;
+  initialCategory?: string | null;
+  onQueryChange?: (query: string, category: string | null) => void;
+}) {
   const router = useRouter();
   const itemsPerPage = 10;
-  const [textQuery, setTextQuery] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [textQuery, setTextQuery] = useState(initialQuery);
+  const [category, setCategory] = useState<string | null>(initialCategory);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [openedShop, setOpenedShop] = useState<Shop | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDesktop, setIsDesktop] = useState(false);
+  const skipNextEmbeddedSyncRef = useRef(embedded);
+  const prevInitialQueryRef = useRef(initialQuery);
+  const prevInitialCategoryRef = useRef(initialCategory);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
@@ -158,6 +173,18 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
       document.body.classList.remove('search-inline-shop-banner-open');
     };
   }, [isDesktop, openedShop]);
+
+  useEffect(() => {
+    const propsChanged =
+      prevInitialQueryRef.current !== initialQuery ||
+      prevInitialCategoryRef.current !== initialCategory;
+    if (!propsChanged) return;
+    prevInitialQueryRef.current = initialQuery;
+    prevInitialCategoryRef.current = initialCategory;
+    skipNextEmbeddedSyncRef.current = true;
+    setTextQuery(initialQuery);
+    setCategory(initialCategory);
+  }, [initialCategory, initialQuery]);
 
   const handleToggleFavorite = (shopId: number) => {
     const next = toggleFavoriteShopId(shopId);
@@ -264,11 +291,48 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
     router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
   }, [filteredShops, router, searchLabel]);
 
+  const syncEmbeddedSearch = useCallback(
+    (nextQuery: string, nextCategory: string | null) => {
+      if (!embedded || !onQueryChange) return;
+      if (skipNextEmbeddedSyncRef.current) {
+        skipNextEmbeddedSyncRef.current = false;
+      }
+      onQueryChange(nextQuery, nextCategory);
+      if (nextQuery.trim() || nextCategory) {
+        router.push('/map');
+      }
+    },
+    [embedded, onQueryChange, router]
+  );
+
+  // スタンドアロン(/search)モバイル: 自動でマップへ遷移
+  useEffect(() => {
+    if (embedded || isDesktop || !hasQuery || filteredShops.length === 0) return;
+    const timer = setTimeout(() => {
+      saveSearchMapPayload({
+        ids: filteredShops.map((s) => s.id),
+        label: searchLabel,
+      });
+      router.push(`/map?search=1&label=${encodeURIComponent(searchLabel)}`);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [hasQuery, embedded, isDesktop, filteredShops, searchLabel, router]);
+
   // 検索結果0件時の提案クリックハンドラ：テキスト検索をクリアしてカテゴリー検索のみにする
   const handleSuggestionClick = useCallback((cat: string) => {
     setCategory(cat);
     setTextQuery('');
   }, []);
+
+  const handleTextQueryChange = useCallback((nextQuery: string) => {
+    setTextQuery(nextQuery);
+    syncEmbeddedSearch(nextQuery, category);
+  }, [category, syncEmbeddedSearch]);
+
+  const handleCategoryChange = useCallback((nextCategory: string | null) => {
+    setCategory(nextCategory);
+    syncEmbeddedSearch(textQuery, nextCategory);
+  }, [syncEmbeddedSearch, textQuery]);
 
   const handleFocusShop = useCallback((shop: Shop) => {
     if (isDesktop) {
@@ -285,7 +349,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
   }, [isDesktop, router, selectedShop]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24 text-gray-900">
+    <div className={`flex min-h-screen flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
         <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
@@ -337,7 +401,11 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
 
               {/* テキスト検索 */}
               <div className="mt-1">
-                <SearchInput value={textQuery} onChange={setTextQuery} />
+                <SearchInput
+                  value={textQuery}
+                  onChange={handleTextQueryChange}
+                  debounceMs={embedded ? 0 : 300}
+                />
               </div>
 
               {/* コンテンツ切り替え: 未入力時はDiscovery、入力時はFilter+Results */}
@@ -345,7 +413,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                 <SearchDiscovery
                   categories={categories}
                   onCategorySelect={(cat) => {
-                    setCategory(cat);
+                    handleCategoryChange(cat);
                   }}
                 />
               ) : (
@@ -353,7 +421,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                   {/* カテゴリーフィルター */}
                   <CategoryFilter
                     selectedCategory={category}
-                    onCategoryChange={setCategory}
+                    onCategoryChange={handleCategoryChange}
                     categories={categories}
                   />
 
@@ -365,7 +433,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
               )}
             </div>
 
-            {hasQuery && filteredLatestPosts.length > 0 && (
+            {!embedded && hasQuery && filteredLatestPosts.length > 0 && (
               <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
                 <div className="mb-3 flex items-center gap-2 text-amber-800">
                   <span className="text-base" aria-hidden>📢</span>
@@ -408,7 +476,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
               </div>
             )}
 
-            {hasQuery && (
+            {!embedded && hasQuery && (
               <SearchResults
                 shops={pagedShops}
                 totalCount={filteredShops.length}
@@ -427,7 +495,7 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
               />
             )}
 
-            {!hasQuery && latestPosts.length > 0 && (
+            {!embedded && !hasQuery && latestPosts.length > 0 && (
               <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm">
                 <div className="mb-3 flex items-center gap-2 text-amber-800">
                   <span className="text-base" aria-hidden>📢</span>
@@ -469,13 +537,14 @@ export default function SearchClient({ shops, landmarks }: SearchClientProps) {
                 </div>
               </div>
             )}
+
               </>
             )}
           </div>
         </section>
       </main>
 
-      <NavigationBar />
+      {!embedded && <NavigationBar />}
     </div>
   );
 }

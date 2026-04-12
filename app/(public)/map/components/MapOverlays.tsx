@@ -10,6 +10,7 @@ import type { Shop } from "../data/shops";
 import type { ShopBannerOrigin } from "./MapView";
 import type { MapRouteConfig, MapRoutePoint } from "../types/mapRoute";
 import RoadOverlay from "./RoadOverlay";
+import ChomeAreaMarkers from "./ChomeAreaMarkers";
 
 const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
 const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
@@ -26,6 +27,7 @@ export const MapOverlays = memo(function MapOverlays({
   visibleLandmarkSpecs,
   landmarkIcons,
   isMinimumZoomMode,
+  isOverviewZoneMode,
   shops,
   onShopClick,
   onChunkProgress,
@@ -55,6 +57,7 @@ export const MapOverlays = memo(function MapOverlays({
   visibleLandmarkSpecs: Landmark[];
   landmarkIcons: Map<string, L.DivIcon>;
   isMinimumZoomMode: boolean;
+  isOverviewZoneMode: boolean;
   shops: Shop[];
   onShopClick: (shop: Shop, origin?: ShopBannerOrigin) => void;
   onChunkProgress: (processed: number, total: number, done: boolean) => void;
@@ -160,7 +163,13 @@ export const MapOverlays = memo(function MapOverlays({
       </Pane>
       <Pane name="landmark-popup" style={{ zIndex: 10000 }} />
 
-      {!isMinimumZoomMode && (
+      {/* 縮小時（zoom < 17）: 丁目エリアバッジ */}
+      {!isMinimumZoomMode && isOverviewZoneMode && (
+        <ChomeAreaMarkers shops={shops} />
+      )}
+
+      {/* 通常時（zoom ≥ 17）: 個別店舗マーカー */}
+      {!isMinimumZoomMode && !isOverviewZoneMode && (
         <OptimizedShopLayerWithClustering
           shops={shops}
           onShopClick={onShopClick}
@@ -291,6 +300,7 @@ function EventDimOverlay({ active }: { active: boolean }) {
     </Pane>
   );
 }
+
 
 export function getVisibleMajorPlaceLabels({
   shouldRenderMajorLabels,

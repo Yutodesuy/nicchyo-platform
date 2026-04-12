@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cat /c/Users/miyuk/nicchyo-platform/app/\\\\\\(public\\\\\\)/map/types/shopData.ts | grep -A 2 \"chome\")",
+      "Bash(grep -n \"filterShopsByChome\\\\|filterShopsByZoom\" /c/Users/miyuk/nicchyo-platform/app/\\\\\\(public\\\\\\)/map/components/*.tsx | head -20)",
+      "Bash(find \"C:\\\\Users\\\\miyuk\\\\nicchyo-platform\\\\app\\\\\\(public\\)\\\\map\" -type f -name \"*.tsx\" -o -name \"*.ts\" -o -name \"*.css\" -o -name \"*.json\")",
+      "Bash(find \"C:\\\\Users\\\\miyuk\\\\nicchyo-platform\\\\app\\\\\\(public\\)\\\\map\" -type f)",
+      "Bash(ls:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\miyuk\\\\nicchyo-platform\\\\app\\\\\\(public\\)\\\\map\\\\components\")",
+      "Bash(find \"C:\\\\Users\\\\miyuk\\\\nicchyo-platform\\\\app\\\\\\(public\\)\\\\map\" -name \"*.tsx\" -o -name \"*.ts\")",
+      "Bash(git commit:*)",
+      "Bash(wc:*)",
+      "Bash(head -n 1059 \"C:/Users/miyuk/nicchyo-platform/app/\\(public\\)/map/components/ShopDetailBanner.tsx\")",
+      "Bash(mv /tmp/banner_trimmed.tsx \"C:/Users/miyuk/nicchyo-platform/app/\\(public\\)/map/components/ShopDetailBanner.tsx\")",
+      "Bash(wc -l \"C:/Users/miyuk/nicchyo-platform/app/\\(public\\)/map/components/ShopDetailBanner.tsx\")",
+      "Bash(tail -5 \"C:/Users/miyuk/nicchyo-platform/app/\\(public\\)/map/components/ShopDetailBanner.tsx\")",
+      "Bash(xargs grep:*)",
+      "Bash(npm run:*)",
+      "Bash(npx next:*)",
+      "Bash(grep:*)",
+      "Bash(node -e \"require\\('child_process'\\).execSync\\('npx tsc --noEmit', {cwd: 'C:/Users/miyuk/nicchyo-platform', encoding: 'utf8', stdio: 'pipe'}\\)\")",
+      "Bash(node -e ':*)"
+    ]
+  }
+}

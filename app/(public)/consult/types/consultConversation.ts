@@ -33,3 +33,18 @@ export type ConsultAskResponse = {
   errorMessage?: string;
   retryable?: boolean;
 };
+
+export type ConsultAskStreamEvent =
+  | {
+      type: "first_turn_start";
+      speakerId: ConsultCharacterId;
+      speakerName: string;
+    }
+  | {
+      type: "first_turn_delta";
+      delta: string;
+    }
+  | {
+      type: "final";
+      response: ConsultAskResponse;
+    };
