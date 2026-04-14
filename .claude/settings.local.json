@@ -21,7 +21,18 @@
       "Bash(npx next:*)",
       "Bash(grep:*)",
       "Bash(node -e \"require\\('child_process'\\).execSync\\('npx tsc --noEmit', {cwd: 'C:/Users/miyuk/nicchyo-platform', encoding: 'utf8', stdio: 'pipe'}\\)\")",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npm install:*)",
+      "WebFetch(domain:flatt.tech)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(npm test:*)",
+      "Bash(cat /c/Users/miyuk/nicchyo-platform/.env*)",
+      "WebFetch(domain:wmedia.es)",
+      "Skill(schedule)"
     ]
   }
 }
