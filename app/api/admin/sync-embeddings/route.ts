@@ -243,15 +243,35 @@ async function syncVendorEmbeddings(): Promise<{ processed: number }> {
 
 // ---- ルートハンドラー ----
 
-export async function POST(req: NextRequest) {
-  // CRON_SECRET による認証
+function checkAuth(req: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
-    if (token !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!cronSecret) return true;
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  return token === cronSecret;
+}
+
+// Vercel Cron は GET を送る
+export async function GET(req: NextRequest) {
+  if (!checkAuth(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const startedAt = new Date().toISOString();
+    const { processed } = await syncVendorEmbeddings();
+    return NextResponse.json({ ok: true, processed, startedAt, finishedAt: new Date().toISOString() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[sync-embeddings]", message);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+// 手動実行用（管理画面等から POST で叩く場合）
+export async function POST(req: NextRequest) {
+  if (!checkAuth(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
