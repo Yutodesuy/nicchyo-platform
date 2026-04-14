@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/utils/supabase/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -151,6 +153,16 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "admin-settings-put",
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const auth = await requireAdmin();
     if ("error" in auth) return auth.error;
 

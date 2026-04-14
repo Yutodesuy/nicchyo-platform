@@ -1,4 +1,5 @@
 import { Shop } from '../data/shops';
+import { sanitizeInlineSvg } from './svgSanitizer';
 
 type ShopIllustrationSize = 'small' | 'medium' | 'large';
 
@@ -32,8 +33,9 @@ function generateShopIllustrationHtml(
   color?: string,
   customSvg?: string
 ): string {
-  if (customSvg) {
-    return `<div class="shop-illustration">${customSvg}</div>`;
+  const safeSvg = sanitizeInlineSvg(customSvg);
+  if (safeSvg) {
+    return `<div class="shop-illustration">${safeSvg}</div>`;
   }
 
   if (type === 'custom') {

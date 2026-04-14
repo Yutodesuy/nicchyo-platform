@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +25,16 @@ function isAdminRole(role: string | null) {
 
 export async function POST(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "admin-users-bulk",
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const cookieStore = await cookies();
     const supabase = createServerClient(cookieStore);
     const {

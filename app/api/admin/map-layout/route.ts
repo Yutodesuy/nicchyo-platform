@@ -4,6 +4,8 @@ import { createClient as createServiceClient, type SupabaseClient } from "@supab
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
 import { fetchMapRouteFromDb } from "@/app/(public)/map/services/mapRouteDb";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
 import type { MapRouteConfig, MapRoutePoint } from "@/app/(public)/map/types/mapRoute";
 
@@ -196,6 +198,16 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "admin-map-layout-put",
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const cookieStore = await cookies();
     const supabase = createServerClient(cookieStore);
     const adminWriteClient = createAdminWriteClient();
