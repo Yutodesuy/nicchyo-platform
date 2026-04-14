@@ -30,6 +30,16 @@ export async function POST(request: Request) {
 
     const serviceClient = getServiceClient();
 
+    // coupon_id の存在確認（不正なデータによる分析汚染を防止）
+    const { count: couponCount } = await serviceClient
+      .from("coupon_issuances")
+      .select("id", { count: "exact", head: true })
+      .eq("id", body.coupon_id);
+
+    if (!couponCount || couponCount === 0) {
+      return NextResponse.json({ error: "Invalid coupon_id" }, { status: 400 });
+    }
+
     const forwardedFor = request.headers.get("x-forwarded-for");
     const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
 

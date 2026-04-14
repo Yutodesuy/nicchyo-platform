@@ -3,6 +3,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import type { RedeemResponse } from "@/lib/coupons/types";
+import { normalizeCouponIssuance } from "@/lib/coupons/types";
+import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 import { isCouponQrTokenValid, parseCouponQrToken } from "@/lib/coupons/qrToken";
 
 export const runtime = "nodejs";
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
       .from("system_settings")
       .select("value")
       .eq("key", "coupon")
-      .single();
+      .maybeSingle();
 
     const couponSettings = settingsRow?.value as {
       enabled?: boolean;
@@ -104,13 +106,15 @@ export async function POST(request: Request) {
     }
 
     // ④ この出店者がクーポン参加店かどうかを確認
-    const { data: vendorSetting } = await serviceClient
+    // 1つのvendorが複数のcoupon_typeに参加できるため .single() は使わない
+    const { data: vendorSettings } = await serviceClient
       .from("vendor_coupon_settings")
       .select("coupon_type_id, min_purchase_amount, is_participating")
       .eq("vendor_id", vendor_id)
       .eq("is_participating", true)
-      .limit(1)
-      .single();
+      .limit(1);
+
+    const vendorSetting = vendorSettings?.[0] ?? null;
 
     if (!vendorSetting) {
       return NextResponse.json(
@@ -147,7 +151,7 @@ export async function POST(request: Request) {
       .eq("visitor_key", visitor_key)
       .eq("vendor_id", vendor_id)
       .eq("market_date", market_date)
-      .single();
+      .maybeSingle();
 
     const is_new_stamp = !existingStamp;
 
@@ -217,10 +221,9 @@ export async function POST(request: Request) {
             .single();
 
           if (newCoupon) {
-            next_coupon = {
-              ...newCoupon,
-              coupon_type: (newCoupon as Record<string, unknown>).coupon_types ?? null,
-            } as RedeemResponse["next_coupon"];
+            next_coupon = normalizeCouponIssuance(
+              newCoupon as SupabaseCouponIssuanceRow
+            ) as RedeemResponse["next_coupon"];
             next_coupon_issued = true;
           }
         }
