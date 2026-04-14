@@ -35,8 +35,8 @@ export function recordMarketExit(): void {
   if (!entryTsStr) return;
   const entryTs = parseInt(entryTsStr, 10);
   const elapsed = Date.now() - entryTs;
-  const accumulated = getAccumulatedMarketTimeMs();
-  localStorage.setItem(KEYS.marketTimeMs, String(accumulated + elapsed));
+  const base = parseInt(localStorage.getItem(KEYS.marketTimeMs) ?? "0", 10) || 0;
+  localStorage.setItem(KEYS.marketTimeMs, String(base + elapsed));
   localStorage.removeItem(KEYS.marketEntryTs);
 }
 
