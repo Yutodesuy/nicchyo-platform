@@ -94,20 +94,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // ④ initial 発行が既にあるか確認（使用済みでも）
-    const { data: alreadyIssued } = await supabase
-      .from("coupon_issuances")
-      .select("id")
-      .eq("visitor_key", visitor_key)
-      .eq("market_date", market_date)
-      .eq("issue_reason", "initial")
-      .limit(1);
-
-    if (alreadyIssued && alreadyIssued.length > 0) {
-      return NextResponse.json({ issued: false, coupon: null } satisfies IssueInitialResponse);
-    }
-
-    // ⑤ 当日発行上限チェック
+    // ④ 当日発行上限チェック
     const maxIssuance = couponSettings.maxDailyIssuance ?? 300;
     const { count: todayCount } = await supabase
       .from("coupon_issuances")
@@ -119,7 +106,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ issued: false, coupon: null } satisfies IssueInitialResponse);
     }
 
-    // ⑥ 初回配布クーポン種類を取得（is_initial_gift=true のもの）
+    // ⑤ 初回配布クーポン種類を取得（is_initial_gift=true のもの）
     const { data: initialType } = await supabase
       .from("coupon_types")
       .select("*")
@@ -135,7 +122,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ⑦ 発行（expires_at = market_date の翌日 00:00 JST）
+    // ⑥ 発行（expires_at = market_date の翌日 00:00 JST）
     const expiresAt = new Date(`${market_date}T15:00:00.000Z`); // JST 翌日0時 = UTC 前日15時
     expiresAt.setDate(expiresAt.getDate() + 1);
 
