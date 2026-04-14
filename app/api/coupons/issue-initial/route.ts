@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { IssueInitialResponse } from "@/lib/coupons/types";
+import { normalizeCouponIssuance } from "@/lib/coupons/types";
+import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +52,7 @@ export async function POST(request: Request) {
       .from("system_settings")
       .select("value")
       .eq("key", "coupon")
-      .single();
+      .maybeSingle();
 
     const couponSettings = settings?.value as {
       enabled?: boolean;
@@ -124,8 +126,7 @@ export async function POST(request: Request) {
       .eq("is_initial_gift", true)
       .eq("is_enabled", true)
       .order("display_order", { ascending: true })
-      .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!initialType) {
       return NextResponse.json(
@@ -160,9 +161,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to issue coupon" }, { status: 500 });
     }
 
-    const coupon = newCoupon
-      ? { ...newCoupon, coupon_type: (newCoupon as Record<string, unknown>).coupon_types ?? null }
-      : null;
+    const coupon = newCoupon ? normalizeCouponIssuance(newCoupon as SupabaseCouponIssuanceRow) : null;
     return NextResponse.json({ issued: true, coupon });
   } catch (err) {
     console.error("[issue-initial] unexpected error:", err);

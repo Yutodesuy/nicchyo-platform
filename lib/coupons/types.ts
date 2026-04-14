@@ -123,6 +123,25 @@ export interface IssueInitialResponse {
   coupon: (CouponIssuance & { coupon_type: CouponType }) | null;
 }
 
+/**
+ * Supabase の coupon_issuances JOIN 結果の生データ型。
+ * `.select("*, coupon_types(*)")` で取得すると `coupon_types` (plural) として返される。
+ */
+export interface SupabaseCouponIssuanceRow extends Omit<CouponIssuance, "coupon_type"> {
+  coupon_types: CouponType | null;
+}
+
+/**
+ * Supabase JOIN 結果を正規化する。
+ * `coupon_types` (plural) → `coupon_type` (singular) に変換し、型安全に扱えるようにする。
+ */
+export function normalizeCouponIssuance(
+  raw: SupabaseCouponIssuanceRow
+): CouponIssuance & { coupon_type: CouponType | null } {
+  const { coupon_types, ...rest } = raw;
+  return { ...rest, coupon_type: coupon_types ?? null };
+}
+
 /** POST /api/coupons/redeem のレスポンス */
 export interface RedeemResponse {
   success: true;
