@@ -11,7 +11,7 @@ describe('StatusBadge', () => {
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('✓稼働中');
     expect(badge).toHaveAttribute('aria-label', '稼働中');
-    expect(badge).toHaveClass('bg-green-100', 'text-green-800');
+    expect(badge).toHaveClass('bg-green-700', 'text-white');
   });
 
   it('renders correctly with default label for "pending" status', () => {
@@ -20,7 +20,7 @@ describe('StatusBadge', () => {
 
     expect(badge).toHaveTextContent('⏳承認待ち');
     expect(badge).toHaveAttribute('aria-label', '承認待ち');
-    expect(badge).toHaveClass('bg-orange-100', 'text-orange-800');
+    expect(badge).toHaveClass('bg-orange-600', 'text-white');
   });
 
   it('renders correctly with custom label', () => {
