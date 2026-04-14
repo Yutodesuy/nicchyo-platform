@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
 
 // TODO: SAVE_DISABLEDが解除され次第、このエンドポイントも有効化してください。
 //       現在は出店者のメールアドレス・パスワードが一部公開状態のため無効化中。
 const DELETE_DISABLED = true;
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
   if (DELETE_DISABLED) {
     return NextResponse.json(
       { error: "アカウント削除は現在準備中です。" },

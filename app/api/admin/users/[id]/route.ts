@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +30,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "admin-users-id",
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const { id } = await params;
     const cookieStore = await cookies();
     const supabase = createServerClient(cookieStore);

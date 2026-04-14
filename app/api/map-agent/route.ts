@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 type Answers = {
   purpose?: string;
@@ -284,38 +286,17 @@ async function callOpenAI(
   }
 }
 
-// IPレートリミット（インスタンス内メモリ）: 10回/10分
-const ipRateMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 10;
-const RATE_WINDOW_MS = 10 * 60 * 1000;
-
-function getClientIp(req: Request): string {
-  // x-real-ip はVercel/プロキシが設定する信頼できるヘッダー
-  return (
-    req.headers.get("x-real-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ??
-    "unknown"
-  );
-}
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = ipRateMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    ipRateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count += 1;
-  return true;
-}
-
 export async function POST(request: Request) {
   try {
-    const ip = getClientIp(request);
-    if (!checkRateLimit(ip)) {
-      return NextResponse.json({ message: "リクエストが多すぎます。しばらくしてからお試しください。" }, { status: 429 });
-    }
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "map-agent",
+      limit: 15,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
 
     const body = (await request.json()) as RequestBody;
     const answers: Answers = body?.answers ?? {};
