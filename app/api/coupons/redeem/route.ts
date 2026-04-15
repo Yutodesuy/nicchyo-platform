@@ -168,12 +168,22 @@ export async function POST(request: Request) {
     }
 
     // ⑧ スタンプ付与（既存なら ignore）
-    await serviceClient
+    const { error: stampError } = await serviceClient
       .from("coupon_stamps")
       .upsert(
         { visitor_key, vendor_id, market_date },
         { onConflict: "visitor_key,vendor_id,market_date", ignoreDuplicates: true }
       );
+
+    if (stampError) {
+      // スタンプ付与失敗 → クーポン消費をロールバック
+      console.error("[redeem] stamp upsert error:", stampError);
+      await serviceClient
+        .from("coupon_issuances")
+        .update({ is_used: false, used_at: null, used_vendor_id: null })
+        .eq("id", couponToUse.id);
+      return NextResponse.json({ error: "Failed to record stamp" }, { status: 500 });
+    }
 
     // ⑨ 新スタンプなら次回クーポンを発行
     let next_coupon: RedeemResponse["next_coupon"] = null;
@@ -181,7 +191,7 @@ export async function POST(request: Request) {
 
     if (is_new_stamp) {
       // 上限チェック
-      const maxIssuance = couponSettings.maxDailyIssuance ?? 300;
+      const maxIssuance = couponSettings?.maxDailyIssuance ?? 300;
       const { count: todayCount } = await serviceClient
         .from("coupon_issuances")
         .select("id", { count: "exact", head: true })
@@ -210,7 +220,7 @@ export async function POST(request: Request) {
               visitor_key,
               market_date,
               coupon_type_id: nextType.id,
-              amount: couponSettings.amount ?? nextType.amount,
+              amount: couponSettings?.amount ?? nextType.amount,
               issue_reason: "next_visit",
               expires_at: expiresAt.toISOString(),
             })

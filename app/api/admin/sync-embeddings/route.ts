@@ -245,7 +245,7 @@ async function syncVendorEmbeddings(): Promise<{ processed: number }> {
 
 function checkAuth(req: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
+  if (!cronSecret) return process.env.NODE_ENV !== "production";
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
   return token === cronSecret;

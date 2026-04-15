@@ -69,6 +69,15 @@ interface WeeklyStats {
 
 // ─── ヘルパー ─────────────────────────────────────────────────────────────────
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getServiceClient() {
   const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -322,11 +331,11 @@ function generateHtml(
           <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;
             background:${a.severity === "high" ? "#fef2f2" : a.severity === "medium" ? "#fffbeb" : "#f0fdf4"};
             color:${a.severity === "high" ? "#dc2626" : a.severity === "medium" ? "#d97706" : "#16a34a"};">
-            ${a.severity.toUpperCase()}
+            ${escapeHtml(a.severity.toUpperCase())}
           </span>
         </td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#111827;">${a.description}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;">${a.detail}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:600;color:#111827;">${escapeHtml(a.description)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;font-size:13px;">${escapeHtml(a.detail)}</td>
       </tr>`
     )
     .join("");
@@ -335,7 +344,7 @@ function generateHtml(
     .map(
       ({ path, count }) => `
       <tr>
-        <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:13px;color:#374151;">${path}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;font-family:monospace;font-size:13px;color:#374151;">${escapeHtml(path)}</td>
         <td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;text-align:right;color:#6b7280;">${count.toLocaleString()}</td>
       </tr>`
     )
@@ -367,7 +376,7 @@ function generateHtml(
     <!-- AI サマリー -->
     <div style="background:#fff;border-radius:16px;padding:24px;margin-bottom:24px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <h2 style="margin:0 0 12px;font-size:14px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;">AI分析サマリー</h2>
-      <p style="margin:0;font-size:15px;line-height:1.8;color:#374151;white-space:pre-wrap;">${summary}</p>
+      <p style="margin:0;font-size:15px;line-height:1.8;color:#374151;white-space:pre-wrap;">${escapeHtml(summary)}</p>
     </div>
 
     <!-- 統計カード -->
@@ -572,7 +581,7 @@ async function runWeeklyReport(): Promise<{
 
 function checkAuth(req: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
+  if (!cronSecret) return process.env.NODE_ENV !== "production";
   const authHeader = req.headers.get("authorization");
   return authHeader?.replace("Bearer ", "") === cronSecret;
 }

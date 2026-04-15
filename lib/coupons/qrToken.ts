@@ -10,12 +10,13 @@ type ParsedCouponQrToken = {
 };
 
 function getCouponQrSecret(): string {
-  const secret =
-    process.env.COUPON_QR_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.COUPON_QR_SECRET;
   if (!secret) {
-    throw new Error("Coupon QR secret missing");
+    if (process.env.NODE_ENV !== "production") {
+      // 開発環境のみフォールバック（本番では必ず COUPON_QR_SECRET を設定すること）
+      return "dev-coupon-qr-secret-not-for-production";
+    }
+    throw new Error("COUPON_QR_SECRET environment variable is required");
   }
   return secret;
 }
@@ -61,10 +62,16 @@ export function isCouponQrTokenValid(token: string, now = Date.now()): boolean {
   }
 
   const expectedSignature = signCouponQrPayload(parsed.visitorKey, parsed.slot);
-  const provided = Buffer.from(parsed.signature);
-  const expected = Buffer.from(expectedSignature);
+  let provided: Buffer;
+  let expected: Buffer;
+  try {
+    provided = Buffer.from(parsed.signature, "base64url");
+    expected = Buffer.from(expectedSignature, "base64url");
+  } catch {
+    return false;
+  }
 
-  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+  if (provided.length === 0 || provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     return false;
   }
 
