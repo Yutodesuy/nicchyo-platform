@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
 
 const VISITOR_COOKIE_NAME = "nicchyo_visitor_id";
 
@@ -27,7 +28,10 @@ function isValidVisitorKey(value: string) {
 const homeVisitCooldown = new Map<string, number>();
 const HOME_VISIT_COOLDOWN_MS = 60 * 1000;
 
-export async function POST() {
+export async function POST(request: Request) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
   const cookieStore = await cookies();
   let visitorKey = cookieStore.get(VISITOR_COOKIE_NAME)?.value ?? "";
   let shouldSetVisitorCookie = false;

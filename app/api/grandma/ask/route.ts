@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { buildGrandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
 import { detectAbuse } from "@/lib/security/abuseDetector";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 import {
   CONSULT_CHARACTER_BY_ID,
   pickConsultCharacters,
@@ -1393,6 +1395,16 @@ async function handleAbuseDetection(
 
 export async function POST(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "grandma-ask",
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const {
       text,
       location,

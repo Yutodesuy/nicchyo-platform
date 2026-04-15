@@ -27,7 +27,7 @@
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-virtual": "^3.13.23",
     "@types/leaflet.markercluster": "^1.5.6",
-    "axios": "^1.13.6",
+    "axios": "^1.15.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "focus-trap-react": "^11.0.6",
@@ -36,7 +36,7 @@
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^0.577.0",
-    "next": "^16.1.7",
+    "next": "^16.2.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "^7.71.2",
@@ -61,7 +61,7 @@
     "@types/node": "^20.19.37",
     "@types/react": "^18.3.28",
     "@types/react-dom": "18.3.7",
-    "@vitest/coverage-v8": "^1.6.1",
+    "@vitest/coverage-v8": "^4.1.4",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.1.7",
@@ -71,6 +71,9 @@
     "prisma": "5.22.0",
     "tailwindcss": "3.4.19",
     "typescript": "5.9",
-    "vitest": "^1.6.1"
+    "vitest": "^4.1.4"
+  },
+  "overrides": {
+    "follow-redirects": "1.16.0"
   }
 }
