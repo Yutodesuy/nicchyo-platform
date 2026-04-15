@@ -6,6 +6,7 @@ import type { RedeemResponse } from "@/lib/coupons/types";
 import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 import { isCouponQrTokenValid, parseCouponQrToken } from "@/lib/coupons/qrToken";
+import { todayJstString } from "@/lib/time/jstDate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ function getServiceClient() {
  */
 export async function POST(request: Request) {
   try {
+    const isDevCouponOverride = process.env.NODE_ENV !== "production";
     // ① 出店者認証
     const cookieStore = await cookies();
     const supabase = createServerClient(cookieStore);
@@ -76,12 +78,7 @@ export async function POST(request: Request) {
     const visitor_key = parsedToken.visitorKey;
 
     // market_date は今日でないと受け付けない
-    const todayJST = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-    )
-      .toISOString()
-      .slice(0, 10);
-    if (market_date !== todayJST) {
+    if (market_date !== todayJstString()) {
       return NextResponse.json({ error: "market_date must be today" }, { status: 400 });
     }
 
@@ -101,7 +98,7 @@ export async function POST(request: Request) {
       maxDailyIssuance?: number;
     } | null;
 
-    if (!couponSettings?.enabled) {
+    if (!isDevCouponOverride && couponSettings?.enabled === false) {
       return NextResponse.json({ error: "Coupon feature is disabled" }, { status: 403 });
     }
 

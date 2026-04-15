@@ -39,10 +39,12 @@ function getQrProgressColor(secondsLeft: number): string {
 }
 
 function CouponsPageContent() {
+  const isDevCouponOverride = process.env.NODE_ENV !== "production";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<MyCouponsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const [visitorKey, setVisitorKey] = useState<string | null>(null);
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [qrSecondsLeft, setQrSecondsLeft] = useState(0);
@@ -57,6 +59,7 @@ function CouponsPageContent() {
       try {
         const next = await fetchMyCoupons(vk, marketDate);
         setData(next);
+        setHasLoadError(next === null);
       } finally {
         setIsLoading(false);
       }
@@ -97,7 +100,7 @@ function CouponsPageContent() {
   }, [fetchData]);
 
   const activeCoupon = data?.active_coupon as ActiveCoupon | null;
-  const isMarketDay = true; // TODO: 開発中は常に開催日扱い。本番前に `data?.is_market_day ?? false` に戻す
+  const isMarketDay = isDevCouponOverride || (data?.is_market_day ?? false);
 
   useEffect(() => {
     if (!visitorKey || !activeCoupon) {
@@ -191,10 +194,21 @@ function CouponsPageContent() {
       <div className="mx-auto max-w-lg space-y-4 px-4">
         {!isMarketDay && (
           <div className="rounded-3xl border border-amber-100 bg-amber-50 px-5 py-5 text-center">
-            <p className="font-semibold text-amber-800">今日は日曜市の開催日ではありません</p>
-            <p className="mt-1 text-sm text-amber-700">
-              開催日にマップを開くと、最初のクーポンを受け取れます。
-            </p>
+            {hasLoadError ? (
+              <>
+                <p className="font-semibold text-amber-800">クーポン情報を取得できませんでした</p>
+                <p className="mt-1 text-sm text-amber-700">
+                  通信状態を確認して、もう一度お試しください。
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-amber-800">今日は日曜市の開催日ではありません</p>
+                <p className="mt-1 text-sm text-amber-700">
+                  開催日にマップを開くと、最初のクーポンを受け取れます。
+                </p>
+              </>
+            )}
           </div>
         )}
 
