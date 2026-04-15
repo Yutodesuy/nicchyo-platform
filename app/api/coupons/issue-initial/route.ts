@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     // ④ 当日発行上限チェック
-    const maxIssuance = couponSettings.maxDailyIssuance ?? 300;
+    const maxIssuance = couponSettings?.maxDailyIssuance ?? 300;
     const { count: todayCount } = await supabase
       .from("coupon_issuances")
       .select("id", { count: "exact", head: true })
