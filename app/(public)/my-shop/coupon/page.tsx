@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Ticket, CheckCircle2, XCircle, Loader2, Star, ScanLine, RotateCcw } from "lucide-react";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { todayJstString } from "@/lib/coupons/client";
 import type { RedeemResponse } from "@/lib/coupons/types";
 
 // html5-qrcodeはブラウザAPIのためSSRを無効化
@@ -17,14 +18,6 @@ type RedeemState =
   | { status: "loading"; visitorKey: string }
   | { status: "success"; result: RedeemResponse }
   | { status: "error"; message: string };
-
-function todayJST(): string {
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-  )
-    .toISOString()
-    .slice(0, 10);
-}
 
 export default function MyShopCouponPage() {
   const { isLoggedIn, isLoading } = useAuth();
@@ -40,7 +33,7 @@ export default function MyShopCouponPage() {
       const res = await fetch("/api/coupons/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ visitor_key: visitorKey, market_date: todayJST() }),
+        body: JSON.stringify({ visitor_key: visitorKey, market_date: todayJstString() }),
       });
       const json = await res.json();
 

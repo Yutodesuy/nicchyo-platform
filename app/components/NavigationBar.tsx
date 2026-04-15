@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useBag } from "@/lib/storage/BagContext";
 import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
+import { todayJstString } from "@/lib/coupons/client";
 import type { MyCouponsResponse } from "@/lib/coupons/types";
 
 // ─── ナビゲーション項目 ────────────────────────────────────────────────────────
@@ -42,12 +43,6 @@ const adminMenuItems = [
   { label: "コンテンツ管理",     href: "/admin/content",   emoji: "📝" },
 ];
 
-function todayJST(): string {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }))
-    .toISOString()
-    .slice(0, 10);
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 type NavigationBarProps = {
   activeHref?: string;
@@ -67,6 +62,7 @@ function NavigationBarInner({
   onCloseMode,
   onConsultClick,
 }: NavigationBarProps) {
+  const isDevCouponOverride = process.env.NODE_ENV !== "production";
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,19 +71,40 @@ function NavigationBarInner({
   const [menuOpen, setMenuOpen] = useState(false);
   // undefined = 未取得, null = 取得失敗/非対応, MyCouponsResponse = 取得済み
   const [couponData, setCouponData] = useState<MyCouponsResponse | null | undefined>(undefined);
+  const [couponLoadError, setCouponLoadError] = useState(false);
 
   // メニューを開いたときにクーポン情報を取得
   useEffect(() => {
     if (!menuOpen) {
       setCouponData(undefined);
+      setCouponLoadError(false);
       return;
     }
     const vk = getOrCreateConsultVisitorKey();
-    if (!vk) { setCouponData(null); return; }
-    fetch(`/api/coupons/my?visitor_key=${encodeURIComponent(vk)}&market_date=${todayJST()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setCouponData(data as MyCouponsResponse | null))
-      .catch(() => setCouponData(null));
+    if (!vk) {
+      setCouponData(null);
+      setCouponLoadError(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/coupons/my?visitor_key=${encodeURIComponent(vk)}&market_date=${todayJstString()}`
+        );
+        if (!res.ok) {
+          setCouponData(null);
+          setCouponLoadError(true);
+          return;
+        }
+        const data = (await res.json()) as MyCouponsResponse;
+        setCouponData(data);
+        setCouponLoadError(false);
+      } catch {
+        setCouponData(null);
+        setCouponLoadError(true);
+      }
+    })();
   }, [menuOpen]);
 
   useEffect(() => {
@@ -128,7 +145,7 @@ function NavigationBarInner({
     : null;
 
   const activeCoupon = couponData?.active_coupon ?? null;
-  const isMarketDay = true; // TODO: 開発中は常に開催日扱い。本番前に `couponData?.is_market_day ?? false` に戻す
+  const isMarketDay = isDevCouponOverride || (couponData?.is_market_day ?? false);
 
   return (
     <>
@@ -215,6 +232,24 @@ function NavigationBarInner({
                 {couponData === undefined ? (
                   /* ローディングスケルトン */
                   <div className="mb-3 h-[76px] animate-pulse rounded-2xl bg-gray-100" />
+                ) : couponLoadError ? (
+                  <button
+                    onClick={() => handleMenuItemClick("/coupons")}
+                    className="mb-3 flex w-full items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-left transition active:scale-[0.98]"
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-100 text-2xl">
+                      🎟️
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-amber-800">クーポン</p>
+                      <p className="mt-0.5 text-[12px] text-amber-700">
+                        情報を取得できませんでした
+                      </p>
+                    </div>
+                    <svg className="h-5 w-5 shrink-0 text-amber-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 ) : activeCoupon && isMarketDay ? (
                   /* 今すぐ使えるクーポン */
                   <button

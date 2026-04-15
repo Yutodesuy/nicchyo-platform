@@ -26,6 +26,7 @@ function getServiceClient() {
  */
 export async function POST(request: Request) {
   try {
+    const isDevCouponOverride = process.env.NODE_ENV !== "production";
     const body = (await request.json()) as {
       visitor_key?: string;
       market_date?: string;
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       maxDailyIssuance?: number;
     } | null;
 
-    if (!couponSettings?.enabled) {
+    if (!isDevCouponOverride && couponSettings?.enabled === false) {
       return NextResponse.json({ error: "Coupon feature is disabled" }, { status: 403 });
     }
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       .select("id", { count: "exact", head: true })
       .eq("market_date", market_date);
 
-    if (!marketDayCount || marketDayCount === 0) {
+    if (!isDevCouponOverride && (!marketDayCount || marketDayCount === 0)) {
       return NextResponse.json({ error: "Not a market day" }, { status: 403 });
     }
 

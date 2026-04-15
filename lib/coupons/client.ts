@@ -5,16 +5,10 @@ import type {
   CouponTypesResponse,
   MyCouponsResponse,
 } from "@/lib/coupons/types";
+import { todayJstString } from "@/lib/time/jstDate";
 
 export const COUPON_LOTTERY_PENDING_KEY = "nicchyo-coupon-lottery-pending";
-
-export function todayJstString(): string {
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-  )
-    .toISOString()
-    .slice(0, 10);
-}
+export { todayJstString };
 
 export async function fetchMyCoupons(
   visitorKey: string,
