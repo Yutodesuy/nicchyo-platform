@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +46,17 @@ export async function GET(_req: Request) {
 }
 
 // 全通知を既読にする
-export async function PATCH(_req: Request) {
+export async function PATCH(req: Request) {
+  const originCheck = requireSameOrigin(req);
+  if (!originCheck.ok) return originCheck.response;
+
+  const rateLimited = enforceRateLimit(req, {
+    bucket: "admin-notifications-patch",
+    limit: 30,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (rateLimited) return rateLimited;
+
   const cookieStore = await cookies();
   const supabase = createServerClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
