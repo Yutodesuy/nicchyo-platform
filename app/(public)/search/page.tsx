@@ -1,7 +1,9 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import SearchClient from "./SearchClient";
+import SearchLoading from "./loading";
 import type { Shop } from "../map/data/shops";
 import { fetchVendorShopsFromDb } from "../map/services/shopDb";
 import type { Landmark } from "../map/types/landmark";
@@ -32,7 +34,16 @@ async function loadLandmarks(): Promise<Landmark[]> {
   }
 }
 
-export default async function SearchPage() {
+// データ取得を分離することで Suspense のストリーミングが有効になる
+async function SearchContent() {
   const [shops, landmarks] = await Promise.all([loadShops(), loadLandmarks()]);
   return <SearchClient shops={shops} landmarks={landmarks} />;
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchLoading />}>
+      <SearchContent />
+    </Suspense>
+  );
 }
