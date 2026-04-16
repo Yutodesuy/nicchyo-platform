@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
 
 const VISITOR_COOKIE_NAME = "nicchyo_visitor_id";
 
@@ -37,6 +38,9 @@ function normalizeRole(user: unknown) {
 }
 
 export async function POST(request: NextRequest) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 

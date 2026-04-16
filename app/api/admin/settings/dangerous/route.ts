@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
   const body = (await request.json().catch(() => null)) as { action?: string } | null;
   return NextResponse.json(
     {

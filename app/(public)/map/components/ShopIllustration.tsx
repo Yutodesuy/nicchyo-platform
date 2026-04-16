@@ -2,6 +2,8 @@
  * Shop illustration component (DOM-based).
  */
 
+import { sanitizeInlineSvg } from '../utils/svgSanitizer';
+
 interface ShopIllustrationProps {
   type?: 'tent' | 'stall' | 'custom';
   size?: 'small' | 'medium' | 'large';
@@ -15,10 +17,12 @@ export default function ShopIllustration({
   color,
   customSvg,
 }: ShopIllustrationProps) {
-  if (customSvg) {
+  const safeSvg = sanitizeInlineSvg(customSvg);
+
+  if (safeSvg) {
     return (
       <div
-        dangerouslySetInnerHTML={{ __html: customSvg }}
+        dangerouslySetInnerHTML={{ __html: safeSvg }}
         className="shop-illustration"
       />
     );

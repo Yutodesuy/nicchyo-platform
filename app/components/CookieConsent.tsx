@@ -22,7 +22,12 @@ export default function CookieConsent() {
   const accept = () => {
     setConsent("accepted");
     setLocalConsent("accepted");
-    // trigger initial page_view after GA loaded
+    // GAをここで初期化してから page_view を送る
+    const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
+    if (gaId && process.env.NODE_ENV === "production") {
+      loadGA(gaId);
+    }
+    // GAスクリプト読み込み後に page_view を送信
     setTimeout(() => {
       try {
         const w = window as any;
