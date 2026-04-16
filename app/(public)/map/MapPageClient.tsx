@@ -740,6 +740,8 @@ export default function MapPageClient({
     });
   }, []);
 
+  const shouldShowNavigationBar = !isShopBannerOpen;
+
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
@@ -751,7 +753,11 @@ export default function MapPageClient({
       {/* メイン: NavigationBar(h-14=3.5rem) + safe-area-inset-bottom 分だけ下に余白 */}
       <main
         className="relative z-10 flex-1 overflow-hidden"
-        style={{ paddingBottom: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
+        style={{
+          paddingBottom: shouldShowNavigationBar
+            ? 'calc(3.5rem + var(--safe-bottom, 0px))'
+            : '0px',
+        }}
       >
         <div className="relative h-full overflow-hidden">
             {showBanner && recommendedRecipe && (
@@ -1005,16 +1011,18 @@ export default function MapPageClient({
         )}
       </AnimatePresence>
 
-      <NavigationBar
-        onMenuOpenChange={(open) => {
-          if (open) {
-            closeMapCharacterConsult();
-          }
-        }}
-        onConsultClick={startMapCharacterConsult}
-        closeModeActive={hasSearchMode || hasAiMode}
-        onCloseMode={closeMapInteractionMode}
-      />
+      {shouldShowNavigationBar && (
+        <NavigationBar
+          onMenuOpenChange={(open) => {
+            if (open) {
+              closeMapCharacterConsult();
+            }
+          }}
+          onConsultClick={startMapCharacterConsult}
+          closeModeActive={hasSearchMode || hasAiMode}
+          onCloseMode={closeMapInteractionMode}
+        />
+      )}
     </div>
   );
 }
