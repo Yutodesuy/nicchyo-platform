@@ -29,10 +29,12 @@ function RoadOverlay({
   overviewTint = false,
   routePoints,
   routeConfig,
+  onTap,
 }: {
   overviewTint?: boolean;
   routePoints?: MapRoutePoint[];
   routeConfig?: MapRouteConfig;
+  onTap?: (latlng: L.LatLng) => void;
 }) {
   const config = ROAD_CONFIG;
   const latSpan = Math.abs(config.bounds[0][0] - config.bounds[1][0]);
@@ -56,6 +58,7 @@ function RoadOverlay({
         points={normalizedRoutePoints}
         routeConfig={effectiveRouteConfig}
         overviewTint={overviewTint}
+        onTap={onTap}
       />
     );
   }
@@ -66,6 +69,7 @@ function RoadOverlay({
         config={config}
         isEastWest={isEastWest}
         overviewTint={overviewTint}
+        onTap={onTap}
       />
     );
   }
@@ -188,10 +192,12 @@ function CurvedRoad({
   config,
   isEastWest,
   overviewTint = false,
+  onTap,
 }: {
   config: RoadConfig;
   isEastWest: boolean;
   overviewTint?: boolean;
+  onTap?: (latlng: L.LatLng) => void;
 }) {
   if (!config.segments) {
     return null;
@@ -242,12 +248,12 @@ function CurvedRoad({
       {overviewTint && (
         <Polygon
           positions={roadPolygon}
-          interactive={false}
           pathOptions={{
             stroke: false,
             fillColor: '#22c55e',
             fillOpacity: 0.36,
           }}
+          eventHandlers={onTap ? { click: (e) => onTap(e.latlng) } : undefined}
         />
       )}
       <Polyline
@@ -270,10 +276,12 @@ function DynamicRoad({
   points,
   routeConfig,
   overviewTint = false,
+  onTap,
 }: {
   points: MapRoutePoint[];
   routeConfig: MapRouteConfig;
   overviewTint?: boolean;
+  onTap?: (latlng: L.LatLng) => void;
 }) {
   const chainGeometry = useMemo(() => {
     const chains = getRouteChains(points);
@@ -333,6 +341,7 @@ function DynamicRoad({
                   fillColor: '#22c55e',
                   fillOpacity: 0.36,
                 }}
+                eventHandlers={onTap ? { click: (e) => onTap(e.latlng) } : undefined}
               />
             )}
             <Polyline
