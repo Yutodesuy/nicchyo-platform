@@ -335,7 +335,7 @@ function SearchResultsSheet({
         className={`absolute left-0 right-0 z-[1650] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ bottom: 0, maxHeight: '55vh', display: 'flex', flexDirection: 'column' }}
+        style={{ bottom: 0, maxHeight: '42vh', display: 'flex', flexDirection: 'column' }}
         onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
         onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
         onMouseDown={(e) => e.stopPropagation()}
@@ -350,7 +350,7 @@ function SearchResultsSheet({
           <div className="flex justify-center pt-3 pb-1">
             <div className="h-1 w-10 rounded-full bg-slate-300" />
           </div>
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Search Results</p>
               <h3 className="text-base font-bold text-slate-900">{searchShops.length}件のお店</h3>
@@ -365,8 +365,8 @@ function SearchResultsSheet({
           </div>
         </div>
 
-        {/* 縦スクロールリスト */}
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+        {/* 縦スクロールなしのコンパクト一覧 */}
+        <div className="flex-1 overflow-hidden pb-[env(safe-area-inset-bottom,0px)]">
           {searchShops.map((shop, i) => {
             const bannerSeed = shop.position ?? shop.id;
             const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
@@ -375,17 +375,17 @@ function SearchResultsSheet({
                 key={shop.id}
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleRowTap(shop); }}
-                className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors active:bg-amber-50 border-b border-slate-100/80 ${
+                className={`flex w-full items-center gap-3 border-b border-slate-100/80 px-5 py-2.5 text-left transition-colors active:bg-amber-50 ${
                   focusedId === shop.id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                 }`}
               >
-                <div className="shrink-0 h-12 w-12 overflow-hidden rounded-xl bg-slate-100">
+                <div className="shrink-0 h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
                   {imageUrl && (
                     <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-bold text-slate-900 leading-tight">{shop.name}</p>
+                  <p className="truncate text-[13px] font-bold leading-tight text-slate-900">{shop.name}</p>
                   <div className="mt-0.5 flex items-center gap-1.5">
                     {shop.category && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">{shop.category}</span>
