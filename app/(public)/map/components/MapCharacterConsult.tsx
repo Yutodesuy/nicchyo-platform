@@ -445,7 +445,7 @@ export default function MapCharacterConsult({
   const inputDescription = statusLabel ? `${helperTextId} ${statusTextId}` : helperTextId;
 
   return (
-    <div className="pointer-events-none absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[1300]">
+    <div className="pointer-events-none absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[1300] translate-y-[30px]">
       <div className="mb-3 flex justify-start">
         {activeCharacter && (
           <CharacterSprite
