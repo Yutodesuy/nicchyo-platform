@@ -99,6 +99,63 @@ const DRAWER_FULL_RATIO = 0.9;
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
 
+function formatBusinessHours(start?: string, end?: string) {
+  const trimmedStart = start?.trim();
+  const trimmedEnd = end?.trim();
+  if (trimmedStart && trimmedEnd) return `${trimmedStart} 〜 ${trimmedEnd}`;
+  if (trimmedStart) return `${trimmedStart}から`;
+  if (trimmedEnd) return `${trimmedEnd}まで`;
+  return null;
+}
+
+function ShopTrustSummaryCard({ shop, theme }: { shop: Shop; theme: BannerTheme }) {
+  const businessHours = formatBusinessHours(shop.businessHoursStart, shop.businessHoursEnd);
+  const mainProducts = shop.products.slice(0, 3);
+  const productText = mainProducts.length > 0 ? mainProducts.join(" / ") : "商品は未登録です";
+  const hasPhoto = Boolean(shop.images?.main);
+  const hasSocial = Boolean(shop.socialLinks?.instagram || shop.socialLinks?.twitter || shop.socialLinks?.website);
+  const scheduleText = shop.schedule?.trim() || "出店予定は未登録です";
+
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ borderColor: theme.border, backgroundColor: theme.bg }}>
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm" aria-hidden>
+          <Clock className="h-4 w-4" style={{ color: theme.text }} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: theme.text }}>
+            はじめての方へ
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-700">
+            先にここを見ると、お店の安心感がつかみやすいです
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">営業予定</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">{scheduleText}</p>
+        </div>
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">営業時間</p>
+          <p className="mt-1 text-sm font-semibold text-slate-800">{businessHours || "営業時間は未登録です"}</p>
+        </div>
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">主な商品</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">{productText}</p>
+        </div>
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">写真・SNS</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
+            {hasPhoto ? "写真あり" : "写真は未登録"} / {hasSocial ? "SNSあり" : "SNSは未登録"}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
   return ingredientCatalog.find(
@@ -1187,6 +1244,8 @@ export default function ShopDetailBanner({
               </div>
             )}
 
+            <ShopTrustSummaryCard shop={shop} theme={theme} />
+
             <div className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <div className="space-y-5">
                 {activePosts.length > 0 && (
@@ -1402,12 +1461,10 @@ export default function ShopDetailBanner({
                 {shop.chome ?? "丁目未設定"}
               </span>
               <span>{shop.ownerName}</span>
-              {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
-                </span>
-              )}
+            </div>
+
+            <div className="mt-3">
+              <ShopTrustSummaryCard shop={shop} theme={theme} />
             </div>
 
             {/* SNS links */}
@@ -1494,12 +1551,12 @@ export default function ShopDetailBanner({
           )}
 
           {/* ════════════════════════════════════════════════════════════════
-              STALL INFO — Style, payment, hours
+              STALL INFO — Style, payment, rain policy
           ════════════════════════════════════════════════════════════════ */}
           {!isKotodute && (
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-4">
               {/* Style tags */}
-              {((shop.stallStyleTags ?? []).length > 0 || shop.stallStyle || shop.schedule) && (
+              {((shop.stallStyleTags ?? []).length > 0 || shop.stallStyle || (shop.rainPolicy && shop.rainPolicy !== "undecided")) && (
                 <div>
                   <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">出店スタイル</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -1508,7 +1565,6 @@ export default function ShopDetailBanner({
                     ))}
                     {shop.stallStyle && <span className="text-sm text-slate-600">{shop.stallStyle}</span>}
                   </div>
-                  {shop.schedule && <p className="mt-1 text-xs text-slate-500">{shop.schedule}</p>}
                   {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
                     <p className="mt-1 text-xs text-slate-500">
                       {shop.rainPolicy === "outdoor" && "🌧 雨でも出店"}
