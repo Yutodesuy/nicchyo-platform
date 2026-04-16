@@ -104,6 +104,74 @@ const COLLAPSED_SUMMARY_OFFSET_PX = 10;
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
 
+function formatBusinessHours(start?: string, end?: string) {
+  const trimmedStart = start?.trim();
+  const trimmedEnd = end?.trim();
+  if (trimmedStart && trimmedEnd) return `${trimmedStart} 〜 ${trimmedEnd}`;
+  if (trimmedStart) return `${trimmedStart}から`;
+  if (trimmedEnd) return `${trimmedEnd}まで`;
+  return null;
+}
+
+function ShopBusinessInfoCard({ shop, theme }: { shop: Shop; theme: BannerTheme }) {
+  const businessHours = formatBusinessHours(shop.businessHoursStart, shop.businessHoursEnd);
+  const scheduleText = shop.schedule?.trim() || "出店予定は未設定です";
+  const rainPolicyLabel =
+    shop.rainPolicy && shop.rainPolicy !== "undecided"
+      ? shop.rainPolicy === "outdoor"
+        ? "雨でも出店"
+        : shop.rainPolicy === "tent"
+          ? "雨でも出店（テント）"
+          : "雨天中止"
+      : null;
+
+  return (
+    <div
+      className="rounded-2xl border p-4 shadow-sm"
+      style={{ borderColor: theme.border, backgroundColor: theme.bg }}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
+          aria-hidden
+        >
+          <Clock className="h-4 w-4" style={{ color: theme.text }} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: theme.text }}>
+            営業情報
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-700">
+            今日行く前に、ここだけ確認できます
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            出店予定
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
+            {scheduleText}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/80 bg-white px-3 py-3 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            営業時間
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-800">
+            {businessHours || "営業時間は未設定です"}
+          </p>
+          {rainPolicyLabel && (
+            <p className="mt-1 text-xs font-medium text-slate-500">{rainPolicyLabel}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
   return ingredientCatalog.find(
@@ -1308,6 +1376,8 @@ export default function ShopDetailBanner({
               </div>
             )}
 
+            <ShopBusinessInfoCard shop={shop} theme={theme} />
+
             <div className="rounded-[30px] border border-slate-200 bg-white px-5 py-5 shadow-sm">
               <div className="space-y-5">
                 {activePosts.length > 0 && (
@@ -1533,12 +1603,10 @@ export default function ShopDetailBanner({
                 {shop.chome ?? "丁目未設定"}
               </span>
               <span>{shop.ownerName}</span>
-              {(shop.businessHoursStart || shop.businessHoursEnd) && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  {shop.businessHoursStart ?? "—"} 〜 {shop.businessHoursEnd ?? "—"}
-                </span>
-              )}
+            </div>
+
+            <div className="mt-3">
+              <ShopBusinessInfoCard shop={shop} theme={theme} />
             </div>
 
             {/* SNS links */}
