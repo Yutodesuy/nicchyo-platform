@@ -51,6 +51,7 @@ const nextConfig = {
 
     return [
       {
+        // 全ページ共通セキュリティヘッダー
         source: '/:path*',
         headers: [
           {
@@ -84,6 +85,16 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy-Report-Only',
             value: csp
+          },
+        ],
+      },
+      {
+        // 出店者クーポン確定ページ: カメラを許可
+        source: '/my-shop/coupon',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self)',
           },
         ],
       },

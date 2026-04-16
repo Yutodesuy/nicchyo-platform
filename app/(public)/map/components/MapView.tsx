@@ -33,11 +33,6 @@ import {
 } from '../config/roadConfig';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
 import {
-  applyShopEdits,
-  SHOP_EDITS_STORAGE_KEY,
-  SHOP_EDITS_UPDATED_EVENT,
-} from "../../../../lib/shopEdits";
-import {
   getViewModeForZoom,
   ViewMode,
   canShowShopDetailBanner,
@@ -257,10 +252,19 @@ function SearchResultsSheet({
   const dragStartY = useRef<number | null>(null);
 
   const searchShopSet = useMemo(() => new Set(searchShopIds), [searchShopIds]);
-  const searchShops = useMemo(
-    () => shops.filter((s) => searchShopSet.has(s.id)),
-    [shops, searchShopSet],
-  );
+  const searchShops = useMemo(() => {
+    const firstShopById = new Map<number, Shop>();
+    shops.forEach((shop) => {
+      if (searchShopSet.has(shop.id) && !firstShopById.has(shop.id)) {
+        firstShopById.set(shop.id, shop);
+      }
+    });
+
+    const orderedUniqueIds = Array.from(new Set(searchShopIds));
+    return orderedUniqueIds
+      .map((id) => firstShopById.get(id))
+      .filter((shop): shop is Shop => Boolean(shop));
+  }, [shops, searchShopIds, searchShopSet]);
 
   // 検索結果が変わったらシートを閉じる
   useEffect(() => {
@@ -612,6 +616,9 @@ type MapViewProps = {
   onClearSearch?: () => void;
   searchQuery?: string;
   onSearchQuery?: (q: string) => void;
+  couponEligibleVendorIds?: string[];
+  activeCouponTypeId?: string;
+  stampedVendorIds?: string[];
   /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
   overlaySlot?: React.ReactNode;
 };
@@ -741,6 +748,9 @@ const MapView = memo(function MapView({
   onClearSearch,
   searchQuery,
   onSearchQuery,
+  couponEligibleVendorIds,
+  activeCouponTypeId,
+  stampedVendorIds,
   overlaySlot,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
@@ -804,9 +814,7 @@ const MapView = memo(function MapView({
     () => new Set(landmarkSpecs.filter((spec) => spec.showAtMinZoom).map((spec) => spec.key)),
     [landmarkSpecs]
   );
-  const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
-    applyShopEdits(sourceShops)
-  );
+  const [displayShops, setDisplayShops] = useState<Shop[]>(() => sourceShops);
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
   // - currentZoom は state で管理しない（Leaflet に任せる）
@@ -866,7 +874,8 @@ const MapView = memo(function MapView({
 
   useEffect(() => {
     if (!mapInstance) return;
-    mapInstance.invalidateSize(false);
+    const timer = setTimeout(() => { mapInstance.invalidateSize(false); }, 150);
+    return () => clearTimeout(timer);
   }, [mapInstance, mapShellSize]);
 
   useEffect(() => {
@@ -901,24 +910,7 @@ const MapView = memo(function MapView({
   }, [initialShopId, openInitialShopBanner, shops]);
 
   useEffect(() => {
-    const updateShops = () => {
-      setDisplayShops(applyShopEdits(sourceShops));
-    };
-    updateShops();
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === SHOP_EDITS_STORAGE_KEY) {
-        updateShops();
-      }
-    };
-    const handleEditsUpdate = () => {
-      updateShops();
-    };
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    };
+    setDisplayShops(sourceShops);
   }, [sourceShops]);
 
   useEffect(() => {
@@ -995,10 +987,24 @@ const MapView = memo(function MapView({
       }));
   }, [bagIngredientIds, selectedRecipe]);
 
+  // レシピ食材を持つ店舗（絞り込み済み）
+  const shopsWithIngredients = useMemo(() => {
+    if (!selectedRecipe || recipeIngredients.length === 0) return [];
+    return shops.filter((shop) =>
+      shop.products.some((product) =>
+        recipeIngredients.some((ing) =>
+          product.toLowerCase().includes(ing.name.toLowerCase()) ||
+          ing.name.toLowerCase().includes(product.toLowerCase())
+        )
+      )
+    );
+  }, [selectedRecipe, recipeIngredients, shops]);
+
+  // shopsWithIngredients を再利用して全 shops ループを回避
   const recipeIngredientIconsByShop = useMemo(() => {
     if (!showRecipeOverlay || !selectedRecipe || recipeIngredients.length === 0) return {};
     const byShop: Record<number, string[]> = {};
-    shops.forEach((shop) => {
+    shopsWithIngredients.forEach((shop) => {
       const icons = recipeIngredients
         .filter((ing) =>
           shop.products.some((product) =>
@@ -1013,19 +1019,7 @@ const MapView = memo(function MapView({
       }
     });
     return byShop;
-  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shops]);
-
-  const shopsWithIngredients = useMemo(() => {
-    if (!selectedRecipe || recipeIngredients.length === 0) return [];
-    return shops.filter((shop) =>
-      shop.products.some((product) =>
-        recipeIngredients.some((ing) =>
-          product.toLowerCase().includes(ing.name.toLowerCase()) ||
-          ing.name.toLowerCase().includes(product.toLowerCase())
-        )
-      )
-    );
-  }, [selectedRecipe, recipeIngredients, shops]);
+  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shopsWithIngredients]);
 
   const attendanceLabelsByShop = useMemo(() => {
     const labels: Record<number, string> = {};
@@ -1398,6 +1392,7 @@ const MapView = memo(function MapView({
             recipeIngredientIconsByShop={recipeIngredientIconsByShop}
             attendanceLabelsByShop={attendanceLabelsByShop}
             bagShopIds={bagShopIds}
+            couponEligibleVendorIds={couponEligibleVendorIds}
             shouldRenderRecipeOverlay={shouldRenderRecipeOverlay}
             shopsWithIngredients={shopsWithIngredients}
             recipeIngredients={recipeIngredients}
@@ -1488,6 +1483,8 @@ const MapView = memo(function MapView({
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
             originRect={shopBannerOrigin ?? undefined}
+            activeCouponTypeId={activeCouponTypeId}
+            stampedVendorIds={stampedVendorIds}
           />
         </>
       )}

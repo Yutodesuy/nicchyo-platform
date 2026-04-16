@@ -1,0 +1,141 @@
+"use client";
+
+import { isAnalyticsAllowed, loadGA } from "@/lib/analytics/consentClient";
+import type {
+  AnalyticsEventName,
+  AnalyticsParams,
+  SendEventOptions,
+  ShopImpressionParams,
+  CouponImpressionParams,
+} from "@/types/analytics";
+
+function getVisitorKey(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|; )nicchyo_visitor_id=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function safeJson(v: unknown) {
+  try {
+    return JSON.parse(JSON.stringify(v));
+  } catch {
+    return null;
+  }
+}
+
+async function postJson(url: string, body: unknown) {
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    });
+  } catch (err) {
+    // silent
+    // could implement retry queue if needed
+  }
+}
+
+export function sendEvent(name: AnalyticsEventName, params: AnalyticsParams = {}, options: SendEventOptions = {}) {
+  if (!isAnalyticsAllowed()) return;
+
+  // Ensure GA loader present in production if not yet loaded
+  try {
+    if (typeof window !== "undefined" && !(window as any).__nicchyo_ga_loaded) {
+      const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
+      if (gaId && process.env.NODE_ENV === "production") loadGA(gaId);
+    }
+  } catch {}
+
+  const payload = safeJson(params) ?? {};
+
+  // dataLayer push for GTM compatibility
+  try {
+    const w = window as any;
+    w.dataLayer = w.dataLayer || [];
+    w.dataLayer.push({ event: name, ...payload });
+  } catch {}
+
+  // gtag for GA4
+  try {
+    const w = window as any;
+    if (typeof w?.gtag === "function") {
+      w.gtag("event", name, payload);
+    }
+  } catch {}
+
+  // server-side reliable logging for specific events
+  if (options.toServer) {
+    const visitor_key = getVisitorKey();
+    if (name === "shop_impression") {
+      const p = params as ShopImpressionParams;
+      postJson("/api/analytics/shop-interaction", {
+        visitor_key,
+        shop_id: p.shop_id,
+        event_type: "impression",
+        meta: { list_position: p.list_position ?? null, context: p.context ?? null },
+      });
+    }
+
+    if (name === "shop_view") {
+      const p = params as any;
+      postJson("/api/analytics/shop-interaction", {
+        visitor_key,
+        shop_id: p.shop_id,
+        event_type: "view",
+        meta: { source: p.source ?? null, interaction_method: p.interaction_method ?? null },
+      });
+    }
+
+    if (name === "coupon_impression") {
+      const p = params as CouponImpressionParams;
+      postJson("/api/analytics/coupon-impression", {
+        coupon_id: p.coupon_id,
+        visitor_key: getVisitorKey(),
+        shop_id: p.shop_id ?? null,
+        source: p.source,
+        placement: p.placement ?? null,
+        visible_duration: typeof p.visible_duration === "number" ? Math.max(0, Math.round(p.visible_duration)) : null,
+      });
+    }
+  }
+}
+
+// Helper: track scroll depth on an element and send thresholds 25/50/75/100
+export function trackScrollDepth(element: HTMLElement, shopId: string | null = null) {
+  if (!element || typeof window === "undefined") return () => {};
+  const thresholds = [25, 50, 75, 100];
+  const sent = new Set<number>();
+
+  function check() {
+    const rect = element.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const depth = Math.min(100, Math.max(0, Math.round(((vh - rect.top) / vh) * 100)));
+    thresholds.forEach((t) => {
+      if (depth >= t && !sent.has(t)) {
+        sent.add(t);
+        sendEvent("shop_scroll", { shop_id: shopId ?? "", scroll_area: "shop_detail", scroll_depth: t }, { toServer: true });
+      }
+    });
+  }
+
+  const throttled = () => {
+    if ((throttled as any).timer) return;
+    (throttled as any).timer = setTimeout(() => {
+      delete (throttled as any).timer;
+      check();
+    }, 300);
+  };
+
+  element.addEventListener("scroll", throttled, { passive: true });
+  window.addEventListener("resize", throttled);
+
+  // initial check
+  setTimeout(check, 200);
+
+  return () => {
+    element.removeEventListener("scroll", throttled);
+    window.removeEventListener("resize", throttled);
+  };
+}
