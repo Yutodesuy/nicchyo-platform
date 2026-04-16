@@ -36,16 +36,7 @@ export default function VendorSidebar({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="fixed right-4 top-4 z-[10010] flex h-11 w-11 items-center justify-center rounded-full border border-amber-200 bg-white/95 text-amber-700 shadow-lg backdrop-blur transition hover:bg-white active:scale-95 lg:hidden"
-        aria-label="出店者メニューを開く"
-      >
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-        </svg>
-      </button>
+      {/* モバイルではVendorNavBar（ボトムタブ）で代替するためハンバーガーは非表示 */}
 
       {isOpen && (
         <button

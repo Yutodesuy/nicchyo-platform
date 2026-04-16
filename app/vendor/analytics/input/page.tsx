@@ -80,6 +80,14 @@ export default function SalesInputPage() {
 
       <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
 
+        <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Sales Input</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">販売数量を入力</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            1件ずつ追加しておくと、売れた商品が後から見やすくなります。
+          </p>
+        </div>
+
         {error && (
           <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <AlertCircle size={14} />{error}
@@ -87,40 +95,40 @@ export default function SalesInputPage() {
         )}
 
         {/* 入力フォーム */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
               <Plus size={14} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">商品を追加</h2>
+            <h2 className="text-base font-semibold text-slate-700">商品を追加</h2>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto]">
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEntry(); } }}
               placeholder="商品名（例：芋天）"
-              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-300"
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-base outline-none focus:ring-2 focus:ring-amber-300"
             />
             <input type="number" value={qty} onChange={(e) => setQty(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEntry(); } }}
               placeholder="数量" min={1}
-              className="w-20 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-300"
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-base outline-none focus:ring-2 focus:ring-amber-300"
             />
             <button type="button" onClick={addEntry}
-              className="flex items-center gap-1 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-400"
+              className="flex items-center justify-center gap-1 rounded-2xl bg-emerald-500 px-3 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400"
             >
               <Plus size={14} />追加
             </button>
           </div>
-          <p className="mt-2 text-[10px] text-slate-400">同じ商品名を入力すると数量が加算されます</p>
+          <p className="mt-2 text-xs text-slate-400">同じ商品名を入力すると数量が加算されます</p>
         </div>
 
         {/* 入力済み一覧 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
               <ShoppingBag size={14} />
             </div>
-            <h2 className="text-sm font-semibold text-slate-700">本日の販売記録</h2>
+            <h2 className="text-base font-semibold text-slate-700">本日の販売記録</h2>
             <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
               {entries.length} 商品
             </span>
@@ -144,7 +152,7 @@ export default function SalesInputPage() {
                         <span className="text-sm font-medium text-slate-700">{entry.product_name}</span>
                         <span className="text-sm font-bold text-amber-600">{entry.quantity} 個</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-amber-100">
+                      <div className="h-2 overflow-hidden rounded-full bg-amber-100">
                         <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -162,7 +170,7 @@ export default function SalesInputPage() {
 
         {/* 保存ボタン */}
         <button type="submit" disabled={isSaving || entries.length === 0}
-          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
+          className={`flex w-full items-center justify-center gap-2 rounded-3xl py-4 text-base font-bold shadow transition ${
             isSaving ? "cursor-not-allowed bg-slate-200 text-slate-400"
             : isSaved  ? "bg-emerald-500 text-white"
             : entries.length === 0 ? "cursor-not-allowed bg-slate-100 text-slate-300"

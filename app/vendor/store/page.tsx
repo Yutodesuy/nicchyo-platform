@@ -253,6 +253,13 @@ export default function VendorStorePage() {
     setForm((prev) => ({ ...prev, schedule: prev.schedule.filter((x) => x !== s) }));
   }
 
+  const summaryCards = [
+    { label: "店舗名", value: form.name.trim() || "未設定" },
+    { label: "商品", value: `${form.main_products.length}件` },
+    { label: "決済", value: `${form.payment_methods.length}種` },
+    { label: "出店日", value: `${form.schedule.length}件` },
+  ];
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#FFFAF0]">
@@ -283,7 +290,7 @@ export default function VendorStorePage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} onChange={() => setIsDirty(true)} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+      <form onSubmit={handleSubmit} onChange={() => setIsDirty(true)} className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
 
         {error && (
           <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -291,8 +298,24 @@ export default function VendorStorePage() {
           </div>
         )}
 
+        <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Store Info</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">お店の基本情報</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            まずは「名前」「商品」「決済方法」「出店予定日」を整えると、お客さんが安心して来店できます。
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {summaryCards.map((item) => (
+              <div key={item.label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+                <p className="mt-1 text-sm font-bold text-slate-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* 店舗写真 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Camera} title="店舗写真" />
           {imagePreview ? (
             <div className="relative">
@@ -346,7 +369,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 店舗名 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={StoreIcon} title="店舗名" />
           <input
             type="text"
@@ -358,7 +381,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 店主名（任意） */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={StoreIcon} title="店主名（任意）" />
           <input
             type="text"
@@ -371,9 +394,9 @@ export default function VendorStorePage() {
         </div>
 
         {/* 商品ジャンル */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Tag} title="商品ジャンル" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {categories.map((cat) => {
               const isSelected = form.category_id === cat.id;
               return (
@@ -399,7 +422,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 出店スタイル */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Tent} title="出店スタイル" />
           <div className="mb-3 flex flex-wrap gap-2">
             {form.style_tags.map((tag) => (
@@ -447,7 +470,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 主な商品 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={StoreIcon} title="主な商品" />
           <div className="mb-3 space-y-2">
             {form.main_products.map((p) => (
@@ -503,9 +526,9 @@ export default function VendorStorePage() {
         </div>
 
         {/* 営業時間 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Clock} title="営業時間（任意）" />
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <select
               value={form.business_hours_start ?? ""}
               onChange={(e) => setForm((prev) => ({ ...prev, business_hours_start: e.target.value || undefined }))}
@@ -514,7 +537,7 @@ export default function VendorStorePage() {
               <option value="">開始時間</option>
               {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
-            <span className="text-sm text-slate-500 flex-shrink-0">〜</span>
+            <span className="hidden text-center text-sm text-slate-500 sm:block">〜</span>
             <select
               value={form.business_hours_end ?? ""}
               onChange={(e) => setForm((prev) => ({ ...prev, business_hours_end: e.target.value || undefined }))}
@@ -527,9 +550,9 @@ export default function VendorStorePage() {
         </div>
 
         {/* 決済方法 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={CreditCard} title="決済方法" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {PAYMENT_OPTIONS.map((opt) => {
               const isSelected = form.payment_methods.includes(opt.key);
               return (
@@ -546,7 +569,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 雨天時対応 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={CloudRain} title="雨天時対応" />
           <div className="space-y-2">
             {RAIN_OPTIONS.map((opt) => {
@@ -568,7 +591,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* 出店予定日 */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={CalendarDays} title="出店予定日" />
           <div className="mb-3 flex flex-wrap gap-2">
             {form.schedule.map((s) => (
@@ -607,7 +630,7 @@ export default function VendorStorePage() {
         </div>
 
         {/* SNSリンク */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={LinkIcon} title="SNS・ウェブサイト（任意）" />
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -652,7 +675,7 @@ export default function VendorStorePage() {
 
         {/* 保存ボタン */}
         <button type="submit" disabled={isSaving}
-          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
+          className={`flex w-full items-center justify-center gap-2 rounded-3xl py-4 text-base font-bold shadow transition ${
             isSaving ? "cursor-not-allowed bg-slate-200 text-slate-400"
             : isSaved  ? "bg-emerald-500 text-white"
             : "bg-amber-500 text-white hover:bg-amber-400"

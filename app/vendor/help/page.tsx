@@ -88,9 +88,12 @@ export default function VendorHelpPage() {
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
         {/* イントロ */}
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm text-amber-800">
-            各機能の使い方をまとめています。タップするとそのページに移動します。
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p className="text-base font-semibold text-amber-800">
+            各機能の使い方をまとめています
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-amber-700">
+            迷ったときは、上から順に見れば大丈夫です。タップするとそのページに移動します。
           </p>
         </div>
 
@@ -98,18 +101,18 @@ export default function VendorHelpPage() {
         {GUIDE_SECTIONS.map((section) => {
           const Icon = section.icon;
           return (
-            <div key={section.href} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div key={section.href} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               {/* セクションヘッダー（リンク） */}
               <Link
                 href={section.href}
                 className="flex items-center gap-3 px-4 py-4 transition hover:bg-slate-50"
               >
-                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${section.color}`}>
+                <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ${section.color}`}>
                   <Icon size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-800">{section.title}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-500">{section.description}</p>
+                  <p className="text-base font-bold text-slate-800">{section.title}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-slate-500">{section.description}</p>
                 </div>
                 <ChevronRight size={16} className="flex-shrink-0 text-slate-300" />
               </Link>
