@@ -428,14 +428,14 @@ function MapZoomControls({
     >
       {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
       <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <span className="select-none text-[11px] font-bold leading-none text-slate-400">+</span>
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
         <VerticalZoomSlider
           value={currentZoom}
           min={minZoom}
           max={maxZoom}
           onValueChange={(v) => map?.setZoom(v, { animate: false })}
         />
-        <span className="select-none text-[11px] font-bold leading-none text-slate-400">−</span>
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
       </div>
     </div>
   );
