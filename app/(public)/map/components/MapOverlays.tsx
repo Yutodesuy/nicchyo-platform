@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, memo, useEffect, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import { CircleMarker, Marker, Pane, Popup, Rectangle, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -78,12 +78,18 @@ export const MapOverlays = memo(function MapOverlays({
   onRecipeShopClick: (shop: Shop) => void;
   OptimizedShopLayerWithClustering: ComponentType<any>;
 }) {
+  const map = useMap();
+  const handleRoadTap = useCallback((latlng: import("leaflet").LatLng) => {
+    map.setView(latlng, 17);
+  }, [map]);
+
   return (
     <>
       <RoadOverlay
         overviewTint={isLowZoomTintMode}
         routePoints={routePoints}
         routeConfig={routeConfig}
+        onTap={isLowZoomTintMode && !isOverviewZoneMode ? handleRoadTap : undefined}
       />
       <DynamicMaxBounds baseBounds={mapBounds} paddingPx={100} />
 
@@ -170,8 +176,8 @@ export const MapOverlays = memo(function MapOverlays({
         <ChomeAreaMarkers shops={shops} />
       )}
 
-      {/* 通常時（zoom ≥ 17）: 個別店舗マーカー */}
-      {!isMinimumZoomMode && !isOverviewZoneMode && (
+      {/* 通常時（zoom ≥ 19）: 個別店舗マーカー */}
+      {!isMinimumZoomMode && !isOverviewZoneMode && !isLowZoomTintMode && (
         <OptimizedShopLayerWithClustering
           shops={shops}
           onShopClick={onShopClick}

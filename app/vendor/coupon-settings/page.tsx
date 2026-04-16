@@ -132,11 +132,22 @@ export default function VendorCouponSettingsPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-2xl px-4 pt-5 space-y-4">
+      <div className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
         {/* 説明 */}
-        <div className="rounded-2xl border border-green-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
-          <p>クーポンに参加すると、来訪者が保有するクーポンをお店で使えるようになります。</p>
-          <p className="mt-1">参加をONにしたクーポン種類だけ、お客様のマップ・バナーに表示されます。</p>
+        <div className="rounded-3xl border border-green-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
+          <p className="text-base font-semibold text-slate-800">クーポン参加設定</p>
+          <p className="mt-1 leading-relaxed">参加をONにしたクーポンだけ、お客さんの画面に表示されます。</p>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              "参加するクーポンを選ぶ",
+              "最低利用金額を決める",
+              "保存して公開する",
+            ].map((item) => (
+              <div key={item} className="rounded-2xl bg-green-50 px-3 py-3 text-sm font-semibold text-green-700">
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
 
         {couponTypes.length === 0 && (
@@ -152,17 +163,17 @@ export default function VendorCouponSettingsPage() {
           return (
             <div
               key={ct.id}
-              className={`rounded-2xl border bg-white shadow-sm transition ${
+              className={`rounded-3xl border bg-white shadow-sm transition ${
                 setting.is_participating
                   ? "border-green-200 ring-1 ring-green-200"
                   : "border-gray-100"
               }`}
             >
               <div className="flex items-center gap-3 px-5 py-4">
-                <span className="text-3xl">{ct.emoji}</span>
+                <span className="text-4xl">{ct.emoji}</span>
                 <div className="flex-1">
-                  <p className="font-bold text-slate-900">{ct.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{ct.description}</p>
+                  <p className="text-base font-bold text-slate-900">{ct.name}</p>
+                  <p className="mt-0.5 text-sm text-gray-500">{ct.description}</p>
                 </div>
                 {/* 参加トグル */}
                 <button
@@ -184,14 +195,14 @@ export default function VendorCouponSettingsPage() {
               {/* 参加ONのときだけ条件設定を表示 */}
               {setting.is_participating && (
                 <div className="border-t border-gray-100 px-5 py-4">
-                  <p className="mb-3 text-sm font-semibold text-gray-700">最低利用金額</p>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="mb-3 text-base font-semibold text-gray-700">最低利用金額</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {MIN_AMOUNT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
                         onClick={() => handleAmountChange(ct.id, opt.value)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${
                           setting.min_purchase_amount === opt.value
                             ? "bg-green-500 text-white shadow-sm"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -219,7 +230,7 @@ export default function VendorCouponSettingsPage() {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-500 py-4 text-base font-bold text-white shadow transition hover:bg-green-600 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-3xl bg-green-500 py-4 text-base font-bold text-white shadow transition hover:bg-green-600 disabled:opacity-60"
         >
           {isSaving ? (
             <Loader2 size={18} className="animate-spin" />

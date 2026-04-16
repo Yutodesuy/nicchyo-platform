@@ -32,7 +32,25 @@
       "Bash(npm test:*)",
       "Bash(cat /c/Users/miyuk/nicchyo-platform/.env*)",
       "WebFetch(domain:wmedia.es)",
-      "Skill(schedule)"
+      "Skill(schedule)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_runtime_logs",
+      "mcp__claude_ai_Vercel__get_deployment",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(gh pr:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npx eslint:*)",
+      "Bash(cat .eslintrc* eslint.config*)",
+      "Bash(node_modules/.bin/next lint:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh --version)",
+      "Bash(git fetch *)",
+      "Bash(git merge *)",
+      "Bash(git checkout *)"
     ]
   }
 }

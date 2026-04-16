@@ -1,8 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
+import VendorSidebar from "@/components/vendor/VendorSidebar";
+import VendorNavBar from "@/components/vendor/VendorNavBar";
 
 function GuardMessage({
   title,
@@ -36,6 +39,21 @@ function GuardMessage({
 
 export default function VendorLayout({ children }: { children: ReactNode }) {
   const { user, permissions, isLoading } = useAuth();
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isSidebarOpen]);
 
   if (isLoading) {
     return (
@@ -66,5 +84,19 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-[#FFFAF0] lg:pl-72">
+      <VendorSidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen((v) => !v)}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <main
+        className="min-h-screen pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0"
+      >
+        {children}
+      </main>
+      <VendorNavBar />
+    </div>
+  );
 }

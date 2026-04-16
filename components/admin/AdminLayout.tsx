@@ -5,24 +5,43 @@
 
 "use client";
 
-import React from "react";
-import NavigationBar from "@/app/components/NavigationBar";
+import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { AdminSidebar } from "./AdminSidebar";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   withBottomPadding?: boolean;
-  showNavigationBar?: boolean;
 }
 
 export const AdminLayout = React.memo(function AdminLayout({
   children,
   withBottomPadding = true,
-  showNavigationBar = true,
 }: AdminLayoutProps) {
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isSidebarOpen]);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 lg:pl-64">
+      <AdminSidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen((v) => !v)}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       <main className={`min-h-screen ${withBottomPadding ? "pb-24" : ""}`}>{children}</main>
-      {showNavigationBar ? <NavigationBar /> : null}
     </div>
   );
 });
