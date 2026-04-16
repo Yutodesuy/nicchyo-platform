@@ -594,10 +594,6 @@ export default function MapCharacterConsult({
                 </button>
               </div>
 
-              <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-slate-500">
-                <span>{showIntroChrome ? '短い質問でも大丈夫です' : activeCharacter?.name ?? 'AI相談'}</span>
-                <span>{inputText.trim().length > 0 ? `${inputText.trim().length}文字` : showIntroChrome ? '1行で始められます' : 'Enterで送信'}</span>
-              </div>
             </div>
 
             {status === 'error' && lastUserMsg && (

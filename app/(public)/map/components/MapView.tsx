@@ -627,8 +627,9 @@ type MapViewProps = {
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-/** zoom < OVERVIEW_ZONE_MAX_ZOOM のとき丁目エリアマーカーを表示（クラスター廃止） */
-const OVERVIEW_ZONE_MAX_ZOOM = 18;
+/** 18 <= zoom < 19 のとき丁目エリアマーカーを表示 */
+const OVERVIEW_ZONE_MIN_ZOOM = 17;
+const OVERVIEW_ZONE_MAX_ZOOM = 19;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.026; // step(0.05) の半分より少し大きく設定
 
@@ -1176,8 +1177,8 @@ const MapView = memo(function MapView({
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
   const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
-  const isOverviewZoneMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
-  const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
+  const isOverviewZoneMode = mapUiZoom >= OVERVIEW_ZONE_MIN_ZOOM && mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
+  const isLowZoomTintMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
   const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
   const shouldRenderRecipeOverlay = showRecipeOverlay && mapUiZoom >= 19.0;
