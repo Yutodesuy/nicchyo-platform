@@ -533,96 +533,71 @@ export default function MapCharacterConsult({
             </div>
           )}
 
-          <div className={showIntroChrome ? 'px-3 pb-3 pt-3' : 'px-2.5 py-2.5'}>
+          {!isBusy && <div className={showIntroChrome ? 'px-3 pb-3 pt-3' : 'px-2.5 py-2.5'}>
             <div
               className={`rounded-[24px] border p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-colors ${
                 status === 'error'
                   ? 'border-red-200 bg-white'
-                  : isBusy
-                    ? 'border-amber-300 bg-[#fffaf1]'
-                    : 'border-slate-200 bg-white'
+                  : 'border-slate-200 bg-white'
               }`}
             >
-              {isBusy ? (
-                <div className="flex items-center gap-3 px-1 py-1">
-                  {activeCharacter ? (
-                    <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm shrink-0">
-                      <img
-                        src={activeCharacter.image}
-                        alt={activeCharacter.name}
-                        className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
-                        style={{ objectPosition: activeCharacter.imagePosition }}
-                        draggable={false}
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-11 w-11 rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm shrink-0" />
-                  )}
-                  <span className="text-[13px] font-semibold text-amber-700">
-                    {status === 'loading' ? '送信中…' : '案内中…'}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-end gap-2">
-                    {!showIntroChrome ? (
-                      <div className="mb-0.5 shrink-0">
-                        {activeCharacter ? (
-                          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm">
-                            <img
-                              src={activeCharacter.image}
-                              alt={activeCharacter.name}
-                              className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
-                              style={{ objectPosition: activeCharacter.imagePosition }}
-                              draggable={false}
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-11 w-11 rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm" />
-                        )}
+              <div className="flex items-end gap-2">
+                {!showIntroChrome ? (
+                  <div className="mb-0.5 shrink-0">
+                    {activeCharacter ? (
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm">
+                        <img
+                          src={activeCharacter.image}
+                          alt={activeCharacter.name}
+                          className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
+                          style={{ objectPosition: activeCharacter.imagePosition }}
+                          draggable={false}
+                        />
                       </div>
-                    ) : null}
-
-                    <Textarea
-                      id="map-consult-input"
-                      ref={textareaRef}
-                      value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                        }
-                      }}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      aria-describedby={inputDescription}
-                      placeholder="気になることを入力"
-                      rows={1}
-                      className={`min-h-[58px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-[15px] leading-6 shadow-none focus-visible:ring-0 ${
-                        status === 'error'
-                          ? 'text-red-700 placeholder:text-red-300'
-                          : 'text-slate-900 placeholder:text-slate-400'
-                      }`}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => handleSend()}
-                      disabled={!inputText.trim()}
-                      className="mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]"
-                      aria-label="送信"
-                    >
-                      <span>送信</span>
-                    </button>
+                    ) : (
+                      <div className="h-11 w-11 rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm" />
+                    )}
                   </div>
+                ) : null}
 
-                  <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-slate-500">
-                    <span>{showIntroChrome ? '短い質問でも大丈夫です' : activeCharacter?.name ?? 'AI相談'}</span>
-                    <span>{inputText.trim().length > 0 ? `${inputText.trim().length}文字` : showIntroChrome ? '1行で始められます' : 'Enterで送信'}</span>
-                  </div>
-                </>
-              )}
+                <Textarea
+                  id="map-consult-input"
+                  ref={textareaRef}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  aria-describedby={inputDescription}
+                  placeholder="気になることを入力"
+                  rows={1}
+                  className={`min-h-[58px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-[15px] leading-6 shadow-none focus-visible:ring-0 ${
+                    status === 'error'
+                      ? 'text-red-700 placeholder:text-red-300'
+                      : 'text-slate-900 placeholder:text-slate-400'
+                  }`}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => handleSend()}
+                  disabled={!inputText.trim()}
+                  className="mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]"
+                  aria-label="送信"
+                >
+                  <span>送信</span>
+                </button>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-slate-500">
+                <span>{showIntroChrome ? '短い質問でも大丈夫です' : activeCharacter?.name ?? 'AI相談'}</span>
+                <span>{inputText.trim().length > 0 ? `${inputText.trim().length}文字` : showIntroChrome ? '1行で始められます' : 'Enterで送信'}</span>
+              </div>
             </div>
 
             {status === 'error' && lastUserMsg && (
@@ -636,7 +611,7 @@ export default function MapCharacterConsult({
                 </button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
     </div>
