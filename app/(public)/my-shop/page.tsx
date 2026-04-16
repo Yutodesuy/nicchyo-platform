@@ -184,9 +184,6 @@ export default function MyShopPage() {
                       使い方を見る
                     </Link>
                   </div>
-                  <Link href="#setup-steps" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                    最初にやることを見る
-                  </Link>
                 </div>
               </div>
 
