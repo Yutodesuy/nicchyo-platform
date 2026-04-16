@@ -2,7 +2,7 @@ import NavigationBar from "../../components/NavigationBar";
 
 export default function SearchLoading() {
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24">
+    <div className="flex min-h-[100svh] flex-col bg-gradient-to-b from-amber-50 via-orange-50 to-white pb-24">
       <main className="flex-1 pb-32 pt-4">
         <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6">
           {/* ヘッダー */}
