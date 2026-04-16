@@ -10,8 +10,8 @@ import type { Landmark } from "../map/types/landmark";
 import { fetchLandmarksFromDb } from "../map/services/landmarksDb";
 
 export const metadata: Metadata = {
-  title: "店舗検索 | nicchyo",
-  description: "日曜市の300店舗から、お店の名前・商品・カテゴリーで検索できます。",
+  title: "店舗を探す",
+  description: "高知・日曜市の300店舗から、お店の名前・商品・カテゴリーで検索できます。気になるお店を見つけてマップで確認しましょう。",
 };
 
 async function loadShops(): Promise<Shop[]> {
