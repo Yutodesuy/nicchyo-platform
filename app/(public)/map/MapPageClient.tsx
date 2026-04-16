@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import { Navigation } from "lucide-react";
 import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
@@ -79,6 +80,31 @@ function distanceMeters(
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return earthRadius * c;
+}
+
+function bearingDegrees(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const toDeg = (value: number) => (value * 180) / Math.PI;
+  const lat1 = toRad(from.lat);
+  const lat2 = toRad(to.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function bearingToDirection(deg: number): string {
+  if (deg >= 337.5 || deg < 22.5) return "北";
+  if (deg < 67.5) return "北東";
+  if (deg < 112.5) return "東";
+  if (deg < 157.5) return "南東";
+  if (deg < 202.5) return "南";
+  if (deg < 247.5) return "南西";
+  if (deg < 292.5) return "西";
+  return "北西";
 }
 
 function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
@@ -254,6 +280,28 @@ export default function MapPageClient({
     shops.forEach((shop) => map.set(shop.id, shop));
     return map;
   }, [shops]);
+
+  const navigationTarget = useMemo(() => {
+    if (!userLocation) return null;
+
+    const explicitTarget = initialShopId ? shopById.get(initialShopId) ?? null : null;
+    if (explicitTarget) {
+      const distance = distanceMeters(userLocation, { lat: explicitTarget.lat, lng: explicitTarget.lng });
+      const direction = bearingToDirection(bearingDegrees(userLocation, { lat: explicitTarget.lat, lng: explicitTarget.lng }));
+      return { shop: explicitTarget, distance, direction, isExplicitTarget: true };
+    }
+
+    const nearest = shops
+      .map((shop) => ({
+        shop,
+        distance: distanceMeters(userLocation, { lat: shop.lat, lng: shop.lng }),
+      }))
+      .sort((a, b) => a.distance - b.distance)[0];
+
+    if (!nearest) return null;
+    const direction = bearingToDirection(bearingDegrees(userLocation, { lat: nearest.shop.lat, lng: nearest.shop.lng }));
+    return { shop: nearest.shop, distance: nearest.distance, direction, isExplicitTarget: false };
+  }, [initialShopId, shopById, shops, userLocation]);
 
   const prefetchShopImage = useCallback(
     (shopId: number) => {
@@ -929,6 +977,36 @@ export default function MapPageClient({
                   </div>
                 )}
               </>
+            )}
+
+            {navigationTarget && (
+              <div className="absolute left-4 top-4 z-[1250] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                    <Navigation className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                      現在地
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {navigationTarget.isExplicitTarget ? "開いているお店まで" : "いちばん近いお店まで"}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {navigationTarget.shop.name} まで 約{Math.round(navigationTarget.distance)}m
+                      <br />
+                      方向は {navigationTarget.direction} です
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/map?shop=${navigationTarget.shop.id}`)}
+                    className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                  >
+                    開く
+                  </button>
+                </div>
+              </div>
             )}
 
           </div>
