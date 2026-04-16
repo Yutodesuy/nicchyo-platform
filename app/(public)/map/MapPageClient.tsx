@@ -982,7 +982,7 @@ export default function MapPageClient({
               >
                 <div className="h-1 w-10 rounded-full bg-white/40" />
               </div>
-              <div className="h-full overflow-y-auto overscroll-contain pt-6">
+              <div className="h-full overflow-hidden pt-6">
                 <Suspense fallback={null}>
                   <SearchClient
                     shops={shops}

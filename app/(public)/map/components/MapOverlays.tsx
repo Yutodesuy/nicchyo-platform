@@ -89,7 +89,7 @@ export const MapOverlays = memo(function MapOverlays({
         overviewTint={isLowZoomTintMode}
         routePoints={routePoints}
         routeConfig={routeConfig}
-        onTap={isLowZoomTintMode ? handleRoadTap : undefined}
+        onTap={isLowZoomTintMode && !isOverviewZoneMode ? handleRoadTap : undefined}
       />
       <DynamicMaxBounds baseBounds={mapBounds} paddingPx={100} />
 
@@ -176,8 +176,8 @@ export const MapOverlays = memo(function MapOverlays({
         <ChomeAreaMarkers shops={shops} />
       )}
 
-      {/* 通常時（zoom ≥ 17）: 個別店舗マーカー */}
-      {!isMinimumZoomMode && !isOverviewZoneMode && (
+      {/* 通常時（zoom ≥ 19）: 個別店舗マーカー */}
+      {!isMinimumZoomMode && !isOverviewZoneMode && !isLowZoomTintMode && (
         <OptimizedShopLayerWithClustering
           shops={shops}
           onShopClick={onShopClick}
