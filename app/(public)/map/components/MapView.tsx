@@ -621,6 +621,8 @@ type MapViewProps = {
   stampedVendorIds?: string[];
   /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
   overlaySlot?: React.ReactNode;
+  /** trueのとき拡大縮小スライダーと検索バーを非表示にする */
+  hideMapUI?: boolean;
 };
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
@@ -752,6 +754,7 @@ const MapView = memo(function MapView({
   activeCouponTypeId,
   stampedVendorIds,
   overlaySlot,
+  hideMapUI = false,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -1437,21 +1440,25 @@ const MapView = memo(function MapView({
 
       <TimeAmbientOverlay />
       <MapZoomGuideToast message={zoomGuideMessage} />
-      <MapControls
-        map={mapInstance}
-        isTracking={isTracking}
-        onToggleTracking={() => setIsTracking((prev) => !prev)}
-        currentZoom={mapUiZoom}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-      />
-      <MapSearchBar
-        searchShopIds={activeHighlightShopIds}
-        searchLabel={searchLabel}
-        searchQuery={searchQuery}
-        onSearchQuery={onSearchQuery}
-        onClearSearch={onClearSearch}
-      />
+      {!hideMapUI && (
+        <>
+          <MapControls
+            map={mapInstance}
+            isTracking={isTracking}
+            onToggleTracking={() => setIsTracking((prev) => !prev)}
+            currentZoom={mapUiZoom}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+          />
+          <MapSearchBar
+            searchShopIds={activeHighlightShopIds}
+            searchLabel={searchLabel}
+            searchQuery={searchQuery}
+            onSearchQuery={onSearchQuery}
+            onClearSearch={onClearSearch}
+          />
+        </>
+      )}
 
       {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
 
