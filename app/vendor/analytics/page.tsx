@@ -83,19 +83,27 @@ export default function VendorAnalyticsPage() {
           </div>
         ) : (
           <>
+            <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Analytics</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">お店の動き</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                まずは「見られた数」「押された数」「どこで見られたか」の3つだけを確認すると流れがつかみやすくなります。
+              </p>
+            </div>
+
             {/* 今週の指標 */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="mb-3 text-xs font-semibold text-slate-500">今週の閲覧状況</p>
-              <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="mb-3 text-sm font-semibold text-slate-700">今週の閲覧状況</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {metrics.map((m) => {
                   const Icon = m.icon;
                   return (
-                    <div key={m.label} className="text-center">
-                      <div className={`mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-xl ${m.bg}`}>
-                        <Icon size={16} className={m.color} />
+                    <div key={m.label} className="rounded-2xl bg-slate-50 p-4 text-center">
+                      <div className={`mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl ${m.bg}`}>
+                        <Icon size={18} className={m.color} />
                       </div>
-                      <p className="text-2xl font-bold text-slate-900">{m.value.toLocaleString()}</p>
-                      <p className="mt-0.5 text-[10px] text-slate-500">{m.label}</p>
+                      <p className="text-3xl font-black tracking-tight text-slate-900">{m.value.toLocaleString()}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{m.label}</p>
                       <div className="mt-1 flex justify-center">
                         <DeltaBadge current={m.value} prev={m.prev} />
                       </div>
@@ -103,26 +111,26 @@ export default function VendorAnalyticsPage() {
                   );
                 })}
               </div>
-              <p className="mt-3 text-center text-[10px] text-slate-400">↑ 先週比</p>
+              <p className="mt-3 text-center text-xs text-slate-400">↑ 先週比</p>
               {thisWeek.views === 0 && (
-                <p className="mt-2 text-center text-[10px] text-slate-300">マップで店舗が閲覧されると反映されます</p>
+                <p className="mt-2 text-center text-xs text-slate-300">マップで店舗が閲覧されると反映されます</p>
               )}
             </div>
 
             {/* 注目度ランキング */}
-            <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
-              <p className="mb-1 text-xs font-semibold text-slate-500">市場内注目度ランキング</p>
+            <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm md:p-5">
+              <p className="mb-1 text-sm font-semibold text-slate-700">市場内注目度ランキング</p>
               <div className="flex items-end gap-2">
-                <span className="text-5xl font-black text-amber-500">{rank}</span>
-                <span className="mb-1 text-sm text-slate-500">位 / {totalVendors}店中</span>
+                <span className="text-5xl font-black tracking-tight text-amber-500">{rank}</span>
+                <span className="mb-1 text-base text-slate-500">位 / {totalVendors}店中</span>
               </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-amber-100">
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-amber-100">
                 <div
                   className="h-full rounded-full bg-amber-400"
                   style={{ width: `${Math.round(((totalVendors - rank + 1) / totalVendors) * 100)}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-[10px] text-slate-400">閲覧数をもとに算出</p>
+              <p className="mt-2 text-xs text-slate-400">閲覧数をもとに算出</p>
             </div>
 
             {/* 来訪前 / 現地の検索割合 */}
@@ -131,32 +139,32 @@ export default function VendorAnalyticsPage() {
               const preVisitPct  = total > 0 ? Math.round((sourceRatio.preVisit / total) * 100) : 0;
               const onSitePct    = total > 0 ? Math.round((sourceRatio.onSite   / total) * 100) : 0;
               return (
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="mb-3 text-xs font-semibold text-slate-500">来訪前 / 現地の検索割合（過去7日）</p>
+                <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+                  <p className="mb-3 text-sm font-semibold text-slate-700">来訪前 / 現地の検索割合（過去7日）</p>
                   {total === 0 ? (
-                    <p className="py-4 text-center text-sm text-slate-400">データがまだありません</p>
+                    <p className="py-5 text-center text-sm text-slate-400">データがまだありません</p>
                   ) : (
                     <>
-                      <div className="mb-3 flex h-3 overflow-hidden rounded-full">
+                      <div className="mb-3 flex h-3.5 overflow-hidden rounded-full">
                         <div className="bg-violet-400 transition-all" style={{ width: `${preVisitPct}%` }} />
                         <div className="bg-sky-400 transition-all"    style={{ width: `${onSitePct}%` }} />
                         <div className="flex-1 bg-slate-200" />
                       </div>
-                      <div className="flex gap-4">
-                        <div className="flex items-center gap-1.5">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="flex items-center gap-1.5 rounded-2xl bg-violet-50 px-3 py-2">
                           <Navigation size={12} className="text-violet-500" />
-                          <span className="text-xs text-slate-600">来訪前</span>
-                          <span className="text-sm font-bold text-slate-800">{preVisitPct}%</span>
-                          <span className="text-[10px] text-slate-400">({sourceRatio.preVisit})</span>
+                          <span className="text-sm text-slate-600">来訪前</span>
+                          <span className="text-base font-bold text-slate-800">{preVisitPct}%</span>
+                          <span className="text-xs text-slate-400">({sourceRatio.preVisit})</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 rounded-2xl bg-sky-50 px-3 py-2">
                           <MapPin size={12} className="text-sky-500" />
-                          <span className="text-xs text-slate-600">現地</span>
-                          <span className="text-sm font-bold text-slate-800">{onSitePct}%</span>
-                          <span className="text-[10px] text-slate-400">({sourceRatio.onSite})</span>
+                          <span className="text-sm text-slate-600">現地</span>
+                          <span className="text-base font-bold text-slate-800">{onSitePct}%</span>
+                          <span className="text-xs text-slate-400">({sourceRatio.onSite})</span>
                         </div>
                       </div>
-                      <p className="mt-2 text-[10px] text-slate-400">来訪前：マップ外の検索 / 現地：マップから直接</p>
+                      <p className="mt-2 text-xs text-slate-400">来訪前：マップ外の検索 / 現地：マップから直接</p>
                     </>
                   )}
                 </div>
@@ -169,14 +177,14 @@ export default function VendorAnalyticsPage() {
                 const Icon = page.icon;
                 return (
                   <Link key={page.href} href={page.href}
-                    className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:shadow-md"
+                    className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:shadow-md"
                   >
-                    <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border ${page.color}`}>
+                    <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border ${page.color}`}>
                       <Icon size={20} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-800">{page.label}</p>
-                      <p className="text-xs text-slate-500">{page.desc}</p>
+                      <p className="text-base font-semibold text-slate-800">{page.label}</p>
+                      <p className="text-sm text-slate-500">{page.desc}</p>
                     </div>
                     <ChevronRight size={16} className="flex-shrink-0 text-slate-300" />
                   </Link>

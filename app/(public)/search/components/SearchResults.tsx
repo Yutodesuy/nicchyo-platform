@@ -7,6 +7,7 @@ import { Map } from 'lucide-react';
 
 interface SearchResultsProps {
   shops: Shop[];
+  couponVendorIds?: Set<string>;
   totalCount: number;
   currentPage: number;
   totalPages: number;
@@ -28,6 +29,7 @@ interface SearchResultsProps {
  */
 export default function SearchResults({
   shops,
+  couponVendorIds,
   totalCount,
   currentPage,
   totalPages,
@@ -65,6 +67,7 @@ export default function SearchResults({
               検索結果
             </p>
             <h2 className="text-xl font-bold text-gray-900">お店一覧</h2>
+            <p className="mt-1 text-xs text-gray-500">関連度の高いお店を先に表示しています</p>
           </div>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
             {totalCount}件
@@ -89,6 +92,7 @@ export default function SearchResults({
               key={shop.id}
               shop={shop}
               isFavorite={favoriteShopIds.includes(shop.id)}
+              hasCoupon={!!shop.vendorId && (couponVendorIds?.has(shop.vendorId) ?? false)}
               onToggleFavorite={onToggleFavorite}
               onSelectShop={onSelectShop}
               enableSearchMapHighlight={enableSearchMapHighlight}

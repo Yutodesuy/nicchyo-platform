@@ -2,8 +2,8 @@ import NavigationBar from "../../components/NavigationBar";
 import FaqClient from "./FaqClient";
 
 export const metadata = {
-  title: "よくある質問 | nicchyo",
-  description: "日曜市マップの使い方や、よくあるご質問をまとめました。",
+  title: "よくある質問",
+  description: "nicchyo（日曜市マップ）の使い方や、高知・日曜市に関するよくある質問をまとめました。",
 };
 
 export default function FAQPage() {
