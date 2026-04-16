@@ -172,12 +172,20 @@ export default function MyShopPage() {
                     まずは「最新情報」「店舗情報」「AIばあちゃん」の3つを整えると、お客さんに伝わりやすくなります。
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 md:w-[320px]">
-                  <Link href="/vendor/post/new" className="rounded-2xl bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400">
-                    最新情報を発信
+                <div className="grid gap-2 md:w-[320px]">
+                  <Link href="/vendor/post/new" className="rounded-2xl bg-amber-500 px-4 py-3.5 text-center text-base font-bold text-white shadow-sm transition hover:bg-amber-400">
+                    最新情報を発信する
                   </Link>
-                  <Link href="/vendor/store" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
-                    店舗情報を更新
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/vendor/store" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
+                      店舗情報を更新
+                    </Link>
+                    <Link href="/vendor/help" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                      使い方を見る
+                    </Link>
+                  </div>
+                  <Link href="#setup-steps" className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                    最初にやることを見る
                   </Link>
                 </div>
               </div>
@@ -202,7 +210,7 @@ export default function MyShopPage() {
 
             {/* 初回オンボーディング */}
             {showOnboarding && (
-              <div className="mb-4 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5">
+              <div id="setup-steps" className="mb-4 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-lg font-bold text-slate-900">はじめに整えること</p>
                   <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
@@ -240,6 +248,9 @@ export default function MyShopPage() {
                 <p className="text-sm font-semibold text-slate-900">よく使う機能</p>
                 <p className="text-xs text-slate-500">大きいカードをタップして進めます</p>
               </div>
+              <Link href="/vendor/help" className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 md:inline-flex">
+                使い方ガイド
+              </Link>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
               {MENU_ITEMS.map((item) => {
