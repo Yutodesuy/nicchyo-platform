@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +34,16 @@ function buildSystemPrompt(shopName: string, shopContext: {
 }
 
 export async function POST(req: NextRequest) {
+  const originCheck = requireSameOrigin(req);
+  if (!originCheck.ok) return originCheck.response;
+
+  const rateLimited = enforceRateLimit(req, {
+    bucket: "grandma-shop-chat",
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+  });
+  if (rateLimited) return rateLimited;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response("Server configuration error", { status: 500 });

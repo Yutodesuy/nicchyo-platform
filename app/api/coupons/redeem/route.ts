@@ -102,25 +102,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Coupon feature is disabled" }, { status: 403 });
     }
 
-    // ④ この出店者がクーポン参加店かどうかを確認
-    // 1つのvendorが複数のcoupon_typeに参加できるため .single() は使わない
-    const { data: vendorSettings } = await serviceClient
-      .from("vendor_coupon_settings")
-      .select("coupon_type_id, min_purchase_amount, is_participating")
-      .eq("vendor_id", vendor_id)
-      .eq("is_participating", true)
-      .limit(1);
-
-    const vendorSetting = vendorSettings?.[0] ?? null;
-
-    if (!vendorSetting) {
-      return NextResponse.json(
-        { error: "This vendor is not participating in coupon program" },
-        { status: 403 }
-      );
-    }
-
-    // ⑤ visitor_key のアクティブなクーポンを取得
+    // ④ visitor_key のアクティブなクーポンを取得
     const now = new Date().toISOString();
     const { data: activeCoupons } = await serviceClient
       .from("coupon_issuances")
@@ -141,6 +123,26 @@ export async function POST(request: Request) {
 
     const couponToUse = activeCoupons[0];
 
+    // ⑤ この出店者が、使おうとしているクーポンタイプで参加しているか確認
+    // couponToUse.coupon_type_id と一致する設定のみを取得することで
+    // タイプ違いの出店者によるクーポン消費を防ぐ
+    const { data: vendorSettings } = await serviceClient
+      .from("vendor_coupon_settings")
+      .select("coupon_type_id, min_purchase_amount, is_participating")
+      .eq("vendor_id", vendor_id)
+      .eq("coupon_type_id", couponToUse.coupon_type_id)
+      .eq("is_participating", true)
+      .limit(1);
+
+    const vendorSetting = vendorSettings?.[0] ?? null;
+
+    if (!vendorSetting) {
+      return NextResponse.json(
+        { error: "This vendor is not participating in coupon program for this coupon type" },
+        { status: 403 }
+      );
+    }
+
     // ⑥ 今日この出店者ですでにスタンプ済みか確認
     const { data: existingStamp } = await serviceClient
       .from("coupon_stamps")
@@ -152,19 +154,30 @@ export async function POST(request: Request) {
 
     const is_new_stamp = !existingStamp;
 
-    // ⑦ クーポン消費（is_used = true）
-    const { error: updateError } = await serviceClient
+    // ⑦ クーポン消費（is_used = true）— アトミック更新
+    // .eq("is_used", false) を条件に加えることで、同時リクエストによる二重消費を防ぐ
+    const { data: updatedRows, error: updateError } = await serviceClient
       .from("coupon_issuances")
       .update({
         is_used: true,
         used_at: now,
         used_vendor_id: vendor_id,
       })
-      .eq("id", couponToUse.id);
+      .eq("id", couponToUse.id)
+      .eq("is_used", false)
+      .select("id");
 
     if (updateError) {
       console.error("[redeem] update error:", updateError);
       return NextResponse.json({ error: "Failed to consume coupon" }, { status: 500 });
+    }
+
+    // 影響行数が 0 = 別リクエストが先に消費済み → 二重消費を拒否
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json(
+        { error: "Coupon already used by another request" },
+        { status: 409 }
+      );
     }
 
     // ⑧ スタンプ付与（既存なら ignore）
