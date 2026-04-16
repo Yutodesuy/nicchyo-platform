@@ -1705,12 +1705,12 @@ export default function ShopDetailBanner({
           )}
 
           {/* ════════════════════════════════════════════════════════════════
-              STALL INFO — Style, payment, hours
+              STALL INFO — Style, payment, rain policy
           ════════════════════════════════════════════════════════════════ */}
           {!isKotodute && (
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-4">
               {/* Style tags */}
-              {((shop.stallStyleTags ?? []).length > 0 || shop.stallStyle || shop.schedule) && (
+              {((shop.stallStyleTags ?? []).length > 0 || shop.stallStyle || (shop.rainPolicy && shop.rainPolicy !== "undecided")) && (
                 <div>
                   <p className="mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest">出店スタイル</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -1719,7 +1719,6 @@ export default function ShopDetailBanner({
                     ))}
                     {shop.stallStyle && <span className="text-sm text-slate-600">{shop.stallStyle}</span>}
                   </div>
-                  {shop.schedule && <p className="mt-1 text-xs text-slate-500">{shop.schedule}</p>}
                   {shop.rainPolicy && shop.rainPolicy !== "undecided" && (
                     <p className="mt-1 text-xs text-slate-500">
                       {shop.rainPolicy === "outdoor" && "🌧 雨でも出店"}
