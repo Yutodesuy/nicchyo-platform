@@ -46,7 +46,6 @@ type MapPageClientProps = {
   shops: Shop[];
   landmarks: Landmark[];
   mapRoute: MapRoute;
-  showGrandma?: boolean;
   shopBannerVariant?: "default" | "kotodute";
   attendanceEstimates?: Record<
     number,
@@ -112,10 +111,10 @@ export default function MapPageClient({
   shops,
   landmarks,
   mapRoute,
-  showGrandma = true,
   shopBannerVariant = "default",
   attendanceEstimates,
 }: MapPageClientProps) {
+  const showGrandma = false;
   const searchParams = useSearchParams();
   const router = useRouter();
   const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
@@ -921,6 +920,7 @@ export default function MapPageClient({
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
+              hideMapUI={mapCharacterConsultActive}
               overlaySlot={
                 mapCharacterConsultActive ? (
                   <MapCharacterConsult
