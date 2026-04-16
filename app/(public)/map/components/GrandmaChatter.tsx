@@ -1246,6 +1246,8 @@ export default function GrandmaChatter({
     return () => window.clearInterval(timer);
   }, [isConsultVariant]);
 
+  const inputVisible = aiStatus === "idle" || aiStatus === "error";
+
   return (
     <div className={shellClassName}>
       {layout === "page" && chatMessages.length > 0 && (
@@ -1896,6 +1898,7 @@ export default function GrandmaChatter({
                   </div>
                 </div>
               )}
+              {inputVisible && (<>
               <div
                 className={`transition-all duration-200 ${
                   showConsultExamples ? "max-h-12 opacity-100" : "max-h-0 opacity-0 overflow-hidden"
@@ -1980,14 +1983,11 @@ export default function GrandmaChatter({
                       handleAskSubmit();
                     }
                   }}
-                  disabled={aiStatus === "thinking"}
                   rows={isConsultVariant ? 1 : 2}
                   className={`min-h-[38px] max-h-24 resize-none ${
-                    aiStatus === "thinking"
-                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                      : isConsultVariant
-                        ? `min-h-[46px] rounded-[16px] border-[var(--consult-border)] px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300 ${embedded ? "bg-white/60 placeholder:text-gray-500" : "bg-white"}`
-                        : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
+                    isConsultVariant
+                      ? `min-h-[46px] rounded-[16px] border-[var(--consult-border)] px-3 py-3 text-base text-gray-900 focus-visible:ring-slate-300 ${embedded ? "bg-white/60 placeholder:text-gray-500" : "bg-white"}`
+                      : "border-amber-200 bg-white text-gray-900 focus-visible:ring-amber-400"
                   }`}
                   placeholder={consultPlaceholder}
                 />
@@ -1997,9 +1997,9 @@ export default function GrandmaChatter({
                     variant="outline"
                     size="icon"
                     onClick={startSpeechRecognition}
-                    disabled={!isSpeechSupported || aiStatus === "thinking"}
+                    disabled={!isSpeechSupported}
                     className={`${
-                      !isSpeechSupported || aiStatus === "thinking"
+                      !isSpeechSupported
                         ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : isListening
                         ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100"
@@ -2034,11 +2034,8 @@ export default function GrandmaChatter({
                   type="button"
                   size="icon"
                   onClick={() => handleAskSubmit()}
-                  disabled={aiStatus === "thinking"}
                   className={`${
-                    aiStatus === "thinking"
-                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                    : isConsultVariant
+                    isConsultVariant
                         ? "h-9 w-9 rounded-full border-[var(--consult-border)] bg-slate-700 text-white hover:bg-slate-600"
                         : "border-amber-200 bg-amber-600 text-white hover:bg-amber-500"
                   }`}
@@ -2092,7 +2089,6 @@ export default function GrandmaChatter({
                             lastFailedSubmission
                           )
                         }
-                        disabled={aiStatus === "thinking"}
                         className="h-9 rounded-full border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-700 hover:bg-rose-100"
                       >
                         もう一度送る
@@ -2122,6 +2118,7 @@ export default function GrandmaChatter({
                   質問内容を入力するか写真を選んでね。
                 </div>
               )}
+              </>)}
             </div>
           </Card>
         </div>
