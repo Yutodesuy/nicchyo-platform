@@ -2,7 +2,8 @@
 
 import { useEffect, useState, type ElementType } from "react";
 import Link from "next/link";
-import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen, MapPin, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
@@ -82,7 +83,8 @@ type SetupStep = {
 };
 
 export default function MyShopPage() {
-  const { isLoggedIn, user, permissions, isLoading } = useAuth();
+  const { isLoggedIn, user, permissions, isLoading, logout } = useAuth();
+  const router = useRouter();
   const canAccess = !isLoading && isLoggedIn;
 
   const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
@@ -125,6 +127,11 @@ export default function MyShopPage() {
   const incompletedSteps = setupSteps?.filter((s) => !s.done) ?? [];
   const completedCount = setupSteps ? setupSteps.length - incompletedSteps.length : 0;
   const showOnboarding = setupSteps !== null && incompletedSteps.length > 0;
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
 
   return (
     <div
@@ -280,6 +287,31 @@ export default function MyShopPage() {
                   </Link>
                 );
               })}
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Exit & Return</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">戻る・ログアウト</h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                迷ったら地図に戻れます。ここからログアウトもできます。
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <Link
+                  href="/map"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-400"
+                >
+                  <MapPin size={16} />
+                  マップへ戻る
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                >
+                  <LogOut size={16} />
+                  ログアウト
+                </button>
+              </div>
             </div>
           </>
         )}
