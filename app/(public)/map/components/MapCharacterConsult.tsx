@@ -445,7 +445,7 @@ export default function MapCharacterConsult({
   const inputDescription = statusLabel ? `${helperTextId} ${statusTextId}` : helperTextId;
 
   return (
-    <div className="pointer-events-none absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[1300]">
+    <div className="pointer-events-none absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.75rem)] left-4 right-4 z-[1300] translate-y-[30px]">
       <div className="mb-3 flex justify-start">
         {activeCharacter && (
           <CharacterSprite
@@ -477,41 +477,14 @@ export default function MapCharacterConsult({
           {showIntroChrome ? (
             <>
               <div className="bg-[linear-gradient(135deg,#fff8e8_0%,#fff3d8_48%,#fde6ba_100%)] px-4 py-3.5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0">
-                    {activeCharacter ? (
-                      <div className="h-11 w-11 overflow-hidden rounded-2xl border border-white/80 bg-white shadow-sm">
-                        <img
-                          src={activeCharacter.image}
-                          alt={activeCharacter.name}
-                          className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
-                          style={{ objectPosition: activeCharacter.imagePosition }}
-                          draggable={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-11 w-11 rounded-2xl border border-white/80 bg-white shadow-sm" />
-                    )}
-                  </div>
-
+                <div className="flex items-start">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
-                        AI相談
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-600">
-                        お店・食べ歩き・休憩・イベント
-                      </span>
-                    </div>
                     <label
                       htmlFor="map-consult-input"
-                      className="mt-2 block text-[15px] font-bold leading-tight text-slate-900"
+                      className="block text-[15px] font-bold leading-tight text-slate-900"
                     >
-                      市場のことを、ひとことで相談できます
+                      AIに相談する
                     </label>
-                    <p id={helperTextId} className="mt-1.5 text-[12px] leading-relaxed text-slate-600">
-                      例をタップして始めるか、そのまま入力してください。
-                    </p>
                   </div>
 
                   <button
@@ -560,14 +533,12 @@ export default function MapCharacterConsult({
             </div>
           )}
 
-          <div className={showIntroChrome ? 'px-3 pb-3 pt-3' : 'px-2.5 py-2.5'}>
+          {!isBusy && <div className={showIntroChrome ? 'px-3 pb-3 pt-3' : 'px-2.5 py-2.5'}>
             <div
               className={`rounded-[24px] border p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-colors ${
                 status === 'error'
                   ? 'border-red-200 bg-white'
-                  : isBusy
-                    ? 'border-amber-300 bg-[#fffaf1]'
-                    : 'border-slate-200 bg-white'
+                  : 'border-slate-200 bg-white'
               }`}
             >
               <div className="flex items-end gap-2">
@@ -603,36 +574,26 @@ export default function MapCharacterConsult({
                   onPointerDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
                   aria-describedby={inputDescription}
-                  placeholder={isBusy ? '返答を待っています…' : '気になることを入力'}
+                  placeholder="気になることを入力"
                   rows={1}
                   className={`min-h-[58px] flex-1 resize-none border-0 bg-transparent px-3 py-3 text-[15px] leading-6 shadow-none focus-visible:ring-0 ${
                     status === 'error'
                       ? 'text-red-700 placeholder:text-red-300'
                       : 'text-slate-900 placeholder:text-slate-400'
                   }`}
-                  disabled={isBusy}
                 />
 
                 <button
                   type="button"
-                  onClick={() => (isBusy ? undefined : handleSend())}
-                  disabled={isBusy || !inputText.trim()}
-                  className={`mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all ${
-                    isBusy
-                      ? 'bg-amber-400'
-                      : 'bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]'
-                  }`}
-                  aria-label={isBusy ? '送信中' : '送信'}
+                  onClick={() => handleSend()}
+                  disabled={!inputText.trim()}
+                  className="mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]"
+                  aria-label="送信"
                 >
-                  {status === 'loading' ? <Spinner /> : null}
-                  <span>{status === 'loading' ? '送信中' : status === 'playing' ? '案内中' : '送信'}</span>
+                  <span>送信</span>
                 </button>
               </div>
 
-              <div className="mt-2 flex items-center justify-between px-1 text-[11px] text-slate-500">
-                <span>{showIntroChrome ? '短い質問でも大丈夫です' : activeCharacter?.name ?? 'AI相談'}</span>
-                <span>{inputText.trim().length > 0 ? `${inputText.trim().length}文字` : showIntroChrome ? '1行で始められます' : 'Enterで送信'}</span>
-              </div>
             </div>
 
             {status === 'error' && lastUserMsg && (
@@ -646,7 +607,7 @@ export default function MapCharacterConsult({
                 </button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
     </div>

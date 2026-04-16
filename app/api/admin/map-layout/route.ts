@@ -33,6 +33,30 @@ type SnapshotSummary = {
   routeConfigChanged: boolean;
 };
 
+function validateShopAssignments(shops: EditableShop[]) {
+  const vendorByPosition = new Map<number, string>();
+  const positionByVendor = new Map<string, number>();
+
+  for (const shop of shops) {
+    const vendorId = shop.vendorId?.trim();
+    if (!vendorId) continue;
+
+    const existingVendor = vendorByPosition.get(shop.position);
+    if (existingVendor && existingVendor !== vendorId) {
+      return `店番 ${shop.position} に複数の店舗を配置できません`;
+    }
+    vendorByPosition.set(shop.position, vendorId);
+
+    const existingPosition = positionByVendor.get(vendorId);
+    if (existingPosition != null && existingPosition !== shop.position) {
+      return "同じ店舗を複数の店番に配置できません";
+    }
+    positionByVendor.set(vendorId, shop.position);
+  }
+
+  return null;
+}
+
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const record = user as {
@@ -246,6 +270,11 @@ export async function PUT(request: NextRequest) {
       !body.route.config
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const assignmentValidationError = validateShopAssignments(body.shops.updated);
+    if (assignmentValidationError) {
+      return NextResponse.json({ error: assignmentValidationError }, { status: 400 });
     }
 
     const hasChanges =

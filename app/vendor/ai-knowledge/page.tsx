@@ -79,24 +79,35 @@ export default function AiKnowledgePage() {
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
 
-        {/* 説明カード */}
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <img src="/images/obaasan_transparent.png" alt="AIばあちゃん" className="h-14 w-14 flex-shrink-0 opacity-80" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">ここに書いた内容は、AIばあちゃんがお客さんにお店を紹介するときに参考にします</p>
-            <p className="mt-1 text-xs text-amber-700">商品のこだわりや行列情報など、お客さんが知りたいことを自由に書いてください。</p>
+        <div className="rounded-3xl border border-amber-200 bg-white p-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <img src="/images/obaasan_transparent.png" alt="AIばあちゃん" className="h-14 w-14 flex-shrink-0 opacity-80" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">AI Knowledge</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">AIばあちゃんに伝えるお店メモ</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                ここに書いた内容をもとに、お客さんへお店の魅力や注意点をやさしく案内します。
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {["おすすめ商品", "行列ができやすい時間", "決済方法や注意点"].map((item) => (
+              <div key={item} className="rounded-2xl bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-800">
+                {item}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* ヒント */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Info size={14} className="text-slate-400" />
-            <p className="text-xs font-semibold text-slate-500">書くと効果的な内容</p>
+            <p className="text-sm font-semibold text-slate-600">書くと効果的な内容</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {HINTS.map((hint) => (
-              <span key={hint} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">
+              <span key={hint} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-600">
                 {hint}
               </span>
             ))}
@@ -104,14 +115,14 @@ export default function AiKnowledgePage() {
         </div>
 
         {/* 入力フォーム */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700">店舗説明</p>
+            <p className="text-base font-semibold text-slate-700">店舗説明</p>
             {savedAt && (
-              <span className="flex items-center gap-1 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1 text-xs text-slate-400">
                 <CheckCircle2 size={10} className="text-emerald-500" />
                 {new Date(savedAt).toLocaleDateString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} 保存済み
-                {hasEmbedding && <span className="ml-1 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] text-violet-600">AI学習済み</span>}
+                {hasEmbedding && <span className="ml-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] text-violet-600">AI学習済み</span>}
               </span>
             )}
           </div>
@@ -125,12 +136,12 @@ export default function AiKnowledgePage() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={PLACEHOLDER}
-              rows={10}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+              rows={12}
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-base leading-relaxed text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
             />
           )}
 
-          <p className="mt-2 text-[10px] text-slate-400">
+          <p className="mt-2 text-xs text-slate-400">
             {content.length} 文字 ／ 自由な文章で入力できます
           </p>
         </div>
@@ -146,7 +157,7 @@ export default function AiKnowledgePage() {
           type="button"
           onClick={handleSave}
           disabled={isSaving || !content.trim()}
-          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
+          className={`flex w-full items-center justify-center gap-2 rounded-3xl py-4 text-base font-bold shadow transition ${
             isSaving
               ? "cursor-not-allowed bg-slate-200 text-slate-400"
               : "bg-amber-500 text-white hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
@@ -159,16 +170,16 @@ export default function AiKnowledgePage() {
         </button>
 
         {/* 仕組み説明 */}
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+        <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
           <div className="flex items-center gap-2 mb-2">
             <Save size={13} className="text-slate-400" />
-            <p className="text-xs font-semibold text-slate-500">保存時の処理</p>
+            <p className="text-sm font-semibold text-slate-600">保存後の動き</p>
           </div>
-          <ol className="space-y-1 text-[11px] text-slate-500">
-            <li>1. 入力内容をAIがベクトルデータに変換</li>
-            <li>2. ベクトルデータをデータベースに保存</li>
-            <li>3. お客さんがAIばあちゃんに質問したとき、関連する情報を自動的に参照</li>
-          </ol>
+          <ul className="space-y-1.5 text-sm text-slate-500">
+            <li>・書いた内容をAIばあちゃんが案内に使います</li>
+            <li>・あとから何度でも書き直せます</li>
+            <li>・短いメモでも問題ありません</li>
+          </ul>
         </div>
 
       </div>

@@ -10,7 +10,7 @@ import type { Map as LeafletMap } from "leaflet";
 import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { clearSearchMapPayload, loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../lib/shopImages";
-import GrandmaChatter from "./components/GrandmaChatter";
+const GrandmaChatter = dynamic(() => import("./components/GrandmaChatter"), { ssr: false });
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
@@ -19,7 +19,6 @@ import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
 import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
-import { applyShopEdits } from "../../../lib/shopEdits";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
@@ -27,6 +26,15 @@ import { buildSearchIndex } from "../search/lib/searchIndex";
 import { useShopSearch } from "../search/hooks/useShopSearch";
 import { getOrCreateConsultVisitorKey } from "../../../lib/consultVisitorKey";
 import MapCharacterConsult from "./components/MapCharacterConsult";
+import {
+  buildCouponVendorIdsByType,
+  COUPON_LOTTERY_PENDING_KEY,
+  fetchCouponTypes,
+  fetchMyCoupons,
+  getEligibleCouponVendorIds,
+  todayJstString,
+} from "../../../lib/coupons/client";
+import type { CouponTypeWithParticipants, MyCouponsResponse } from "../../../lib/coupons/types";
 
 const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
@@ -38,7 +46,6 @@ type MapPageClientProps = {
   shops: Shop[];
   landmarks: Landmark[];
   mapRoute: MapRoute;
-  showGrandma?: boolean;
   shopBannerVariant?: "default" | "kotodute";
   attendanceEstimates?: Record<
     number,
@@ -104,10 +111,10 @@ export default function MapPageClient({
   shops,
   landmarks,
   mapRoute,
-  showGrandma = true,
   shopBannerVariant = "default",
   attendanceEstimates,
 }: MapPageClientProps) {
+  const showGrandma = false;
   const searchParams = useSearchParams();
   const router = useRouter();
   const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
@@ -153,10 +160,79 @@ export default function MapPageClient({
   const [currentZoom, setCurrentZoom] = useState<number>(21); // Default max zoom
   const [tutorialProgress, setTutorialProgress] = useState<number>(0);
   const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
+  const [couponData, setCouponData] = useState<MyCouponsResponse | null>(null);
+  const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
+  const [mapSearchCouponTypeId, setMapSearchCouponTypeId] = useState<string | null>(null);
   useEffect(() => {
     const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
     setTutorialProgress(Math.min(10, stored));
   }, []);
+
+  const refreshCouponData = useCallback(async (visitorKey?: string) => {
+    const resolvedVisitorKey = visitorKey ?? getOrCreateConsultVisitorKey();
+    if (!resolvedVisitorKey) return;
+    try {
+      const next = await fetchMyCoupons(resolvedVisitorKey, todayJstString());
+      setCouponData(next);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCouponTypes()
+      .then((nextCouponTypes) => {
+        setCouponTypes(nextCouponTypes.filter((couponType) => couponType.participant_count > 0));
+      })
+      .catch(() => {
+        setCouponTypes([]);
+      });
+  }, []);
+
+  // 初回クーポン発行（マップを開いた日に1回だけ。失敗しても無視する）
+  useEffect(() => {
+    const visitorKey = getOrCreateConsultVisitorKey();
+    if (!visitorKey) return;
+    const marketDate = todayJstString();
+    fetch("/api/coupons/issue-initial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitor_key: visitorKey, market_date: marketDate }),
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { issued?: boolean };
+      })
+      .then((payload) => {
+        if (payload?.issued && typeof window !== "undefined") {
+          window.localStorage.setItem(COUPON_LOTTERY_PENDING_KEY, "1");
+        }
+      })
+      .catch(() => {
+        // 通信エラーは無視（クーポンは副次機能）
+      })
+      .finally(() => {
+        refreshCouponData(visitorKey);
+      });
+  }, [refreshCouponData]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const handleFocus = () => {
+      refreshCouponData();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshCouponData();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshCouponData]);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const updateBannerState = () => {
@@ -181,6 +257,25 @@ export default function MapPageClient({
   } | null>(null);
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [mapSearchCategory, setMapSearchCategory] = useState<string | null>(null);
+  const couponEligibleVendorIds = useMemo(
+    () => getEligibleCouponVendorIds(couponData),
+    [couponData]
+  );
+  const couponVendorIdsByType = useMemo(
+    () => buildCouponVendorIdsByType(couponTypes),
+    [couponTypes]
+  );
+  const mapSearchCouponVendorIds = useMemo(
+    () =>
+      mapSearchCouponTypeId
+        ? couponVendorIdsByType.get(mapSearchCouponTypeId)
+        : undefined,
+    [couponVendorIdsByType, mapSearchCouponTypeId]
+  );
+  const mapSearchCouponType = useMemo(
+    () => couponTypes.find((couponType) => couponType.id === mapSearchCouponTypeId) ?? null,
+    [couponTypes, mapSearchCouponTypeId]
+  );
   const mapSearchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
   const mapSearchResults = useShopSearch({
     shops,
@@ -188,13 +283,26 @@ export default function MapPageClient({
     textQuery: mapSearchQuery,
     category: mapSearchCategory,
     chome: null,
+    couponVendorIds: mapSearchCouponVendorIds,
   });
+  const activeCouponTypeId = couponData?.active_coupon?.coupon_type_id ?? undefined;
+  const stampedVendorIds = useMemo(
+    () => couponData?.stamps?.map((s) => s.vendor_id) ?? [],
+    [couponData]
+  );
+  const mapSearchLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (mapSearchQuery.trim()) parts.push(mapSearchQuery.trim());
+    if (mapSearchCategory) parts.push(mapSearchCategory);
+    if (mapSearchCouponType) parts.push(`${mapSearchCouponType.emoji} ${mapSearchCouponType.name}`);
+    return parts.join(" / ");
+  }, [mapSearchCategory, mapSearchCouponType, mapSearchQuery]);
   const mapSearchShopIds = useMemo(
     () =>
-      mapSearchQuery.trim() || mapSearchCategory
+      mapSearchQuery.trim() || mapSearchCategory || mapSearchCouponTypeId
         ? mapSearchResults.map((s) => s.id)
         : undefined,
-    [mapSearchCategory, mapSearchQuery, mapSearchResults],
+    [mapSearchCategory, mapSearchCouponTypeId, mapSearchQuery, mapSearchResults],
   );
   const [aiMarkerPayload, setAiMarkerPayload] = useState<{
     ids: number[];
@@ -205,6 +313,7 @@ export default function MapPageClient({
     setSearchMarkerPayload(null);
     setMapSearchQuery('');
     setMapSearchCategory(null);
+    setMapSearchCouponTypeId(null);
   }, []);
   const closeMapCharacterConsult = useCallback(() => {
     setMapCharacterConsultActive(false);
@@ -284,8 +393,7 @@ export default function MapPageClient({
 
   const vendorShop = useMemo(() => {
     if (!vendorShopId) return null;
-    const merged = applyShopEdits(shops);
-    return merged.find((shop) => shop.id === vendorShopId) ?? null;
+    return shops.find((shop) => shop.id === vendorShopId) ?? null;
   }, [shops, vendorShopId]);
 
   useEffect(() => {
@@ -632,16 +740,25 @@ export default function MapPageClient({
     });
   }, []);
 
+  const shouldShowNavigationBar = !isShopBannerOpen;
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-tl from-yellow-200 to-amber-200 rounded-full blur-3xl opacity-20"></div>
       </div>
 
-      {/* メイン */}
-      <main className="relative z-10 flex-1 overflow-hidden pb-16">
+      {/* メイン: NavigationBar(h-14=3.5rem) + safe-area-inset-bottom 分だけ下に余白 */}
+      <main
+        className="relative z-10 flex-1 overflow-hidden"
+        style={{
+          paddingBottom: shouldShowNavigationBar
+            ? 'calc(3.5rem + var(--safe-bottom, 0px))'
+            : '0px',
+        }}
+      >
         <div className="relative h-full overflow-hidden">
             {showBanner && recommendedRecipe && (
               <div className="absolute left-4 right-4 top-4 z-[1200]">
@@ -770,9 +887,12 @@ export default function MapPageClient({
               aiShopIds={aiMarkerPayload?.ids}
               searchLabel={
                 searchMarkerPayload?.label ??
-                (mapSearchQuery.trim() || mapSearchCategory || aiMarkerPayload?.label)
+                (mapSearchLabel || aiMarkerPayload?.label)
               }
               searchQuery={mapSearchQuery}
+              couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
+              activeCouponTypeId={activeCouponTypeId}
+              stampedVendorIds={stampedVendorIds}
               onSearchQuery={(q) => {
                 setMapSearchQuery(q);
                 if (searchMarkerPayload) {
@@ -784,20 +904,18 @@ export default function MapPageClient({
                 }
               }}
               onMapReady={markMapReady}
-              eventTargets={eventTargets}
-              highlightEventTargets={showGrandma ? isHoldActive : false}
               onMapInstance={handleMapInstance}
               onUserLocationUpdate={(coords) => {
                 setUserLocation({ lat: coords.lat, lng: coords.lng });
                 setIsInMarket(coords.inMarket);
               }}
-              commentShopId={commentHighlightShopId ?? undefined}
               spotlightShopId={spotlightShopId ?? undefined}
               onClearSearch={() => {
                 clearSearchMapPayload();
                 setSearchMarkerPayload(null);
                 setMapSearchQuery('');
                 setMapSearchCategory(null);
+                setMapSearchCouponTypeId(null);
                 setAiMarkerPayload(null);
               }}
               kotoduteShopIds={kotoduteShopIds}
@@ -805,6 +923,7 @@ export default function MapPageClient({
               attendanceEstimates={attendanceEstimates}
               onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
+              hideMapUI={mapCharacterConsultActive}
               overlaySlot={
                 mapCharacterConsultActive ? (
                   <MapCharacterConsult
@@ -818,119 +937,6 @@ export default function MapPageClient({
                 ) : undefined
               }
             />
-            {showGrandma &&
-              !searchMarkerPayload &&
-              !mapSearchShopIds &&
-              !mapCharacterConsultActive &&
-              !isShopBannerOpen && (
-              <>
-                <GrandmaChatter
-                  titleLabel="にちよさん"
-                  fullWidth
-                  comments={commentPool}
-                  onAsk={handleGrandmaAsk}
-                  allShops={shops}
-                  aiSuggestedShops={aiSuggestedShops}
-                  onSelectShop={(shopId) => router.push(`/map?shop=${shopId}`)}
-                  onHoldChange={setIsHoldActive}
-                  onDrop={handleGrandmaDrop}
-                  onActiveShopChange={setCommentHighlightShopId}
-                  onCommentShopFocus={handleCommentShopFocus}
-                  onCommentShopOpen={handleCommentShopOpen}
-                  onCommentSeen={handleCommentSeen}
-                  introImageUrl={introImageUrl}
-                  onAiImageClick={handleAiImageClick}
-                  currentZoom={currentZoom}
-                  priorityMessage={
-                    priority
-                      ? {
-                          text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
-                          badgeTitle: priority.badge.badge.title,
-                          badgeIcon: priority.badge.tierIcon,
-                        }
-                      : null
-                  }
-                  onPriorityClick={() => setShowBadgeModal(true)}
-                  onPriorityDismiss={clearPriority}
-                />
-                <BadgeModal
-                  open={showBadgeModal && !!priority}
-                  onClose={() => {
-                    setShowBadgeModal(false);
-                    clearPriority();
-                  }}
-                  title={priority?.badge.badge.title ?? ""}
-                  slot={priority?.badge.slot ?? ""}
-                  tierTitle={priority?.badge.tierTitle ?? ""}
-                  tierIcon={priority?.badge.tierIcon ?? ""}
-                  count={priority?.badge.count ?? 0}
-                />
-                {activeEvent && activeMessage && (
-                  <div className="fixed inset-0 z-[3000] flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/70" />
-                    <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
-                      <div className="absolute inset-0">
-                        <img
-                          src="/images/obaasan.webp"
-                          alt="おばあちゃん"
-                          className="h-full w-full object-cover object-center"
-                        />
-                      </div>
-                      <div className="absolute left-6 top-4 z-10">
-                        <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
-                          {activeEvent.title}
-                        </h3>
-                      </div>
-                      <div className="relative flex min-h-[45vh] flex-col pt-16">
-                        <div className="mt-auto space-y-3 -translate-y-[10px]">
-                          {activeMessage.image && (
-                            <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-                              <img
-                                src={activeMessage.image}
-                                alt=""
-                                className="h-44 w-full object-cover object-center sm:h-56"
-                              />
-                            </div>
-                          )}
-                          <div className="space-y-2">
-                            <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                              {activeMessage.subtitle}
-                            </div>
-                            <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
-                              {activeMessage.text}
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>
-                              {eventMessageIndex + 1}/{activeEvent.messages.length}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {eventMessageIndex > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={handleEventBack}
-                                  className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
-                                >
-                                  戻る
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={handleEventAdvance}
-                                className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                              >
-                                {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
           </div>
       </main>
 
@@ -976,7 +982,7 @@ export default function MapPageClient({
               >
                 <div className="h-1 w-10 rounded-full bg-white/40" />
               </div>
-              <div className="h-full overflow-y-auto overscroll-contain pt-6">
+              <div className="h-full overflow-hidden pt-6">
                 <Suspense fallback={null}>
                   <SearchClient
                     shops={shops}
@@ -984,9 +990,11 @@ export default function MapPageClient({
                     embedded
                     initialQuery={mapSearchQuery}
                     initialCategory={mapSearchCategory}
-                    onQueryChange={(q, cat) => {
+                    initialCouponTypeId={mapSearchCouponTypeId}
+                    onQueryChange={(q, cat, couponTypeId) => {
                       setMapSearchQuery(q);
                       setMapSearchCategory(cat);
+                      setMapSearchCouponTypeId(couponTypeId);
                       if (searchMarkerPayload) {
                         clearSearchMapPayload();
                         setSearchMarkerPayload(null);
@@ -1003,16 +1011,18 @@ export default function MapPageClient({
         )}
       </AnimatePresence>
 
-      <NavigationBar
-        onMenuOpenChange={(open) => {
-          if (open) {
-            closeMapCharacterConsult();
-          }
-        }}
-        onConsultClick={startMapCharacterConsult}
-        closeModeActive={hasSearchMode || hasAiMode}
-        onCloseMode={closeMapInteractionMode}
-      />
+      {shouldShowNavigationBar && (
+        <NavigationBar
+          onMenuOpenChange={(open) => {
+            if (open) {
+              closeMapCharacterConsult();
+            }
+          }}
+          onConsultClick={startMapCharacterConsult}
+          closeModeActive={hasSearchMode || hasAiMode}
+          onCloseMode={closeMapInteractionMode}
+        />
+      )}
     </div>
   );
 }

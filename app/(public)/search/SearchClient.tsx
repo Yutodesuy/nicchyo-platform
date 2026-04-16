@@ -16,6 +16,14 @@ import { loadFavoriteShopIds, toggleFavoriteShopId } from '../../../lib/favorite
 import { saveSearchMapPayload } from '../../../lib/searchMapStorage';
 import { recordProductSearch } from '@/app/vendor/_services/analyticsService';
 import ShopDetailBanner from '../map/components/ShopDetailBanner';
+import {
+  buildCouponVendorIdsByType,
+  fetchCouponTypes,
+  fetchMyCoupons,
+  getEligibleCouponVendorIds,
+} from '@/lib/coupons/client';
+import type { CouponTypeWithParticipants } from '@/lib/coupons/types';
+import { getOrCreateConsultVisitorKey } from '@/lib/consultVisitorKey';
 
 const MapView = dynamic(() => import('../map/components/MapView'), {
   ssr: false,
@@ -121,34 +129,71 @@ function formatPostCreatedAt(createdAt?: string): string {
   }).format(created);
 }
 
+function formatCouponTypeLabel(couponType?: CouponTypeWithParticipants | null): string {
+  if (!couponType) return 'クーポン';
+  return `${couponType.emoji} ${couponType.name}`;
+}
+
 export default function SearchClient({
   shops,
   landmarks,
   embedded = false,
   initialQuery = '',
   initialCategory = null,
+  initialCouponTypeId = null,
   onQueryChange,
 }: SearchClientProps & {
   embedded?: boolean;
   initialQuery?: string;
   initialCategory?: string | null;
-  onQueryChange?: (query: string, category: string | null) => void;
+  initialCouponTypeId?: string | null;
+  onQueryChange?: (query: string, category: string | null, couponTypeId: string | null) => void;
 }) {
   const router = useRouter();
   const itemsPerPage = 10;
   const [textQuery, setTextQuery] = useState(initialQuery);
   const [category, setCategory] = useState<string | null>(initialCategory);
+  const [selectedCouponTypeId, setSelectedCouponTypeId] = useState<string | null>(initialCouponTypeId);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [openedShop, setOpenedShop] = useState<Shop | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
+  const [couponEligibleVendorIds, setCouponEligibleVendorIds] = useState<Set<string>>(new Set());
+  const [showCouponTypeFilters, setShowCouponTypeFilters] = useState(false);
+  const [activeCouponTypeId, setActiveCouponTypeId] = useState<string | undefined>(undefined);
   const skipNextEmbeddedSyncRef = useRef(embedded);
   const prevInitialQueryRef = useRef(initialQuery);
   const prevInitialCategoryRef = useRef(initialCategory);
+  const prevInitialCouponTypeIdRef = useRef(initialCouponTypeId);
 
   useEffect(() => {
     setFavoriteShopIds(loadFavoriteShopIds());
+  }, []);
+
+  useEffect(() => {
+    const visitorKey = getOrCreateConsultVisitorKey();
+    Promise.all([
+      visitorKey ? fetchMyCoupons(visitorKey) : Promise.resolve(null),
+      fetchCouponTypes(),
+    ])
+      .then(([couponData, nextCouponTypes]) => {
+        const availableCouponTypes = nextCouponTypes.filter(
+          (couponType) => couponType.participant_count > 0
+        );
+        const eligibleVendors = getEligibleCouponVendorIds(couponData);
+        setCouponEligibleVendorIds(eligibleVendors);
+        setCouponTypes(availableCouponTypes);
+        setShowCouponTypeFilters(availableCouponTypes.length > 0); // TODO: 開発中は常に表示。本番前に `(couponData?.is_market_day ?? false) &&` を先頭に戻す
+        setActiveCouponTypeId(couponData?.active_coupon?.coupon_type_id ?? undefined);
+      })
+      .catch(() => {
+        setCouponEligibleVendorIds(new Set());
+        setCouponTypes([]);
+        setShowCouponTypeFilters(false);
+        setActiveCouponTypeId(undefined);
+      });
   }, []);
 
   useEffect(() => {
@@ -177,14 +222,22 @@ export default function SearchClient({
   useEffect(() => {
     const propsChanged =
       prevInitialQueryRef.current !== initialQuery ||
-      prevInitialCategoryRef.current !== initialCategory;
+      prevInitialCategoryRef.current !== initialCategory ||
+      prevInitialCouponTypeIdRef.current !== initialCouponTypeId;
     if (!propsChanged) return;
     prevInitialQueryRef.current = initialQuery;
     prevInitialCategoryRef.current = initialCategory;
+    prevInitialCouponTypeIdRef.current = initialCouponTypeId;
     skipNextEmbeddedSyncRef.current = true;
     setTextQuery(initialQuery);
     setCategory(initialCategory);
-  }, [initialCategory, initialQuery]);
+    setSelectedCouponTypeId(initialCouponTypeId);
+  }, [initialCategory, initialCouponTypeId, initialQuery]);
+
+  useEffect(() => {
+    if (showCouponTypeFilters || selectedCouponTypeId === null) return;
+    setSelectedCouponTypeId(null);
+  }, [selectedCouponTypeId, showCouponTypeFilters]);
 
   const handleToggleFavorite = (shopId: number) => {
     const next = toggleFavoriteShopId(shopId);
@@ -193,6 +246,18 @@ export default function SearchClient({
 
   // 検索インデックスを事前構築（初回のみ）
   const searchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
+  const couponVendorIdsByType = useMemo(
+    () => buildCouponVendorIdsByType(couponTypes),
+    [couponTypes]
+  );
+  const selectedCouponVendorIds = useMemo(
+    () => (selectedCouponTypeId ? couponVendorIdsByType.get(selectedCouponTypeId) : undefined),
+    [couponVendorIdsByType, selectedCouponTypeId]
+  );
+  const selectedCouponType = useMemo(
+    () => couponTypes.find((couponType) => couponType.id === selectedCouponTypeId) ?? null,
+    [couponTypes, selectedCouponTypeId]
+  );
 
   // 検索フックで店舗をフィルタリング
   const filteredShops = useShopSearch({
@@ -201,6 +266,7 @@ export default function SearchClient({
     textQuery,
     category,
     chome: null,
+    couponVendorIds: selectedCouponVendorIds,
   });
   const totalPages = Math.max(1, Math.ceil(filteredShops.length / itemsPerPage));
   const pagedShops = useMemo(() => {
@@ -237,7 +303,7 @@ export default function SearchClient({
   }, [textQuery, filteredShops.length]);
 
   // 検索クエリが入力されているか
-  const hasQuery = textQuery.trim() !== '' || category !== null;
+  const hasQuery = textQuery.trim() !== '' || category !== null || selectedCouponTypeId !== null;
   const filteredLatestPosts = useMemo(() => {
     if (!hasQuery) return [];
     const filteredIds = new Set(filteredShops.map((shop) => shop.id));
@@ -251,14 +317,17 @@ export default function SearchClient({
   const canNavigate = filteredShops.length > 1 && selectedIndex >= 0;
 
   const searchLabel = useMemo(() => {
+    const parts: string[] = [];
     const trimmedText = textQuery.trim();
-    if (trimmedText) return trimmedText;
-    if (category) return category;
+    if (trimmedText) parts.push(trimmedText);
+    if (category) parts.push(category);
+    if (selectedCouponType) parts.push(formatCouponTypeLabel(selectedCouponType));
+    if (parts.length > 0) return parts.join(' / ');
     return '検索結果';
-  }, [textQuery, category]);
+  }, [category, selectedCouponType, textQuery]);
 
   const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
-  const shouldShowMapButton = category !== null || hasNameResults;
+  const shouldShowMapButton = hasQuery && filteredShops.length > 0;
   const desktopSearchShopIds = useMemo(
     () => (hasQuery ? filteredShops.map((shop) => shop.id) : undefined),
     [filteredShops, hasQuery]
@@ -266,7 +335,7 @@ export default function SearchClient({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [itemsPerPage, textQuery, category]);
+  }, [itemsPerPage, textQuery, category, selectedCouponTypeId]);
 
   useEffect(() => {
     setCurrentPage((prev) => Math.min(prev, totalPages));
@@ -292,13 +361,13 @@ export default function SearchClient({
   }, [filteredShops, router, searchLabel]);
 
   const syncEmbeddedSearch = useCallback(
-    (nextQuery: string, nextCategory: string | null) => {
+    (nextQuery: string, nextCategory: string | null, nextCouponTypeId: string | null) => {
       if (!embedded || !onQueryChange) return;
       if (skipNextEmbeddedSyncRef.current) {
         skipNextEmbeddedSyncRef.current = false;
       }
-      onQueryChange(nextQuery, nextCategory);
-      if (nextQuery.trim() || nextCategory) {
+      onQueryChange(nextQuery, nextCategory, nextCouponTypeId);
+      if (nextQuery.trim() || nextCategory || nextCouponTypeId) {
         router.push('/map');
       }
     },
@@ -326,13 +395,18 @@ export default function SearchClient({
 
   const handleTextQueryChange = useCallback((nextQuery: string) => {
     setTextQuery(nextQuery);
-    syncEmbeddedSearch(nextQuery, category);
-  }, [category, syncEmbeddedSearch]);
+    syncEmbeddedSearch(nextQuery, category, selectedCouponTypeId);
+  }, [category, selectedCouponTypeId, syncEmbeddedSearch]);
 
   const handleCategoryChange = useCallback((nextCategory: string | null) => {
     setCategory(nextCategory);
-    syncEmbeddedSearch(textQuery, nextCategory);
-  }, [syncEmbeddedSearch, textQuery]);
+    syncEmbeddedSearch(textQuery, nextCategory, selectedCouponTypeId);
+  }, [selectedCouponTypeId, syncEmbeddedSearch, textQuery]);
+
+  const handleCouponTypeChange = useCallback((nextCouponTypeId: string | null) => {
+    setSelectedCouponTypeId(nextCouponTypeId);
+    syncEmbeddedSearch(textQuery, category, nextCouponTypeId);
+  }, [category, syncEmbeddedSearch, textQuery]);
 
   const handleFocusShop = useCallback((shop: Shop) => {
     if (isDesktop) {
@@ -349,12 +423,12 @@ export default function SearchClient({
   }, [isDesktop, router, selectedShop]);
 
   return (
-    <div className={`flex min-h-screen flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
+    <div className={`flex min-h-[100svh] flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
-        <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
+        <section className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
           <div className="hidden lg:sticky lg:top-4 lg:block">
-            <div className="flex h-[calc(100vh-6.875rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
+            <div className="flex h-[calc(100svh-6.875rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
               <div className="mb-3 shrink-0 rounded-2xl border border-amber-100 bg-white/95 px-5 py-3 text-center shadow-sm">
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
                 <h2 className="mt-0.5 text-xl font-bold text-gray-900">お店を探す</h2>
@@ -369,6 +443,8 @@ export default function SearchClient({
                   onShopSelect={isDesktop ? setOpenedShop : undefined}
                   searchShopIds={desktopSearchShopIds}
                   searchLabel={searchLabel}
+                  couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
+                  activeCouponTypeId={activeCouponTypeId}
                   suppressInitialLocationFocus
                 />
               </div>
@@ -381,17 +457,17 @@ export default function SearchClient({
                 shop={openedShop}
                 onClose={() => setOpenedShop(null)}
                 layout="inline"
+                activeCouponTypeId={activeCouponTypeId}
               />
             ) : (
               <>
-            <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm lg:hidden">
-              <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
-              <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
-              <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
+            <div className="flex items-center gap-2 px-1 pt-2 lg:hidden">
+              <h2 className="text-lg font-bold text-gray-900">お店を探す</h2>
+              <span className="text-xs text-gray-500">キーワード・カテゴリーで絞り込み</span>
             </div>
 
             {/* 検索フォーム */}
-            <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
+            <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 px-4 pb-3 pt-4 shadow-sm lg:shrink-0">
               <div className="mb-4 hidden lg:block">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
                   Search Controls
@@ -412,9 +488,12 @@ export default function SearchClient({
               {!hasQuery ? (
                 <SearchDiscovery
                   categories={categories}
+                  couponTypes={showCouponTypeFilters ? couponTypes : []}
+                  selectedCouponTypeId={selectedCouponTypeId}
                   onCategorySelect={(cat) => {
                     handleCategoryChange(cat);
                   }}
+                  onCouponTypeSelect={handleCouponTypeChange}
                 />
               ) : (
                 <div className="animate-in slide-in-from-bottom-2 duration-300">
@@ -423,6 +502,9 @@ export default function SearchClient({
                     selectedCategory={category}
                     onCategoryChange={handleCategoryChange}
                     categories={categories}
+                    couponTypes={showCouponTypeFilters ? couponTypes : []}
+                    selectedCouponTypeId={selectedCouponTypeId}
+                    onCouponTypeChange={handleCouponTypeChange}
                   />
 
                   <p className="mt-3 text-[11px] text-gray-600">
@@ -486,6 +568,7 @@ export default function SearchClient({
                 categories={categories}
                 onCategoryClick={handleSuggestionClick}
                 favoriteShopIds={favoriteShopIds}
+                couponVendorIds={couponEligibleVendorIds}
                 onPageSelect={handlePageSelect}
                 onToggleFavorite={handleToggleFavorite}
                 onSelectShop={handleFocusShop}

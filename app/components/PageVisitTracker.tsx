@@ -3,7 +3,10 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+import { isAnalyticsAllowed } from "@/lib/analytics/consentClient";
+
 function sendVisit(path: string, durationSeconds: number) {
+  if (typeof window !== "undefined" && !isAnalyticsAllowed()) return;
   const payload = JSON.stringify({ path, durationSeconds });
 
   if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
@@ -50,6 +53,16 @@ export default function PageVisitTracker() {
     startTimeRef.current = Date.now();
     sentRef.current = false;
     sendVisit(nextPath, 1);
+
+    // Fire GA4 page_view for SPA navigations if gtag is available
+    try {
+      const w = window as any;
+      if (typeof w?.gtag === "function") {
+        w.gtag("event", "page_view", { page_path: nextPath });
+      }
+    } catch {
+      // ignore in non-browser environments
+    }
   }, [pathname, searchParams]);
 
   useEffect(() => {
