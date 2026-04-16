@@ -7,7 +7,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getRoleTheme } from "@/lib/theme/roleTheme";
 import { useAdminNotifications } from "@/lib/hooks/useAdminNotifications";
@@ -29,8 +29,9 @@ export const AdminSidebar = React.memo(function AdminSidebar({
   onToggle?: () => void;
   onClose: () => void;
 }) {
-  const { user, permissions } = useAuth();
+  const { user, permissions, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const theme = getRoleTheme(user?.role);
   const { unreadCount } = useAdminNotifications(permissions.isSuperAdmin || permissions.canModerateContent);
 
@@ -91,6 +92,12 @@ export const AdminSidebar = React.memo(function AdminSidebar({
       show: permissions.isSuperAdmin,
     },
   ].filter((item) => item.show !== false);
+
+  const handleLogout = async () => {
+    onClose();
+    await logout();
+    router.push("/map");
+  };
 
   return (
     <>
@@ -189,6 +196,27 @@ export const AdminSidebar = React.memo(function AdminSidebar({
             );
           })}
         </nav>
+
+        <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-4">
+          <div className="grid gap-2">
+            <Link
+              href="/map"
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+            >
+              <span aria-hidden="true">🗺️</span>
+              マップを開く
+            </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              <span aria-hidden="true">🚪</span>
+              ログアウト
+            </button>
+          </div>
+        </div>
       </aside>
     </>
   );
