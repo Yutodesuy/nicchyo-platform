@@ -13,7 +13,7 @@ import ViewportHeightUpdater from "./components/ViewportHeightUpdater";
 import { Toaster } from "@/components/admin";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://nicchyo.jp"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp"),
   title: {
     default: "nicchyo | 高知の日曜市を、未来へつなぐ",
     template: "%s | nicchyo",
@@ -55,14 +55,16 @@ export const viewport: Viewport = {
 
 const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp";
+
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "nicchyo（ニッチョ）",
-  url: "https://nicchyo.jp",
+  url: SITE_URL,
   description:
     "高知の日曜市を舞台に、観光客・地元・市場がつながるデジタルプラットフォーム。",
-  logo: "https://nicchyo.jp/og-default.png",
+  logo: `${SITE_URL}/og-default.png`,
   areaServed: {
     "@type": "Place",
     name: "高知県高知市",

@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { formatShopIdToCode } from "@/lib/shops/route";
 
-const SITE_URL = "https://nicchyo.jp";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp";
 
 // 静的ページ一覧
 const STATIC_PAGES: MetadataRoute.Sitemap = [
