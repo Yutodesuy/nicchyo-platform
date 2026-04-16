@@ -6,7 +6,7 @@ import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCir
 import { useAuth } from "@/lib/auth/AuthContext";
 import { fetchVendorStore } from "@/app/vendor/_services/storeService";
 import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
-import NavigationBar from "@/app/components/NavigationBar";
+import VendorNavBar from "@/components/vendor/VendorNavBar";
 
 const MENU_ITEMS: {
   title: string;
@@ -14,73 +14,64 @@ const MENU_ITEMS: {
   href: string;
   accent: string;
   icon: ElementType;
-  image: string;
   badge?: string;
 }[] = [
   {
-    title: "最新情報の発信",
+    title: "最新情報を発信",
     description: "今日のおすすめ・残り数量など",
     href: "/vendor/post/new",
-    accent: "from-amber-500/40 via-amber-100/70 to-white",
+    accent: "from-amber-400/60 to-amber-100/80",
     icon: Megaphone,
-    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
     title: "お店の分析",
     description: "閲覧数・人気商品・時間帯分析",
     href: "/vendor/analytics",
-    accent: "from-violet-400/40 via-violet-100/70 to-white",
+    accent: "from-violet-400/60 to-violet-100/80",
     icon: BarChart2,
-    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
-    title: "出店情報の更新",
+    title: "出店情報を更新",
     description: "商品・決済方法・出店日",
     href: "/vendor/store",
-    accent: "from-emerald-400/40 via-emerald-100/70 to-white",
+    accent: "from-emerald-400/60 to-emerald-100/80",
     icon: Store,
-    image: "/images/home/posters/HomePagePoster2.png",
   },
   {
     title: "クーポン参加設定",
-    description: "参加クーポン種類・利用条件の設定",
+    description: "参加クーポン種類・利用条件",
     href: "/vendor/coupon-settings",
-    accent: "from-green-400/40 via-green-100/70 to-white",
+    accent: "from-green-400/60 to-green-100/80",
     icon: Sparkles,
-    image: "/images/home/posters/HomePagePoster2.png",
     badge: "NEW",
   },
   {
-    title: "クーポンを確定する",
-    description: "お客様のクーポン利用を確定する",
+    title: "クーポンを確定",
+    description: "お客様のクーポン利用を確定",
     href: "/my-shop/coupon",
-    accent: "from-teal-400/40 via-teal-100/70 to-white",
+    accent: "from-teal-400/60 to-teal-100/80",
     icon: Sparkles,
-    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
   {
-    title: "AIばあちゃんに教える",
+    title: "AIに教える",
     description: "お店の情報をAIに学習させる",
     href: "/vendor/ai-knowledge",
-    accent: "from-rose-400/40 via-rose-100/70 to-white",
+    accent: "from-rose-400/60 to-rose-100/80",
     icon: Sparkles,
-    image: "/images/home/posters/HomePagePoster2.png",
   },
   {
     title: "使い方ガイド",
     description: "各機能の説明・Tips",
     href: "/vendor/help",
-    accent: "from-sky-400/30 via-sky-100/70 to-white",
+    accent: "from-sky-400/60 to-sky-100/80",
     icon: BookOpen,
-    image: "/images/home/posters/HomePagePoster6.jpeg",
   },
   {
     title: "アカウント設定",
     description: "名前・メール・パスワード変更",
     href: "/vendor/account",
-    accent: "from-slate-400/30 via-slate-100/70 to-white",
+    accent: "from-slate-400/60 to-slate-100/80",
     icon: Settings,
-    image: "/images/home/posters/HomePagePoster3.jpeg",
   },
 ];
 
@@ -95,10 +86,27 @@ export default function MyShopPage() {
   const canAccess = !isLoading && isLoggedIn;
 
   const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
+  const [summary, setSummary] = useState<{
+    shopName: string;
+    productCount: number;
+    paymentCount: number;
+    scheduleCount: number;
+    postCount: number;
+    hasPhoto: boolean;
+  } | null>(null);
   useEffect(() => {
     if (!user) return;
 
     Promise.all([fetchVendorStore(user.id), fetchVendorPosts(user.id)]).then(([store, posts]) => {
+      setSummary({
+        shopName: store?.name?.trim() || "未設定",
+        productCount: store?.main_products.length ?? 0,
+        paymentCount: store?.payment_methods.length ?? 0,
+        scheduleCount: store?.schedule.length ?? 0,
+        postCount: posts.length,
+        hasPhoto: !!store?.shop_image_url,
+      });
+
       if (!store) return;
       const steps: SetupStep[] = [
         { label: "店舗名を設定する", done: !!store.name?.trim(), href: "/vendor/store" },
@@ -119,81 +127,106 @@ export default function MyShopPage() {
   const showOnboarding = setupSteps !== null && incompletedSteps.length > 0;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.18),_rgba(255,255,255,0))] pb-24">
-      {/* モバイル用ヘッダー */}
-      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm md:hidden">
-        <div className="flex items-center">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">出店者メニュー</h1>
-          </div>
+    <div
+      className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.18),_rgba(255,255,255,0))]"
+      style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
+    >
+      {/* ヘッダー */}
+      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-2xl items-center justify-between md:max-w-4xl">
+          <h1 className="text-xl font-bold text-slate-900 md:text-2xl">出店者メニュー</h1>
+          {user?.name && (
+            <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              {user.name}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-2xl px-4 pt-5 md:max-w-4xl md:pt-8">
-        {/* デスクトップ用ヘッダー */}
-        <div className="hidden md:block">
-          <div className="rounded-[32px] border border-amber-100 bg-white/95 px-6 py-7 text-center shadow-sm">
-            <h1 className="text-4xl font-bold text-slate-900 md:text-5xl">
-              出店者メニュー
-            </h1>
-          </div>
-        </div>
-
+      <div className="mx-auto w-full max-w-2xl px-4 pt-4 md:max-w-4xl md:pt-6">
         {isLoading ? (
-        <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          ログイン状態を確認しています。しばらくお待ちください。
-        </div>
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            ログイン状態を確認しています…
+          </div>
         ) : !canAccess ? (
-        <div className="mt-6 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          出店者としてログインしてください。ログインは
-          <Link href="/login" className="ml-1 font-semibold underline">
-            出店者ログイン
-          </Link>
-          から行えます。
-        </div>
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            出店者としてログインしてください。
+            <Link href="/login" className="ml-1 font-semibold underline">ログイン</Link>
+          </div>
         ) : (
           <>
             {!permissions.isVendor && (
               <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                現在のアカウントに出店者ロールが設定されていません。表示はできますが、保存時に制限が出る場合があります。
+                現在のアカウントに出店者ロールが設定されていません。
               </div>
             )}
 
+            <div className="mb-4 rounded-3xl border border-amber-100 bg-white p-4 shadow-sm md:p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-600">Vendor Menu</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                    {summary?.shopName === "未設定" ? "お店の準備を進めましょう" : `${summary?.shopName} さんの出店メニュー`}
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    まずは「最新情報」「店舗情報」「AIばあちゃん」の3つを整えると、お客さんに伝わりやすくなります。
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 md:w-[320px]">
+                  <Link href="/vendor/post/new" className="rounded-2xl bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400">
+                    最新情報を発信
+                  </Link>
+                  <Link href="/vendor/store" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
+                    店舗情報を更新
+                  </Link>
+                </div>
+              </div>
+
+              {summary && (
+                <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+                  {[
+                    { label: "商品", value: `${summary.productCount}件` },
+                    { label: "決済", value: `${summary.paymentCount}種` },
+                    { label: "出店日", value: `${summary.scheduleCount}日` },
+                    { label: "投稿", value: `${summary.postCount}件` },
+                    { label: "写真", value: summary.hasPhoto ? "あり" : "未設定" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                      <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+                      <p className="mt-1 text-base font-bold text-slate-900">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 初回オンボーディング */}
             {showOnboarding && (
-              <div className="mb-5 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-lg font-bold text-slate-900">はじめに設定しましょう</p>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
-                    {completedCount} / {setupSteps!.length} 完了
+              <div className="mb-4 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-lg font-bold text-slate-900">はじめに整えること</p>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {completedCount}/{setupSteps!.length}完了
                   </span>
                 </div>
-                {/* プログレスバー */}
-                <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
                     className="h-full rounded-full bg-emerald-400 transition-all"
                     style={{ width: `${(completedCount / setupSteps!.length) * 100}%` }}
                   />
                 </div>
                 <ul className="space-y-2">
-                  {setupSteps!.map((step) => (
+                  {incompletedSteps.map((step, index) => (
                     <li key={step.label}>
                       <Link
                         href={step.href}
-                        className={`flex items-center gap-3 rounded-xl px-4 py-3.5 transition ${
-                          step.done
-                            ? "bg-slate-50 text-slate-400"
-                            : "bg-emerald-50 text-slate-700 hover:bg-emerald-100"
-                        }`}
+                        className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-4 text-slate-700 transition hover:bg-emerald-100"
                       >
-                        <CheckCircle2
-                          size={22}
-                          className={`flex-shrink-0 ${step.done ? "text-emerald-400" : "text-slate-300"}`}
-                        />
-                        <span className={`flex-1 text-base font-medium ${step.done ? "line-through" : ""}`}>
-                          {step.label}
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-emerald-500">
+                          {index + 1}
                         </span>
-                        {!step.done && <ChevronRight size={18} className="flex-shrink-0 text-slate-400" />}
+                        <span className="flex-1 text-sm font-semibold">{step.label}</span>
+                        <ChevronRight size={16} className="flex-shrink-0 text-slate-400" />
                       </Link>
                     </li>
                   ))}
@@ -201,51 +234,49 @@ export default function MyShopPage() {
               </div>
             )}
 
-
-            <div className="grid gap-5 md:grid-cols-3">
+            {/* メニューグリッド */}
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">よく使う機能</p>
+                <p className="text-xs text-slate-500">大きいカードをタップして進めます</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
               {MENU_ITEMS.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white shadow-sm transition active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md"
                   >
-                    <div
-                      className="absolute inset-0 bg-cover bg-center opacity-70"
-                      style={{ backgroundImage: `url(${item.image})` }}
-                      aria-hidden="true"
-                    />
                     <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
-                    <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" aria-hidden="true" />
-                    <div className="relative flex h-full min-h-[170px] flex-col gap-3 px-6 py-5">
-                      <div className="flex items-center justify-between">
+                    <div className="relative flex min-h-[128px] flex-col justify-between p-4 md:min-h-[140px] md:p-5">
+                      <div className="flex items-start justify-between">
                         {item.badge ? (
-                          <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
                             {item.badge}
                           </span>
                         ) : (
                           <span />
                         )}
-                        <span className="rounded-3xl border border-white/70 bg-white/90 p-3 text-slate-700 shadow-md">
-                          <Icon size={32} />
+                        <span className="rounded-2xl border border-white/70 bg-white/90 p-2.5 text-slate-700 shadow-sm">
+                          <Icon size={20} />
                         </span>
                       </div>
-                      <div className="text-center">
-                        <div className="text-3xl font-semibold text-slate-900 md:text-[32px]">
-                          {item.title}
-                        </div>
+                      <div>
+                        <p className="text-base font-bold leading-tight text-slate-900 md:text-lg">{item.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-600 md:text-sm">{item.description}</p>
                       </div>
                     </div>
                   </Link>
                 );
               })}
             </div>
-
           </>
         )}
       </div>
-      <NavigationBar />
+      <VendorNavBar />
     </div>
   );
 }

@@ -65,14 +65,22 @@ export default function ProductAnalyticsPage() {
           </div>
         ) : (
           <>
+            <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Product Analytics</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">商品分析</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                どの商品が動いているかを、文字と棒グラフの両方で確認できます。
+              </p>
+            </div>
+
             {/* 自店ランキング */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
                   <Medal size={14} />
                 </div>
-                <h2 className="text-sm font-semibold text-slate-700">自店 商品ランキング</h2>
-                <Link href="/vendor/analytics/input" className="ml-auto text-[10px] font-medium text-amber-600 hover:underline">
+                <h2 className="text-base font-semibold text-slate-700">自店 商品ランキング</h2>
+                <Link href="/vendor/analytics/input" className="ml-auto text-sm font-medium text-amber-600 hover:underline">
                   データを入力 →
                 </Link>
               </div>
@@ -80,7 +88,7 @@ export default function ProductAnalyticsPage() {
               {sorted.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-sm text-slate-400">販売データがありません</p>
-                  <Link href="/vendor/analytics/input" className="mt-3 inline-flex items-center gap-1 rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-400">
+                  <Link href="/vendor/analytics/input" className="mt-3 inline-flex items-center gap-1 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white hover:bg-amber-400">
                     今日の販売を入力する →
                   </Link>
                 </div>
@@ -122,14 +130,14 @@ export default function ProductAnalyticsPage() {
             </div>
 
             {/* 商品需要分析（検索ベース） */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-500">
                   <TrendingUp size={14} />
                 </div>
-                <h2 className="text-sm font-semibold text-slate-700">商品需要分析（検索ベース）</h2>
+                <h2 className="text-base font-semibold text-slate-700">商品需要分析（検索ベース）</h2>
               </div>
-              <p className="mb-3 text-[10px] text-slate-400">過去7日間にユーザーが検索したキーワード上位</p>
+              <p className="mb-3 text-sm text-slate-400">過去7日間にユーザーが検索したキーワード上位</p>
               {searchTrends.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-400">検索データがまだ蓄積されていません</p>
               ) : (
@@ -143,16 +151,16 @@ export default function ProductAnalyticsPage() {
                         <div className="min-w-0 flex-1">
                           <div className="mb-1 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-medium text-slate-700">{item.keyword}</span>
+                              <span className="text-sm font-semibold text-slate-700">{item.keyword}</span>
                               {item.matchesMyProducts && (
-                                <span className="flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[9px] font-semibold text-rose-500">
+                                <span className="flex items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-500">
                                   <Flame size={9} />自店と一致
                                 </span>
                               )}
                             </div>
-                            <span className="flex-shrink-0 text-xs text-slate-500">{item.count}回</span>
+                            <span className="flex-shrink-0 text-sm text-slate-500">{item.count}回</span>
                           </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                             <div
                               className={`h-full rounded-full transition-all ${item.matchesMyProducts ? "bg-rose-400" : "bg-slate-300"}`}
                               style={{ width: `${pct}%` }}

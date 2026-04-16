@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import VendorSidebar from "@/components/vendor/VendorSidebar";
+import VendorNavBar from "@/components/vendor/VendorNavBar";
 
 function GuardMessage({
   title,
@@ -90,7 +91,12 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
         onToggle={() => setIsSidebarOpen((v) => !v)}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <main className="min-h-screen">{children}</main>
+      <main
+        className="min-h-screen pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0"
+      >
+        {children}
+      </main>
+      <VendorNavBar />
     </div>
   );
 }
