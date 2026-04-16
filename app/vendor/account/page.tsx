@@ -186,14 +186,21 @@ export default function VendorAccountPage() {
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+        <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Account</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">アカウント設定</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            名前や連絡先は見やすく、ログアウトはすぐ押せるようにしています。危険な操作は下の方にまとめています。
+          </p>
+        </div>
 
         {/* 一時停止バナー */}
         {SAVE_DISABLED && (
-          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3">
             <Construction size={18} className="mt-0.5 flex-shrink-0 text-amber-600" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">変更機能は現在準備中です</p>
-              <p className="mt-0.5 text-xs text-amber-700">
+              <p className="text-base font-semibold text-amber-800">変更機能は現在準備中です</p>
+              <p className="mt-0.5 text-sm text-amber-700">
                 セキュリティ対応の完了後に有効化予定です。ログアウトは引き続き使用できます。
               </p>
             </div>
@@ -202,7 +209,7 @@ export default function VendorAccountPage() {
 
         {/* プロフィール */}
         <form onSubmit={handleProfileSubmit} className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={User} title="名前" />
             <input
               type="text"
@@ -213,7 +220,7 @@ export default function VendorAccountPage() {
             />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={Mail} title="メールアドレス" />
             <input
               type="email"
@@ -224,7 +231,7 @@ export default function VendorAccountPage() {
             />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <SectionHeader icon={Phone} title="電話番号（任意）" />
             <input
               type="tel"
@@ -286,7 +293,7 @@ export default function VendorAccountPage() {
           </div>
         ) : (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
               <SectionHeader icon={Lock} title="パスワード変更" />
               <div className="space-y-2">
                 <PasswordInput
@@ -332,7 +339,7 @@ export default function VendorAccountPage() {
         )}
 
         {/* ログアウト */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={LogOut} title="ログアウト" />
           <p className="mb-3 text-xs text-slate-500">
             ログアウトすると出店者メニューにアクセスできなくなります
@@ -341,7 +348,7 @@ export default function VendorAccountPage() {
             type="button"
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-rose-200 bg-rose-50 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-rose-200 bg-rose-50 py-3 text-base font-semibold text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isLoggingOut ? (
               <><Loader2 size={16} className="animate-spin" />ログアウト中...</>
@@ -352,7 +359,7 @@ export default function VendorAccountPage() {
         </div>
 
         {/* アカウント削除 */}
-        <div className="rounded-2xl border border-rose-200 bg-white p-4 shadow-sm">
+        <div className="rounded-3xl border border-rose-200 bg-white p-4 shadow-sm">
           <SectionHeader icon={Trash2} title="アカウント削除" />
           <p className="mb-3 text-xs text-slate-500">
             アカウントを削除すると、すべてのデータが完全に失われます。この操作は取り消せません。

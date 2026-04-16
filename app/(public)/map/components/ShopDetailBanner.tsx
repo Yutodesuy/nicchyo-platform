@@ -75,6 +75,7 @@ type ShopDetailBannerProps = {
   onSelectNextShop?: () => void;
   activeCouponTypeId?: string;
   stampedVendorIds?: string[];
+  reserveBottomNavSpace?: boolean;
 };
 
 type BagItem = {
@@ -98,6 +99,7 @@ const OSEKKAI_FALLBACK =
 const BOTTOM_NAV_HEIGHT = 56;
 const DRAWER_PEEK_HEIGHT = 150;
 const DRAWER_FULL_RATIO = 0.9;
+const COLLAPSED_SUMMARY_OFFSET_PX = 10;
 
 const buildBagKey = (name: string, shopId?: number) =>
   `${name.trim().toLowerCase()}-${shopId ?? "any"}`;
@@ -563,6 +565,7 @@ export default function ShopDetailBanner({
   onSelectNextShop,
   activeCouponTypeId,
   stampedVendorIds,
+  reserveBottomNavSpace = true,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
@@ -850,6 +853,7 @@ export default function ShopDetailBanner({
   const isExpandedMobileMain = isMobileOverlay && surface === "detail";
   const showMobileSummaryHeader = isMobileOverlay && surface === "summary";
   const showMobileDetailControls = isMobileOverlay && surface === "detail";
+  const bottomNavOffsetPx = reserveBottomNavSpace ? BOTTOM_NAV_HEIGHT : 0;
 
   const getDrawerHeights = useCallback(() => {
     if (typeof window === "undefined") {
@@ -860,22 +864,25 @@ export default function ShopDetailBanner({
     const full = Math.max(
       DRAWER_PEEK_HEIGHT + 220,
       Math.min(
-        window.innerHeight - BOTTOM_NAV_HEIGHT - safeBottom,
-        Math.round(window.innerHeight * DRAWER_FULL_RATIO - BOTTOM_NAV_HEIGHT)
+        window.innerHeight - bottomNavOffsetPx - safeBottom,
+        Math.round(window.innerHeight * DRAWER_FULL_RATIO - bottomNavOffsetPx)
       )
     );
     return {
       peek: Math.min(DRAWER_PEEK_HEIGHT, full),
       full,
     };
-  }, []);
+  }, [bottomNavOffsetPx]);
 
   const getDrawerTranslateForSurface = useCallback((
     nextSurface: MainSurface | BannerSurface,
     heights: { peek: number; full: number }
   ) => {
     const visibleHeight = nextSurface === "summary" ? heights.peek : heights.full;
-    return Math.max(0, heights.full - visibleHeight);
+    const baseTranslate = Math.max(0, heights.full - visibleHeight);
+    return nextSurface === "summary"
+      ? baseTranslate + COLLAPSED_SUMMARY_OFFSET_PX
+      : baseTranslate;
   }, []);
 
   const applyDrawerTranslate = useCallback((
@@ -885,7 +892,11 @@ export default function ShopDetailBanner({
     if (!isMobileOverlay) return;
     const body = sheetBodyRef.current;
     if (!body) return;
-    const clamped = Math.max(0, Math.min(drawerHeights.full - drawerHeights.peek, nextTranslate));
+    const maxTranslate = Math.max(
+      0,
+      drawerHeights.full - drawerHeights.peek + COLLAPSED_SUMMARY_OFFSET_PX
+    );
+    const clamped = Math.max(0, Math.min(maxTranslate, nextTranslate));
     drawerTranslateRef.current = clamped;
     if (options?.immediate) {
       // 同期的にDOMを更新 → ブラウザの初回ペイント前に確実に反映
@@ -1110,8 +1121,7 @@ export default function ShopDetailBanner({
       }
       style={isInline ? undefined : {
         right: "var(--desktop-menu-offset, 0px)",
-        // ナビゲーションバー分（3.5rem = 56px）＋ iOSセーフエリア分だけ上に持ち上げる
-        paddingBottom: "calc(3.5rem + var(--safe-bottom, 0px))",
+        paddingBottom: `calc(${bottomNavOffsetPx}px + var(--safe-bottom, 0px))`,
       }}
     >
       {/* ── Panel container (overflow-hidden for slide rail) ───────────────── */}
@@ -1121,11 +1131,11 @@ export default function ShopDetailBanner({
           relative w-full overflow-hidden bg-white flex flex-col pointer-events-auto
           ${isMobileOverlay ? "will-change-transform" : ""}
           ${isInline
-            ? "h-[calc(100vh-3.5rem)] border-l border-slate-100 shadow-sm"
+            ? "h-[100vh] border-l border-slate-100 shadow-sm"
             : isMobileOverlay
               ? "rounded-t-3xl shadow-2xl"
               : `
-                h-[calc(100vh-3.5rem)] w-[520px] max-w-[520px]
+                h-[100vh] w-[520px] max-w-[520px]
                 rounded-none border-l border-slate-100
               `
           }
@@ -1133,7 +1143,9 @@ export default function ShopDetailBanner({
         `}
         style={isInline ? undefined : {
           ...bannerStyle,
-          ...(isMobileOverlay ? { height: `${drawerHeights.full}px`, maxHeight: `${drawerHeights.full}px` } : {}),
+          ...(isMobileOverlay
+            ? { height: `${drawerHeights.full}px`, maxHeight: `${drawerHeights.full}px` }
+            : { height: `calc(100vh - ${bottomNavOffsetPx}px)` }),
         }}
       >
         {!isMobileOverlay && (
@@ -1278,7 +1290,7 @@ export default function ShopDetailBanner({
                   </button>
                   <div className="min-w-0 flex-1 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      Compare
+                      他のお店に
                     </p>
                     <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
                       {selectedShopPosition} / {totalShopCount}

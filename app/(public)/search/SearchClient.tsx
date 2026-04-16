@@ -423,12 +423,12 @@ export default function SearchClient({
   }, [isDesktop, router, selectedShop]);
 
   return (
-    <div className={`flex min-h-screen flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
+    <div className={`flex min-h-[100svh] flex-col pb-24 text-gray-900 ${embedded ? "bg-transparent" : "bg-gradient-to-b from-amber-50 via-orange-50 to-white"}`}>
       {/* メインコンテンツ */}
       <main className="flex-1 pb-32 pt-4 lg:pb-0 lg:pt-0">
-        <section className="mx-auto flex max-w-[1440px] flex-col gap-4 px-4 py-6 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
+        <section className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] lg:items-start lg:gap-6 lg:px-4 lg:py-4">
           <div className="hidden lg:sticky lg:top-4 lg:block">
-            <div className="flex h-[calc(100vh-6.875rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
+            <div className="flex h-[calc(100svh-6.875rem)] flex-col overflow-hidden rounded-[2rem] border border-amber-200 bg-white/80 p-3 shadow-sm">
               <div className="mb-3 shrink-0 rounded-2xl border border-amber-100 bg-white/95 px-5 py-3 text-center shadow-sm">
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
                 <h2 className="mt-0.5 text-xl font-bold text-gray-900">お店を探す</h2>
@@ -461,14 +461,13 @@ export default function SearchClient({
               />
             ) : (
               <>
-            <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm lg:hidden">
-              <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
-              <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
-              <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
+            <div className="flex items-center gap-2 px-1 pt-2 lg:hidden">
+              <h2 className="text-lg font-bold text-gray-900">お店を探す</h2>
+              <span className="text-xs text-gray-500">キーワード・カテゴリーで絞り込み</span>
             </div>
 
             {/* 検索フォーム */}
-            <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm lg:shrink-0">
+            <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 px-4 pb-3 pt-4 shadow-sm lg:shrink-0">
               <div className="mb-4 hidden lg:block">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
                   Search Controls

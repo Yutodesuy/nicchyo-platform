@@ -112,6 +112,10 @@ function NavigationBarInner({
   }, [menuOpen, onMenuOpenChange]);
 
   const panel = searchParams?.get("panel");
+  const isRoleConsoleArea =
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/vendor") ||
+    pathname?.startsWith("/moderator");
   const isPanelOpen = pathname === "/map" && !!panel;
   const isCloseUxActive = isPanelOpen || closeModeActive;
   const isHome = (activeHref ?? pathname) === "/map" && !panel && !isCloseUxActive;
@@ -146,6 +150,8 @@ function NavigationBarInner({
 
   const activeCoupon = couponData?.active_coupon ?? null;
   const isMarketDay = isDevCouponOverride || (couponData?.is_market_day ?? false);
+
+  if (isRoleConsoleArea) return null;
 
   return (
     <>

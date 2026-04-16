@@ -281,16 +281,16 @@ export default function VendorPostNewPage() {
         </div>
 
         {/* タブバー */}
-        <div className="mx-auto mt-3 flex max-w-2xl gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
+        <div className="mx-auto mt-3 flex max-w-2xl gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1.5">
           <button
             onClick={() => setActiveTab("new")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition ${activeTab === "new" ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold transition ${activeTab === "new" ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             <PlusCircle size={13} />新規投稿
           </button>
           <button
             onClick={() => setActiveTab("history")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition ${activeTab === "history" ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-semibold transition ${activeTab === "history" ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             <Clock size={13} />投稿履歴
           </button>
@@ -300,34 +300,43 @@ export default function VendorPostNewPage() {
       {/* 新規投稿フォーム */}
       {activeTab === "new" && (
         <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 px-4 pt-5">
+          <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">投稿のポイント</p>
+            <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+              <li>・今日伝えたいことを1つに絞る</li>
+              <li>・画像があると見つけてもらいやすい</li>
+              <li>・表示期間は短めにすると新鮮さが伝わる</li>
+            </ul>
+          </div>
+
           {isRepost && (
-            <div className="flex items-center gap-2 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            <div className="flex items-center gap-2 rounded-3xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
               <Pencil size={14} />過去の投稿を編集して再投稿します
             </div>
           )}
           {formError && (
-            <div className="flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="flex items-center gap-2 rounded-3xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               <AlertCircle size={14} />{formError}
             </div>
           )}
 
           {/* テキスト入力 */}
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="px-4 pt-4">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">投稿内容</label>
+              <label className="mb-2 block text-sm font-semibold uppercase tracking-wider text-slate-400">投稿内容</label>
               <textarea
                 value={text} onChange={(e) => setText(e.target.value)}
                 placeholder="今日のおすすめ情報・残り数量・特別メニューなど..."
-                maxLength={MAX_CHARS} rows={5}
-                className="w-full resize-none rounded-xl bg-slate-50 px-3 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-amber-300"
+                maxLength={MAX_CHARS} rows={6}
+                className="w-full resize-none rounded-2xl bg-slate-50 px-4 py-4 text-base text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-amber-300"
               />
             </div>
             <div className="flex items-center justify-between px-4 pb-3">
-              <span className={`text-xs ${text.length > MAX_CHARS * 0.9 ? "text-red-500" : "text-slate-400"}`}>
+              <span className={`text-sm ${text.length > MAX_CHARS * 0.9 ? "text-red-500" : "text-slate-400"}`}>
                 {text.length} / {MAX_CHARS}
               </span>
               {text.length === 0 && (
-                <span className="flex items-center gap-1 text-xs text-slate-400">
+                <span className="flex items-center gap-1 text-sm text-slate-400">
                   <AlertCircle size={11} />テキストを入力してください
                 </span>
               )}
@@ -335,8 +344,8 @@ export default function VendorPostNewPage() {
           </div>
 
           {/* 画像アップロード */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <label className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">画像（任意）</label>
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <label className="mb-3 block text-sm font-semibold uppercase tracking-wider text-slate-400">画像（任意）</label>
             {imagePreview ? (
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -349,47 +358,47 @@ export default function VendorPostNewPage() {
               </div>
             ) : (
               <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
+                className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
               >
                 <ImageIcon size={24} />
-                <span className="text-sm font-medium">タップして画像を追加</span>
-                <span className="text-xs text-slate-400">JPG / PNG / WEBP（5MB以内）</span>
+                <span className="text-base font-medium">タップして画像を追加</span>
+                <span className="text-sm text-slate-400">JPG / PNG / WEBP（5MB以内）</span>
               </button>
             )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
           </div>
 
           {/* 表示期間 */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <label className="mb-3 block text-xs font-semibold uppercase tracking-wider text-slate-400">表示期間</label>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <label className="mb-3 block text-sm font-semibold uppercase tracking-wider text-slate-400">表示期間</label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {EXPIRATION_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = expirationPreset === opt.preset;
                 return (
                   <button key={opt.preset} type="button" onClick={() => setExpirationPreset(opt.preset)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-center transition ${isSelected ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600 hover:border-amber-200 hover:bg-amber-50/50"}`}
+                    className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-3 py-4 text-center transition ${isSelected ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600 hover:border-amber-200 hover:bg-amber-50/50"}`}
                   >
-                    <Icon size={18} />
-                    <span className="text-xs font-semibold">{opt.label}</span>
-                    <span className="text-[10px] leading-tight text-slate-400">{opt.desc}</span>
+                    <Icon size={20} />
+                    <span className="text-sm font-semibold">{opt.label}</span>
+                    <span className="text-xs leading-tight text-slate-400">{opt.desc}</span>
                   </button>
                 );
               })}
             </div>
             {expirationPreset === "custom" && (
               <div className="mt-3">
-                <label className="mb-1.5 block text-xs text-slate-500">終了日時を選択</label>
+                <label className="mb-1.5 block text-sm text-slate-500">終了日時を選択</label>
                 <input type="datetime-local" value={customDateTime} onChange={(e) => setCustomDateTime(e.target.value)}
                   min={new Date().toISOString().slice(0, 16)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-800 outline-none focus:ring-2 focus:ring-amber-300"
                 />
               </div>
             )}
             {(expirationPreset !== "custom" || customDateTime) && (
-              <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2">
+              <div className="mt-3 flex items-center gap-2 rounded-2xl bg-amber-50 px-3 py-3">
                 <Clock size={14} className="text-amber-600" />
-                <span className="text-xs text-amber-700">
+                <span className="text-sm text-amber-700">
                   表示ラベル：<span className="font-semibold">「{formatExpirationLabel(expirationPreset, customDateTime)}」</span>
                 </span>
               </div>
@@ -400,21 +409,21 @@ export default function VendorPostNewPage() {
           {text.trim().length > 0 && (
             <div>
               <button type="button" onClick={() => setShowPreview(!showPreview)}
-                className="mb-2 text-sm font-medium text-amber-600 hover:underline"
+                className="mb-2 text-base font-semibold text-amber-600 hover:underline"
               >
                 {showPreview ? "プレビューを閉じる" : "投稿プレビューを確認"}
               </button>
               {showPreview && (
-                <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+                <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">出</div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">あなたの店舗</p>
-                      <p className="text-[10px] text-slate-400">{formatExpirationLabel(expirationPreset, customDateTime)}</p>
+                      <p className="text-xs text-slate-400">{formatExpirationLabel(expirationPreset, customDateTime)}</p>
                     </div>
                     <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">公開中</span>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm text-slate-800">{text}</p>
+                  <p className="mt-3 whitespace-pre-wrap text-base text-slate-800">{text}</p>
                   {imagePreview && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={imagePreview} alt="投稿画像" className="mt-3 w-full rounded-xl object-cover" style={{ maxHeight: "200px" }} />
@@ -426,7 +435,7 @@ export default function VendorPostNewPage() {
 
           {/* 送信ボタン */}
           <button type="submit" disabled={!isValid || isSubmitting}
-            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
+            className={`flex w-full items-center justify-center gap-2 rounded-3xl py-4 text-base font-bold shadow transition ${
               isValid && !isSubmitting ? "bg-amber-500 text-white hover:bg-amber-400" : "cursor-not-allowed bg-slate-200 text-slate-400"
             }`}
           >
@@ -442,13 +451,13 @@ export default function VendorPostNewPage() {
             <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{historyError}</div>
           )}
 
-          <div className="mb-4 flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="mb-4 flex gap-1.5 rounded-3xl border border-slate-200 bg-white p-1.5 shadow-sm">
             {FILTER_TABS.map((tab) => (
               <button key={tab.key} onClick={() => setFilterTab(tab.key)}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition ${filterTab === tab.key ? "bg-amber-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-semibold transition ${filterTab === tab.key ? "bg-amber-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
                 {tab.label}
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${filterTab === tab.key ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-400"}`}>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${filterTab === tab.key ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-400"}`}>
                   {tab.count}
                 </span>
               </button>

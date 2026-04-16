@@ -302,7 +302,7 @@ function SearchResultsSheet({
       {!isOpen && (
         <div
           className="absolute left-1/2 z-[1100] -translate-x-1/2 pointer-events-auto"
-          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)' }}
+          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)' }}
         >
           <button
             type="button"
@@ -335,7 +335,7 @@ function SearchResultsSheet({
         className={`absolute left-0 right-0 z-[1650] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
-        style={{ bottom: 0, maxHeight: '55vh', display: 'flex', flexDirection: 'column' }}
+        style={{ bottom: 0, maxHeight: '42vh', display: 'flex', flexDirection: 'column' }}
         onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
         onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
         onMouseDown={(e) => e.stopPropagation()}
@@ -350,7 +350,7 @@ function SearchResultsSheet({
           <div className="flex justify-center pt-3 pb-1">
             <div className="h-1 w-10 rounded-full bg-slate-300" />
           </div>
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Search Results</p>
               <h3 className="text-base font-bold text-slate-900">{searchShops.length}件のお店</h3>
@@ -365,8 +365,8 @@ function SearchResultsSheet({
           </div>
         </div>
 
-        {/* 縦スクロールリスト */}
-        <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+        {/* 一覧は縦スクロール可能 */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
           {searchShops.map((shop, i) => {
             const bannerSeed = shop.position ?? shop.id;
             const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
@@ -375,17 +375,17 @@ function SearchResultsSheet({
                 key={shop.id}
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleRowTap(shop); }}
-                className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors active:bg-amber-50 border-b border-slate-100/80 ${
+                className={`flex w-full items-center gap-3 border-b border-slate-100/80 px-5 py-2.5 text-left transition-colors active:bg-amber-50 ${
                   focusedId === shop.id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                 }`}
               >
-                <div className="shrink-0 h-12 w-12 overflow-hidden rounded-xl bg-slate-100">
+                <div className="shrink-0 h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
                   {imageUrl && (
                     <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-bold text-slate-900 leading-tight">{shop.name}</p>
+                  <p className="truncate text-[13px] font-bold leading-tight text-slate-900">{shop.name}</p>
                   <div className="mt-0.5 flex items-center gap-1.5">
                     {shop.category && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">{shop.category}</span>
@@ -428,14 +428,14 @@ function MapZoomControls({
     >
       {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
       <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <span className="select-none text-[11px] font-bold leading-none text-slate-400">+</span>
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
         <VerticalZoomSlider
           value={currentZoom}
           min={minZoom}
           max={maxZoom}
           onValueChange={(v) => map?.setZoom(v, { animate: false })}
         />
-        <span className="select-none text-[11px] font-bold leading-none text-slate-400">−</span>
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
       </div>
     </div>
   );
@@ -621,12 +621,15 @@ type MapViewProps = {
   stampedVendorIds?: string[];
   /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
   overlaySlot?: React.ReactNode;
+  /** trueのとき拡大縮小スライダーと検索バーを非表示にする */
+  hideMapUI?: boolean;
 };
 
 export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-/** zoom < OVERVIEW_ZONE_MAX_ZOOM のとき丁目エリアマーカーを表示（クラスター廃止） */
-const OVERVIEW_ZONE_MAX_ZOOM = 18;
+/** 18 <= zoom < 19 のとき丁目エリアマーカーを表示 */
+const OVERVIEW_ZONE_MIN_ZOOM = 17;
+const OVERVIEW_ZONE_MAX_ZOOM = 19;
 const SKIPPED_ZOOM_LEVELS = [18];
 const SKIPPED_ZOOM_TOLERANCE = 0.026; // step(0.05) の半分より少し大きく設定
 
@@ -752,6 +755,7 @@ const MapView = memo(function MapView({
   activeCouponTypeId,
   stampedVendorIds,
   overlaySlot,
+  hideMapUI = false,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
   const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
@@ -832,8 +836,10 @@ const MapView = memo(function MapView({
   const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
-    const { innerWidth, innerHeight } = window;
-    return Math.ceil(Math.hypot(innerWidth, innerHeight) + 120);
+    // visualViewport はブラウザUIを除いた実際の表示領域サイズ（iOS Safari 対応）
+    const w = window.visualViewport?.width ?? window.innerWidth;
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    return Math.ceil(Math.hypot(w, h) + 120);
   });
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -864,12 +870,20 @@ const MapView = memo(function MapView({
       const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
-      setMapShellSize(Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) + 120));
+      // visualViewport でブラウザUIを除いた実際の表示領域を取得（iOS Safari 対応）
+      const w = window.visualViewport?.width ?? window.innerWidth;
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setMapShellSize(Math.ceil(Math.hypot(w, h) + 120));
     };
 
     detectMobile();
     window.addEventListener("resize", detectMobile);
-    return () => window.removeEventListener("resize", detectMobile);
+    // iOS Safari ではアドレスバーの表示/非表示で visualViewport が変わる
+    window.visualViewport?.addEventListener("resize", detectMobile);
+    return () => {
+      window.removeEventListener("resize", detectMobile);
+      window.visualViewport?.removeEventListener("resize", detectMobile);
+    };
   }, []);
 
   useEffect(() => {
@@ -1163,8 +1177,8 @@ const MapView = memo(function MapView({
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
   const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
-  const isOverviewZoneMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
-  const isLowZoomTintMode = mapUiZoom < MIN_ZOOM + 1.5;
+  const isOverviewZoneMode = mapUiZoom >= OVERVIEW_ZONE_MIN_ZOOM && mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
+  const isLowZoomTintMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
   const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
   const shouldRenderRecipeOverlay = showRecipeOverlay && mapUiZoom >= 19.0;
@@ -1249,8 +1263,8 @@ const MapView = memo(function MapView({
     return undefined;
   }, [aiShopIds, searchShopIds]);
   const resultsBadgeBottom = overlaySlot
-    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem)'
-    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)';
+    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem + 25px)'
+    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)';
 
   const visibleLandmarkSpecs = useMemo(() => {
     if (!shouldRenderLandmarks) {
@@ -1427,21 +1441,25 @@ const MapView = memo(function MapView({
 
       <TimeAmbientOverlay />
       <MapZoomGuideToast message={zoomGuideMessage} />
-      <MapControls
-        map={mapInstance}
-        isTracking={isTracking}
-        onToggleTracking={() => setIsTracking((prev) => !prev)}
-        currentZoom={mapUiZoom}
-        minZoom={MIN_ZOOM}
-        maxZoom={MAX_ZOOM}
-      />
-      <MapSearchBar
-        searchShopIds={activeHighlightShopIds}
-        searchLabel={searchLabel}
-        searchQuery={searchQuery}
-        onSearchQuery={onSearchQuery}
-        onClearSearch={onClearSearch}
-      />
+      {!hideMapUI && (
+        <>
+          <MapControls
+            map={mapInstance}
+            isTracking={isTracking}
+            onToggleTracking={() => setIsTracking((prev) => !prev)}
+            currentZoom={mapUiZoom}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+          />
+          <MapSearchBar
+            searchShopIds={activeHighlightShopIds}
+            searchLabel={searchLabel}
+            searchQuery={searchQuery}
+            onSearchQuery={onSearchQuery}
+            onClearSearch={onClearSearch}
+          />
+        </>
+      )}
 
       {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
 
@@ -1485,6 +1503,7 @@ const MapView = memo(function MapView({
             originRect={shopBannerOrigin ?? undefined}
             activeCouponTypeId={activeCouponTypeId}
             stampedVendorIds={stampedVendorIds}
+            reserveBottomNavSpace={false}
           />
         </>
       )}

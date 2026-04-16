@@ -283,25 +283,16 @@ function OptimizedShopLayerWithClustering({
 
   useEffect(() => {
     const markers = L.markerClusterGroup({
-      disableClusteringAtZoom: 17,
+      disableClusteringAtZoom: 1,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       chunkedLoading: true,
       chunkInterval: 200,
       chunkDelay: 50,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        let sizeClass = 'cluster-small';
-
-        if (count > 50) {
-          sizeClass = 'cluster-large';
-        } else if (count > 10) {
-          sizeClass = 'cluster-medium';
-        }
-
+      iconCreateFunction: (_cluster) => {
         return L.divIcon({
-          html: `<div class="cluster-icon ${sizeClass}"><span>${count}</span></div>`,
+          html: `<div class="cluster-icon cluster-small"></div>`,
           className: 'custom-cluster-icon',
           iconSize: L.point(40, 40),
         });
