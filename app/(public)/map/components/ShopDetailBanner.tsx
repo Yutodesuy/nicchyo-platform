@@ -19,6 +19,7 @@ import {
   X as XIcon,
   Pencil,
   ArrowLeft,
+  ArrowRight,
   Send,
   Sparkles,
 } from "lucide-react";
@@ -72,6 +73,8 @@ type ShopDetailBannerProps = {
   totalShopCount?: number;
   onSelectPreviousShop?: () => void;
   onSelectNextShop?: () => void;
+  activeCouponTypeId?: string;
+  stampedVendorIds?: string[];
 };
 
 type BagItem = {
@@ -179,6 +182,9 @@ function ShopBannerHero({
   isKotodute,
   showProductPreview = false,
   onEdit,
+  couponBadge,
+  couponStatus,
+  primaryCouponSetting,
 }: {
   shop: Shop;
   bannerImage: string;
@@ -189,63 +195,114 @@ function ShopBannerHero({
   isKotodute: boolean;
   showProductPreview?: boolean;
   onEdit?: () => void;
+  couponBadge?: React.ReactNode;
+  couponStatus?: "active" | "stamped" | "participating" | null;
+  primaryCouponSetting?: {
+    coupon_type_id: string;
+    coupon_type_name: string;
+    coupon_type_emoji: string;
+    coupon_type_amount: number;
+    min_purchase_amount: number;
+  } | null;
 }) {
   if (mode === "compact") {
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 pr-12">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-            {heroImageError ? (
-              <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
-                {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
-              </div>
-            ) : (
-              <Image
-                src={bannerImage}
-                alt={`${shop.name}の写真`}
-                fill
-                className="object-cover object-center"
-                onError={onImageError}
-              />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
-                style={{ backgroundColor: theme.light, color: theme.text }}
-              >
-                {shop.category || "ショップ"}
-              </span>
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                今日出店中
-              </span>
-            </div>
-            <h2 className="mt-1 line-clamp-2 text-[17px] font-extrabold leading-tight text-slate-900">
-              {shop.name}
-            </h2>
-            {!isKotodute && shop.catchphrase && (
-              <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{shop.catchphrase}</p>
-            )}
-          </div>
+    // クーポン状態に応じた右側カード
+    const couponCard =
+      couponStatus === "active" && primaryCouponSetting ? (
+        <div className="mr-10 flex h-[86px] w-[84px] shrink-0 flex-col items-center justify-center rounded-[18px] bg-green-500 text-white shadow-md">
+          <span className="text-[15px] leading-none">{primaryCouponSetting.coupon_type_emoji}</span>
+          <span className="mt-1 text-[22px] font-extrabold leading-none">
+            ¥{primaryCouponSetting.coupon_type_amount.toLocaleString()}
+          </span>
+          <span className="mt-0.5 text-[10px] font-bold opacity-90">引き</span>
+          <span className="mt-0.5 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold">
+            今すぐ使える
+          </span>
         </div>
-        {showProductPreview && !isKotodute && shop.products.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {shop.products.slice(0, 6).map((product) => (
-              <span
-                key={product}
-                className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600"
-              >
-                {product}
-              </span>
-            ))}
-            {shop.products.length > 6 && (
-              <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-400">
-                +{shop.products.length - 6}
-              </span>
-            )}
+      ) : couponStatus === "stamped" ? (
+        <div className="mr-10 flex h-[86px] w-[84px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[18px] border border-emerald-200 bg-emerald-50">
+          <span className="text-[22px]">✅</span>
+          <span className="text-center text-[10px] font-bold leading-tight text-emerald-700">
+            スタンプ
+            <br />
+            済み
+          </span>
+        </div>
+      ) : couponStatus === "participating" && primaryCouponSetting ? (
+        <div className="mr-10 flex h-[86px] w-[84px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[18px] border-[1.5px] border-dashed border-green-200 bg-green-50">
+          <span className="text-[18px]">🎟️</span>
+          <span className="text-center text-[10px] font-bold leading-tight text-green-700">
+            クーポン
+            <br />
+            使えます
+          </span>
+          <span className="mt-0.5 text-[9px] font-semibold text-green-500">
+            ¥{primaryCouponSetting.coupon_type_amount.toLocaleString()}引き
+          </span>
+        </div>
+      ) : null;
+
+    return (
+      <div className="flex items-center gap-3">
+        {/* サムネイル */}
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+          {heroImageError ? (
+            <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xl">
+              {CATEGORY_FALLBACK[shop.category ?? ""]?.emoji ?? "🏪"}
+            </div>
+          ) : (
+            <Image
+              src={bannerImage}
+              alt={`${shop.name}の写真`}
+              fill
+              className="object-cover object-center"
+              onError={onImageError}
+            />
+          )}
+        </div>
+
+        {/* 店舗情報 */}
+        <div className={`min-w-0 flex-1 ${!couponCard ? "pr-12" : ""}`}>
+          <div className="flex flex-wrap items-center gap-1">
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+              style={{ backgroundColor: theme.light, color: theme.text }}
+            >
+              {shop.category || "ショップ"}
+            </span>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+              今日出店中
+            </span>
+            {!couponCard && couponBadge}
           </div>
-        )}
+          <h2 className="mt-1 line-clamp-2 text-[17px] font-extrabold leading-tight text-slate-900">
+            {shop.name}
+          </h2>
+          {!isKotodute && shop.catchphrase && (
+            <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{shop.catchphrase}</p>
+          )}
+          {/* クーポンがない場合のみ商品プレビュー */}
+          {!couponCard && showProductPreview && !isKotodute && shop.products.length > 0 && (
+            <div className="mt-1.5 flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {shop.products.slice(0, 4).map((product) => (
+                <span
+                  key={product}
+                  className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-medium text-slate-600"
+                >
+                  {product}
+                </span>
+              ))}
+              {shop.products.length > 4 && (
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-400">
+                  +{shop.products.length - 4}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* クーポンカード（右側） */}
+        {couponCard}
       </div>
     );
   }
@@ -504,14 +561,40 @@ export default function ShopDetailBanner({
   totalShopCount = 0,
   onSelectPreviousShop,
   onSelectNextShop,
+  activeCouponTypeId,
+  stampedVendorIds,
 }: ShopDetailBannerProps) {
   const router = useRouter();
   const { permissions } = useAuth();
   const { addItem, removeItem, items: bagContextItems } = useBag();
   const [bagProductKeys, setBagProductKeys] = useState<Set<string>>(new Set());
   const [kotoduteNotes, setKotoduteNotes] = useState<KotoduteNote[]>([]);
+  const [couponInfo, setCouponInfo] = useState<{
+    is_participating: boolean;
+    settings: Array<{
+      coupon_type_id: string;
+      coupon_type_name: string;
+      coupon_type_emoji: string;
+      coupon_type_amount: number;
+      min_purchase_amount: number;
+    }>;
+  } | null>(null);
+  // セッション中のクーポン情報キャッシュ（vendorId → データ）
+  const couponInfoCacheRef = useRef<Map<string, typeof couponInfo>>(new Map());
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
+
+  // ─── クーポン派生状態 ─────────────────────────────────────────────────────────
+  const isStamped = !!shop.vendorId && (stampedVendorIds ?? []).includes(shop.vendorId);
+  const primaryCouponSetting = couponInfo?.settings?.find(
+    (s) => s.coupon_type_id === activeCouponTypeId
+  ) ?? couponInfo?.settings?.[0] ?? null;
+  const couponStatus: "active" | "stamped" | "participating" | null = (() => {
+    if (!couponInfo?.is_participating || !couponInfo.settings.length) return null;
+    if (isStamped) return "stamped";
+    if (activeCouponTypeId && couponInfo.settings.some((s) => s.coupon_type_id === activeCouponTypeId)) return "active";
+    return "participating";
+  })();
   const [toast, setToast] = useState<{ product: string } | null>(null);
   const [surface, setSurface] = useState<BannerSurface>(initialMobileSurface);
   const [contentInteractive, setContentInteractive] = useState(false);
@@ -589,6 +672,30 @@ export default function ShopDetailBanner({
   useEffect(() => {
     incrementBannerOpens();
   }, [shop.id, openNonce]);
+
+  // クーポン参加情報を取得（vendorIdがある出店者のみ、セッション中キャッシュ付き）
+  useEffect(() => {
+    const vendorId = shop.vendorId;
+    if (!vendorId) {
+      setCouponInfo(null);
+      return;
+    }
+    const cached = couponInfoCacheRef.current.get(vendorId);
+    if (cached !== undefined) {
+      setCouponInfo(cached);
+      return;
+    }
+    fetch(`/api/coupons/shop-info?vendor_id=${encodeURIComponent(vendorId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const value = data ?? null;
+        couponInfoCacheRef.current.set(vendorId, value);
+        setCouponInfo(value);
+      })
+      .catch(() => {
+        // クーポン情報取得失敗は無視
+      });
+  }, [shop.vendorId]);
 
   // kotodute sync
   useEffect(() => {
@@ -1076,6 +1183,8 @@ export default function ShopDetailBanner({
                 mode="compact"
                 isKotodute={isKotodute}
                 showProductPreview
+                couponStatus={couponStatus}
+                primaryCouponSetting={primaryCouponSetting}
               />
             </div>
           )}
@@ -1197,6 +1306,16 @@ export default function ShopDetailBanner({
                     isActivePostCentered={isActivePostCentered}
                     activePostRef={activePostRef}
                     activePostCarouselRef={activePostCarouselRef}
+                  />
+                )}
+
+                {/* ── クーポンカード（モバイル detail） ─────────────── */}
+                {!isKotodute && primaryCouponSetting && couponStatus && (
+                  <CouponInfoCard
+                    setting={primaryCouponSetting}
+                    allSettings={couponInfo!.settings}
+                    couponStatus={couponStatus}
+                    activeCouponTypeId={activeCouponTypeId}
                   />
                 )}
 
@@ -1451,6 +1570,18 @@ export default function ShopDetailBanner({
         <div className={`px-5 ${isMobileOverlay ? "pb-8 pt-6 space-y-7" : "pb-6 space-y-6"}`}>
 
           {/* ════════════════════════════════════════════════════════════════
+              COUPON — 参加・使えるクーポン情報
+          ════════════════════════════════════════════════════════════════ */}
+          {!isKotodute && !isMobileOverlay && primaryCouponSetting && couponStatus && (
+            <CouponInfoCard
+              setting={primaryCouponSetting}
+              allSettings={couponInfo!.settings}
+              couponStatus={couponStatus}
+              activeCouponTypeId={activeCouponTypeId}
+            />
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════
               TODAY'S ANNOUNCEMENT — Rich card
           ════════════════════════════════════════════════════════════════ */}
           {!isKotodute && activePosts.length > 0 && !isMobileOverlay && (
@@ -1662,6 +1793,107 @@ export default function ShopDetailBanner({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Coupon Info Card ─────────────────────────────────────────────────────────
+type CouponSetting = {
+  coupon_type_id: string;
+  coupon_type_name: string;
+  coupon_type_emoji: string;
+  coupon_type_amount: number;
+  min_purchase_amount: number;
+};
+
+function CouponInfoCard({
+  setting,
+  allSettings,
+  couponStatus,
+  activeCouponTypeId,
+}: {
+  setting: CouponSetting;
+  allSettings: CouponSetting[];
+  couponStatus: "active" | "stamped" | "participating";
+  activeCouponTypeId?: string;
+}) {
+  if (couponStatus === "active") {
+    return (
+      <div className="rounded-xl border-2 border-green-300 bg-green-50 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-base">{setting.coupon_type_emoji}</span>
+          <span className="text-sm font-bold text-green-800">{setting.coupon_type_name}</span>
+          <span className="rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-bold text-white">
+            今すぐ使える
+          </span>
+        </div>
+        <p className="text-2xl font-extrabold text-green-600 mb-0.5">
+          {setting.coupon_type_amount.toLocaleString()}円引き
+        </p>
+        {setting.min_purchase_amount > 0 && (
+          <p className="text-xs text-slate-500">
+            {setting.min_purchase_amount.toLocaleString()}円以上のご購入で適用
+          </p>
+        )}
+        {allSettings.length > 1 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {allSettings.filter((s) => s.coupon_type_id !== activeCouponTypeId).map((s) => (
+              <span
+                key={s.coupon_type_id}
+                className="rounded-full border border-green-200 bg-white px-2 py-0.5 text-[11px] text-green-700"
+              >
+                {s.coupon_type_emoji} {s.coupon_type_name}も対応
+              </span>
+            ))}
+          </div>
+        )}
+        <Link
+          href="/coupons"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-green-500 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
+        >
+          クーポンを確認する
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    );
+  }
+
+  if (couponStatus === "stamped") {
+    return (
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-base">{setting.coupon_type_emoji}</span>
+          <span className="text-sm font-semibold text-emerald-800">{setting.coupon_type_name}</span>
+          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+            ✅ 本日スタンプ済み
+          </span>
+        </div>
+        <p className="mt-1.5 text-xs text-emerald-700">
+          本日はこのお店のスタンプを取得済みです
+        </p>
+      </div>
+    );
+  }
+
+  // "participating" — クーポンは未保有
+  return (
+    <div className="rounded-xl border border-dashed border-green-200 bg-green-50/50 p-4">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-base">{setting.coupon_type_emoji}</span>
+        <span className="text-sm font-semibold text-green-800">
+          {setting.coupon_type_name}クーポン対応
+        </span>
+      </div>
+      <p className="text-xs text-slate-500 mb-3">
+        クーポンページでQRコードを確認できます
+      </p>
+      <Link
+        href="/coupons"
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-green-300 bg-white py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-50"
+      >
+        クーポンを確認する
+        <ArrowRight className="h-3.5 w-3.5" />
+      </Link>
     </div>
   );
 }
