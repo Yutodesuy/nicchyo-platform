@@ -12,4 +12,5 @@ Disallow: /reports/
 Disallow: /supabase-test/
 Disallow: /oauth/
 
+# ドメイン確定後に実際のURLに変更してください
 Sitemap: https://nicchyo.jp/sitemap.xml

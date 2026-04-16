@@ -94,7 +94,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
       addressRegion: "高知県",
       addressCountry: "JP",
     },
-    url: `https://nicchyo.jp/shops/${normalizedCode}`,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp"}/shops/${normalizedCode}`,
   };
 
   return (
