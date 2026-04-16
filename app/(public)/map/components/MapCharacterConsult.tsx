@@ -477,41 +477,14 @@ export default function MapCharacterConsult({
           {showIntroChrome ? (
             <>
               <div className="bg-[linear-gradient(135deg,#fff8e8_0%,#fff3d8_48%,#fde6ba_100%)] px-4 py-3.5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 shrink-0">
-                    {activeCharacter ? (
-                      <div className="h-11 w-11 overflow-hidden rounded-2xl border border-white/80 bg-white shadow-sm">
-                        <img
-                          src={activeCharacter.image}
-                          alt={activeCharacter.name}
-                          className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
-                          style={{ objectPosition: activeCharacter.imagePosition }}
-                          draggable={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-11 w-11 rounded-2xl border border-white/80 bg-white shadow-sm" />
-                    )}
-                  </div>
-
+                <div className="flex items-start">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
-                        AI相談
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-600">
-                        お店・食べ歩き・休憩・イベント
-                      </span>
-                    </div>
                     <label
                       htmlFor="map-consult-input"
-                      className="mt-2 block text-[15px] font-bold leading-tight text-slate-900"
+                      className="block text-[15px] font-bold leading-tight text-slate-900"
                     >
-                      市場のことを、ひとことで相談できます
+                      AIに相談する
                     </label>
-                    <p id={helperTextId} className="mt-1.5 text-[12px] leading-relaxed text-slate-600">
-                      例をタップして始めるか、そのまま入力してください。
-                    </p>
                   </div>
 
                   <button
