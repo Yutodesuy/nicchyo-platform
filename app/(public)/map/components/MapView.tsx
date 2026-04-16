@@ -832,8 +832,10 @@ const MapView = memo(function MapView({
   const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
-    const { innerWidth, innerHeight } = window;
-    return Math.ceil(Math.hypot(innerWidth, innerHeight) + 120);
+    // visualViewport はブラウザUIを除いた実際の表示領域サイズ（iOS Safari 対応）
+    const w = window.visualViewport?.width ?? window.innerWidth;
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    return Math.ceil(Math.hypot(w, h) + 120);
   });
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -864,12 +866,20 @@ const MapView = memo(function MapView({
       const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
-      setMapShellSize(Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) + 120));
+      // visualViewport でブラウザUIを除いた実際の表示領域を取得（iOS Safari 対応）
+      const w = window.visualViewport?.width ?? window.innerWidth;
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setMapShellSize(Math.ceil(Math.hypot(w, h) + 120));
     };
 
     detectMobile();
     window.addEventListener("resize", detectMobile);
-    return () => window.removeEventListener("resize", detectMobile);
+    // iOS Safari ではアドレスバーの表示/非表示で visualViewport が変わる
+    window.visualViewport?.addEventListener("resize", detectMobile);
+    return () => {
+      window.removeEventListener("resize", detectMobile);
+      window.visualViewport?.removeEventListener("resize", detectMobile);
+    };
   }, []);
 
   useEffect(() => {

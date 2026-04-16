@@ -742,15 +742,18 @@ export default function MapPageClient({
   }, []);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-tl from-yellow-200 to-amber-200 rounded-full blur-3xl opacity-20"></div>
       </div>
 
-      {/* メイン */}
-      <main className="relative z-10 flex-1 overflow-hidden pb-16">
+      {/* メイン: NavigationBar(h-14=3.5rem) + safe-area-inset-bottom 分だけ下に余白 */}
+      <main
+        className="relative z-10 flex-1 overflow-hidden"
+        style={{ paddingBottom: 'calc(3.5rem + var(--safe-bottom, 0px))' }}
+      >
         <div className="relative h-full overflow-hidden">
             {showBanner && recommendedRecipe && (
               <div className="absolute left-4 right-4 top-4 z-[1200]">
