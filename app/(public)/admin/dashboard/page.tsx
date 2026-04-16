@@ -580,7 +580,7 @@ export default async function AdminDashboardPage() {
                 className="flex w-12 shrink-0 flex-col-reverse justify-between pb-6 text-right"
                 style={{ height: 180 + 24 }}
               >
-                {[0, Math.ceil(durationMax / 2), Math.ceil(durationMax)].map((tick) => (
+                {Array.from(new Set([0, Math.ceil(durationMax / 2), Math.ceil(durationMax)])).map((tick) => (
                   <span key={tick} className="text-[10px] leading-none text-slate-400">
                     {tick > 0 ? `${tick}分` : "0"}
                   </span>
