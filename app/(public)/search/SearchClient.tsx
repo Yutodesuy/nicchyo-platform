@@ -461,10 +461,9 @@ export default function SearchClient({
               />
             ) : (
               <>
-            <div className="rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm lg:hidden">
-              <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">Find Shops</p>
-              <h2 className="mt-1 text-2xl font-bold text-gray-900">お店を探す</h2>
-              <p className="mt-1 text-sm text-gray-700">キーワードとカテゴリから検索できます</p>
+            <div className="flex items-center gap-2 px-1 pt-2 lg:hidden">
+              <h2 className="text-lg font-bold text-gray-900">お店を探す</h2>
+              <span className="text-xs text-gray-500">キーワード・カテゴリーで絞り込み</span>
             </div>
 
             {/* 検索フォーム */}
