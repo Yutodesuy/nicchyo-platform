@@ -302,7 +302,7 @@ function SearchResultsSheet({
       {!isOpen && (
         <div
           className="absolute left-1/2 z-[1100] -translate-x-1/2 pointer-events-auto"
-          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)' }}
+          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)' }}
         >
           <button
             type="button"
@@ -365,8 +365,8 @@ function SearchResultsSheet({
           </div>
         </div>
 
-        {/* 縦スクロールなしのコンパクト一覧 */}
-        <div className="flex-1 overflow-hidden pb-[env(safe-area-inset-bottom,0px)]">
+        {/* 一覧は縦スクロール可能 */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
           {searchShops.map((shop, i) => {
             const bannerSeed = shop.position ?? shop.id;
             const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
@@ -1262,8 +1262,8 @@ const MapView = memo(function MapView({
     return undefined;
   }, [aiShopIds, searchShopIds]);
   const resultsBadgeBottom = overlaySlot
-    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem)'
-    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem)';
+    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem + 25px)'
+    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)';
 
   const visibleLandmarkSpecs = useMemo(() => {
     if (!shouldRenderLandmarks) {
@@ -1502,6 +1502,7 @@ const MapView = memo(function MapView({
             originRect={shopBannerOrigin ?? undefined}
             activeCouponTypeId={activeCouponTypeId}
             stampedVendorIds={stampedVendorIds}
+            reserveBottomNavSpace={false}
           />
         </>
       )}
