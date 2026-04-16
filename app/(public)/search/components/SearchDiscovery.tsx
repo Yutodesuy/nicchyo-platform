@@ -33,7 +33,7 @@ export default function SearchDiscovery({
   const visibleCategories = categoriesExpanded ? categories : categories.slice(0, INITIAL_SHOW);
 
   return (
-    <div className="space-y-4 py-3 animate-in fade-in duration-500">
+    <div className="space-y-3 pt-2 animate-in fade-in duration-500">
       {couponTypes.length > 0 && (
         <section>
           <div className="mb-2 flex items-center gap-2 text-emerald-800">
