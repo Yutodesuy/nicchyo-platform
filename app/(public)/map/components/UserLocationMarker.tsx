@@ -273,12 +273,7 @@ export default function UserLocationMarker({
 
             // マーカーが既にある場合、フォールバック時間まで待つ
             if (markerRef.current && !shouldFallback) {
-              console.log(`位置精度が低いため再取得を待機中 (精度: ${accuracy.toFixed(1)}m, 閾値: ${ACCURACY_THRESHOLD_METERS}m)`);
               return;
-            }
-
-            if (shouldFallback) {
-              console.log(`フォールバック: 精度 ${accuracy.toFixed(1)}m で更新`);
             }
           } else {
             // 精度が良い場合、低精度タイマーをリセット
