@@ -138,3 +138,9 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Supabase バックアップ
+supabase_backup_*.sql
+
+# Playwright テスト結果
+test-results/
