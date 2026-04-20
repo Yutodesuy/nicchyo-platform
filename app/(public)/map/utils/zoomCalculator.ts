@@ -155,7 +155,6 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
     }
   }
 
-  console.log(`[filterShopsByChome] Selected ${result.length} shops from ${shops.length} total shops`);
   return result;
 }
 
