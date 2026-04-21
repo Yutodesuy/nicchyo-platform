@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, Send, CheckCircle2, AlertCircle, HelpCircle, Bug, MessageSquare, Mail, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -63,7 +63,7 @@ export default function ContactForm() {
     setValue("email", fixed, { shouldValidate: true });
   };
 
-  const onSubmit = async (data: ContactFormData) => {
+  const onSubmit = async (_data: ContactFormData) => {
     // 実際の実装ではAPIルートなどを呼び出します。
     // ここではデモとして、mailtoリンクを生成してユーザーのメーラーを起動するか、
     // 送信完了状態を表示します。
@@ -123,7 +123,7 @@ export default function ContactForm() {
               <button
                 key={cat.id}
                 type="button"
-                onClick={() => setValue("category", cat.id as any)}
+                onClick={() => setValue("category", cat.id as ContactFormData["category"])}
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition-all duration-200",
                   isSelected
