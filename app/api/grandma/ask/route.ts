@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import { buildGrandmaAiSystemPrompt } from "@/app/(public)/map/data/grandmaAiContext";
 import { detectAbuse } from "@/lib/security/abuseDetector";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
@@ -67,7 +68,7 @@ type ActiveContentRow = {
   created_at: string;
 };
 
-type CategoryRow = {
+type _CategoryRow = {
   id: string;
   name: string | null;
 };
@@ -440,7 +441,7 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
 }
 
 async function fetchCandidateVendorIds(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   keywords: string[],
   targetShopName: string | null,
   embedding: number[] | null,
@@ -502,7 +503,7 @@ async function fetchCandidateVendorIds(
   if (embedding) {
     const { data: embeddingMatches } = await supabase
       .rpc("match_vendor_embeddings", {
-        query_embedding: embedding,
+        query_embedding: embedding as unknown as string,
         match_count: 8,
         match_threshold: 0.45,
       })
@@ -518,7 +519,7 @@ async function fetchCandidateVendorIds(
 }
 
 async function fetchSeasonalProductContext(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   seasonId: number
 ): Promise<SeasonalProductRow[]> {
   const { data: productSeasonRows } = await supabase
@@ -574,7 +575,7 @@ async function fetchSeasonalProductContext(
 }
 
 async function fetchShopsByVendorIds(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   vendorIds: string[]
 ): Promise<Shop[]> {
   if (vendorIds.length === 0) return [];
@@ -731,7 +732,7 @@ async function fetchShopsByVendorIds(
 }
 
 async function fetchShopByStoreNumber(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   storeNumber: number
 ): Promise<Shop | null> {
   const { data: locationsData } = await supabase
@@ -756,7 +757,7 @@ async function fetchShopByStoreNumber(
 }
 
 async function fetchShopByName(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   shopName: string
 ): Promise<Shop | null> {
   const keyword = sanitizeLikeKeyword(shopName);
@@ -991,7 +992,7 @@ function buildReplyFromTurns(turns: ConsultTurn[]) {
 
 async function finalizeConsultResponse(options: {
   request: Request;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
   text: string;
   keywords: string[];
   location: { lat: number; lng: number } | null;
@@ -1115,7 +1116,7 @@ async function createStreamingConsultResponse(options: {
     | string
     | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
   request: Request;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
   text: string;
   keywords: string[];
   location: { lat: number; lng: number } | null;
@@ -1340,7 +1341,7 @@ function buildFallbackFollowUpQuestion(
 }
 
 async function handleAbuseDetection(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   ip: string | null,
   text: string,
   visitorKey?: string
@@ -1380,7 +1381,8 @@ async function handleAbuseDetection(
         visitor_key: visitorKey ?? null,
         reason: abuse.reason,
       });
-      await supabase.from("admin_notifications").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("admin_notifications").insert({
         type: "ai_abuse",
         title: `AI不正アクセスをブロック（${abuse.type}）`,
         body: `IP: ${ip ?? "不明"} | visitor: ${visitorKey ?? "不明"} | ${abuse.reason} | 内容: ${text.slice(0, 80)}`,
@@ -1429,7 +1431,7 @@ export async function POST(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supabaseUrl && serviceRoleKey) {
-      const secClient = createClient(supabaseUrl, serviceRoleKey);
+      const secClient = createClient<Database>(supabaseUrl, serviceRoleKey);
       // x-real-ip はVercelが設定する信頼できるヘッダー（スプーフィング不可）
       // x-forwarded-for の末尾はプロキシが追加した値で比較的信頼できる
       const forwardedIp =
@@ -1491,7 +1493,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const supabase = createClient<Database>(supabaseUrl, serviceRoleKey);
     const keywords = extractKeywords(question);
     const shopIntent = isShopRelatedQuestion(normalized);
     const seasonalQuestion = isSeasonalQuestion(normalized);
@@ -1592,7 +1594,7 @@ export async function POST(request: Request) {
 
     const { data: knowledgeMatches } = await supabase
       .rpc("match_knowledge_embeddings", {
-        query_embedding: embedding,
+        query_embedding: embedding as unknown as string,
         match_count: 3,
         match_threshold: 0.55,
       })
@@ -1621,7 +1623,7 @@ export async function POST(request: Request) {
       const knowledgeResults = await Promise.all(
         ragVendorIds.map(async (vendorId) => {
           const result = await supabase.rpc("match_store_knowledge", {
-            query_embedding: embedding,
+            query_embedding: embedding as unknown as string,
             target_store_id: vendorId,
             match_count: 2,
             match_threshold: 0.45,
