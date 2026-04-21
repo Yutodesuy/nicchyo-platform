@@ -56,7 +56,7 @@ export default function PageVisitTracker() {
 
     // Fire GA4 page_view for SPA navigations if gtag is available
     try {
-      const w = window as any;
+      const w = window as Window & { gtag?: (...args: unknown[]) => void };
       if (typeof w?.gtag === "function") {
         w.gtag("event", "page_view", { page_path: nextPath });
       }
