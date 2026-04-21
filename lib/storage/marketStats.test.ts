@@ -36,7 +36,8 @@ describe('marketStats', () => {
 
     it('returns 0 when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-expect-error Mocking window being undefined for tests
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       delete global.window;
 
       incrementBannerOpens();
@@ -70,7 +71,8 @@ describe('marketStats', () => {
 
     it('handles recordMarketEnter when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-expect-error Mocking window being undefined for tests
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       delete global.window;
 
       recordMarketEnter();
@@ -139,7 +141,8 @@ describe('marketStats', () => {
 
     it('handles getAccumulatedMarketTimeMs when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-expect-error Mocking window being undefined for tests
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       delete global.window;
 
       expect(getAccumulatedMarketTimeMs()).toBe(0);
@@ -167,7 +170,8 @@ describe('marketStats', () => {
       recordMarketEnter();
       vi.advanceTimersByTime(1000);
 
-      // @ts-expect-error Mocking window being undefined for tests
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       delete global.window;
 
       recordMarketExit();
