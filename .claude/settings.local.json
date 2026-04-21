@@ -50,7 +50,11 @@
       "Bash(gh --version)",
       "Bash(git fetch *)",
       "Bash(git merge *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git switch:*)",
+      "Bash(git rm:*)",
+      "Bash(git remote *)",
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"\" NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=\"\" npm run build)"
     ]
   }
 }

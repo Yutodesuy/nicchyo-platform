@@ -4,8 +4,15 @@ import { useState, useRef } from 'react';
 import NavigationBar from '../../components/NavigationBar';
 import { MessageSquarePlus, Sparkles, PencilLine } from 'lucide-react';
 
+interface Post {
+  id: number;
+  name: string;
+  avatarColor: string;
+  content: string;
+  time: string;
+}
 // Empty mock data to demonstrate the empty state
-const MOCK_POSTS: any[] = [];
+const MOCK_POSTS: Post[] = [];
 
 /*
 // Previous mock data for reference
@@ -28,7 +35,7 @@ const MOCK_POSTS = [
 */
 
 export default function PostsClient() {
-  const [posts, setPosts] = useState(MOCK_POSTS);
+  const [posts] = useState(MOCK_POSTS);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleFocus = () => {

@@ -64,10 +64,6 @@ function AdminShopsContent() {
     }
   }, [isLoading, permissions.isSuperAdmin, loadShops]);
 
-  if (isLoading || !permissions.isSuperAdmin) {
-    return null;
-  }
-
   // ユニークカテゴリー
   const uniqueCategories = useMemo(() => {
     const categories = new Set(shops.map((s) => s.category));
@@ -243,6 +239,10 @@ function AdminShopsContent() {
     { key: "e", ctrl: true, description: "CSV出力", action: handleExportCSV },
     { key: "?", description: "ショートカット一覧を表示", action: () => setShowShortcutHelp(true) },
   ]);
+
+  if (isLoading || !permissions.isSuperAdmin) {
+    return null;
+  }
 
   return (
     <AdminLayout>
