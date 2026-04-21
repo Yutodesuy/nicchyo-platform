@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 
 type VendorRow = {
   category_id: string | null;
@@ -51,7 +52,7 @@ export async function GET() {
     );
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

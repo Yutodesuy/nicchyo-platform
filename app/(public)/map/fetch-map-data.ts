@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database.types';
 import { fetchVendorShopsFromDb } from './services/shopDb';
 
 export type AttendanceEstimate = {
@@ -9,7 +10,7 @@ export type AttendanceEstimate = {
   evidence_summary: string;
 };
 
-export async function fetchMapData(supabase: SupabaseClient) {
+export async function fetchMapData(supabase: SupabaseClient<Database>) {
   let attendanceEstimates: Record<number, AttendanceEstimate> = {};
 
   try {

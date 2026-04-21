@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MapRoute, MapRouteConfig, MapRoutePoint } from "../types/mapRoute";
+import type { Database } from "@/types/database.types";
+import type { MapRoute, MapRoutePoint } from "../types/mapRoute";
 import {
   getDefaultMapRouteConfig,
   getDefaultMapRoutePoints,
@@ -30,7 +31,7 @@ export function getFallbackMapRoute(): MapRoute {
 }
 
 export async function fetchMapRouteFromDb(
-  supabase: SupabaseClient
+  supabase: SupabaseClient<Database>
 ): Promise<MapRoute> {
   const [pointsResult, configResult] = await Promise.all([
     supabase

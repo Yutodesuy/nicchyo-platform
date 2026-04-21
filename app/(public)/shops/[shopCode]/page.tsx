@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import { formatShopIdToCode, normalizeShopCodeToId } from "@/lib/shops/route";
 
 type ShopPageProps = {
@@ -22,11 +23,27 @@ async function fetchShopBasic(shopId: number): Promise<ShopBasic | null> {
   if (!supabaseUrl || !supabaseKey) return null;
 
   try {
-    const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+    const supabase = createSupabaseClient<Database>(supabaseUrl, supabaseKey);
+    const { data: locationData } = await supabase
+      .from("market_locations")
+      .select("id")
+      .eq("store_number", shopId)
+      .maybeSingle();
+    if (!locationData) return null;
+
+    const { data: assignmentData } = await supabase
+      .from("location_assignments")
+      .select("vendor_id")
+      .eq("location_id", locationData.id)
+      .order("market_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!assignmentData) return null;
+
     const { data } = await supabase
       .from("vendors")
       .select("shop_name, strength, main_products, shop_image_url")
-      .eq("store_number", shopId)
+      .eq("id", assignmentData.vendor_id)
       .maybeSingle();
     return data as ShopBasic | null;
   } catch {
