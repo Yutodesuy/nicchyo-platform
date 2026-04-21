@@ -64,24 +64,8 @@ export default function ContactForm() {
   };
 
   const onSubmit = async (_data: ContactFormData) => {
-    // 実際の実装ではAPIルートなどを呼び出します。
-    // ここではデモとして、mailtoリンクを生成してユーザーのメーラーを起動するか、
-    // 送信完了状態を表示します。
+    // TODO: バックエンドAPIルート実装後に差し替える
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // NOTE: バックエンドAPIがない場合、mailtoで代用するパターン
-    // const subject = `[nicchyo] お問い合わせ: ${CATEGORIES.find(c => c.id === data.category)?.label}`;
-    // const body = `
-    // お名前: ${data.name || '未入力'}
-    // メールアドレス: ${data.email}
-    // カテゴリ: ${CATEGORIES.find(c => c.id === data.category)?.label}
-    //
-    // 内容:
-    // ${data.message}
-    // `;
-    // window.location.href = `mailto:info@nicchyo.local?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-    // 今回はUI改善のデモなので、成功状態へ遷移させます
     setIsSubmitted(true);
   };
 

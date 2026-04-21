@@ -39,7 +39,7 @@ function getQrProgressColor(secondsLeft: number): string {
 }
 
 function CouponsPageContent() {
-  const isDevCouponOverride = process.env.NODE_ENV !== "production";
+  const isDevCouponOverride = process.env.NEXT_PUBLIC_DEV_MARKET_DAY === "true";
   const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<MyCouponsResponse | null>(null);
