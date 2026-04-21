@@ -36,7 +36,7 @@ describe('marketStats', () => {
 
     it('returns 0 when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-ignore
+      // @ts-expect-error Mocking window being undefined for tests
       delete global.window;
 
       incrementBannerOpens();
@@ -70,7 +70,7 @@ describe('marketStats', () => {
 
     it('handles recordMarketEnter when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-ignore
+      // @ts-expect-error Mocking window being undefined for tests
       delete global.window;
 
       recordMarketEnter();
@@ -139,7 +139,7 @@ describe('marketStats', () => {
 
     it('handles getAccumulatedMarketTimeMs when window is undefined', () => {
       const originalWindow = global.window;
-      // @ts-ignore
+      // @ts-expect-error Mocking window being undefined for tests
       delete global.window;
 
       expect(getAccumulatedMarketTimeMs()).toBe(0);
@@ -167,7 +167,7 @@ describe('marketStats', () => {
       recordMarketEnter();
       vi.advanceTimersByTime(1000);
 
-      // @ts-ignore
+      // @ts-expect-error Mocking window being undefined for tests
       delete global.window;
 
       recordMarketExit();
