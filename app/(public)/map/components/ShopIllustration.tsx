@@ -49,9 +49,9 @@ export default function ShopIllustration({
       style={{
         width,
         height,
-        ['--stall-color' as any]: baseColor,
-        ['--stall-color-dark' as any]: darkColor,
-        ['--stall-color-light' as any]: lightColor,
+        ['--stall-color' as string]: baseColor,
+        ['--stall-color-dark' as string]: darkColor,
+        ['--stall-color-light' as string]: lightColor,
       }}
     >
       <div className="stall-shadow" aria-hidden="true" />

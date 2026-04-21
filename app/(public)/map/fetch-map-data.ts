@@ -30,6 +30,7 @@ export async function fetchMapData(supabase: SupabaseClient) {
 
     const { data: estimatesData } = estimatesResult;
     if (Array.isArray(estimatesData)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       estimatesData.forEach((row: any) => {
         const legacyId = vendorIdToLegacy.get(String(row.shop_id));
         if (!legacyId) return;

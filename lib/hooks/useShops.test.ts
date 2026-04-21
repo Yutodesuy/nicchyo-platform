@@ -94,7 +94,7 @@ describe("useShops", () => {
   });
 
   it("should not update state if unmounted (cancelled)", async () => {
-    let resolveFetch: (value: any) => void;
+    let resolveFetch: (value: unknown) => void;
     const fetchPromise = new Promise((resolve) => {
       resolveFetch = resolve;
     });

@@ -21,8 +21,6 @@
 
 import { getRoadLength } from '../config/roadConfig';
 import {
-  DEFAULT_ILLUSTRATION_SIZE,
-  ILLUSTRATION_SIZES,
   SPACING_CONFIG,
   ZOOM_DISPLAY_RULES,
   getDisplayRuleForZoom,
@@ -174,11 +172,11 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
 export function filterShopsByZoom<T extends { id: number; position: number; chome?: string }>(
   shops: T[],
   currentZoom: number,
-  isMobile: boolean = false
+  _isMobile: boolean = false
 ): T[] {
   // 表示ルールを取得
   const rule = getDisplayRuleForZoom(currentZoom);
-  let interval = rule.filterInterval;
+  const interval = rule.filterInterval;
 
   // 【2段階表示】filterInterval === 0 の場合は丁目別フィルタリング
   if (interval === 0) {

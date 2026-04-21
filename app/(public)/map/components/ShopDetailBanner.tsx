@@ -24,7 +24,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Shop } from "../data/shops";
-import EmptyState from "@/components/EmptyState";
 import { useAuth } from "../../../../lib/auth/AuthContext";
 import { getShopBannerImage } from "../../../../lib/shopImages";
 import { useBag } from "../../../../lib/storage/BagContext";
@@ -617,7 +616,6 @@ function BannerActivePostsCard({
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ShopDetailBanner({
   shop,
-  bagCount,
   onClose,
   onAddToBag,
   variant = "default",
@@ -824,7 +822,7 @@ export default function ShopDetailBanner({
   const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
-  const today = new Date();
+  const _today = new Date();
 
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];
@@ -854,10 +852,10 @@ export default function ShopDetailBanner({
     const scaleX = Math.max(0.08, originRect.width / vw);
     const scaleY = Math.max(0.08, originRect.height / vh);
     return {
-      ["--banner-translate-x" as any]: `${translateX}px`,
-      ["--banner-translate-y" as any]: `${translateY}px`,
-      ["--banner-scale-x" as any]: scaleX,
-      ["--banner-scale-y" as any]: scaleY,
+      "--banner-translate-x": `${translateX}px`,
+      "--banner-translate-y": `${translateY}px`,
+      "--banner-scale-x": scaleX,
+      "--banner-scale-y": scaleY,
     } as CSSProperties;
   }, [originRect]);
 
@@ -2545,7 +2543,7 @@ function KotodutePanel({
           className="w-full resize-none rounded-xl border bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:bg-white focus:outline-none focus:ring-2"
           style={{
             borderColor: theme.border,
-            // @ts-ignore
+            // @ts-expect-error — CSSProperties doesn't include Tailwind custom vars
             "--tw-ring-color": theme.accent + "55",
           }}
         />
