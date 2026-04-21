@@ -11,7 +11,6 @@ import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff, AlertCircle } f
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { loginWithCredentials } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +41,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setError("");
+    const supabase = createClient();
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
