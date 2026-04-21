@@ -432,7 +432,7 @@ export default function MapLayoutEditor({
     <div
       className="relative h-full w-full overflow-hidden"
       style={{
-        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+        ["--map-rotation-inverse" as string]: `${-mapRotation}deg`,
       }}
     >
       <div
