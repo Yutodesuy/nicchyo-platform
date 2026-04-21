@@ -229,7 +229,7 @@ export const sampleMapElements: MapElementsCollection = {
 /**
  * すべての要素を1つの配列にまとめて返す
  */
-export const getAllElements = (): Array<any> => {
+export const getAllElements = (): Array<unknown> => {
   return [
     ...sampleMapElements.shops,
     ...sampleMapElements.people,

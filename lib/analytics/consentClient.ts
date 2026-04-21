@@ -24,10 +24,14 @@ export function loadGA(gaId: string): void {
   script.async = true;
   document.head.appendChild(script);
 
-  const w = window as any;
-  w.dataLayer = w.dataLayer || [];
-  w.gtag = function (...args: any[]) {
-    w.dataLayer.push(args);
+  interface GtagWindow {
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
+  const w = window as Window & GtagWindow;
+  w.dataLayer = w.dataLayer ?? [];
+  w.gtag = function (...args: unknown[]) {
+    w.dataLayer!.push(args);
   };
   w.gtag("js", new Date());
   w.gtag("config", gaId);

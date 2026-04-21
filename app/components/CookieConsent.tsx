@@ -30,7 +30,7 @@ export default function CookieConsent() {
     // GAスクリプト読み込み後に page_view を送信
     setTimeout(() => {
       try {
-        const w = window as any;
+        const w = window as Window & { gtag?: (...args: unknown[]) => void };
         if (typeof w?.gtag === "function") {
           w.gtag("event", "page_view", { page_path: window.location.pathname + window.location.search });
         }
