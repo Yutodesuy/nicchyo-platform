@@ -44,16 +44,11 @@ describe('StatusBadge', () => {
     });
   });
 
-  it('handles invalid status gracefully (throws error if not defined in TS but testing edge cases if any bypassed type checking)', () => {
-    // Suppress console.error for this specific test as React might complain about invalid types if we force it
-    const originalError = console.error;
-    console.error = vi.fn();
-
-    try {
-      // @ts-ignore - deliberately testing runtime behavior with invalid input
-      expect(() => render(<StatusBadge status="unknown" />)).toThrow();
-    } finally {
-      console.error = originalError;
-    }
+  it('handles invalid status gracefully (renders fallback instead of crashing)', () => {
+    // @ts-expect-error - deliberately testing runtime behavior with invalid input
+    render(<StatusBadge status="unknown" />);
+    const badge = screen.getByRole('status');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('unknown');
   });
 });
