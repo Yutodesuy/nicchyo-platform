@@ -1078,7 +1078,9 @@ async function finalizeConsultResponse(options: {
       ip_address: logIp,
       visitor_key: visitorKey ?? null,
     }));
-    supabase.from("ai_consult_logs").insert(logs).then(() => {});
+    supabase.from("ai_consult_logs").insert(logs).then(({ error }) => {
+      if (error) console.error("[ai_consult_logs] insert failed:", error.message);
+    });
   } else {
     supabase.from("ai_consult_logs").insert({
       store_id: null,
@@ -1089,7 +1091,9 @@ async function finalizeConsultResponse(options: {
       is_recommendation: false,
       ip_address: logIp,
       visitor_key: visitorKey ?? null,
-    }).then(() => {});
+    }).then(({ error }) => {
+      if (error) console.error("[ai_consult_logs] insert failed:", error.message);
+    });
   }
 
   const safeFollowUpQuestion = isValidFollowUpQuestion(followUpQuestion ?? "")
@@ -1349,18 +1353,20 @@ async function handleAbuseDetection(
   const blockIpValue = ip ?? "__visitor_key__";
 
   // ① ブロックリスト確認（IP または visitor_key でブロック）
-  const orConditions: string[] = [];
-  if (ip) orConditions.push(`ip_address.eq.${ip}`);
-  if (visitorKey) orConditions.push(`visitor_key.eq.${visitorKey}`);
-
-  if (orConditions.length > 0) {
-    const { data: blockData } = await supabase
-      .from("ai_abuse_blocks")
-      .select("id")
-      .eq("is_active", true)
-      .limit(1)
-      .or(orConditions.join(","));
-    if (blockData && blockData.length > 0) return "blocked";
+  // .or() の文字列補間を避け、個別の .eq() クエリを並列実行してインジェクションを防ぐ
+  if (ip || visitorKey) {
+    const [ipResult, visitorResult] = await Promise.all([
+      ip
+        ? supabase.from("ai_abuse_blocks").select("id").eq("is_active", true).eq("ip_address", ip).limit(1)
+        : Promise.resolve({ data: [] }),
+      visitorKey
+        ? supabase.from("ai_abuse_blocks").select("id").eq("is_active", true).eq("visitor_key", visitorKey).limit(1)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const isBlocked =
+      (ipResult.data && ipResult.data.length > 0) ||
+      (visitorResult.data && visitorResult.data.length > 0);
+    if (isBlocked) return "blocked";
   }
 
   // ② 不正パターン検知
