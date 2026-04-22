@@ -34,21 +34,8 @@ const nextConfig = {
     ];
   },
 
-  // セキュリティヘッダー
+  // セキュリティヘッダー（CSPはmiddleware.tsでnonce付きで動的に設定）
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "report-uri /api/security/csp-report",
-    ].join('; ');
-
     return [
       {
         // 全ページ共通セキュリティヘッダー
@@ -81,10 +68,6 @@ const nextConfig = {
           {
             key: 'Cross-Origin-Opener-Policy',
             value: 'same-origin'
-          },
-          {
-            key: 'Content-Security-Policy-Report-Only',
-            value: csp
           },
         ],
       },
