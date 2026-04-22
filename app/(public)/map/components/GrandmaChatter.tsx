@@ -643,8 +643,6 @@ export default function GrandmaChatter({
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [isChatOpen, layout]);
 
-  if (!current) return null;
-
   const handleNext = () => {
     if (isIntroImageOpen) return;
     if (introLockUntil && Date.now() < introLockUntil) return;
@@ -660,9 +658,8 @@ export default function GrandmaChatter({
     setAiBubbleText(nextLine);
   };
 
-  // TODO: early return at line 646 causes conditional hooks — extract into child component
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    if (!current) return;
     const shouldRotateInstructor = isChatOpen && aiStatus === "idle";
     const shouldRotateNormal = !isChatOpen && !isIntroImageOpen;
     if (!shouldRotateInstructor && !shouldRotateNormal) return;
@@ -677,7 +674,9 @@ export default function GrandmaChatter({
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
+  }, [current, aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
+
+  if (!current) return null;
 
   const showConsultExamples =
     layout === "page" &&
