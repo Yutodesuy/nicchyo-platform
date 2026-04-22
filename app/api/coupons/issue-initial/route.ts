@@ -134,7 +134,7 @@ export async function POST(request: Request) {
         visitor_key,
         market_date,
         coupon_type_id: initialType.id,
-        amount: couponSettings.amount ?? initialType.amount,
+        amount: couponSettings?.amount ?? initialType.amount,
         issue_reason: "initial",
         expires_at: expiresAt.toISOString(),
       })

@@ -549,8 +549,8 @@ function BannerActivePostsCard({
   theme: BannerTheme;
   currentPostIndex: number;
   isActivePostCentered: boolean;
-  activePostRef: RefObject<HTMLDivElement | null>;
-  activePostCarouselRef: RefObject<HTMLDivElement | null>;
+  activePostRef: RefObject<HTMLDivElement>;
+  activePostCarouselRef: RefObject<HTMLDivElement>;
 }) {
   return (
     <div
