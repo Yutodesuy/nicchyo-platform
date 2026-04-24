@@ -676,9 +676,8 @@ export default function GrandmaChatter({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, aiStatus, introLockUntil, isChatOpen, isIntroImageOpen, pool]);
 
-  if (!current) return null;
-
   const showConsultExamples =
+    !!current &&
     layout === "page" &&
     isChatOpen &&
     !isInputFocused &&
@@ -686,7 +685,6 @@ export default function GrandmaChatter({
     !selectedImageFile &&
     aiStatus !== "thinking";
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (!showConsultExamples || consultExampleQuestions.length <= 1) return;
     const timer = window.setInterval(() => {
@@ -694,6 +692,8 @@ export default function GrandmaChatter({
     }, EXAMPLE_ROTATE_MS);
     return () => window.clearInterval(timer);
   }, [consultExampleQuestions.length, showConsultExamples]);
+
+  if (!current) return null;
 
   const handleAvatarClick = () => {
     if (dragStateRef.current.moved) {
