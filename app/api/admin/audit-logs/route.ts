@@ -92,7 +92,8 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "500"), 1000);
+  const parsedLimit = parseInt(url.searchParams.get("limit") ?? "500", 10);
+  const limit = Math.min(Number.isNaN(parsedLimit) ? 500 : parsedLimit, 1000);
 
   const dc = createAdminClient() ?? supabase;
   const { data, error } = await dc

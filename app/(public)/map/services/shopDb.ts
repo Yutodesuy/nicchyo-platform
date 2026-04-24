@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import type { Shop } from "../types/shopData";
 
 type VendorRow = {
@@ -77,7 +78,7 @@ function normalizeChome(value: string | null): Shop["chome"] {
 }
 
 export async function fetchVendorShopsFromDb(
-  supabase: SupabaseClient
+  supabase: SupabaseClient<Database>
 ): Promise<Shop[]> {
   const [
     { data: vendorsData },

@@ -7,7 +7,7 @@ type DbContent = {
   body: string | null;
   image_url: string | null;
   expires_at: string;
-  created_at: string;
+  created_at: string | null;
 };
 
 function contentToPost(c: DbContent): Post {
@@ -16,7 +16,7 @@ function contentToPost(c: DbContent): Post {
     vendor_id: c.vendor_id,
     text: c.body ?? "",
     image_url: c.image_url ?? undefined,
-    created_at: c.created_at,
+    created_at: c.created_at ?? new Date().toISOString(),
     expiration_time: c.expires_at,
     status: new Date(c.expires_at) > new Date() ? "active" : "expired",
   };

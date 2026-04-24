@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Supabase env missing");
-  return createServiceClient(url, key, {
+  return createServiceClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
     const forwardedFor = request.headers.get("x-forwarded-for");
     const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : null;
 
-    const { error } = await serviceClient.from("shop_interactions").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await serviceClient.from("shop_interactions" as any).insert({
       visitor_key: body.visitor_key ?? null,
       shop_id: body.shop_id,
       event_type: body.event_type,
