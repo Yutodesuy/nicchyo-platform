@@ -185,7 +185,7 @@ export default function SearchClient({
         const eligibleVendors = getEligibleCouponVendorIds(couponData);
         setCouponEligibleVendorIds(eligibleVendors);
         setCouponTypes(availableCouponTypes);
-        setShowCouponTypeFilters(availableCouponTypes.length > 0); // TODO: 開発中は常に表示。本番前に `(couponData?.is_market_day ?? false) &&` を先頭に戻す
+        setShowCouponTypeFilters((couponData?.is_market_day ?? false) && availableCouponTypes.length > 0);
         setActiveCouponTypeId(couponData?.active_coupon?.coupon_type_id ?? undefined);
       })
       .catch(() => {
@@ -326,7 +326,7 @@ export default function SearchClient({
     return '検索結果';
   }, [category, selectedCouponType, textQuery]);
 
-  const hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
+  const _hasNameResults = textQuery.trim() !== '' && filteredShops.length > 0;
   const shouldShowMapButton = hasQuery && filteredShops.length > 0;
   const desktopSearchShopIds = useMemo(
     () => (hasQuery ? filteredShops.map((shop) => shop.id) : undefined),
@@ -345,7 +345,7 @@ export default function SearchClient({
     setCurrentPage(page);
   }, []);
 
-  const handleSelectByOffset = useCallback((offset: number) => {
+  const _handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
     const nextIndex = (selectedIndex + offset + filteredShops.length) % filteredShops.length;
     setSelectedShop(filteredShops[nextIndex]);
@@ -531,6 +531,7 @@ export default function SearchClient({
                     >
                       <div className="flex gap-3">
                         {post.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={post.imageUrl}
                             alt=""
@@ -594,6 +595,7 @@ export default function SearchClient({
                     >
                       <div className="flex gap-3">
                         {post.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={post.imageUrl}
                             alt=""

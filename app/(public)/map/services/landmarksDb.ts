@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import type { Landmark } from "../types/landmark";
 
 type LandmarkRow = {
@@ -14,7 +15,7 @@ type LandmarkRow = {
 };
 
 export async function fetchLandmarksFromDb(
-  supabase: SupabaseClient
+  supabase: SupabaseClient<Database>
 ): Promise<Landmark[]> {
   const { data, error } = await supabase
     .from("map_landmarks")
