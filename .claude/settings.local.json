@@ -56,7 +56,16 @@
       "Bash(git switch:*)",
       "Bash(git rm:*)",
       "Bash(git remote *)",
-      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"\" NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=\"\" npm run build)"
+      "Bash(NEXT_PUBLIC_SUPABASE_URL=\"\" NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=\"\" npm run build)",
+      "Bash(npx gh *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(s['name'],s['conclusion']\\) for job in data['jobs'] for s in job['steps']]\")",
+      "Bash(git stash *)",
+      "Bash(npx vitest *)",
+      "Bash(git pull *)",
+      "Bash(npx supabase *)",
+      "Bash(docker info *)"
     ]
   }
 }

@@ -96,7 +96,7 @@ export async function fetchTodayProductSales(vendorId: string): Promise<ProductS
     .eq("vendor_id", vendorId)
     .eq("sale_date", today)
     .order("quantity", { ascending: false });
-  return (data as ProductSale[]) ?? [];
+  return (data as unknown as ProductSale[]) ?? [];
 }
 
 export async function fetchAllProductSales(vendorId: string): Promise<ProductSale[]> {
@@ -106,7 +106,7 @@ export async function fetchAllProductSales(vendorId: string): Promise<ProductSal
     .select("*")
     .eq("vendor_id", vendorId)
     .order("quantity", { ascending: false });
-  return (data as ProductSale[]) ?? [];
+  return (data as unknown as ProductSale[]) ?? [];
 }
 
 export async function saveTodayProductSales(

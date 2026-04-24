@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import { formatShopIdToCode } from "@/lib/shops/route";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp";
@@ -23,7 +24,7 @@ async function fetchActiveShopNumbers(): Promise<number[]> {
   if (!supabaseUrl || !supabaseKey) return [];
 
   try {
-    const supabase = createSupabaseClient(supabaseUrl, supabaseKey);
+    const supabase = createSupabaseClient<Database>(supabaseUrl, supabaseKey);
     const { data } = await supabase
       .from("market_locations")
       .select("store_number")

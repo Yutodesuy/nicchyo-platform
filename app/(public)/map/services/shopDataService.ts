@@ -22,7 +22,6 @@ import { shops as staticShops } from '../data/shops';
 import type {
   Shop,
   ShopEditableData,
-  ShopDisplaySettings,
   ShopEditPending,
 } from '../types/shopData';
 
@@ -110,12 +109,11 @@ export async function getShopEditableData(
  * @returns 成功/失敗
  */
 export async function updateShopEditableData(
-  shopId: number,
-  editableData: Partial<ShopEditableData>,
-  userId: string
+  _shopId: number,
+  _editableData: Partial<ShopEditableData>,
+  _userId: string
 ): Promise<{ success: boolean; message: string; pendingId?: string }> {
   // 現在: 未実装（静的データのため）
-  console.warn('updateShopEditableData is not implemented yet');
   return {
     success: false,
     message: '現在、編集機能は実装されていません',
@@ -160,12 +158,11 @@ export async function updateShopEditableData(
  * @returns 成功/失敗
  */
 export async function toggleShopVisibility(
-  shopId: number,
-  visible: boolean,
-  userId: string
+  _shopId: number,
+  _visible: boolean,
+  _userId: string
 ): Promise<{ success: boolean; message: string }> {
   // 現在: 未実装（静的データのため）
-  console.warn('toggleShopVisibility is not implemented yet');
   return {
     success: false,
     message: '現在、表示切替機能は実装されていません',
@@ -206,7 +203,7 @@ export async function toggleShopVisibility(
  * @returns 承認待ちデータリスト
  */
 export async function getPendingEdits(
-  shopId?: number
+  _shopId?: number
 ): Promise<ShopEditPending[]> {
   // 現在: 未実装
   return [];
@@ -229,12 +226,11 @@ export async function getPendingEdits(
  * @returns 成功/失敗
  */
 export async function approveEdit(
-  pendingId: string,
-  approved: boolean,
-  adminComment?: string
+  _pendingId: string,
+  _approved: boolean,
+  _adminComment?: string
 ): Promise<{ success: boolean; message: string }> {
   // 現在: 未実装
-  console.warn('approveEdit is not implemented yet');
   return {
     success: false,
     message: '現在、承認機能は実装されていません',

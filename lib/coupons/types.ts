@@ -137,7 +137,7 @@ export interface SupabaseCouponIssuanceRow extends Omit<CouponIssuance, "coupon_
  */
 export function normalizeCouponIssuance(
   raw: SupabaseCouponIssuanceRow
-): CouponIssuance & { coupon_type: CouponType | null } {
+): Omit<CouponIssuance, "coupon_type"> & { coupon_type: CouponType | null } {
   const { coupon_types, ...rest } = raw;
   return { ...rest, coupon_type: coupon_types ?? null };
 }
