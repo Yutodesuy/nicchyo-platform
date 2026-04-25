@@ -407,75 +407,8 @@ function SearchResultsSheet({
   );
 }
 
-// ===== Bottom-right: vertical zoom slider =====
-function MapZoomControls({
-  map,
-  currentZoom,
-  minZoom,
-  maxZoom,
-}: {
-  map: L.Map | null;
-  currentZoom: number;
-  minZoom: number;
-  maxZoom: number;
-}) {
-  return (
-    <div
-      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-    >
-      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur">
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
-        <VerticalZoomSlider
-          value={currentZoom}
-          min={minZoom}
-          max={maxZoom}
-          onValueChange={(v) => map?.setZoom(v, { animate: false })}
-        />
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
-      </div>
-    </div>
-  );
-}
 
-// ===== Top-left: location tracking button =====
-function MapTrackingButton({
-  isTracking,
-  onToggleTracking,
-}: {
-  isTracking: boolean;
-  onToggleTracking: () => void;
-}) {
-  return (
-    <div
-      className="absolute top-4 left-4 z-[1000]"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleTracking();
-        }}
-        className={`flex h-14 w-14 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
-          isTracking
-            ? "bg-amber-500 text-white hover:bg-amber-600"
-            : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
-        }`}
-        aria-label={isTracking ? "追従中" : "追従オフ"}
-      >
-        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-      </button>
-    </div>
-  );
-}
-
-// ===== Combined controls (kept for call-site compatibility) =====
+// ===== Combined controls: tracking button + zoom slider in one right-side column =====
 function MapControls({
   map,
   isTracking,
@@ -492,10 +425,41 @@ function MapControls({
   maxZoom: number;
 }) {
   return (
-    <>
-      <MapZoomControls map={map} currentZoom={currentZoom} minZoom={minZoom} maxZoom={maxZoom} />
-      <MapTrackingButton isTracking={isTracking} onToggleTracking={onToggleTracking} />
-    </>
+    <div
+      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => { e.stopPropagation(); }}
+    >
+      {/* 現在地追跡ボタン（ズームスライダーの直上） */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleTracking();
+        }}
+        className={`flex h-14 w-14 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
+          isTracking
+            ? "bg-amber-500 text-white hover:bg-amber-600"
+            : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
+        }`}
+        aria-label={isTracking ? "追従中" : "追従オフ"}
+      >
+        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
+      </button>
+
+      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
+      <div className="flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur">
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
+        <VerticalZoomSlider
+          value={currentZoom}
+          min={minZoom}
+          max={maxZoom}
+          onValueChange={(v) => map?.setZoom(v, { animate: false })}
+        />
+        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
+      </div>
+    </div>
   );
 }
 
