@@ -55,7 +55,7 @@ export function createCouponQrToken(
  */
 function parseCouponQrToken(token: string): ParsedCouponQrToken | null {
   const trimmed = token.trim();
-  const legacyPrefix = `${COUPON_QR_VERSION}:`;
+  const v2Prefix = `${COUPON_QR_VERSION}:`;
 
   const parseLegacy = (): ParsedCouponQrToken | null => {
     const lastColon = trimmed.lastIndexOf(":");
@@ -78,11 +78,11 @@ function parseCouponQrToken(token: string): ParsedCouponQrToken | null {
     return { version: "legacy", visitorKey, issuanceId: null, slot, signature };
   };
 
-  if (!trimmed.startsWith(legacyPrefix)) {
+  if (!trimmed.startsWith(v2Prefix)) {
     return parseLegacy();
   }
 
-  const body = trimmed.slice(legacyPrefix.length);
+  const body = trimmed.slice(v2Prefix.length);
   const lastColon = body.lastIndexOf(":");
   if (lastColon < 0) return null;
   const secondLastColon = body.lastIndexOf(":", lastColon - 1);
