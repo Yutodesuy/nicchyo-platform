@@ -18,6 +18,8 @@ npx vitest run lib/favoriteShops.test.ts  # 単一テストファイルの実行
 
 PRを出す前は必ず `npm run build` でビルドが通ることを確認する。
 
+**PRは小さく出す**：チーム開発のためレビューしやすさを優先する。1PRは1つの目的（機能追加・バグ修正・リファクタを混在させない）。目安は変更ファイル10件以内。大きな作業は事前にサブタスクに分割してからPRを作成する。
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16 (App Router), React 18, TypeScript 5.9
