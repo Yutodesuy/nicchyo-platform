@@ -183,6 +183,7 @@ body.grandma-chat-open .leaflet-container {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   rotate: var(--map-rotation-inverse, 0deg);
   user-select: none;
+  animation: chome-badge-bounce-4s 4s ease-in-out infinite;
 }
 
 .chome-area-badge:hover {
@@ -219,6 +220,29 @@ body.grandma-chat-open .leaflet-container {
   padding: 1px 7px;
   border-radius: 9999px;
   white-space: nowrap;
+}
+
+@keyframes chome-badge-bounce-4s {
+  0%,
+  86%,
+  100% {
+    translate: 0 0;
+  }
+  90% {
+    translate: 0 -8px;
+  }
+  94% {
+    translate: 0 0;
+  }
+  97% {
+    translate: 0 -3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chome-area-badge {
+    animation: none;
+  }
 }
 
 /* ===== マップ軽量化: クラスタアイコン ===== */

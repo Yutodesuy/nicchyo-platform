@@ -13,9 +13,10 @@ import {
   fetchMyCoupons,
   todayJstString,
 } from "@/lib/coupons/client";
+import { isMilestoneStep, type MilestoneStep } from "@/lib/coupons/milestones";
 import type {
   CouponIssuance,
-  CouponQrTokenResponse,
+  CouponQrTokensResponse,
   CouponType,
   MyCouponsResponse,
 } from "@/lib/coupons/types";
@@ -38,8 +39,7 @@ function getQrProgressColor(secondsLeft: number): string {
   return "bg-emerald-500";
 }
 
-const MILESTONE_STEPS = [1, 3, 5] as const;
-const MILESTONE_AMOUNTS: Record<number, number> = { 1: 100, 3: 200, 5: 300 };
+const MILESTONE_AMOUNTS: Record<MilestoneStep, number> = { 1: 100, 3: 200, 5: 300 };
 const STAMP_TOTAL = 5;
 
 function StampCard({
@@ -48,7 +48,7 @@ function StampCard({
   stampsToNext,
 }: {
   stampCount: number;
-  nextMilestone: 1 | 3 | 5 | null;
+  nextMilestone: MilestoneStep | null;
   stampsToNext: number;
 }) {
   return (
@@ -59,7 +59,7 @@ function StampCard({
           {Array.from({ length: STAMP_TOTAL }, (_, i) => {
             const slotNum = i + 1;
             const isStamped = slotNum <= stampCount;
-            const isMilestone = MILESTONE_STEPS.includes(slotNum as 1 | 3 | 5);
+            const isMilestone = isMilestoneStep(slotNum);
             return (
               <div key={slotNum} className="flex flex-col items-center gap-1">
                 <div
@@ -115,7 +115,7 @@ function CouponsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [visitorKey, setVisitorKey] = useState<string | null>(null);
-  const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrTokensByCouponId, setQrTokensByCouponId] = useState<Record<string, string>>({});
   const [qrSecondsLeft, setQrSecondsLeft] = useState(0);
   const [isQrLoading, setIsQrLoading] = useState(false);
   const [showNewCouponNotice, setShowNewCouponNotice] = useState(false);
@@ -136,7 +136,7 @@ function CouponsPageContent() {
     [marketDate]
   );
 
-  const refreshQrToken = useCallback(
+  const refreshQrTokens = useCallback(
     async (vk: string) => {
       setIsQrLoading(true);
       try {
@@ -145,12 +145,16 @@ function CouponsPageContent() {
           { headers: { "X-Visitor-Key": vk } }
         );
         if (!response.ok) {
-          setQrToken(null);
+          setQrTokensByCouponId({});
           setQrSecondsLeft(0);
           return;
         }
-        const payload = (await response.json()) as CouponQrTokenResponse;
-        setQrToken(payload.token);
+        const payload = (await response.json()) as CouponQrTokensResponse;
+        const nextMap: Record<string, string> = {};
+        payload.tokens.forEach((item) => {
+          nextMap[item.coupon_issuance_id] = item.token;
+        });
+        setQrTokensByCouponId(nextMap);
         setQrSecondsLeft(payload.expires_in_seconds);
       } finally {
         setIsQrLoading(false);
@@ -177,25 +181,25 @@ function CouponsPageContent() {
 
   useEffect(() => {
     if (!visitorKey || activeCoupons.length === 0) {
-      setQrToken(null);
+      setQrTokensByCouponId({});
       setQrSecondsLeft(0);
       return;
     }
-    refreshQrToken(visitorKey);
-  }, [activeCoupons.length, refreshQrToken, visitorKey]);
+    refreshQrTokens(visitorKey);
+  }, [activeCoupons.length, refreshQrTokens, visitorKey]);
 
   useEffect(() => {
-    if (!qrToken || qrSecondsLeft <= 0) return;
+    if (Object.keys(qrTokensByCouponId).length === 0 || qrSecondsLeft <= 0) return;
     const timer = window.setTimeout(() => {
       setQrSecondsLeft((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => window.clearTimeout(timer);
-  }, [qrSecondsLeft, qrToken]);
+  }, [qrSecondsLeft, qrTokensByCouponId]);
 
   useEffect(() => {
     if (!visitorKey || activeCoupons.length === 0 || qrSecondsLeft > 0 || isQrLoading) return;
-    refreshQrToken(visitorKey);
-  }, [activeCoupons.length, isQrLoading, qrSecondsLeft, refreshQrToken, visitorKey]);
+    refreshQrTokens(visitorKey);
+  }, [activeCoupons.length, isQrLoading, qrSecondsLeft, refreshQrTokens, visitorKey]);
 
   useEffect(() => {
     if (isLoading || activeCoupons.length === 0 || lotteryHandledRef.current) return;
@@ -300,7 +304,7 @@ function CouponsPageContent() {
                   <ActiveCouponCard
                     key={coupon.id}
                     coupon={coupon}
-                    qrToken={qrToken}
+                    qrToken={qrTokensByCouponId[coupon.id] ?? null}
                     qrSecondsLeft={qrSecondsLeft}
                     isQrLoading={isQrLoading}
                   />

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import type { CouponQrTokenResponse } from "@/lib/coupons/types";
+import type { CouponQrTokensResponse } from "@/lib/coupons/types";
 import {
   createCouponQrToken,
   getSecondsUntilNextCouponQrSlot,
@@ -22,10 +22,7 @@ function getServiceClient() {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    // visitor_key はヘッダーから取得（URLログへの露出を防ぐため）
-    const visitorKey =
-      request.headers.get("x-visitor-key")?.trim() ||
-      searchParams.get("visitor_key")?.trim();
+    const visitorKey = request.headers.get("x-visitor-key")?.trim();
     const marketDate = searchParams.get("market_date")?.trim();
 
     if (!visitorKey || !marketDate) {
@@ -47,14 +44,17 @@ export async function GET(request: Request) {
       .eq("market_date", marketDate)
       .eq("is_used", false)
       .gt("expires_at", nowIso)
-      .limit(1);
+      .order("created_at", { ascending: true });
 
     if (!activeCoupons || activeCoupons.length === 0) {
       return NextResponse.json({ error: "No active coupon" }, { status: 409 });
     }
 
-    const response: CouponQrTokenResponse = {
-      token: createCouponQrToken(visitorKey),
+    const response: CouponQrTokensResponse = {
+      tokens: activeCoupons.map((coupon) => ({
+        coupon_issuance_id: coupon.id,
+        token: createCouponQrToken(visitorKey, coupon.id),
+      })),
       expires_in_seconds: getSecondsUntilNextCouponQrSlot(),
     };
 
