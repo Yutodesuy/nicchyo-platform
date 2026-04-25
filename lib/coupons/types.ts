@@ -124,6 +124,16 @@ export interface CouponQrTokenResponse {
   expires_in_seconds: number;
 }
 
+export interface CouponQrTokenItem {
+  coupon_issuance_id: string;
+  token: string;
+}
+
+export interface CouponQrTokensResponse {
+  tokens: CouponQrTokenItem[];
+  expires_in_seconds: number;
+}
+
 export interface CouponTypesResponse {
   coupon_types: CouponTypeWithParticipants[];
 }
