@@ -126,12 +126,12 @@ function TimeAmbientOverlay() {
 
 // ===== テーパー型縦ズームスライダー =====
 // 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
-const VZ_PAD = 18;        // 上下パディング（サムがはみ出ないように）
-const VZ_TRACK_H = 195;   // トラック高さ
-const VZ_SVG_W = 42;
+const VZ_PAD = 14;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 156;   // トラック高さ
+const VZ_SVG_W = 34;
 const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
-const VZ_WIDE = 27;       // 上端（拡大）の幅
-const VZ_NARROW = 10.5;   // 下端（縮小）の幅
+const VZ_WIDE = 22;       // 上端（拡大）の幅
+const VZ_NARROW = 8.5;    // 下端（縮小）の幅
 const VZ_CX = VZ_SVG_W / 2;
 const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
 const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
@@ -212,7 +212,7 @@ function VerticalZoomSlider({
       {/* アンバー塗り（現在のズームレベルを表す） */}
       <polygon points={fillPts} fill="#d97706" opacity="0.65" />
       {/* サム */}
-      <circle cx={VZ_CX} cy={thumbY} r={10.5} fill="white" stroke="#d97706" strokeWidth="3.75" />
+      <circle cx={VZ_CX} cy={thumbY} r={8.5} fill="white" stroke="#d97706" strokeWidth="3" />
     </svg>
   );
 }
@@ -408,7 +408,7 @@ function SearchResultsSheet({
 }
 
 
-// ===== Combined controls: tracking button + zoom slider in one right-side column =====
+// ===== Right-side controls: zoom slider (bottom) + tracking button (above nav bar) =====
 function MapControls({
   map,
   isTracking,
@@ -425,41 +425,48 @@ function MapControls({
   maxZoom: number;
 }) {
   return (
-    <div
-      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-    >
-      {/* 現在地追跡ボタン（ズームスライダーの直上） */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleTracking();
-        }}
-        className={`flex h-14 w-14 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
-          isTracking
-            ? "bg-amber-500 text-white hover:bg-amber-600"
-            : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
-        }`}
-        aria-label={isTracking ? "追従中" : "追従オフ"}
+    <>
+      {/* 縦ズームスライダー（ナビバー直上） */}
+      <div
+        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] right-4 z-[1000] flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
       >
-        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-      </button>
-
-      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur">
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
         <VerticalZoomSlider
           value={currentZoom}
           min={minZoom}
           max={maxZoom}
           onValueChange={(v) => map?.setZoom(v, { animate: false })}
         />
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
       </div>
-    </div>
+
+      {/* 現在地追跡ボタン（画面上部右） */}
+      <div
+        className="absolute right-4 top-4 z-[1000]"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleTracking();
+          }}
+          className={`flex h-11 w-11 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
+            isTracking
+              ? "bg-amber-500 text-white hover:bg-amber-600"
+              : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
+          }`}
+          aria-label={isTracking ? "追従中" : "追従オフ"}
+        >
+          <Navigation className={`h-5 w-5 ${isTracking ? "fill-current" : ""}`} />
+        </button>
+      </div>
+    </>
   );
 }
 
