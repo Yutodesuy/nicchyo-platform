@@ -30,3 +30,8 @@ VALUES
   ('スタンプ3回達成', '🎉', '3店舗制覇！中盤ご褒美', 200, false, true, 11, 3),
   ('スタンプ5回達成', '🏆', '5店舗のツワモノ！最大ご褒美', 300, false, true, 12, 5)
 ON CONFLICT DO NOTHING;
+
+-- 7. 同じ日・同じマイルストーンの二重発行を防止
+CREATE UNIQUE INDEX IF NOT EXISTS uq_coupon_issuances_milestone
+  ON coupon_issuances(visitor_key, market_date, issue_reason)
+  WHERE issue_reason LIKE 'milestone_%';
