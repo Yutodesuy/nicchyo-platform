@@ -6,6 +6,7 @@ import type { MouseEvent } from "react";
 import type { Shop } from "../../map/data/shops";
 import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../../lib/shopImages";
+import { Badge } from "@/components/ui/badge";
 
 interface ShopResultCardProps {
   shop: Shop;
@@ -77,13 +78,9 @@ function ShopResultCard({
         </div>
         <div className="flex items-center gap-2">
           {hasCoupon && (
-            <span
-              className={`rounded-full border border-green-200 bg-green-50 px-2 py-1 font-semibold text-green-800 ${
-                compact ? "text-[10px]" : "text-[11px]"
-              }`}
-            >
+            <Badge variant="coupon" className={compact ? "text-[10px]" : "text-[11px]"}>
               🎟️ クーポン対応
-            </span>
+            </Badge>
           )}
           <button
             type="button"
@@ -111,6 +108,7 @@ function ShopResultCard({
       </div>
 
       <div className={`${compact ? "mt-1.5" : "mt-2"} flex gap-3 overflow-hidden rounded-xl border border-amber-100 bg-white p-2.5`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={previewImage}
           alt={`${shop.name}の画像`}
