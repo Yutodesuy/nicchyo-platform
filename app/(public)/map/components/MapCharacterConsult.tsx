@@ -100,6 +100,7 @@ function CharacterSprite({
         className="relative overflow-hidden"
         style={{ height: CHAR_H, width: CHAR_W, animation: 'character-idle 3s ease-in-out infinite' }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={character.image}
           alt={character.name}
@@ -125,14 +126,6 @@ function getStatusLabel(status: Status, elapsed: number): string | null {
   return null;
 }
 
-function Spinner() {
-  return (
-    <svg className="h-5 w-5 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-    </svg>
-  );
-}
 
 function getStarterPrompts(historyLength: number): string[] {
   if (historyLength > 0) {
@@ -512,7 +505,7 @@ export default function MapCharacterConsult({
                         key={prompt}
                         type="button"
                         onClick={() => handleSend(prompt)}
-                        className="shrink-0 rounded-full border border-amber-200 bg-[#fff8ee] px-3.5 py-2 text-left text-[12px] font-semibold text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-white active:scale-[0.98]"
+                        className="shrink-0 rounded-chip border border-amber-200 bg-white px-[13px] py-[7px] text-left text-[13px] font-bold text-amber-900 shadow-chip transition-all duration-[120ms] hover:bg-amber-50 active:scale-[0.98]"
                       >
                         {prompt}
                       </button>
@@ -546,6 +539,7 @@ export default function MapCharacterConsult({
                   <div className="mb-0.5 shrink-0">
                     {activeCharacter ? (
                       <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={activeCharacter.image}
                           alt={activeCharacter.name}
@@ -587,10 +581,10 @@ export default function MapCharacterConsult({
                   type="button"
                   onClick={() => handleSend()}
                   disabled={!inputText.trim()}
-                  className="mb-0.5 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl px-4 text-[13px] font-bold text-white shadow-sm transition-all bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 active:scale-[0.98]"
+                  className="mb-0.5 inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white shadow-pop transition-all bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:shadow-none active:scale-[0.98]"
                   aria-label="送信"
                 >
-                  <span>送信</span>
+                  ↑
                 </button>
               </div>
 
