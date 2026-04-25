@@ -15,7 +15,8 @@ export async function fetchMyCoupons(
   marketDate = todayJstString()
 ): Promise<MyCouponsResponse | null> {
   const response = await fetch(
-    `/api/coupons/my?visitor_key=${encodeURIComponent(visitorKey)}&market_date=${marketDate}`
+    `/api/coupons/my?market_date=${marketDate}`,
+    { headers: { "X-Visitor-Key": visitorKey } }
   );
   if (!response.ok) {
     return null;

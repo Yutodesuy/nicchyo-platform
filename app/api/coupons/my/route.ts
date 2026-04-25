@@ -29,14 +29,18 @@ function computeNextMilestone(stampCount: number): {
 }
 
 /**
- * GET /api/coupons/my?visitor_key=xxx&market_date=YYYY-MM-DD
+ * GET /api/coupons/my?market_date=YYYY-MM-DD
+ * Header: X-Visitor-Key: <visitor_key>
  *
- * visitor_key の当日クーポン・スタンプ・参加店情報を返す公開API。
+ * visitor_key はヘッダーで受け取る（URLログへの露出を防ぐため）。
+ * 後方互換としてクエリパラメータも受け付ける。
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const visitor_key = searchParams.get("visitor_key")?.trim();
+    const visitor_key =
+      request.headers.get("x-visitor-key")?.trim() ||
+      searchParams.get("visitor_key")?.trim();
     const market_date = searchParams.get("market_date")?.trim();
 
     if (!visitor_key || !market_date) {
@@ -59,7 +63,7 @@ export async function GET(request: Request) {
 
     const is_market_day = (marketDayCount ?? 0) > 0;
 
-    // ② アクティブなクーポン（最大2枚）
+    // ② アクティブなクーポン（全件）
     const now = new Date().toISOString();
     const { data: activeCouponsRaw } = await supabase
       .from("coupon_issuances")
@@ -68,8 +72,7 @@ export async function GET(request: Request) {
       .eq("market_date", market_date)
       .eq("is_used", false)
       .gt("expires_at", now)
-      .order("created_at", { ascending: true })
-      .limit(2);
+      .order("created_at", { ascending: true });
 
     const active_coupons: Array<CouponIssuance & { coupon_type: CouponType }> = (
       activeCouponsRaw ?? []
