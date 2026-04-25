@@ -428,7 +428,7 @@ function MapControls({
     <>
       {/* 縦ズームスライダー（ナビバー直上） */}
       <div
-        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] right-4 z-[1000] flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur"
+        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)-2rem)] right-4 z-[1000] flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => { e.stopPropagation(); }}
@@ -445,7 +445,7 @@ function MapControls({
 
       {/* 現在地追跡ボタン（画面上部右） */}
       <div
-        className="absolute right-4 top-4 z-[1000]"
+        className="absolute right-4 top-20 z-[1000]"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => { e.stopPropagation(); }}
