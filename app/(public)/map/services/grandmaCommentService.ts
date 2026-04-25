@@ -10,3 +10,13 @@ export function pickNextComment(pool: GrandmaComment[], currentId?: string) {
   const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % pool.length : 0;
   return pool[nextIndex];
 }
+
+export function genreIcon(genre: GrandmaComment['genre']): string {
+  switch (genre) {
+    case 'event':    return '🎉';
+    case 'notice':   return '📣';
+    case 'tutorial': return '🧭';
+    case 'monologue':
+    default:         return '💬';
+  }
+}
