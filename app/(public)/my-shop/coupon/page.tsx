@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { todayJstString } from "@/lib/coupons/client";
 import type { RedeemResponse } from "@/lib/coupons/types";
 
-// html5-qrcodeはブラウザAPIのためSSRを無効化
 const QrScanner = dynamic(() => import("./QrScanner"), { ssr: false });
 
 type RedeemState =
@@ -19,12 +18,17 @@ type RedeemState =
   | { status: "success"; result: RedeemResponse }
   | { status: "error"; message: string };
 
+const MILESTONE_LABELS: Record<number, string> = {
+  1: "🎁 1店舗達成！",
+  3: "🎉 3店舗制覇！",
+  5: "🏆 5店舗のツワモノ！",
+};
+
 export default function MyShopCouponPage() {
   const { isLoggedIn, isLoading } = useAuth();
   const [redeemState, setRedeemState] = useState<RedeemState>({ status: "idle" });
 
   const handleScan = useCallback(async (visitorKey: string) => {
-    // スキャン済み or 処理中は無視
     if (redeemState.status !== "scanning") return;
 
     setRedeemState({ status: "loading", visitorKey });
@@ -42,7 +46,7 @@ export default function MyShopCouponPage() {
           400: "QRコードの有効期限が切れたか、読み取りに失敗しました",
           401: "ログインが必要です",
           403: "このお店はクーポン参加店ではありません",
-          409: "このお客様はクーポンをお持ちではありません",
+          409: "処理が競合しました。もう一度お試しください",
         };
         setRedeemState({
           status: "error",
@@ -84,7 +88,6 @@ export default function MyShopCouponPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-28">
-      {/* ヘッダー */}
       <div className="border-b border-green-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Link
@@ -111,6 +114,9 @@ export default function MyShopCouponPage() {
                 <li>お客様の「クーポン」ページのQRコードにカメラを向ける</li>
                 <li>読み取り完了で自動的に確定されます</li>
               </ol>
+              <p className="mt-2 text-xs text-gray-400">
+                ※ クーポン未保有のお客様はスタンプのみ付与されます
+              </p>
             </div>
             <button
               type="button"
@@ -144,7 +150,7 @@ export default function MyShopCouponPage() {
         {redeemState.status === "loading" && (
           <div className="flex flex-col items-center gap-4 rounded-2xl border border-gray-100 bg-white py-10 shadow-sm">
             <Loader2 size={36} className="animate-spin text-green-500" />
-            <p className="text-sm font-semibold text-gray-600">クーポンを確定中...</p>
+            <p className="text-sm font-semibold text-gray-600">処理中...</p>
           </div>
         )}
 
@@ -186,10 +192,21 @@ export default function MyShopCouponPage() {
                 <CheckCircle2 size={36} className="text-green-500" />
               </div>
               <div>
-                <p className="text-xl font-bold text-slate-900">確定しました</p>
-                <p className="mt-1 text-sm text-gray-500">
-                  ¥{redeemState.result.amount_discounted} 割引が適用されました
-                </p>
+                {redeemState.result.had_coupon ? (
+                  <>
+                    <p className="text-xl font-bold text-slate-900">確定しました</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      ¥{redeemState.result.amount_discounted} 割引が適用されました
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-slate-900">スタンプを押しました</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      クーポン未保有のため割引なしでチェックインしました
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -199,17 +216,25 @@ export default function MyShopCouponPage() {
                 {redeemState.result.is_new_stamp ? (
                   <span className="flex items-center gap-1 text-sm font-semibold text-green-600">
                     <Star size={14} fill="currentColor" />
-                    新しいスタンプを付与
+                    本日{redeemState.result.total_stamps}スタンプ目！
                   </span>
                 ) : (
                   <span className="text-sm text-gray-400">スタンプ済み（新規なし）</span>
                 )}
               </div>
+              {redeemState.result.milestone_reached !== null && (
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-gray-600">マイルストーン</span>
+                  <span className="text-sm font-bold text-amber-600">
+                    {MILESTONE_LABELS[redeemState.result.milestone_reached] ?? `${redeemState.result.milestone_reached}回達成`}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-sm text-gray-600">次回クーポン</span>
-                {redeemState.result.next_coupon_issued ? (
+                <span className="text-sm text-gray-600">クーポン発行</span>
+                {redeemState.result.milestone_coupon_issued ? (
                   <span className="flex items-center gap-1 text-sm font-semibold text-amber-600">
-                    🎟️ {redeemState.result.next_coupon?.coupon_type?.name ?? "クーポン"}を発行
+                    🎟️ {redeemState.result.milestone_coupon?.coupon_type?.name ?? "クーポン"}を発行
                   </span>
                 ) : (
                   <span className="text-sm text-gray-400">発行なし</span>
@@ -225,7 +250,7 @@ export default function MyShopCouponPage() {
               <ScanLine size={16} />
               続けてスキャンする
             </button>
-            {redeemState.result.next_coupon_issued && (
+            {redeemState.result.milestone_coupon_issued && (
               <Link
                 href="/coupons?lottery=1"
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 py-3 text-sm font-bold text-amber-800 transition hover:bg-amber-100"
@@ -244,7 +269,6 @@ export default function MyShopCouponPage() {
           </div>
         )}
 
-        {/* ─ 待機中のみ：クーポンを確定する旨のボタン下の補足 ─ */}
         {redeemState.status === "idle" && (
           <p className="text-center text-xs text-gray-400">
             カメラへのアクセス許可が必要です

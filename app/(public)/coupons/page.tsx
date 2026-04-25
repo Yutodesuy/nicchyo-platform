@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, MapPin, TicketX } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import NavigationBar from "@/app/components/NavigationBar";
 import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
@@ -30,12 +30,80 @@ function formatExpiresAt(isoString: string): string {
 }
 
 type ActiveCoupon = CouponIssuance & { coupon_type: CouponType };
-type LotteryStage = "idle" | "lottery" | "revealed";
 
 function getQrProgressColor(secondsLeft: number): string {
   if (secondsLeft <= 60) return "bg-rose-500";
   if (secondsLeft <= 150) return "bg-amber-400";
   return "bg-emerald-500";
+}
+
+const MILESTONE_STEPS = [1, 3, 5] as const;
+const MILESTONE_AMOUNTS: Record<number, number> = { 1: 100, 3: 200, 5: 300 };
+const STAMP_TOTAL = 5;
+
+function StampCard({
+  stampCount,
+  nextMilestone,
+  stampsToNext,
+}: {
+  stampCount: number;
+  nextMilestone: 1 | 3 | 5 | null;
+  stampsToNext: number;
+}) {
+  return (
+    <div className="rounded-3xl border border-amber-100 bg-white px-5 py-4 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-600">Stamp Card</p>
+      <div className="mt-3 flex items-end justify-between gap-2">
+        <div className="flex gap-2">
+          {Array.from({ length: STAMP_TOTAL }, (_, i) => {
+            const slotNum = i + 1;
+            const isStamped = slotNum <= stampCount;
+            const isMilestone = MILESTONE_STEPS.includes(slotNum as 1 | 3 | 5);
+            return (
+              <div key={slotNum} className="flex flex-col items-center gap-1">
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-xl transition-all ${
+                    isStamped
+                      ? "bg-amber-400 shadow-md"
+                      : "border-2 border-dashed border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  {isStamped ? "🐾" : (
+                    <span className="text-xs font-bold text-gray-300">{slotNum}</span>
+                  )}
+                </div>
+                {isMilestone && (
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      slotNum <= stampCount
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    {MILESTONE_AMOUNTS[slotNum]}円
+                  </span>
+                )}
+                {!isMilestone && <span className="h-4" />}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="mt-3 text-sm font-semibold text-gray-700">
+        {nextMilestone !== null ? (
+          <>
+            あと<span className="text-amber-600 font-bold">{stampsToNext}</span>スタンプで{" "}
+            <span className="text-amber-600 font-bold">{MILESTONE_AMOUNTS[nextMilestone]}円</span>
+            クーポン！
+          </>
+        ) : stampCount >= STAMP_TOTAL ? (
+          <span className="text-green-600">全スタンプ達成！おめでとうございます🎉</span>
+        ) : (
+          "お店でQRを見せてスタンプをもらおう"
+        )}
+      </p>
+    </div>
+  );
 }
 
 function CouponsPageContent() {
@@ -49,7 +117,7 @@ function CouponsPageContent() {
   const [qrToken, setQrToken] = useState<string | null>(null);
   const [qrSecondsLeft, setQrSecondsLeft] = useState(0);
   const [isQrLoading, setIsQrLoading] = useState(false);
-  const [lotteryStage, setLotteryStage] = useState<LotteryStage>("idle");
+  const [showNewCouponNotice, setShowNewCouponNotice] = useState(false);
   const lotteryHandledRef = useRef(false);
   const marketDate = todayJstString();
 
@@ -100,17 +168,20 @@ function CouponsPageContent() {
     fetchData(vk);
   }, [fetchData]);
 
-  const activeCoupon = data?.active_coupon as ActiveCoupon | null;
+  const activeCoupons = useMemo(
+    () => (data?.active_coupons ?? []) as ActiveCoupon[],
+    [data?.active_coupons]
+  );
   const isMarketDay = isDevCouponOverride || (data?.is_market_day ?? false);
 
   useEffect(() => {
-    if (!visitorKey || !activeCoupon) {
+    if (!visitorKey || activeCoupons.length === 0) {
       setQrToken(null);
       setQrSecondsLeft(0);
       return;
     }
     refreshQrToken(visitorKey);
-  }, [activeCoupon, refreshQrToken, visitorKey]);
+  }, [activeCoupons.length, refreshQrToken, visitorKey]);
 
   useEffect(() => {
     if (!qrToken || qrSecondsLeft <= 0) return;
@@ -121,43 +192,40 @@ function CouponsPageContent() {
   }, [qrSecondsLeft, qrToken]);
 
   useEffect(() => {
-    if (!visitorKey || !activeCoupon || qrSecondsLeft > 0 || isQrLoading) return;
+    if (!visitorKey || activeCoupons.length === 0 || qrSecondsLeft > 0 || isQrLoading) return;
     refreshQrToken(visitorKey);
-  }, [activeCoupon, isQrLoading, qrSecondsLeft, refreshQrToken, visitorKey]);
+  }, [activeCoupons.length, isQrLoading, qrSecondsLeft, refreshQrToken, visitorKey]);
 
   useEffect(() => {
-    if (isLoading || !activeCoupon || lotteryHandledRef.current) return;
+    if (isLoading || activeCoupons.length === 0 || lotteryHandledRef.current) return;
     const hasPendingFlag =
       typeof window !== "undefined" &&
       window.localStorage.getItem(COUPON_LOTTERY_PENDING_KEY) === "1";
-    const shouldStartLottery = hasPendingFlag || searchParams?.get("lottery") === "1";
-    if (!shouldStartLottery) return;
+    const shouldShow = hasPendingFlag || searchParams?.get("lottery") === "1";
+    if (!shouldShow) return;
 
     lotteryHandledRef.current = true;
-    setLotteryStage("lottery");
+    setShowNewCouponNotice(true);
     if (hasPendingFlag) {
       window.localStorage.removeItem(COUPON_LOTTERY_PENDING_KEY);
     }
     if (searchParams?.get("lottery") === "1") {
       router.replace("/coupons");
     }
-    const timer = window.setTimeout(() => {
-      setLotteryStage("revealed");
-    }, 3000);
-    return () => window.clearTimeout(timer);
-  }, [activeCoupon, isLoading, router, searchParams]);
+  }, [activeCoupons.length, isLoading, router, searchParams]);
 
   const activeCouponVendors = useMemo(() => {
-    if (!activeCoupon) return [];
+    if (activeCoupons.length === 0) return [];
+    const activeCouponTypeIds = new Set(activeCoupons.map((c) => c.coupon_type_id));
     return (data?.participating_vendors ?? [])
-      .filter((vendor) => vendor.coupon_type_id === activeCoupon.coupon_type_id)
+      .filter((vendor) => activeCouponTypeIds.has(vendor.coupon_type_id))
       .sort((a, b) => {
         if (a.is_stamped === b.is_stamped) {
           return a.vendor_name.localeCompare(b.vendor_name, "ja");
         }
         return a.is_stamped ? 1 : -1;
       });
-  }, [activeCoupon, data?.participating_vendors]);
+  }, [activeCoupons, data?.participating_vendors]);
 
   if (isLoading) {
     return (
@@ -183,7 +251,7 @@ function CouponsPageContent() {
                   保有中
                 </p>
                 <p className="text-2xl font-extrabold text-green-700">
-                  {activeCoupon ? "1" : "0"}
+                  {activeCoupons.length}
                   <span className="ml-1 text-sm font-semibold">枚</span>
                 </p>
               </div>
@@ -206,7 +274,7 @@ function CouponsPageContent() {
               <>
                 <p className="font-semibold text-amber-800">今日は日曜市の開催日ではありません</p>
                 <p className="mt-1 text-sm text-amber-700">
-                  開催日にマップを開くと、最初のクーポンを受け取れます。
+                  開催日にお店でQRを見せると、スタンプが集まります。
                 </p>
               </>
             )}
@@ -214,48 +282,61 @@ function CouponsPageContent() {
         )}
 
         {isMarketDay && (
+          <StampCard
+            stampCount={data?.stamp_count ?? 0}
+            nextMilestone={data?.next_milestone ?? 1}
+            stampsToNext={data?.stamps_to_next ?? 1}
+          />
+        )}
+
+        {isMarketDay && (
           <section className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
               今日のクーポン
             </p>
-            {activeCoupon && visitorKey ? (
-              lotteryStage === "lottery" ? (
-                <LotteryCard />
-              ) : (
-                <ActiveCouponCard
-                  coupon={activeCoupon}
-                  qrToken={qrToken}
-                  qrSecondsLeft={qrSecondsLeft}
-                  isQrLoading={isQrLoading}
-                  showRevealNotice={lotteryStage === "revealed"}
-                />
-              )
+            {activeCoupons.length > 0 && visitorKey ? (
+              <div className="space-y-3">
+                {showNewCouponNotice && (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                    新しいクーポンを受け取りました
+                  </div>
+                )}
+                {activeCoupons.map((coupon) => (
+                  <ActiveCouponCard
+                    key={coupon.id}
+                    coupon={coupon}
+                    qrToken={qrToken}
+                    qrSecondsLeft={qrSecondsLeft}
+                    isQrLoading={isQrLoading}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-gray-200 bg-white px-5 py-6 text-center shadow-sm">
-                <TicketX className="h-10 w-10 text-gray-300" />
+                <span className="text-4xl">🐾</span>
                 <div>
                   <p className="font-semibold text-gray-700">クーポンはまだありません</p>
                   <p className="mt-0.5 text-sm text-gray-500">
-                    マップを開くと、最初の1枚を受け取れます。
+                    お店でQRを見せてスタンプを集めると、クーポンがもらえます。
                   </p>
                 </div>
                 <Link
                   href="/map"
                   className="mt-1 rounded-full bg-green-500 px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
                 >
-                  マップを開く
+                  マップでお店を探す
                 </Link>
               </div>
             )}
           </section>
         )}
 
-        {isMarketDay && activeCoupon && activeCouponVendors.length > 0 && (
+        {isMarketDay && activeCoupons.length > 0 && activeCouponVendors.length > 0 && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-                  このクーポンが使えるお店
+                  クーポンが使えるお店
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
                   条件を満たす参加店ならどこでも使えます
@@ -330,54 +411,22 @@ export default function CouponsPage() {
   );
 }
 
-function LotteryCard() {
-  return (
-    <div className="rounded-3xl border border-green-200 bg-white px-5 py-10 shadow-sm">
-      <div className="flex flex-col items-center gap-5 py-4 text-center">
-        <div className="relative flex h-24 w-24 items-center justify-center">
-          <span className="absolute text-4xl animate-[spin_2.6s_linear_infinite]">🎟️</span>
-          <span className="absolute text-2xl -translate-x-7 translate-y-5 animate-[ping_1.8s_ease-in-out_infinite]">
-            ✨
-          </span>
-          <span className="absolute text-2xl translate-x-7 -translate-y-5 animate-[ping_2.2s_ease-in-out_infinite]">
-            ✨
-          </span>
-        </div>
-        <div>
-          <p className="text-lg font-bold text-gray-900">クーポンを引いています...</p>
-          <p className="mt-1 text-sm text-gray-500">
-            今日使える1枚を準備しています
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ActiveCouponCard({
   coupon,
   qrToken,
   qrSecondsLeft,
   isQrLoading,
-  showRevealNotice,
 }: {
   coupon: ActiveCoupon;
   qrToken: string | null;
   qrSecondsLeft: number;
   isQrLoading: boolean;
-  showRevealNotice: boolean;
 }) {
   const progressPercent = Math.max(0, Math.min(100, (qrSecondsLeft / 300) * 100));
   const progressColor = getQrProgressColor(qrSecondsLeft);
 
   return (
     <div className="rounded-3xl border border-green-200 bg-white p-5 shadow-sm">
-      {showRevealNotice && (
-        <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          新しいクーポンを受け取りました
-        </div>
-      )}
-
       <div className="mb-4 flex items-center gap-3">
         <span className="text-4xl">{coupon.coupon_type.emoji}</span>
         <div>
