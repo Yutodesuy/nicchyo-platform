@@ -17,15 +17,9 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  Construction,
   Phone,
   Trash2,
 } from "lucide-react";
-
-// TODO: 現在、出店者のメールアドレス・パスワードが一部公開状態のため
-//       プロフィール・パスワード変更・アカウント削除は一時的に無効化しています。
-//       セキュリティ対応（RLS・認証フロー整備）完了後に false へ変更してください。
-const SAVE_DISABLED = true;
 
 function SectionHeader({ icon: Icon, title }: { icon: typeof User; title: string }) {
   return (
@@ -97,7 +91,7 @@ export default function VendorAccountPage() {
 
   async function handleProfileSubmit(e: FormEvent) {
     e.preventDefault();
-    if (SAVE_DISABLED || isSavingProfile || !user) return;
+    if (isSavingProfile || !user) return;
     setIsSavingProfile(true);
     setProfileError(null);
     try {
@@ -113,7 +107,7 @@ export default function VendorAccountPage() {
 
   async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault();
-    if (SAVE_DISABLED || isSavingPassword) return;
+    if (isSavingPassword) return;
     if (newPassword.length < 8) {
       setPasswordError("パスワードは8文字以上で設定してください。");
       return;
@@ -141,7 +135,7 @@ export default function VendorAccountPage() {
   }
 
   async function handleDeleteAccount() {
-    if (SAVE_DISABLED || isDeletingAccount) return;
+    if (isDeletingAccount) return;
     setIsDeletingAccount(true);
     setDeleteError(null);
     try {
@@ -194,19 +188,6 @@ export default function VendorAccountPage() {
           </p>
         </div>
 
-        {/* 一時停止バナー */}
-        {SAVE_DISABLED && (
-          <div className="flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <Construction size={18} className="mt-0.5 flex-shrink-0 text-amber-600" />
-            <div>
-              <p className="text-base font-semibold text-amber-800">変更機能は現在準備中です</p>
-              <p className="mt-0.5 text-sm text-amber-700">
-                セキュリティ対応の完了後に有効化予定です。ログアウトは引き続き使用できます。
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* プロフィール */}
         <form onSubmit={handleProfileSubmit} className="space-y-4">
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -254,9 +235,9 @@ export default function VendorAccountPage() {
 
           <button
             type="submit"
-            disabled={SAVE_DISABLED || isSavingProfile}
+            disabled={isSavingProfile}
             className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-              SAVE_DISABLED || isSavingProfile
+              isSavingProfile
                 ? "cursor-not-allowed bg-slate-200 text-slate-400"
                 : isProfileSaved
                 ? "bg-emerald-500 text-white"
@@ -318,9 +299,9 @@ export default function VendorAccountPage() {
 
             <button
               type="submit"
-              disabled={SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)}
+              disabled={isSavingPassword || (!newPassword && !confirmPassword)}
               className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold shadow transition ${
-                SAVE_DISABLED || isSavingPassword || (!newPassword && !confirmPassword)
+                isSavingPassword || (!newPassword && !confirmPassword)
                   ? "cursor-not-allowed bg-slate-200 text-slate-400"
                   : isPasswordSaved
                   ? "bg-emerald-500 text-white"
@@ -364,42 +345,34 @@ export default function VendorAccountPage() {
           <p className="mb-3 text-xs text-slate-500">
             アカウントを削除すると、すべてのデータが完全に失われます。この操作は取り消せません。
           </p>
-          {SAVE_DISABLED ? (
-            <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-400">
-              現在準備中です。セキュリティ対応完了後に有効化されます。
-            </p>
-          ) : (
-            <>
-              <p className="mb-2 text-xs font-medium text-slate-600">
-                確認のため、メールアドレス（<span className="font-semibold">{deleteConfirmEmail}</span>）を入力してください
-              </p>
-              <input
-                type="email"
-                value={deleteConfirm}
-                onChange={(e) => setDeleteConfirm(e.target.value)}
-                placeholder={deleteConfirmEmail}
-                className="mb-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-rose-300"
-              />
-              {deleteError && (
-                <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
-                  <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-                  {deleteError}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={!isDeleteReady || isDeletingAccount}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-rose-300 bg-rose-50 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {isDeletingAccount ? (
-                  <><Loader2 size={16} className="animate-spin" />削除中...</>
-                ) : (
-                  <><Trash2 size={16} />アカウントを削除する</>
-                )}
-              </button>
-            </>
+          <p className="mb-2 text-xs font-medium text-slate-600">
+            確認のため、メールアドレス（<span className="font-semibold">{deleteConfirmEmail}</span>）を入力してください
+          </p>
+          <input
+            type="email"
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder={deleteConfirmEmail}
+            className="mb-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-rose-300"
+          />
+          {deleteError && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-xs text-rose-700">
+              <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+              {deleteError}
+            </div>
           )}
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={!isDeleteReady || isDeletingAccount}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-rose-300 bg-rose-50 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isDeletingAccount ? (
+              <><Loader2 size={16} className="animate-spin" />削除中...</>
+            ) : (
+              <><Trash2 size={16} />アカウントを削除する</>
+            )}
+          </button>
         </div>
 
       </div>
