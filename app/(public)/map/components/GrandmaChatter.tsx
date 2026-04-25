@@ -26,7 +26,6 @@ import type {
 import { grandmaAiInstructorLines } from "../data/grandmaComments";
 import { grandmaCommentPool, pickNextComment } from "../services/grandmaCommentService";
 import type { Shop } from "../data/shops";
-import { getSmartSuggestions } from "../utils/suggestionGenerator";
 import { getShopBannerImage } from "@/lib/shopImages";
 import { saveAiMapPayload } from "@/lib/searchMapStorage";
 const HOLD_MS = 250;
@@ -100,7 +99,6 @@ type GrandmaChatterProps = {
   onClear?: () => void;
   autoAskText?: string | null;
   autoAskContext?: { shopId?: number; shopName?: string };
-  currentZoom?: number;
   enableSpeechInput?: boolean;
   variant?: "default" | "consult";
   preferredCharacterId?: ConsultCharacterId | null;
@@ -209,7 +207,6 @@ export default function GrandmaChatter({
   onClear,
   autoAskText,
   autoAskContext,
-  currentZoom,
   enableSpeechInput = false,
   variant = "default",
   preferredCharacterId,
@@ -253,7 +250,7 @@ export default function GrandmaChatter({
   const [isHolding, setIsHolding] = useState(false);
   const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const [consultHeroIndex, setConsultHeroIndex] = useState(0);
@@ -473,7 +470,6 @@ export default function GrandmaChatter({
   const isShopIntro = !isChatOpen && !priorityMessage && !!current?.shopId;
   const activeShopId = isShopIntro ? current?.shopId ?? null : null;
   const showIntroImage = isShopIntro && !!introImageUrl;
-  const _introImageSize = { width: 108, height: 144, gap: 12 };
   const showAvatarButton = false;
   const showBubbleAvatar = !isShopIntro;
   const shopLookup = useMemo(() => {
@@ -1169,33 +1165,10 @@ export default function GrandmaChatter({
         ? "translate-y-[-60px]"
         : "translate-y-[-230px]"
       : "translate-y-0";
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const _smartSuggestionChips = useMemo(() => {
-    // ズームレベル条件: 最大(21)と最大-1(20)以外で表示
-    // つまり zoom < 20 の時に表示
-    // layout === "page" (相談ページ) の場合は常に表示したいかもしれないが、
-    // ここではマップ上のチップとしてのロジックなので、floating時のみズーム考慮
-    if (layout === "floating" && currentZoom !== undefined && currentZoom >= 20) {
-      return [];
-    }
-
-    if (isShopIntro && current?.shopId) {
-      const shop = shopLookup.get(current.shopId);
-      return getSmartSuggestions(current.text, shop);
-    }
-    return getSmartSuggestions(current.text);
-  }, [current, isShopIntro, shopLookup, layout, currentZoom]);
-
   const inputOffsetPx = isKeyboardOpen ? 0 : 0;
   const inputShiftStyle = { transform: `translateY(${inputOffsetPx}px)` };
   const chatPanelLift =
     layout === "page" ? "translate-y-0" : isChatOpen ? "translate-y-[-60px]" : "translate-y-0";
-  const _inputBottomOffset =
-    layout === "page"
-      ? isKeyboardOpen
-        ? Math.max(8, keyboardOffset + 28)
-        : 50
-      : undefined;
   const bubbleText = isChatOpen
     ? aiBubbleText
     : priorityMessage

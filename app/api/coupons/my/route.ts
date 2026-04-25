@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { MyCouponsResponse, CouponIssuance, CouponType } from "@/lib/coupons/types";
+import { getNextMilestone, type MilestoneStep } from "@/lib/coupons/milestones";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,13 +16,11 @@ function getServiceClient() {
   });
 }
 
-const MILESTONE_STEPS = [1, 3, 5] as const;
-
 function computeNextMilestone(stampCount: number): {
-  next_milestone: 1 | 3 | 5 | null;
+  next_milestone: MilestoneStep | null;
   stamps_to_next: number;
 } {
-  const next = MILESTONE_STEPS.find((m) => m > stampCount) ?? null;
+  const next = getNextMilestone(stampCount);
   return {
     next_milestone: next,
     stamps_to_next: next !== null ? next - stampCount : 0,
@@ -33,14 +32,11 @@ function computeNextMilestone(stampCount: number): {
  * Header: X-Visitor-Key: <visitor_key>
  *
  * visitor_key はヘッダーで受け取る（URLログへの露出を防ぐため）。
- * 後方互換としてクエリパラメータも受け付ける。
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const visitor_key =
-      request.headers.get("x-visitor-key")?.trim() ||
-      searchParams.get("visitor_key")?.trim();
+    const visitor_key = request.headers.get("x-visitor-key")?.trim();
     const market_date = searchParams.get("market_date")?.trim();
 
     if (!visitor_key || !market_date) {

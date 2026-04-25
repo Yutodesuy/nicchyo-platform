@@ -11,17 +11,13 @@ import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
 import { clearSearchMapPayload, loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
 import NextImage from "next/image";
 import { getShopBannerImage } from "../../../lib/shopImages";
-const _GrandmaChatter = dynamic(() => import("./components/GrandmaChatter"), { ssr: false });
 import { useTimeBadge } from "./hooks/useTimeBadge";
-import { BadgeModal as _BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
 import type { Shop } from "./data/shops";
 import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
-import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { useMapLoading } from "../../components/MapLoadingProvider";
-import { grandmaEvents } from "./data/grandmaEvents";
 import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
 import { buildSearchIndex } from "../search/lib/searchIndex";
 import { useShopSearch } from "../search/hooks/useShopSearch";
@@ -36,8 +32,6 @@ import {
   todayJstString,
 } from "../../../lib/coupons/client";
 import type { CouponTypeWithParticipants, MyCouponsResponse } from "../../../lib/coupons/types";
-
-const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -60,54 +54,6 @@ type MapPageClientProps = {
   >;
 };
 
-const NEARBY_RADIUS_METERS = 120;
-const NEARBY_MAX_SHOPS = 10;
-const INTRO_TAP_HINT = "";
-const INTRO_STRENGTH_FALLBACK =
-  "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
-
-function buildShopIntroText(shop: Shop): string {
-  const name = shop.name?.trim() || `お店${shop.id}`;
-  const strength = shop.shopStrength?.trim() || INTRO_STRENGTH_FALLBACK;
-  return `${name}\n${strength}${INTRO_TAP_HINT}`;
-}
-
-function distanceMeters(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number }
-): number {
-  const earthRadius = 6371000;
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const dLat = toRad(to.lat - from.lat);
-  const dLng = toRad(to.lng - from.lng);
-  const lat1 = toRad(from.lat);
-  const lat2 = toRad(to.lat);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
-}
-
-function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
-  const result: T[] = [];
-  const max = Math.max(primary.length, secondary.length);
-  for (let i = 0; i < max; i += 1) {
-    if (primary[i]) result.push(primary[i]);
-    if (secondary[i]) result.push(secondary[i]);
-  }
-  return result;
-}
-
-function shuffleArray<T>(items: T[]): T[] {
-  const result = items.slice();
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 export default function MapPageClient({
   shops,
   landmarks,
@@ -115,7 +61,6 @@ export default function MapPageClient({
   shopBannerVariant = "default",
   attendanceEstimates,
 }: MapPageClientProps) {
-  const showGrandma = false;
   const searchParams = useSearchParams();
   const router = useRouter();
   const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
@@ -129,14 +74,10 @@ export default function MapPageClient({
   const [showBanner, setShowBanner] = useState(false);
   const [showRecipeOverlay, setShowRecipeOverlay] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
-  const { priority: _priority, clearPriority: _clearPriority } = useTimeBadge();
-  const [_showBadgeModal, _setShowBadgeModal] = useState(false);
+  useTimeBadge();
   const [showVendorPrompt, setShowVendorPrompt] = useState(false);
   const [vendorShopName, setVendorShopName] = useState<string | null>(null);
-  const [_isHoldActive, _setIsHoldActive] = useState(false);
-  const [activeEventId, setActiveEventId] = useState<string | null>(null);
-  const [eventMessageIndex, setEventMessageIndex] = useState(0);
-  const [userLocation, setUserLocation] = useState<{
+  const [, setUserLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
@@ -145,29 +86,13 @@ export default function MapPageClient({
     if (isInMarket === true) recordMarketEnter();
     else if (isInMarket === false) recordMarketExit();
   }, [isInMarket]);
-  // マーカーglow用（コメント表示中のお店を追跡）
-  const [commentHighlightShopId, _setCommentHighlightShopId] = useState<number | null>(null);
   // スポットライトモード用（タップ時のみ、2秒で自動解除）
-  const [spotlightShopId, setSpotlightShopId] = useState<number | null>(null);
-  const spotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activateSpotlight = useCallback((shopId: number) => {
-    if (spotlightTimerRef.current) clearTimeout(spotlightTimerRef.current);
-    setSpotlightShopId(shopId);
-    spotlightTimerRef.current = setTimeout(() => {
-      setSpotlightShopId(null);
-      spotlightTimerRef.current = null;
-    }, 2000);
-  }, []);
-  const [_currentZoom, setCurrentZoom] = useState<number>(21);
-  const [tutorialProgress, setTutorialProgress] = useState<number>(0);
+  const [spotlightShopId] = useState<number | null>(null);
+  const [, setCurrentZoom] = useState<number>(21);
   const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
   const [couponData, setCouponData] = useState<MyCouponsResponse | null>(null);
   const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
   const [mapSearchCouponTypeId, setMapSearchCouponTypeId] = useState<string | null>(null);
-  useEffect(() => {
-    const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
-    setTutorialProgress(Math.min(10, stored));
-  }, []);
 
   const refreshCouponData = useCallback(async (visitorKey?: string) => {
     const resolvedVisitorKey = visitorKey ?? getOrCreateConsultVisitorKey();
@@ -332,22 +257,6 @@ export default function MapPageClient({
   }, [activePanel, closeMapCharacterConsult, searchParams, startMapCharacterConsult]);
 
   const vendorShopId = user?.vendorId ?? null;
-  const activeEvent = useMemo(() => {
-    if (!showGrandma) return null;
-    return grandmaEvents.find((event) => event.id === activeEventId) ?? null;
-  }, [activeEventId, showGrandma]);
-  const aiImageTargets = useMemo(() => {
-    return grandmaEvents
-      .map((event) => {
-        const image = event.messages.find((message) => message.image)?.image;
-        if (!image) return null;
-        return { image, location: event.location };
-      })
-      .filter(Boolean) as Array<{
-      image: string;
-      location: { lat: number; lng: number; radiusMeters: number };
-    }>;
-  }, []);
   const shopById = useMemo(() => {
     const map = new Map<number, Shop>();
     shops.forEach((shop) => map.set(shop.id, shop));
@@ -367,15 +276,6 @@ export default function MapPageClient({
     },
     [shopById]
   );
-  const _activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
-  const _eventTargets = useMemo(() => {
-    if (!showGrandma) return [];
-    return grandmaEvents.map((event) => ({
-      id: event.id,
-      lat: event.location.lat,
-      lng: event.location.lng,
-    }));
-  }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
     setMapInstance(map);
@@ -471,178 +371,18 @@ export default function MapPageClient({
     router.push(`/map?shop=${vendorShopId}`);
     setShowVendorPrompt(false);
   };
-
-  const _handleGrandmaDrop = useCallback(
-    (position: { x: number; y: number }) => {
-      if (!showGrandma) return;
-      if (!mapRef.current) return;
-      const container = mapRef.current.getContainer();
-      const rect = container.getBoundingClientRect();
-      const point: [number, number] = [
-        position.x - rect.left,
-        position.y - rect.top,
-      ];
-      const latlng = mapRef.current.containerPointToLatLng(point);
-      const hit = grandmaEvents.find((event) => {
-        const target = { lat: event.location.lat, lng: event.location.lng };
-        const dist = mapRef.current?.distance(latlng, target) ?? Infinity;
-        return dist <= event.location.radiusMeters;
-      });
-      if (!hit) return;
-      setActiveEventId(hit.id);
-      setEventMessageIndex(0);
-    },
-    [showGrandma]
-  );
-
-  const _handleEventAdvance = () => {
-    if (!activeEvent) return;
-    if (eventMessageIndex < activeEvent.messages.length - 1) {
-      setEventMessageIndex((prev) => prev + 1);
-    } else {
-      setActiveEventId(null);
-      setEventMessageIndex(0);
-    }
-  };
-
-  const _handleEventBack = () => {
-    if (!activeEvent) return;
-    if (eventMessageIndex > 0) {
-      setEventMessageIndex((prev) => prev - 1);
-    }
-  };
-
-  const _handleGrandmaAsk = useCallback(async (
-    text: string,
-    imageFile?: File | null,
-    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
-    _history?: Array<{ role: "user" | "assistant"; text: string }>,
-    _memorySummary?: string
-  ) => {
-    try {
-      const visitorKey = getOrCreateConsultVisitorKey();
-      const useForm = !!imageFile;
-      const body = useForm
-        ? (() => {
-            const form = new FormData();
-            form.append("text", text);
-            form.append("location", JSON.stringify(userLocation ?? null));
-            if (context?.shopId) form.append("shopId", String(context.shopId));
-            if (context?.shopName) form.append("shopName", context.shopName);
-            if (visitorKey) form.append("visitorKey", visitorKey);
-            if (imageFile) form.append("image", imageFile);
-            return form;
-          })()
-        : JSON.stringify({
-            text,
-            location: userLocation,
-            shopId: context?.shopId ?? null,
-            shopName: context?.shopName ?? null,
-            visitorKey,
-          });
-      const response = await fetch("/api/grandma/ask", {
-        method: "POST",
-        headers: useForm ? undefined : { "Content-Type": "application/json" },
-        body,
-      });
-      const payload = (await response.json()) as {
-        reply?: string;
-        imageUrl?: string;
-        shopIds?: number[];
-        errorMessage?: string;
-      };
-      if (!response.ok) {
-        return {
-          reply:
-            payload.reply ??
-            payload.errorMessage ??
-            "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-        };
-      }
-      const rawReply =
-        payload.reply ?? "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
-      if (payload.shopIds && payload.shopIds.length > 0) {
-        setAiMarkerPayload({ ids: payload.shopIds, label: "AIおすすめ" });
-        const cleaned = rawReply.replace(/SHOP_IDS:\s*([0-9,\s]+)/i, "").trim();
-        return {
-          reply: cleaned || "おすすめのお店を表示したよ。",
-          imageUrl: payload.imageUrl,
-          shopIds: payload.shopIds,
-        };
-      }
-      setAiMarkerPayload(null);
-      return { reply: rawReply, imageUrl: payload.imageUrl };
-    } catch {
-      return {
-        reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
-      };
-    }
-  }, [userLocation]);
-
-  const handleCommentShopFocus = useCallback(
-    (shopId: number) => {
-      const map = mapRef.current;
-      const shop = shopById.get(shopId);
-      if (!map || !shop) return;
-      prefetchShopImage(shopId);
-      activateSpotlight(shopId);
-      const maxZoom = map.getMaxZoom() ?? 19;
-      map.flyTo([shop.lat, shop.lng], maxZoom, {
-        animate: true,
-        duration: 0.8,
-        easeLinearity: 0.25,
-      });
-    },
-    [activateSpotlight, prefetchShopImage, shopById]
-  );
-
-  const _handleCommentShopOpen = useCallback(
-    (shopId: number) => {
-      handleCommentShopFocus(shopId);
-      if (introFocusTimerRef.current !== null) {
-        window.clearTimeout(introFocusTimerRef.current);
-        introFocusTimerRef.current = null;
-      }
-      if (typeof document !== "undefined") {
-        document.body.classList.add("shop-banner-open");
-      }
-      introFocusTimerRef.current = window.setTimeout(() => {
-        router.push(`/map?shop=${shopId}`);
-        introFocusTimerRef.current = null;
-      }, 900);
-    },
-    [handleCommentShopFocus, router]
-  );
-  const _handleAiImageClick = useCallback(
-    (imageUrl: string) => {
-      const target = aiImageTargets.find((entry) => entry.image === imageUrl);
-      if (!target || !mapRef.current) return;
-      const maxZoom = mapRef.current.getMaxZoom() ?? 19;
-      mapRef.current.flyTo([target.location.lat, target.location.lng], maxZoom, {
-        animate: true,
-        duration: 0.8,
-        easeLinearity: 0.25,
-      });
-    },
-    [aiImageTargets]
-  );
-
   useEffect(() => {
     if (initialShopId) {
       prefetchShopImage(initialShopId);
     }
+    const currentIntroFocusTimer = introFocusTimerRef.current;
     return () => {
-      if (introFocusTimerRef.current !== null) {
-        window.clearTimeout(introFocusTimerRef.current);
+      if (currentIntroFocusTimer !== null) {
+        window.clearTimeout(currentIntroFocusTimer);
       }
     };
   }, [initialShopId, prefetchShopImage]);
 
-  const _aiSuggestedShops = useMemo(() => {
-    if (!aiMarkerPayload?.ids?.length) return [];
-    const shopSet = new Set(aiMarkerPayload.ids);
-    return shops.filter((shop) => shopSet.has(shop.id));
-  }, [aiMarkerPayload, shops]);
   const hasSearchMode =
     activePanel === 'search' ||
     !!searchMarkerPayload ||
@@ -653,14 +393,6 @@ export default function MapPageClient({
     mapCharacterConsultActive ||
     !!aiMarkerPayload;
 
-  const _introImageUrl = useMemo(() => {
-    if (!commentHighlightShopId) return null;
-    const shop = shopById.get(commentHighlightShopId);
-    if (!shop) return null;
-    const bannerSeed = shop.position ?? shop.id;
-    return shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
-  }, [commentHighlightShopId, shopById]);
-
   const kotoduteShopIds = useMemo(() => {
     const notes = loadKotodute();
     const ids = new Set<number>();
@@ -670,64 +402,6 @@ export default function MapPageClient({
       }
     });
     return Array.from(ids);
-  }, []);
-
-  const shopIntroComments = useMemo(() => {
-    if (isInMarket === true && userLocation) {
-      const withDistance = shops.map((shop) => ({
-        shop,
-        distance: distanceMeters(userLocation, { lat: shop.lat, lng: shop.lng }),
-      }));
-      const nearby = withDistance
-        .filter((entry) => entry.distance <= NEARBY_RADIUS_METERS)
-        .sort((a, b) => a.distance - b.distance);
-      const chosen = (nearby.length > 0 ? nearby : withDistance.sort((a, b) => a.distance - b.distance))
-        .slice(0, NEARBY_MAX_SHOPS);
-
-      return chosen.map(({ shop }) => ({
-        id: `shop-${shop.id}`,
-        genre: "notice" as const,
-        icon: "🏪",
-        text: buildShopIntroText(shop),
-        shopId: shop.id,
-      }));
-    }
-
-    if (isInMarket === false) {
-      return shuffleArray(shops)
-        .map((shop) => ({
-          id: `shop-${shop.id}`,
-          genre: "notice" as const,
-          icon: "🏪",
-          text: buildShopIntroText(shop),
-          shopId: shop.id,
-        }));
-    }
-
-    return [];
-  }, [isInMarket, shops, userLocation]);
-
-  const _commentPool = useMemo(() => {
-    if (!showGrandma) return [];
-    const tutorials = mapTutorialComments.slice(tutorialProgress);
-    const base = shopIntroComments.length > 0
-      ? interleaveComments(grandmaComments, shopIntroComments)
-      : grandmaComments;
-    return [...tutorials, ...base];
-  }, [shopIntroComments, showGrandma, tutorialProgress]);
-
-  const _handleCommentSeen = useCallback((id: string, genre: string) => {
-    if (genre !== "tutorial") return;
-    const idx = mapTutorialComments.findIndex((c) => c.id === id);
-    if (idx < 0) return;
-    setTutorialProgress((prev) => {
-      const next = Math.min(10, idx + 1);
-      if (next > prev) {
-        localStorage.setItem(TUTORIAL_STORAGE_KEY, String(next));
-        return next;
-      }
-      return prev;
-    });
   }, []);
 
   const shouldShowNavigationBar = !isShopBannerOpen;
