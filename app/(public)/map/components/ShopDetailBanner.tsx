@@ -822,7 +822,6 @@ export default function ShopDetailBanner({
   const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
-  const _today = new Date();
 
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];
@@ -1851,7 +1850,6 @@ export default function ShopDetailBanner({
             theme={theme}
             onBack={handleBackToMain}
             onClose={isMobileOverlay ? onClose : undefined}
-            isActive={surface === "ai"}
           />
         </div>
           </div>
@@ -1993,7 +1991,6 @@ function AiConsultPanel({
   theme,
   onBack,
   onClose,
-  isActive: _isActive,
 }: {
   shop: Shop;
   bannerImage: string;
@@ -2001,7 +1998,6 @@ function AiConsultPanel({
   theme: BannerTheme;
   onBack: () => void;
   onClose?: () => void;
-  isActive: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
