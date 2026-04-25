@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, Ticket, CheckCircle2, XCircle, Loader2, Star, ScanLine, RotateCcw } from "lucide-react";
 import NavigationBar from "@/app/components/NavigationBar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { todayJstString } from "@/lib/coupons/client";
 import type { RedeemResponse } from "@/lib/coupons/types";
@@ -88,7 +89,7 @@ export default function MyShopCouponPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pb-28">
-      <div className="border-b border-green-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
+      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Link
             href="/my-shop"
@@ -108,7 +109,7 @@ export default function MyShopCouponPage() {
         {/* ─ 待機中 ─ */}
         {redeemState.status === "idle" && (
           <>
-            <div className="rounded-2xl border border-green-100 bg-white p-4 text-sm text-gray-600 shadow-sm">
+            <div className="rounded-2xl border border-amber-100 bg-surface-warmwhite p-4 text-sm text-slate-600 shadow-card">
               <ol className="list-decimal list-inside space-y-1">
                 <li>「スキャンを開始する」を押す</li>
                 <li>お客様の「クーポン」ページのQRコードにカメラを向ける</li>
@@ -118,14 +119,15 @@ export default function MyShopCouponPage() {
                 ※ クーポン未保有のお客様はスタンプのみ付与されます
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="lg"
               onClick={startScanning}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-green-500 py-4 text-base font-bold text-white shadow transition hover:bg-green-600"
+              className="w-full rounded-2xl"
             >
-              <ScanLine size={20} />
+              <ScanLine size={20} className="mr-2" />
               スキャンを開始する
-            </button>
+            </Button>
           </>
         )}
 
@@ -148,8 +150,8 @@ export default function MyShopCouponPage() {
 
         {/* ─ 処理中 ─ */}
         {redeemState.status === "loading" && (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-gray-100 bg-white py-10 shadow-sm">
-            <Loader2 size={36} className="animate-spin text-green-500" />
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-100 bg-white py-10 shadow-card">
+            <Loader2 size={36} className="animate-spin text-amber-500" />
             <p className="text-sm font-semibold text-gray-600">処理中...</p>
           </div>
         )}
@@ -166,27 +168,19 @@ export default function MyShopCouponPage() {
                 <p className="mt-1 text-sm text-red-600">{redeemState.message}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={startScanning}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
-            >
-              <RotateCcw size={16} />
+            <Button variant="primary" onClick={startScanning} className="w-full rounded-xl">
+              <RotateCcw size={16} className="mr-2" />
               もう一度スキャンする
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-500 transition hover:bg-gray-50"
-            >
+            </Button>
+            <Button variant="outline" onClick={reset} className="w-full rounded-xl">
               戻る
-            </button>
+            </Button>
           </div>
         )}
 
         {/* ─ 成功 ─ */}
         {redeemState.status === "success" && (
-          <div className="rounded-2xl border border-green-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="rounded-2xl border border-amber-100 bg-white p-6 shadow-card space-y-4">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <CheckCircle2 size={36} className="text-green-500" />
@@ -242,30 +236,22 @@ export default function MyShopCouponPage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={startScanning}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
-            >
-              <ScanLine size={16} />
+            <Button variant="primary" onClick={startScanning} className="w-full rounded-xl">
+              <ScanLine size={16} className="mr-2" />
               続けてスキャンする
-            </button>
+            </Button>
             {redeemState.result.milestone_coupon_issued && (
               <Link
                 href="/coupons?lottery=1"
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 py-3 text-sm font-bold text-amber-800 transition hover:bg-amber-100"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-50"
               >
                 <Ticket size={16} />
                 クーポンを確認する
               </Link>
             )}
-            <button
-              type="button"
-              onClick={reset}
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
-            >
+            <Button variant="ghost" onClick={reset} className="w-full rounded-xl text-slate-600">
               戻る
-            </button>
+            </Button>
           </div>
         )}
 
