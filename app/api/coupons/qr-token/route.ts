@@ -22,7 +22,10 @@ function getServiceClient() {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const visitorKey = searchParams.get("visitor_key")?.trim();
+    // visitor_key はヘッダーから取得（URLログへの露出を防ぐため）
+    const visitorKey =
+      request.headers.get("x-visitor-key")?.trim() ||
+      searchParams.get("visitor_key")?.trim();
     const marketDate = searchParams.get("market_date")?.trim();
 
     if (!visitorKey || !marketDate) {

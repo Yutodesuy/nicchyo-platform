@@ -140,7 +140,8 @@ function CouponsPageContent() {
       setIsQrLoading(true);
       try {
         const response = await fetch(
-          `/api/coupons/qr-token?visitor_key=${encodeURIComponent(vk)}&market_date=${marketDate}`
+          `/api/coupons/qr-token?market_date=${marketDate}`,
+          { headers: { "X-Visitor-Key": vk } }
         );
         if (!response.ok) {
           setQrToken(null);
