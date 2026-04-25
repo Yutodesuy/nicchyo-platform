@@ -145,3 +145,6 @@ supabase_backup_*.sql
 # Playwright テスト結果
 test-results/
 *.pdf
+
+# デザインハンドオフ（参照用ローカルアセット）
+handoff/
