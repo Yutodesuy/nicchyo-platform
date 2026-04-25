@@ -1,7 +1,7 @@
 // ─── クーポン機能 共有型定義 ──────────────────────────────────────────────────
 
 export type MinPurchaseAmount = 0 | 300 | 500 | 1000;
-export type IssueReason = "initial" | "next_visit";
+export type IssueReason = "initial" | "next_visit" | "milestone_1" | "milestone_3" | "milestone_5";
 
 /** クーポン種類 */
 export interface CouponType {
@@ -13,6 +13,7 @@ export interface CouponType {
   is_initial_gift: boolean;
   is_enabled: boolean;
   display_order: number;
+  milestone_stamp_count: number | null;
 }
 
 export interface CouponTypeParticipant {
@@ -67,12 +68,13 @@ export interface CouponStamp {
 /** 利用確定ログ */
 export interface CouponRedemptionLog {
   id: string;
-  coupon_issuance_id: string;
+  coupon_issuance_id: string | null;
   visitor_key: string;
   vendor_id: string;
-  coupon_type_id: string;
+  coupon_type_id: string | null;
   market_date: string;
   amount_discounted: number;
+  had_coupon: boolean;
   is_new_stamp: boolean;
   next_coupon_issued: boolean;
   next_coupon_type_id: string | null;
@@ -84,8 +86,18 @@ export interface CouponRedemptionLog {
 
 /** GET /api/coupons/my のレスポンス */
 export interface MyCouponsResponse {
-  /** アクティブな（未使用・有効期限内）クーポン。1枚か0枚 */
+  /** 後方互換: active_coupons[0] と同じ（null の場合あり） */
   active_coupon: (CouponIssuance & { coupon_type: CouponType }) | null;
+  /** アクティブな（未使用・有効期限内）クーポン一覧（最大2枚） */
+  active_coupons: Array<CouponIssuance & { coupon_type: CouponType }>;
+  /** 当日スタンプ数 */
+  stamp_count: number;
+  /** 次のマイルストーン（null = 5スタンプ以上でマイルストーンなし） */
+  next_milestone: 1 | 3 | 5 | null;
+  /** 次マイルストーンまで残りスタンプ数 */
+  stamps_to_next: number;
+  /** 本日達成済みマイルストーン */
+  claimed_milestones: number[];
   /** 当日のスタンプ一覧 */
   stamps: Array<{
     vendor_id: string;
@@ -145,10 +157,19 @@ export function normalizeCouponIssuance(
 /** POST /api/coupons/redeem のレスポンス */
 export interface RedeemResponse {
   success: true;
+  /** 割引額（クーポン未保有時は 0） */
   amount_discounted: number;
+  /** スキャン時にクーポンを保有していたか */
+  had_coupon: boolean;
   is_new_stamp: boolean;
-  next_coupon_issued: boolean;
-  next_coupon: (CouponIssuance & { coupon_type: CouponType }) | null;
+  /** 本日の累計スタンプ数 */
+  total_stamps: number;
+  /** 達成したマイルストーン（1, 3, 5 or null） */
+  milestone_reached: number | null;
+  /** マイルストーンクーポンが発行されたか */
+  milestone_coupon_issued: boolean;
+  /** 発行されたマイルストーンクーポン */
+  milestone_coupon: (CouponIssuance & { coupon_type: CouponType }) | null;
 }
 
 /** GET /api/vendor/coupon-settings のレスポンス */
