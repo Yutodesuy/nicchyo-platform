@@ -427,7 +427,7 @@ function MapZoomControls({
       onTouchStart={(e) => { e.stopPropagation(); }}
     >
       {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
+      <div className="flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur">
         <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
         <VerticalZoomSlider
           value={currentZoom}
@@ -462,8 +462,10 @@ function MapTrackingButton({
           e.stopPropagation();
           onToggleTracking();
         }}
-        className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-          isTracking ? "bg-blue-500 text-white" : "bg-white/92 text-gray-700 hover:bg-gray-50"
+        className={`flex h-14 w-14 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
+          isTracking
+            ? "bg-amber-500 text-white hover:bg-amber-600"
+            : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
         }`}
         aria-label={isTracking ? "追従中" : "追従オフ"}
       >

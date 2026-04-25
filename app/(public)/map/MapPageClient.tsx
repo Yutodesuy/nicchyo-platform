@@ -920,10 +920,10 @@ export default function MapPageClient({
                       key={cat}
                       type="button"
                       onClick={() => setMapSearchCategory(mapSearchCategory === cat ? null : cat)}
-                      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-all ${
+                      className={`shrink-0 whitespace-nowrap rounded-chip border px-[13px] py-[7px] text-[13px] font-bold shadow-chip transition-all duration-[120ms] ${
                         mapSearchCategory === cat
-                          ? 'bg-amber-500 text-white shadow-amber-200'
-                          : 'bg-white/85 text-slate-700 ring-1 ring-slate-900/8'
+                          ? 'border-amber-600 bg-amber-500 text-white'
+                          : 'border-amber-200 bg-white text-amber-900 hover:bg-amber-50'
                       }`}
                     >
                       {cat}
