@@ -2,14 +2,19 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 type BadgeProps = React.HTMLAttributes<HTMLDivElement> & {
-  variant?: "default" | "secondary" | "outline" | "destructive";
+  variant?: "default" | "secondary" | "outline" | "destructive" | "coupon" | "favorite" | "ai" | "search" | "amber";
 };
 
 const badgeVariantClassMap: Record<NonNullable<BadgeProps["variant"]>, string> = {
-  default: "border-transparent bg-slate-700 text-white",
-  secondary: "border-transparent bg-slate-100 text-slate-700",
-  outline: "border bg-white text-slate-700",
+  default:     "border-transparent bg-slate-700 text-white",
+  secondary:   "border-transparent bg-slate-100 text-slate-700",
+  outline:     "border bg-white text-slate-700",
   destructive: "border-transparent bg-rose-100 text-rose-700",
+  coupon:      "border-coupon-line bg-coupon-bg text-coupon-fg",
+  favorite:    "border-favorite-line bg-favorite-bg text-favorite-fg",
+  ai:          "border-ai-line bg-ai-bg text-ai-fg",
+  search:      "border-info-line bg-info-bg text-info-fg",
+  amber:       "border-amber-200 bg-amber-50 text-amber-800",
 };
 
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
