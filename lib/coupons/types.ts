@@ -88,7 +88,7 @@ export interface CouponRedemptionLog {
 export interface MyCouponsResponse {
   /** 後方互換: active_coupons[0] と同じ（null の場合あり） */
   active_coupon: (CouponIssuance & { coupon_type: CouponType }) | null;
-  /** アクティブな（未使用・有効期限内）クーポン一覧（最大2枚） */
+  /** アクティブな（未使用・有効期限内）クーポン一覧 */
   active_coupons: Array<CouponIssuance & { coupon_type: CouponType }>;
   /** 当日スタンプ数 */
   stamp_count: number;
