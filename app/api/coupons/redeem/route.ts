@@ -13,6 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MILESTONES = [1, 3, 5] as const;
+const MAX_ACTIVE_COUPONS = 2;
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,7 +30,7 @@ function getServiceClient() {
  * 出店者ログイン必須。QRスキャンを処理する。
  * - クーポン保有あり → クーポン消費 + スタンプ付与
  * - クーポン保有なし → スタンプのみ付与（チェックイン）
- * - 1/3/5スタンプ到達時にマイルストーンクーポンを発行
+ * - 1/3/5スタンプ到達時にマイルストーンクーポンを発行（最大2枚保有）
  */
 export async function POST(request: Request) {
   try {
@@ -221,61 +222,72 @@ export async function POST(request: Request) {
       milestone_reached = MILESTONES.find((m) => m === total_stamps) ?? null;
 
       if (milestone_reached !== null) {
-        const { data: milestoneType } = await serviceClient
-          .from("coupon_types")
-          .select("*")
-          .eq("milestone_stamp_count", milestone_reached)
-          .eq("is_enabled", true)
-          .maybeSingle();
+        // 保有クーポン数チェック（使用済みのクーポンは除く）
+        const { count: activeCount } = await serviceClient
+          .from("coupon_issuances")
+          .select("id", { count: "exact", head: true })
+          .eq("visitor_key", visitor_key)
+          .eq("market_date", market_date)
+          .eq("is_used", false)
+          .gt("expires_at", now);
 
-        if (milestoneType) {
-          const expiresAt = new Date(`${market_date}T15:00:00.000Z`);
-          expiresAt.setDate(expiresAt.getDate() + 1);
+        if ((activeCount ?? 0) < MAX_ACTIVE_COUPONS) {
+          const { data: milestoneType } = await serviceClient
+            .from("coupon_types")
+            .select("*")
+            .eq("milestone_stamp_count", milestone_reached)
+            .eq("is_enabled", true)
+            .maybeSingle();
 
-          const { data: newCoupon, error: insertError } = await serviceClient
-            .from("coupon_issuances")
-            .insert({
-              visitor_key,
-              market_date,
-              coupon_type_id: milestoneType.id,
-              amount: milestoneType.amount,
-              issue_reason: `milestone_${milestone_reached}` as
-                | "milestone_1"
-                | "milestone_3"
-                | "milestone_5",
-              expires_at: expiresAt.toISOString(),
-            })
-            .select("*, coupon_types(*)")
-            .single();
+          if (milestoneType) {
+            const expiresAt = new Date(`${market_date}T15:00:00.000Z`);
+            expiresAt.setDate(expiresAt.getDate() + 1);
 
-          if (insertError) {
-            if (insertError.code !== "23505") {
-              console.error("[redeem] milestone insert error:", insertError);
-              return NextResponse.json(
-                { error: "Failed to issue milestone coupon" },
-                { status: 500 }
-              );
-            }
-
-            const { data: existingCoupon } = await serviceClient
+            const { data: newCoupon, error: insertError } = await serviceClient
               .from("coupon_issuances")
+              .insert({
+                visitor_key,
+                market_date,
+                coupon_type_id: milestoneType.id,
+                amount: milestoneType.amount,
+                issue_reason: `milestone_${milestone_reached}` as
+                  | "milestone_1"
+                  | "milestone_3"
+                  | "milestone_5",
+                expires_at: expiresAt.toISOString(),
+              })
               .select("*, coupon_types(*)")
-              .eq("visitor_key", visitor_key)
-              .eq("market_date", market_date)
-              .eq("issue_reason", `milestone_${milestone_reached}`)
-              .maybeSingle();
+              .single();
 
-            if (existingCoupon) {
+            if (insertError) {
+              if (insertError.code !== "23505") {
+                console.error("[redeem] milestone insert error:", insertError);
+                return NextResponse.json(
+                  { error: "Failed to issue milestone coupon" },
+                  { status: 500 }
+                );
+              }
+
+              const { data: existingCoupon } = await serviceClient
+                .from("coupon_issuances")
+                .select("*, coupon_types(*)")
+                .eq("visitor_key", visitor_key)
+                .eq("market_date", market_date)
+                .eq("issue_reason", `milestone_${milestone_reached}`)
+                .maybeSingle();
+
+              if (existingCoupon) {
+                milestone_coupon = normalizeCouponIssuance(
+                  existingCoupon as SupabaseCouponIssuanceRow
+                ) as RedeemResponse["milestone_coupon"];
+                milestone_coupon_issued = true;
+              }
+            } else if (newCoupon) {
               milestone_coupon = normalizeCouponIssuance(
-                existingCoupon as SupabaseCouponIssuanceRow
+                newCoupon as SupabaseCouponIssuanceRow
               ) as RedeemResponse["milestone_coupon"];
               milestone_coupon_issued = true;
             }
-          } else if (newCoupon) {
-            milestone_coupon = normalizeCouponIssuance(
-              newCoupon as SupabaseCouponIssuanceRow
-            ) as RedeemResponse["milestone_coupon"];
-            milestone_coupon_issued = true;
           }
         }
       }

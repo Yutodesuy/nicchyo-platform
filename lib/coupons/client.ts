@@ -34,13 +34,14 @@ export async function fetchCouponTypes(): Promise<CouponTypeWithParticipants[]> 
 }
 
 export function getEligibleCouponVendorIds(data: MyCouponsResponse | null): Set<string> {
-  const activeCouponTypeId = data?.active_coupon?.coupon_type_id;
-  if (!activeCouponTypeId) {
+  const activeCoupons = data?.active_coupons ?? (data?.active_coupon ? [data.active_coupon] : []);
+  if (activeCoupons.length === 0) {
     return new Set<string>();
   }
+  const activeCouponTypeIds = new Set(activeCoupons.map((c) => c.coupon_type_id));
   return new Set(
     (data?.participating_vendors ?? [])
-      .filter((vendor) => vendor.coupon_type_id === activeCouponTypeId)
+      .filter((vendor) => activeCouponTypeIds.has(vendor.coupon_type_id))
       .map((vendor) => vendor.vendor_id)
   );
 }
