@@ -31,9 +31,8 @@ async function postJson(url: string, body: unknown) {
       body: JSON.stringify(body),
       keepalive: true,
     });
-  } catch (err) {
+  } catch {
     // silent
-    // could implement retry queue if needed
   }
 }
 
@@ -41,8 +40,13 @@ export function sendEvent(name: AnalyticsEventName, params: AnalyticsParams = {}
   if (!isAnalyticsAllowed()) return;
 
   // Ensure GA loader present in production if not yet loaded
+  interface GtagWindow {
+    __nicchyo_ga_loaded?: boolean;
+    dataLayer?: unknown[];
+    gtag?: (...args: unknown[]) => void;
+  }
   try {
-    if (typeof window !== "undefined" && !(window as any).__nicchyo_ga_loaded) {
+    if (typeof window !== "undefined" && !(window as Window & GtagWindow).__nicchyo_ga_loaded) {
       const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
       if (gaId && process.env.NODE_ENV === "production") loadGA(gaId);
     }
@@ -52,14 +56,14 @@ export function sendEvent(name: AnalyticsEventName, params: AnalyticsParams = {}
 
   // dataLayer push for GTM compatibility
   try {
-    const w = window as any;
+    const w = window as Window & GtagWindow;
     w.dataLayer = w.dataLayer || [];
     w.dataLayer.push({ event: name, ...payload });
   } catch {}
 
   // gtag for GA4
   try {
-    const w = window as any;
+    const w = window as Window & GtagWindow;
     if (typeof w?.gtag === "function") {
       w.gtag("event", name, payload);
     }
@@ -79,7 +83,7 @@ export function sendEvent(name: AnalyticsEventName, params: AnalyticsParams = {}
     }
 
     if (name === "shop_view") {
-      const p = params as any;
+      const p = params as Record<string, unknown>;
       postJson("/api/analytics/shop-interaction", {
         visitor_key,
         shop_id: p.shop_id,
@@ -120,10 +124,11 @@ export function trackScrollDepth(element: HTMLElement, shopId: string | null = n
     });
   }
 
+  let throttleTimer: ReturnType<typeof setTimeout> | null = null;
   const throttled = () => {
-    if ((throttled as any).timer) return;
-    (throttled as any).timer = setTimeout(() => {
-      delete (throttled as any).timer;
+    if (throttleTimer) return;
+    throttleTimer = setTimeout(() => {
+      throttleTimer = null;
       check();
     }, 300);
   };

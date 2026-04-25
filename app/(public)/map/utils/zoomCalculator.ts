@@ -21,8 +21,6 @@
 
 import { getRoadLength } from '../config/roadConfig';
 import {
-  DEFAULT_ILLUSTRATION_SIZE,
-  ILLUSTRATION_SIZES,
   SPACING_CONFIG,
   ZOOM_DISPLAY_RULES,
   getDisplayRuleForZoom,
@@ -112,13 +110,10 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
   const chomeNames = ['六丁目', '五丁目', '四丁目', '三丁目', '二丁目', '一丁目', '七丁目'];
   const result: T[] = [];
 
-  // デバッグ: chomeフィールドを持つ店舗を確認
   const shopsWithChome = shops.filter(s => s.chome !== undefined && s.chome !== null);
 
-  // chomeフィールドがない場合のフォールバック
+  // chomeフィールドがない場合のフォールバック: 等間隔で14店舗を選択
   if (shopsWithChome.length === 0) {
-    console.warn('[filterShopsByChome] No shops with chome field found. Using position-based fallback.');
-    // 位置ベースのフォールバック: 等間隔で14店舗を選択
     const interval = Math.floor(shops.length / 14);
     for (let i = 0; i < 14 && i * interval < shops.length; i++) {
       result.push(shops[i * interval]);
@@ -148,7 +143,6 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
 
   // 結果が空の場合のフォールバック
   if (result.length === 0) {
-    console.warn('[filterShopsByChome] No shops found in chome filtering. Using fallback.');
     const interval = Math.floor(shops.length / 14);
     for (let i = 0; i < 14 && i * interval < shops.length; i++) {
       result.push(shops[i * interval]);
@@ -173,11 +167,11 @@ export function filterShopsByChome<T extends { id: number; position: number; cho
 export function filterShopsByZoom<T extends { id: number; position: number; chome?: string }>(
   shops: T[],
   currentZoom: number,
-  isMobile: boolean = false
+  _isMobile: boolean = false
 ): T[] {
   // 表示ルールを取得
   const rule = getDisplayRuleForZoom(currentZoom);
-  let interval = rule.filterInterval;
+  const interval = rule.filterInterval;
 
   // 【2段階表示】filterInterval === 0 の場合は丁目別フィルタリング
   if (interval === 0) {

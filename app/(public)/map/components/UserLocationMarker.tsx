@@ -100,8 +100,8 @@ export default function UserLocationMarker({
         let heading: number | null = null;
 
         // iOS WebKit
-        if ((event as any).webkitCompassHeading) {
-            heading = (event as any).webkitCompassHeading;
+        if ((event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading) {
+            heading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading ?? null;
         } else if (event.alpha !== null) {
             heading = 360 - event.alpha;
         }

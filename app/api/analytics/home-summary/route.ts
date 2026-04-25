@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 type VendorRow = {
   category_id: string | null;
@@ -36,22 +39,28 @@ function getWeekStartIso(isoDate: string) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
+  const rateLimited = enforceRateLimit(request, {
+    bucket: "analytics-home-summary",
+    limit: 60,
+    windowMs: 60 * 1000,
+  });
+  if (rateLimited) return rateLimited;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json(
-      {
-        ok: false,
-        skipped: true,
-        reason: "supabase_env_missing",
-      },
-      { status: 200 }
+      { ok: false, skipped: true, reason: "supabase_env_missing" },
+      { status: 503 }
     );
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
