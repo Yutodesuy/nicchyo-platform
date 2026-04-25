@@ -865,16 +865,17 @@ export default function MapPageClient({
               </div>
             )}
 
-            {/* 全幅検索バー（AI相談モード時は非表示） */}
+            {/* 全幅検索バー + ジャンルフィルター（AI相談モード時は非表示） */}
             {!mapCharacterConsultActive && (
               <div
-                className="absolute left-3 right-3 top-3 z-[1001]"
+                className="absolute left-3 right-3 top-3 z-[1001] flex flex-col gap-2"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
               >
+                {/* 検索バー */}
                 <div className={`flex items-center gap-2 rounded-full px-4 py-2.5 shadow-lg ring-1 backdrop-blur-sm transition-all duration-200 ${
-                  mapSearchQuery.trim()
+                  mapSearchQuery.trim() || mapSearchCategory
                     ? 'bg-gradient-to-r from-amber-100/95 to-orange-50/95 ring-amber-400/50'
                     : 'bg-white/90 ring-slate-900/8'
                 }`}>
@@ -889,12 +890,12 @@ export default function MapPageClient({
                     onChange={(e) => setMapSearchQuery(e.target.value)}
                     className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
                   />
-                  {mapSearchQuery.trim() && (
+                  {(mapSearchQuery.trim() || mapSearchCategory) && (
                     <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-white">
                       {mapSearchResults.length}件
                     </span>
                   )}
-                  {mapSearchQuery && (
+                  {(mapSearchQuery || mapSearchCategory) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -910,6 +911,24 @@ export default function MapPageClient({
                       </svg>
                     </button>
                   )}
+                </div>
+
+                {/* ジャンルフィルター */}
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                  {['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setMapSearchCategory(mapSearchCategory === cat ? null : cat)}
+                      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-all ${
+                        mapSearchCategory === cat
+                          ? 'bg-amber-500 text-white shadow-amber-200'
+                          : 'bg-white/85 text-slate-700 ring-1 ring-slate-900/8'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
