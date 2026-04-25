@@ -445,7 +445,7 @@ function MapControls({
 
       {/* 現在地追跡ボタン（画面上部右） */}
       <div
-        className="absolute right-4 top-20 z-[1000]"
+        className="absolute right-4 top-28 z-[1000]"
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => { e.stopPropagation(); }}
