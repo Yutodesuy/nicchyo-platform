@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 
 // Mock the consentClient module with a controllable flag
@@ -9,11 +10,11 @@ vi.mock("../../../lib/analytics/consentClient", () => {
     __setAllowed: (v: boolean) => {
       allowed = v;
     },
-  } as unknown;
+  } as any;
 });
 
 describe("sendEvent wrapper", () => {
-  let sendEvent: (name: string, params?: any, options?: any) => void;
+  let sendEvent: (...args: any[]) => void;
   let consentMock: any;
 
   beforeEach(async () => {

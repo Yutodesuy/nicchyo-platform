@@ -76,6 +76,7 @@ export const MapOverlays = memo(function MapOverlays({
   shopsWithIngredients: Shop[];
   recipeIngredients: Array<{ name: string; icon: string }>;
   onRecipeShopClick: (shop: Shop) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   OptimizedShopLayerWithClustering: ComponentType<any>;
 }) {
   const map = useMap();

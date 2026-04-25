@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
 import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
@@ -47,7 +48,7 @@ const MARKET_CENTER: [number, number] = [33.55915, 133.531];
 
 async function loadShops(): Promise<BaseShop[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false },
   });
   const shops = await fetchVendorShopsFromDb(supabase);

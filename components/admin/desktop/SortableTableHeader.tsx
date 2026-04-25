@@ -86,8 +86,8 @@ export function useSortableData<T>(data: T[], defaultSortKey?: keyof T) {
     if (!sortKey) return data;
 
     return [...data].sort((a, b) => {
-      const aValue = (a as any)[sortKey];
-      const bValue = (b as any)[sortKey];
+      const aValue = (a as Record<string, unknown>)[sortKey];
+      const bValue = (b as Record<string, unknown>)[sortKey];
 
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return 1;

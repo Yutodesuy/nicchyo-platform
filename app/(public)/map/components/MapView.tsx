@@ -35,7 +35,6 @@ import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds }
 import {
   getViewModeForZoom,
   ViewMode,
-  canShowShopDetailBanner,
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
 import type { Landmark } from "../types/landmark";
@@ -381,6 +380,7 @@ function SearchResultsSheet({
               >
                 <div className="shrink-0 h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
                   {imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
                   )}
                 </div>
@@ -729,7 +729,6 @@ const MapView = memo(function MapView({
   openInitialShopBanner = true,
   selectedRecipe,
   showRecipeOverlay,
-  onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
   searchShopIds,
@@ -758,7 +757,7 @@ const MapView = memo(function MapView({
   hideMapUI = false,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
-  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  const [_isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const { addItem, items: bagItems } = useBag();
   const bagShopIds = useMemo(() => {
     return bagItems
@@ -830,7 +829,7 @@ const MapView = memo(function MapView({
   const [shopBannerInitialSurface, setShopBannerInitialSurface] = useState<"summary" | "detail">("detail");
   const [shopBannerMainSurface, setShopBannerMainSurface] = useState<"summary" | "detail">("detail");
   const [isTracking, setIsTracking] = useState(true);
-  const [shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
+  const [_shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
   const [autoRotation, setAutoRotation] = useState(initialMapRotation);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
   const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
@@ -844,7 +843,7 @@ const MapView = memo(function MapView({
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
-  const [planOrder, setPlanOrder] = useState<number[]>([]);
+  const [_planOrder, setPlanOrder] = useState<number[]>([]);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const isTouchGestureActiveRef = useRef(false);
@@ -857,12 +856,6 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const shops = displayShops;
-
-  const planOrderMap = useMemo(() => {
-    const m = new Map<number, number>();
-    planOrder.forEach((id, idx) => m.set(id, idx));
-    return m;
-  }, [planOrder]);
 
   useEffect(() => {
     const detectMobile = () => {
@@ -1181,10 +1174,10 @@ const MapView = memo(function MapView({
   const isLowZoomTintMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
   const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
   const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
-  const shouldRenderRecipeOverlay = showRecipeOverlay && mapUiZoom >= 19.0;
+  const shouldRenderRecipeOverlay = (showRecipeOverlay ?? false) && mapUiZoom >= 19.0;
   const shouldRenderMajorLabels = mapUiZoom <= MIN_ZOOM + 2.5;
   const shouldRenderLandmarks = mapUiZoom >= MIN_ZOOM + 0.8 || highlightEventTargets;
-  const interactionDisabled = agentOpen;
+  const interactionDisabled = agentOpen ?? false;
   const mapRotation = normalizeRotationDeg(autoRotation);
 
   useEffect(() => {
@@ -1313,7 +1306,7 @@ const MapView = memo(function MapView({
     <div
       className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${activeHighlightShopIds && activeHighlightShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
-      ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      ["--map-rotation-inverse" as string]: `${-mapRotation}deg`,
       }}
     >
       <div

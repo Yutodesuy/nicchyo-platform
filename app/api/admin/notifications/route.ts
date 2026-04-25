@@ -36,7 +36,8 @@ export async function GET(_req: Request) {
 
   const dc = createAdminClient() ?? supabase;
   const { data, error } = await dc
-    .from("admin_notifications")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from("admin_notifications" as any)
     .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -67,7 +68,8 @@ export async function PATCH(req: Request) {
 
   const dc = createAdminClient() ?? supabase;
   const { error } = await dc
-    .from("admin_notifications")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from("admin_notifications" as any)
     .update({ is_read: true })
     .eq("is_read", false);
 
