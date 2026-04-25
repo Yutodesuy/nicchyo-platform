@@ -1181,3 +1181,74 @@ body.home-poster-zoom-open .hamburger-button {
 #qr-scanner-region__dashboard_section_swaplink {
   display: none !important;
 }
+
+/* ===== nicchyo Design System — CSS Variables (Phase 1) ===== */
+@layer base {
+  :root {
+    --surface-cream:     #FFFAF0;
+    --surface-warmwhite: #FEFCE8;
+    --surface-tint:      #FEF3C7;
+
+    --amber-50:  #fffbeb;
+    --amber-100: #fef3c7;
+    --amber-200: #fde68a;
+    --amber-300: #fcd34d;
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --amber-600: #d97706;
+    --amber-700: #b45309;
+    --amber-800: #92400e;
+    --amber-900: #78350f;
+
+    --orange-300: #fdba74;
+    --orange-400: #fb923c;
+    --orange-500: #f97316;
+    --orange-600: #ea580c;
+
+    --slate-50:  #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+
+    --coupon-bg:   #ecfdf5;
+    --coupon-fg:   #047857;
+    --coupon-line: #bbf7d0;
+    --favorite-bg:   #fff1f2;
+    --favorite-fg:   #be123c;
+    --favorite-line: #fecdd3;
+    --ai-bg:   #fff1f2;
+    --ai-fg:   #e11d48;
+    --ai-line: #fecdd3;
+    --info-bg:   #eff6ff;
+    --info-fg:   #1d4ed8;
+    --info-line: #bfdbfe;
+
+    --shadow-pop:  0 4px 10px rgba(146,64,14,0.12), 0 2px 4px rgba(146,64,14,0.08);
+    --shadow-card: 0 2px 8px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-chip: 0 1px 2px rgba(15,23,42,0.06);
+
+    --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@layer components {
+  .shadow-brand-pop { box-shadow: var(--shadow-pop); }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 800;
+    color: var(--amber-700);
+  }
+
+  .text-stroke-white {
+    paint-order: stroke fill;
+    -webkit-text-stroke: 0.8px white;
+  }
+}
