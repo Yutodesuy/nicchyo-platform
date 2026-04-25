@@ -1,17 +1,64 @@
-const CONSENT_KEY = "nicchyo_ga_consent";
+import * as React from "react";
+
+const ANALYTICS_CONSENT_KEY = "nicchyo_analytics_consent";
+const LOCATION_CONSENT_KEY = "nicchyo_location_consent";
+const CONSENT_CHANGE_EVENT = "nicchyo-consent-change";
+
+export type ConsentValue = "accepted" | "declined" | null;
+
+function readConsent(key: string): ConsentValue {
+  if (typeof window === "undefined") return null;
+  const value = window.localStorage.getItem(key);
+  return value === "accepted" || value === "declined" ? value : null;
+}
+
+function writeConsent(key: string, value: Exclude<ConsentValue, null>): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, value);
+  window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
+}
 
 export function isAnalyticsAllowed(): boolean {
-  return getConsent() === "accepted";
+  return getAnalyticsConsent() === "accepted";
 }
 
-export function getConsent(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(CONSENT_KEY);
+export function isLocationAllowed(): boolean {
+  return getLocationConsent() === "accepted";
 }
 
-export function setConsent(value: "accepted" | "declined"): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(CONSENT_KEY, value);
+export function getAnalyticsConsent(): ConsentValue {
+  return readConsent(ANALYTICS_CONSENT_KEY);
+}
+
+export function getLocationConsent(): ConsentValue {
+  return readConsent(LOCATION_CONSENT_KEY);
+}
+
+export function setAnalyticsConsent(value: Exclude<ConsentValue, null>): void {
+  writeConsent(ANALYTICS_CONSENT_KEY, value);
+}
+
+export function setLocationConsent(value: Exclude<ConsentValue, null>): void {
+  writeConsent(LOCATION_CONSENT_KEY, value);
+}
+
+export function useConsentValue(kind: "analytics" | "location"): ConsentValue {
+  const [value, setValue] = React.useState<ConsentValue>(null);
+
+  React.useEffect(() => {
+    const key = kind === "analytics" ? ANALYTICS_CONSENT_KEY : LOCATION_CONSENT_KEY;
+    const sync = () => setValue(readConsent(key));
+
+    sync();
+    window.addEventListener("storage", sync);
+    window.addEventListener(CONSENT_CHANGE_EVENT, sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener(CONSENT_CHANGE_EVENT, sync);
+    };
+  }, [kind]);
+
+  return value;
 }
 
 export function loadGA(gaId: string): void {
