@@ -127,8 +127,8 @@ export default function CookieConsent() {
               </div>
 
               {/* 解析 */}
-              <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                <div>
+              <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <div id="analytics-label">
                   <p className="text-sm font-medium text-gray-800">解析 Cookie</p>
                   <p className="mt-0.5 text-xs text-gray-500">Google Analytics による利用状況の計測に使います。</p>
                 </div>
@@ -136,10 +136,11 @@ export default function CookieConsent() {
                   type="button"
                   role="switch"
                   aria-checked={analyticsConsent === "accepted"}
+                  aria-labelledby="analytics-label"
                   onClick={() =>
                     setAnalyticsConsentState(analyticsConsent === "accepted" ? "declined" : "accepted")
                   }
-                  className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none ${
+                  className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
                     analyticsConsent === "accepted" ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
@@ -149,11 +150,11 @@ export default function CookieConsent() {
                     }`}
                   />
                 </button>
-              </label>
+              </div>
 
               {/* 位置情報 */}
-              <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                <div>
+              <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <div id="location-label">
                   <p className="text-sm font-medium text-gray-800">位置情報</p>
                   <p className="mt-0.5 text-xs text-gray-500">現在地表示や周辺案内のために使います。</p>
                 </div>
@@ -161,10 +162,11 @@ export default function CookieConsent() {
                   type="button"
                   role="switch"
                   aria-checked={locationConsent === "accepted"}
+                  aria-labelledby="location-label"
                   onClick={() =>
                     setLocationConsentState(locationConsent === "accepted" ? "declined" : "accepted")
                   }
-                  className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none ${
+                  className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 ${
                     locationConsent === "accepted" ? "bg-green-500" : "bg-gray-300"
                   }`}
                 >
@@ -174,7 +176,7 @@ export default function CookieConsent() {
                     }`}
                   />
                 </button>
-              </label>
+              </div>
             </div>
 
             <div className="mt-4 flex gap-2">
