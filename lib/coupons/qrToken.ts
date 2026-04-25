@@ -2,11 +2,14 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export const COUPON_QR_SLOT_MS = 300_000;
 const COUPON_QR_GRACE_SLOTS = 1;
+const COUPON_QR_VERSION = "v2";
 
 type ParsedCouponQrToken = {
   visitorKey: string;
+  issuanceId: string | null;
   slot: number;
   signature: string;
+  version: "legacy" | "v2";
 };
 
 function getCouponQrSecret(): string {
@@ -29,43 +32,78 @@ export function getSecondsUntilNextCouponQrSlot(now = Date.now()): number {
   return Math.max(1, Math.ceil((nextSlotAt - now) / 1000));
 }
 
-function signCouponQrPayload(visitorKey: string, slot: number): string {
+function signCouponQrPayload(visitorKey: string, issuanceId: string | null, slot: number): string {
   return createHmac("sha256", getCouponQrSecret())
-    .update(`${visitorKey}:${slot}`)
+    .update(issuanceId ? `${COUPON_QR_VERSION}:${visitorKey}:${issuanceId}:${slot}` : `${visitorKey}:${slot}`)
     .digest("base64url");
 }
 
-export function createCouponQrToken(visitorKey: string, now = Date.now()): string {
+export function createCouponQrToken(
+  visitorKey: string,
+  issuanceId: string,
+  now = Date.now()
+): string {
   const slot = getCurrentCouponQrSlot(now);
-  const signature = signCouponQrPayload(visitorKey, slot);
-  return `${visitorKey}:${slot}:${signature}`;
+  const signature = signCouponQrPayload(visitorKey, issuanceId, slot);
+  return `${COUPON_QR_VERSION}:${visitorKey}:${issuanceId}:${slot}:${signature}`;
 }
 
 /**
  * トークンを分割する。
  * visitor_key 自体がコロンを含む場合でも正しく動作するよう、
- * 末尾2つのコロン区切りを signature・slot として取り出す。
+ * 末尾の区切りから復元する。
  */
 function parseCouponQrToken(token: string): ParsedCouponQrToken | null {
   const trimmed = token.trim();
-  const lastColon = trimmed.lastIndexOf(":");
+  const legacyPrefix = `${COUPON_QR_VERSION}:`;
+
+  const parseLegacy = (): ParsedCouponQrToken | null => {
+    const lastColon = trimmed.lastIndexOf(":");
+    if (lastColon < 0) return null;
+    const secondLastColon = trimmed.lastIndexOf(":", lastColon - 1);
+    if (secondLastColon < 0) return null;
+
+    const visitorKey = trimmed.slice(0, secondLastColon);
+    const slotRaw = trimmed.slice(secondLastColon + 1, lastColon);
+    const signature = trimmed.slice(lastColon + 1);
+    const slot = Number(slotRaw);
+
+    if (!visitorKey || !signature || !Number.isInteger(slot) || slot < 0) {
+      return null;
+    }
+    if (!/^[A-Za-z0-9_=-]+$/.test(signature)) {
+      return null;
+    }
+
+    return { version: "legacy", visitorKey, issuanceId: null, slot, signature };
+  };
+
+  if (!trimmed.startsWith(legacyPrefix)) {
+    return parseLegacy();
+  }
+
+  const body = trimmed.slice(legacyPrefix.length);
+  const lastColon = body.lastIndexOf(":");
   if (lastColon < 0) return null;
-  const secondLastColon = trimmed.lastIndexOf(":", lastColon - 1);
+  const secondLastColon = body.lastIndexOf(":", lastColon - 1);
   if (secondLastColon < 0) return null;
+  const thirdLastColon = body.lastIndexOf(":", secondLastColon - 1);
+  if (thirdLastColon < 0) return null;
 
-  const visitorKey = trimmed.slice(0, secondLastColon);
-  const slotRaw = trimmed.slice(secondLastColon + 1, lastColon);
-  const signature = trimmed.slice(lastColon + 1);
-
+  const visitorKey = body.slice(0, thirdLastColon);
+  const issuanceId = body.slice(thirdLastColon + 1, secondLastColon);
+  const slotRaw = body.slice(secondLastColon + 1, lastColon);
+  const signature = body.slice(lastColon + 1);
   const slot = Number(slotRaw);
-  if (!visitorKey || !signature || !Number.isInteger(slot) || slot < 0) {
+
+  if (!visitorKey || !issuanceId || !signature || !Number.isInteger(slot) || slot < 0) {
     return null;
   }
-  // signature は base64url 文字のみ許可
   if (!/^[A-Za-z0-9_=-]+$/.test(signature)) {
     return null;
   }
-  return { visitorKey, slot, signature };
+
+  return { version: "v2", visitorKey, issuanceId, slot, signature };
 }
 
 /**
@@ -82,7 +120,7 @@ export function verifyAndParseCouponQrToken(
   const parsed = parseCouponQrToken(token);
   if (!parsed) return null;
 
-  const expectedSignature = signCouponQrPayload(parsed.visitorKey, parsed.slot);
+  const expectedSignature = signCouponQrPayload(parsed.visitorKey, parsed.issuanceId, parsed.slot);
   let provided: Buffer;
   let expected: Buffer;
   try {
