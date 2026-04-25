@@ -371,8 +371,14 @@ export function ShopSubviewHeader({
               >
                 {shop.category || "ショップ"}
               </span>
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                今日出店中
+              </span>
             </div>
-            <p className="mt-0.5 truncate text-sm font-bold text-slate-900">{shop.name}</p>
+            <p className="mt-1 line-clamp-1 text-sm font-bold text-slate-900">{shop.name}</p>
+            {shop.catchphrase && (
+              <p className="line-clamp-1 text-xs text-slate-500">{shop.catchphrase}</p>
+            )}
           </div>
         </div>
       </div>
