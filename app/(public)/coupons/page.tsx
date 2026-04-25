@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, MapPin } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import NavigationBar from "@/app/components/NavigationBar";
+import { Badge } from "@/components/ui/badge";
 import { getOrCreateConsultVisitorKey } from "@/lib/consultVisitorKey";
 import {
   COUPON_LOTTERY_PENDING_KEY,
@@ -230,30 +231,26 @@ function CouponsPageContent() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-white pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-white pb-28">
       <div className="px-4 pt-6 pb-4">
-        <div className="rounded-3xl border border-green-100 bg-white/95 px-5 py-5 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-green-600">Coupon</p>
+        <div className="rounded-3xl border border-amber-100 bg-white/95 px-5 py-5 shadow-card">
+          <p className="eyebrow">Coupon</p>
           <div className="mt-2 flex items-end justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">クーポン</h1>
-              <p className="mt-1 text-sm text-gray-500">日曜市の参加店でそのまま使えます</p>
+              <h1 className="text-3xl font-bold text-slate-900">クーポン</h1>
+              <p className="mt-1 text-sm text-slate-500">日曜市の参加店でそのまま使えます</p>
             </div>
             {isMarketDay && (
-              <div className="rounded-2xl bg-green-50 px-4 py-2 text-right">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-green-700">
-                  保有中
-                </p>
-                <p className="text-2xl font-extrabold text-green-700">
-                  {activeCoupons.length}
-                  <span className="ml-1 text-sm font-semibold">枚</span>
-                </p>
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant="coupon" className="text-xs">
+                  保有中 {activeCoupons.length}枚
+                </Badge>
               </div>
             )}
           </div>
@@ -291,9 +288,7 @@ function CouponsPageContent() {
 
         {isMarketDay && (
           <section className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-              今日のクーポン
-            </p>
+            <p className="eyebrow">今日のクーポン</p>
             {activeCoupons.length > 0 && visitorKey ? (
               <div className="space-y-3">
                 {showNewCouponNotice && (
@@ -312,17 +307,17 @@ function CouponsPageContent() {
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-gray-200 bg-white px-5 py-6 text-center shadow-sm">
+              <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-amber-100 bg-surface-warmwhite px-5 py-6 text-center shadow-card">
                 <span className="text-4xl">🐾</span>
                 <div>
-                  <p className="font-semibold text-gray-700">クーポンはまだありません</p>
-                  <p className="mt-0.5 text-sm text-gray-500">
+                  <p className="font-semibold text-slate-700">クーポンはまだありません</p>
+                  <p className="mt-0.5 text-sm text-slate-500">
                     お店でQRを見せてスタンプを集めると、クーポンがもらえます。
                   </p>
                 </div>
                 <Link
                   href="/map"
-                  className="mt-1 rounded-full bg-green-500 px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-green-600"
+                  className="mt-1 inline-flex h-12 items-center justify-center rounded-full border border-transparent bg-amber-500 px-6 text-base font-medium text-white shadow-pop transition-colors hover:bg-amber-600"
                 >
                   マップでお店を探す
                 </Link>
@@ -335,41 +330,35 @@ function CouponsPageContent() {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-                  クーポンが使えるお店
-                </p>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="eyebrow">クーポンが使えるお店</p>
+                <p className="mt-1 text-sm text-slate-500">
                   条件を満たす参加店ならどこでも使えます
                 </p>
               </div>
-              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
-                {activeCouponVendors.length}店
-              </span>
+              <Badge variant="amber">{activeCouponVendors.length}店</Badge>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-3xl border border-amber-100 bg-white shadow-card">
               {activeCouponVendors.map((vendor, index) => (
                 <div
                   key={`${vendor.vendor_id}-${vendor.coupon_type_id}`}
                   className={`flex items-start gap-3 px-4 py-4 ${
-                    index > 0 ? "border-t border-gray-100" : ""
+                    index > 0 ? "border-t border-amber-50" : ""
                   }`}
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-2xl">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-2xl">
                     {vendor.coupon_type_emoji}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-gray-900">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {vendor.vendor_name}
                       </p>
                       {vendor.is_stamped && (
-                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                          スタンプ済み
-                        </span>
+                        <Badge variant="amber" className="text-[11px]">スタンプ済み</Badge>
                       )}
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       {vendor.min_purchase_amount > 0
                         ? `${vendor.min_purchase_amount.toLocaleString()}円以上で${vendor.coupon_type_amount.toLocaleString()}円引き`
                         : `${vendor.coupon_type_amount.toLocaleString()}円引き`}
@@ -384,7 +373,7 @@ function CouponsPageContent() {
         {isMarketDay && (
           <Link
             href="/map"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-sm font-bold text-white shadow transition hover:bg-gray-700"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-amber-500 px-6 text-base font-medium text-white shadow-pop transition-colors hover:bg-amber-600"
           >
             <MapPin size={16} />
             マップで参加店を見る
@@ -402,7 +391,7 @@ export default function CouponsPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       }
     >
@@ -426,32 +415,32 @@ function ActiveCouponCard({
   const progressColor = getQrProgressColor(qrSecondsLeft);
 
   return (
-    <div className="rounded-3xl border border-green-200 bg-white p-5 shadow-sm">
+    <div className="rounded-3xl border border-amber-200 bg-white p-5 shadow-card">
       <div className="mb-4 flex items-center gap-3">
         <span className="text-4xl">{coupon.coupon_type.emoji}</span>
         <div>
-          <p className="font-bold text-gray-900">{coupon.coupon_type.name}</p>
-          <p className="text-xs text-gray-500">{coupon.coupon_type.description}</p>
+          <p className="font-bold text-slate-900">{coupon.coupon_type.name}</p>
+          <p className="text-xs text-slate-500">{coupon.coupon_type.description}</p>
         </div>
       </div>
 
       <div className="mb-1 flex items-baseline gap-1">
-        <span className="text-5xl font-extrabold text-green-600">{coupon.amount}</span>
-        <span className="text-2xl font-bold text-green-600">円引き</span>
+        <span className="text-5xl font-extrabold text-amber-600">{coupon.amount}</span>
+        <span className="text-2xl font-bold text-amber-600">円引き</span>
       </div>
 
-      <p className="mb-5 text-sm text-gray-400">有効期限: {formatExpiresAt(coupon.expires_at)}</p>
+      <p className="mb-5 text-sm text-slate-400">有効期限: {formatExpiresAt(coupon.expires_at)}</p>
 
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-5">
+      <div className="rounded-2xl border border-amber-100 bg-surface-tint px-4 py-5">
         <div className="flex flex-col items-center gap-3">
           {qrToken ? (
-            <QRCodeSVG value={qrToken} size={180} level="M" bgColor="#F9FAFB" fgColor="#111827" />
+            <QRCodeSVG value={qrToken} size={180} level="M" bgColor="#FEF3C7" fgColor="#111827" />
           ) : (
             <div className="flex h-[180px] w-[180px] items-center justify-center rounded-2xl bg-white">
-              <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
             </div>
           )}
-          <p className="text-center text-xs leading-relaxed text-gray-500">
+          <p className="text-center text-xs leading-relaxed text-slate-500">
             お店のスタッフにこのQRコードを読み取ってもらってください
           </p>
         </div>
