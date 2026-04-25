@@ -7,12 +7,11 @@ import type { RedeemResponse } from "@/lib/coupons/types";
 import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 import { verifyAndParseCouponQrToken } from "@/lib/coupons/qrToken";
+import { getMilestoneIssueReason, isMilestoneStep } from "@/lib/coupons/milestones";
 import { todayJstString } from "@/lib/time/jstDate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MILESTONES = [1, 3, 5] as const;
 
 function getServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -108,9 +107,16 @@ export async function POST(request: Request) {
       .eq("is_used", false)
       .gt("expires_at", now)
       .order("created_at", { ascending: true })
-      .limit(1);
+      ;
 
-    const couponToUse = activeCoupons?.[0] ?? null;
+    const activeCouponList = activeCoupons ?? [];
+    let couponToUse: typeof activeCouponList[number] | null = activeCouponList[0] ?? null;
+    if (parsedToken.issuanceId) {
+      couponToUse = activeCouponList.find((coupon) => coupon.id === parsedToken.issuanceId) ?? null;
+      if (!couponToUse) {
+        return NextResponse.json({ error: "QR code is invalid or expired" }, { status: 400 });
+      }
+    }
     const had_coupon = couponToUse !== null;
 
     // ⑤ 出店者参加チェック
@@ -218,7 +224,7 @@ export async function POST(request: Request) {
         .eq("market_date", market_date);
 
       total_stamps = stampCount ?? 0;
-      milestone_reached = MILESTONES.find((m) => m === total_stamps) ?? null;
+      milestone_reached = isMilestoneStep(total_stamps) ? total_stamps : null;
 
       if (milestone_reached !== null) {
         const { data: milestoneType } = await serviceClient
@@ -233,19 +239,16 @@ export async function POST(request: Request) {
           expiresAt.setDate(expiresAt.getDate() + 1);
 
           const { data: newCoupon, error: insertError } = await serviceClient
-            .from("coupon_issuances")
-            .insert({
-              visitor_key,
-              market_date,
-              coupon_type_id: milestoneType.id,
-              amount: milestoneType.amount,
-              issue_reason: `milestone_${milestone_reached}` as
-                | "milestone_1"
-                | "milestone_3"
-                | "milestone_5",
-              expires_at: expiresAt.toISOString(),
-            })
-            .select("*, coupon_types(*)")
+              .from("coupon_issuances")
+              .insert({
+                visitor_key,
+                market_date,
+                coupon_type_id: milestoneType.id,
+                amount: milestoneType.amount,
+                issue_reason: getMilestoneIssueReason(milestone_reached as 1 | 3 | 5),
+                expires_at: expiresAt.toISOString(),
+              })
+              .select("*, coupon_types(*)")
             .single();
 
           if (insertError) {
