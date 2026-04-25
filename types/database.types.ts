@@ -257,9 +257,10 @@ export type Database = {
         Row: {
           amount_discounted: number
           confirmed_by: string | null
-          coupon_issuance_id: string
-          coupon_type_id: string
+          coupon_issuance_id: string | null
+          coupon_type_id: string | null
           created_at: string
+          had_coupon: boolean
           id: string
           ip_address: string | null
           is_new_stamp: boolean
@@ -272,9 +273,10 @@ export type Database = {
         Insert: {
           amount_discounted?: number
           confirmed_by?: string | null
-          coupon_issuance_id: string
-          coupon_type_id: string
+          coupon_issuance_id?: string | null
+          coupon_type_id?: string | null
           created_at?: string
+          had_coupon?: boolean
           id?: string
           ip_address?: string | null
           is_new_stamp?: boolean
@@ -287,9 +289,10 @@ export type Database = {
         Update: {
           amount_discounted?: number
           confirmed_by?: string | null
-          coupon_issuance_id?: string
-          coupon_type_id?: string
+          coupon_issuance_id?: string | null
+          coupon_type_id?: string | null
           created_at?: string
+          had_coupon?: boolean
           id?: string
           ip_address?: string | null
           is_new_stamp?: boolean
@@ -379,6 +382,7 @@ export type Database = {
           id: string
           is_enabled: boolean
           is_initial_gift: boolean
+          milestone_stamp_count: number | null
           name: string
         }
         Insert: {
@@ -390,6 +394,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           is_initial_gift?: boolean
+          milestone_stamp_count?: number | null
           name: string
         }
         Update: {
@@ -401,6 +406,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           is_initial_gift?: boolean
+          milestone_stamp_count?: number | null
           name?: string
         }
         Relationships: []
