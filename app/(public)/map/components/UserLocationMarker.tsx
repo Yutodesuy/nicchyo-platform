@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
+import { useConsentValue } from '@/lib/analytics/consentClient';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { MapRouteConfig, MapRoutePoint } from '../types/mapRoute';
@@ -58,6 +59,7 @@ export default function UserLocationMarker({
   // 初回位置取得フラグ（マップを位置に移動させるため）
   const isFirstLocationRef = useRef(true);
   const routeVisibleRef = useRef(false);
+  const locationConsent = useConsentValue("location");
   const effectiveRoutePoints = useMemo(() => {
     const activeRoutePoints = normalizeMapRoutePoints(routePoints ?? []);
     return activeRoutePoints.length >= 2 ? activeRoutePoints : getDefaultMapRoutePoints();
@@ -92,6 +94,12 @@ export default function UserLocationMarker({
     }
   }, [isTracking, map]);
 
+  useEffect(() => {
+    if (locationConsent !== "accepted") {
+      onLocationUpdateRef.current?.(false, MARKET_CENTER);
+    }
+  }, [locationConsent]);
+
   // Handle device orientation
   useEffect(() => {
     const handleOrientation = (event: DeviceOrientationEvent) => {
@@ -118,6 +126,10 @@ export default function UserLocationMarker({
   }, []);
 
   useEffect(() => {
+    if (locationConsent !== "accepted") {
+      return;
+    }
+
     if (!map) return;
 
     // Create marker with direction arrow structure
@@ -356,7 +368,7 @@ export default function UserLocationMarker({
     return () => {
       removeMarker();
     };
-  }, [effectiveRouteConfig, effectiveRoutePoints, map, routeSegments, suppressInitialFocus]);
+  }, [effectiveRouteConfig, effectiveRoutePoints, locationConsent, map, routeSegments, suppressInitialFocus]);
 
   return null;
 }
