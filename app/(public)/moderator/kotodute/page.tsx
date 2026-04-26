@@ -78,7 +78,7 @@ export function ModeratorKotoduteContent() {
     }
 
     setItems(
-      ((data ?? []) as unknown as DbRow[]).map((r) => ({
+      ((data ?? []) as DbRow[]).map((r) => ({
         id: r.id,
         visitor_key: r.visitor_key,
         vendor_id: r.vendor_id,

@@ -100,11 +100,11 @@ export const MOCK_HOURLY: HourlyData[] = [
 ];
 
 export const MOCK_PRODUCT_SALES: ProductSale[] = [
-  { id: "ps-1", vendor_id: "vendor-1", product_name: "芋天", quantity: 40, date: new Date().toISOString() },
-  { id: "ps-2", vendor_id: "vendor-1", product_name: "文旦", quantity: 25, date: new Date().toISOString() },
-  { id: "ps-3", vendor_id: "vendor-1", product_name: "しょうが", quantity: 15, date: new Date().toISOString() },
-  { id: "ps-4", vendor_id: "vendor-1", product_name: "手作りジャム", quantity: 12, date: new Date().toISOString() },
-  { id: "ps-5", vendor_id: "vendor-1", product_name: "トマト", quantity: 8, date: new Date().toISOString() },
+  { id: "ps-1", vendor_id: "vendor-1", product_name: "芋天", quantity: 40, sale_date: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: "ps-2", vendor_id: "vendor-1", product_name: "文旦", quantity: 25, sale_date: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: "ps-3", vendor_id: "vendor-1", product_name: "しょうが", quantity: 15, sale_date: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: "ps-4", vendor_id: "vendor-1", product_name: "手作りジャム", quantity: 12, sale_date: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: "ps-5", vendor_id: "vendor-1", product_name: "トマト", quantity: 8, sale_date: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
 ];
 
 export const MOCK_MARKET_TRENDS: MarketTrend[] = [
