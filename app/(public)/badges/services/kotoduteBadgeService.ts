@@ -1,4 +1,5 @@
 import { loadKotodute } from '../../../../lib/kotoduteStorage';
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 
 const LIKE_STORAGE_KEY = 'nicchyo-kotodute-likes';
 
@@ -11,13 +12,7 @@ export type BadgeDef = {
 function loadLikes(): Record<string, number> {
   if (typeof window === 'undefined') return {};
   const raw = localStorage.getItem(LIKE_STORAGE_KEY);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as Record<string, number>;
-    return parsed ?? {};
-  } catch {
-    return {};
-  }
+  return safeJsonParse<Record<string, number>>(raw, {});
 }
 
 export function getKotoduteProgress() {

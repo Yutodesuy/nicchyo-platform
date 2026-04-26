@@ -1,3 +1,5 @@
+import { safeJsonParse } from "./utils/safeJsonParse";
+
 export const FAVORITE_SHOPS_KEY = "nicchyo-favorite-shops";
 export const FAVORITE_SHOPS_UPDATED_EVENT = "nicchyo-favorite-shops-updated";
 
@@ -12,12 +14,7 @@ function normalizeIds(value: unknown): number[] {
 export function loadFavoriteShopIds(): number[] {
   if (typeof window === "undefined") return [];
   const raw = localStorage.getItem(FAVORITE_SHOPS_KEY);
-  if (!raw) return [];
-  try {
-    return normalizeIds(JSON.parse(raw));
-  } catch {
-    return [];
-  }
+  return normalizeIds(safeJsonParse<unknown>(raw, []));
 }
 
 export function saveFavoriteShopIds(ids: number[]) {
