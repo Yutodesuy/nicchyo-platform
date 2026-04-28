@@ -13,7 +13,7 @@ import {
   ChevronRight,
   Instagram,
   Globe,
-  XIcon,
+  X as XIcon,
   Sparkles,
   MessageSquarePlus,
 } from "lucide-react";
@@ -32,7 +32,7 @@ import {
 import { PostCarousel } from "./PostCarousel";
 import { CouponInfoCard } from "./CouponInfoCard";
 import { AiConsultPanel } from "./AiConsultPanel";
-import { KotodutePanel } from "./KotodutePanel";
+import { KotodutePanel, KOTODUTE_TAG_REGEX } from "./KotodutePanel";
 
 // ─── Theme presets ────────────────────────────────────────────────────────────
 const THEME_PRESETS = {
@@ -83,7 +83,6 @@ type BagItem = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "nicchyo-fridge-items";
 const KOTODUTE_PREVIEW_LIMIT = 3;
-const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 const OSEKKAI_FALLBACK =
   "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
 const BOTTOM_NAV_HEIGHT = 56;
@@ -1388,6 +1387,7 @@ export default function ShopDetailBanner({
             theme={theme}
             onBack={handleBackToMain}
             onClose={isMobileOverlay ? onClose : undefined}
+            isActive={surface === "ai"}
           />
         </div>
           </div>

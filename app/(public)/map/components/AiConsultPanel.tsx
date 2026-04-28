@@ -24,6 +24,7 @@ export function AiConsultPanel({
   theme,
   onBack,
   onClose,
+  isActive: _isActive,
 }: {
   shop: Shop;
   bannerImage: string;
@@ -31,6 +32,7 @@ export function AiConsultPanel({
   theme: BannerTheme;
   onBack: () => void;
   onClose?: () => void;
+  isActive: boolean;
 }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");

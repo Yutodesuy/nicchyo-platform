@@ -12,7 +12,7 @@ import {
   type KotoduteNote,
 } from "../../../../lib/kotoduteStorage";
 
-const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
+export const KOTODUTE_TAG_REGEX = /\s*#\d+|\s*#all/gi;
 
 const KOTODUTE_CHARACTERS = [
   { id: "sakura", emoji: "🌸", name: "さくら" },
