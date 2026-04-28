@@ -78,19 +78,18 @@ export function CouponInfoCard({
     <div className="rounded-xl border border-dashed border-green-200 bg-green-50/50 p-4">
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-base">{setting.coupon_type_emoji}</span>
-        <span className="text-sm font-semibold text-green-800">{setting.coupon_type_name}</span>
-        <span className="rounded-full border border-green-200 bg-white px-2 py-0.5 text-[10px] font-bold text-green-700">
-          🎟️ クーポン参加店
+        <span className="text-sm font-semibold text-green-800">
+          {setting.coupon_type_name}クーポン対応
         </span>
       </div>
-      <p className="text-xs text-slate-500">
-        スタンプを集めてクーポンをもらおう
+      <p className="text-xs text-slate-500 mb-3">
+        クーポンページでQRコードを確認できます
       </p>
       <Link
         href="/coupons"
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-green-200 bg-white py-2 text-sm font-semibold text-green-700 transition hover:bg-green-50"
+        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-green-300 bg-white py-2.5 text-sm font-semibold text-green-700 transition hover:bg-green-50"
       >
-        スタンプカードを見る
+        クーポンを確認する
         <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>
