@@ -95,7 +95,7 @@ export default function UserLocationMarker({
   }, [isTracking, map]);
 
   useEffect(() => {
-    if (locationConsent !== "accepted") {
+    if (locationConsent === "declined") {
       onLocationUpdateRef.current?.(false, MARKET_CENTER);
     }
   }, [locationConsent]);

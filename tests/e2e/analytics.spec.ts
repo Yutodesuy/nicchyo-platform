@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 
 test('cookie consent flow and analytics opt-in', async ({ page }) => {
   await page.goto('/');
-  const consent = page.locator('text=Cookie と位置情報の利用について');
+  const consent = page.locator('text=当サイトはサービス改善のため Cookie および位置情報を利用します');
   await expect(consent).toBeVisible({ timeout: 30000 });
 
-  await page.getByRole('button', { name: 'すべて許可して続行' }).click();
+  await page.getByRole('button', { name: 'すべて許可' }).first().click();
 
   await expect(consent).toBeHidden({ timeout: 30000 });
 
@@ -18,5 +18,5 @@ test('cookie consent flow and analytics opt-in', async ({ page }) => {
   expect(values.location).toBe('accepted');
 
   await page.reload();
-  await expect(page.locator('text=Cookie と位置情報の利用について')).toHaveCount(0);
+  await expect(page.locator('text=当サイトはサービス改善のため Cookie および位置情報を利用します')).toHaveCount(0);
 });
