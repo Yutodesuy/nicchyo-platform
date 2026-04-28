@@ -1,5 +1,3 @@
-import * as React from "react";
-
 const ANALYTICS_CONSENT_KEY = "nicchyo_analytics_consent";
 const LOCATION_CONSENT_KEY = "nicchyo_location_consent";
 const CONSENT_CHANGE_EVENT = "nicchyo-consent-change";
@@ -40,25 +38,6 @@ export function setAnalyticsConsent(value: Exclude<ConsentValue, null>): void {
 
 export function setLocationConsent(value: Exclude<ConsentValue, null>): void {
   writeConsent(LOCATION_CONSENT_KEY, value);
-}
-
-export function useConsentValue(kind: "analytics" | "location"): ConsentValue {
-  const [value, setValue] = React.useState<ConsentValue>(null);
-
-  React.useEffect(() => {
-    const key = kind === "analytics" ? ANALYTICS_CONSENT_KEY : LOCATION_CONSENT_KEY;
-    const sync = () => setValue(readConsent(key));
-
-    sync();
-    window.addEventListener("storage", sync);
-    window.addEventListener(CONSENT_CHANGE_EVENT, sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener(CONSENT_CHANGE_EVENT, sync);
-    };
-  }, [kind]);
-
-  return value;
 }
 
 export function loadGA(gaId: string): void {
