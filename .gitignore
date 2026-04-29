@@ -137,3 +137,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Claude Code local settings (machine-specific, not for sharing)
+.claude/settings.local.json
