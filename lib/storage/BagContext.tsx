@@ -15,6 +15,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 
 export type BagItem = {
   id: string;
@@ -57,10 +58,8 @@ export function BagProvider({ children }: { children: ReactNode }) {
     const loadItems = () => {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as BagItem[];
-          setItems(parsed);
-        }
+        const parsed = safeJsonParse<BagItem[]>(raw, []);
+        if (parsed.length > 0) setItems(parsed);
       } catch (error) {
         console.error('[BagContext] Failed to load bag items:', error);
       } finally {

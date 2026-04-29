@@ -1,4 +1,5 @@
 import { isInsideSundayMarket } from '../config/roadConfig';
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import { timeBadgeMaster, type TimeBadge } from '../data/timeBadgeMaster';
 
 type Position = { lat: number; lng: number };
@@ -35,13 +36,7 @@ const STORAGE_KEY = 'nicchyo-time-badges';
 
 function loadProgress(): StoredProgress {
   if (typeof window === 'undefined') return { slots: {} };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { slots: {} };
-    return JSON.parse(raw) as StoredProgress;
-  } catch {
-    return { slots: {} };
-  }
+  return safeJsonParse<StoredProgress>(localStorage.getItem(STORAGE_KEY), { slots: {} });
 }
 
 function saveProgress(data: StoredProgress) {
