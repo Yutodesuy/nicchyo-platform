@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import type { Map as LeafletMap } from 'leaflet';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -100,10 +101,11 @@ function CharacterSprite({
         className="relative overflow-hidden"
         style={{ height: CHAR_H, width: CHAR_W, animation: 'character-idle 3s ease-in-out infinite' }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={character.image}
           alt={character.name}
+          width={CHAR_W}
+          height={CHAR_H}
           className={`h-full w-full object-cover ${character.imageScale}`}
           style={{ objectPosition: character.imagePosition }}
           draggable={false}
@@ -539,10 +541,11 @@ export default function MapCharacterConsult({
                   <div className="mb-0.5 shrink-0">
                     {activeCharacter ? (
                       <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-[#fff6e5] shadow-sm">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <Image
                           src={activeCharacter.image}
                           alt={activeCharacter.name}
+                          width={44}
+                          height={44}
                           className={`h-full w-full object-cover ${activeCharacter.imageScale}`}
                           style={{ objectPosition: activeCharacter.imagePosition }}
                           draggable={false}

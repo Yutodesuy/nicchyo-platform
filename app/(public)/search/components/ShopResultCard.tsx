@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { memo } from "react";
 import type { MouseEvent } from "react";
 import type { Shop } from "../../map/data/shops";
@@ -108,10 +109,11 @@ function ShopResultCard({
       </div>
 
       <div className={`${compact ? "mt-1.5" : "mt-2"} flex gap-3 overflow-hidden rounded-xl border border-amber-100 bg-white p-2.5`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={previewImage}
           alt={`${shop.name}の画像`}
+          width={128}
+          height={96}
           className={`${compact ? "h-20 w-20" : "h-24 w-28 sm:w-32"} shrink-0 rounded-lg object-cover bg-white`}
         />
         <div className="min-w-0 flex-1">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
@@ -276,10 +277,11 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
           {/* ヘッダー：standalone のみ表示 */}
           {!embedded && (
             <section className="flex flex-col items-center gap-3 pb-1 pt-4 text-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/characters/obaasan.png"
                 alt="にちよさん"
+                width={180}
+                height={180}
                 className="h-[120px] w-[120px] object-contain drop-shadow-[0_8px_16px_rgba(146,64,14,0.25)] md:h-[180px] md:w-[180px]"
               />
               <div>
