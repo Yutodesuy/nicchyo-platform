@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import type { DatabaseWithExtensions } from "@/types/database.extensions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
-  return createServiceClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createServiceClient<DatabaseWithExtensions>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 // 通知一覧取得
@@ -34,10 +35,10 @@ export async function GET(_req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const dc = createAdminClient() ?? supabase;
+  const dc = createAdminClient();
+  if (!dc) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   const { data, error } = await dc
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .from("admin_notifications" as any)
+    .from("admin_notifications")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
@@ -66,10 +67,10 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const dc = createAdminClient() ?? supabase;
+  const dc = createAdminClient();
+  if (!dc) return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
   const { error } = await dc
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .from("admin_notifications" as any)
+    .from("admin_notifications")
     .update({ is_read: true })
     .eq("is_read", false);
 

@@ -47,10 +47,6 @@ function generateShopIllustrationHtml(
   const darkColor = adjustColor(baseColor, -25);
   const lightColor = adjustColor(baseColor, 25);
 
-  // Note: style object keys in React are camelCase, but in HTML style attribute they are kebab-case (except custom props which are kept as is usually, but here they are CSS variables)
-  // React: ['--stall-color' as any]: baseColor
-  // HTML: style="width: ...; height: ...; --stall-color: ...;"
-
   const style = `width:${width}px;height:${height}px;--stall-color:${baseColor};--stall-color-dark:${darkColor};--stall-color-light:${lightColor};`;
 
   return `
@@ -74,7 +70,7 @@ export function generateShopMarkerHtml(
   bannerImage: string | undefined,
   attendanceLabel: string,
   illustrationSize: ShopIllustrationSize,
-  mainProduct: string
+  _mainProduct: string
 ): string {
   const bannerHtml = mode === 'full' ? `
     ${bannerImage ? `<span class="shop-product-icon" style="background-image: url(${escapeHtml(bannerImage)})" aria-hidden="true"></span>` : ''}

@@ -31,8 +31,8 @@ export async function fetchMapData(supabase: SupabaseClient<Database>) {
 
     const { data: estimatesData } = estimatesResult;
     if (Array.isArray(estimatesData)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      estimatesData.forEach((row: any) => {
+      type EstimateRow = Database["public"]["Functions"]["get_shop_attendance_estimates"]["Returns"][0];
+      estimatesData.forEach((row: EstimateRow) => {
         const legacyId = vendorIdToLegacy.get(String(row.shop_id));
         if (!legacyId) return;
         attendanceEstimates[legacyId] = {
