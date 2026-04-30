@@ -29,7 +29,7 @@ import type { Shop } from "../data/shops";
 import { getSmartSuggestions } from "../utils/suggestionGenerator";
 import { getShopBannerImage } from "@/lib/shopImages";
 import { saveAiMapPayload } from "@/lib/searchMapStorage";
-const HOLD_MS = 250;
+import { useAvatarDrag } from "../../../../lib/hooks/useAvatarDrag";
 const ROTATE_MS = 6500;
 const EXAMPLE_ROTATE_MS = 4500;
 
@@ -249,22 +249,15 @@ export default function GrandmaChatter({
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
   const [introLockUntil, setIntroLockUntil] = useState<number | null>(null);
   const [isIntroImageOpen, setIsIntroImageOpen] = useState(false);
-  const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
-  const [isHolding, setIsHolding] = useState(false);
-  const [holdPhase, setHoldPhase] = useState<"idle" | "priming" | "active">("idle");
   const [keyboardShift, setKeyboardShift] = useState(0);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [consultExampleIndex, setConsultExampleIndex] = useState(0);
   const [consultHeroIndex, setConsultHeroIndex] = useState(0);
   const [isPreferredCharacterPickerOpen, setIsPreferredCharacterPickerOpen] = useState(false);
-  const rafRef = useRef<number | null>(null);
-  const pendingOffsetRef = useRef<{ x: number; y: number } | null>(null);
-  const holdTimerRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const askRequestRef = useRef(0);
-  const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [activeStreamingMessageId, setActiveStreamingMessageId] = useState<string | null>(null);
@@ -315,33 +308,10 @@ export default function GrandmaChatter({
     []
   );
   const router = useRouter();
-  const dragStateRef = useRef<{
-    startX: number;
-    startY: number;
-    startOffset: number;
-    startOffsetY: number;
-    min: number;
-    max: number;
-    minY: number;
-    maxY: number;
-    moved: boolean;
-    pointerId: number | null;
-    active: boolean;
-  }>(
-    {
-      startX: 0,
-      startY: 0,
-      startOffset: 0,
-      startOffsetY: 0,
-      min: 0,
-      max: 0,
-      minY: 0,
-      maxY: 0,
-      moved: false,
-      pointerId: null,
-      active: false,
-    }
-  );
+  const { avatarOffset, isHolding, holdPhase, consumeWasMoved, handlers } = useAvatarDrag({
+    onHoldChange,
+    onDrop,
+  });
 
   useEffect(() => {
     // 時間帯に応じたスマートなデフォルト値の設定
@@ -696,10 +666,7 @@ export default function GrandmaChatter({
   if (!current) return null;
 
   const handleAvatarClick = () => {
-    if (dragStateRef.current.moved) {
-      dragStateRef.current.moved = false;
-      return;
-    }
+    if (consumeWasMoved()) return;
     if (!isChatOpen) {
       if (inputRef.current) {
         try {
@@ -708,12 +675,9 @@ export default function GrandmaChatter({
           inputRef.current.focus();
         }
       }
-      lastAvatarOffsetRef.current = avatarOffset;
-      setAvatarOffset({ x: 0, y: 0 });
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
-      setAvatarOffset(lastAvatarOffsetRef.current);
       inputRef.current?.blur();
     }
   };
@@ -987,121 +951,6 @@ export default function GrandmaChatter({
     setShouldShowValidation(false);
   };
 
-  const handleAvatarPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (isChatOpen) {
-      return;
-    }
-    event.preventDefault();
-    setIsHolding(true);
-    setHoldPhase("priming");
-    onHoldChange?.(true);
-    const rect = event.currentTarget.getBoundingClientRect();
-    const viewWidth = document.documentElement.clientWidth;
-    const viewHeight = document.documentElement.clientHeight;
-    const min = avatarOffset.x - rect.left;
-    const reservedRight = 0;
-    const max = avatarOffset.x + Math.max(0, viewWidth - rect.right - reservedRight);
-    const minY = avatarOffset.y - rect.top;
-    const maxY = avatarOffset.y + (viewHeight - rect.bottom);
-    dragStateRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      startOffset: avatarOffset.x,
-      startOffsetY: avatarOffset.y,
-      min,
-      max,
-      minY,
-      maxY,
-      moved: false,
-      pointerId: event.pointerId,
-      active: false,
-    };
-    if (holdTimerRef.current !== null) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    holdTimerRef.current = window.setTimeout(() => {
-      dragStateRef.current.active = true;
-      setHoldPhase("active");
-    }, HOLD_MS);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleAvatarPointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (dragStateRef.current.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    const deltaX = event.clientX - dragStateRef.current.startX;
-    const deltaY = event.clientY - dragStateRef.current.startY;
-    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
-      dragStateRef.current.moved = true;
-    }
-    if (!dragStateRef.current.active && Math.abs(deltaX) > 4) {
-      if (holdTimerRef.current !== null) {
-        window.clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
-      setIsHolding(false);
-      setHoldPhase("idle");
-      onHoldChange?.(false);
-    }
-    const nextX = Math.max(
-      dragStateRef.current.min,
-      Math.min(dragStateRef.current.max, dragStateRef.current.startOffset + deltaX)
-    );
-    const nextY = dragStateRef.current.active
-      ? Math.max(
-          dragStateRef.current.minY,
-          Math.min(dragStateRef.current.maxY, dragStateRef.current.startOffsetY + deltaY)
-        )
-      : 0;
-    pendingOffsetRef.current = { x: nextX, y: nextY };
-    if (rafRef.current === null) {
-      rafRef.current = window.requestAnimationFrame(() => {
-        if (pendingOffsetRef.current !== null) {
-          setAvatarOffset(pendingOffsetRef.current);
-        }
-        rafRef.current = null;
-      });
-    }
-  };
-
-  const handleAvatarPointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
-    if (dragStateRef.current.pointerId !== event.pointerId) return;
-    const wasActive = dragStateRef.current.active;
-    dragStateRef.current.pointerId = null;
-    dragStateRef.current.active = false;
-    if (holdTimerRef.current !== null) {
-      window.clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    setIsHolding(false);
-    setHoldPhase("idle");
-    onHoldChange?.(false);
-    if (rafRef.current !== null) {
-      window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    if (pendingOffsetRef.current !== null) {
-      setAvatarOffset(pendingOffsetRef.current);
-      pendingOffsetRef.current = null;
-    }
-    event.currentTarget.releasePointerCapture(event.pointerId);
-    if (wasActive) {
-      setAvatarOffset({ x: 0, y: 0 });
-    }
-    if (wasActive) {
-      onDrop?.({ x: event.clientX, y: event.clientY });
-    }
-  };
-
-  const handleAvatarContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-  };
-
-  const handleAvatarDragStart = (event: React.DragEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-  };
-
   const shellClassName = layout === "page"
     ? "relative w-full pointer-events-auto"
     : fullWidth
@@ -1301,12 +1150,7 @@ export default function GrandmaChatter({
             <button
               type="button"
               onClick={handleAvatarClick}
-              onPointerDown={handleAvatarPointerDown}
-              onPointerMove={handleAvatarPointerMove}
-              onPointerUp={handleAvatarPointerUp}
-              onPointerCancel={handleAvatarPointerUp}
-              onContextMenu={handleAvatarContextMenu}
-              onDragStart={handleAvatarDragStart}
+              {...handlers}
               className={`${avatarClassName} relative z-0 pointer-events-auto grandma-avatar`}
               style={{ touchAction: "none", WebkitTouchCallout: "none", userSelect: "none" }}
               aria-label="おばあちゃんに相談する"
