@@ -497,69 +497,7 @@ function MapControls({
   );
 }
 
-// ===== Top-right: inline search bar =====
-function MapSearchBar({
-  searchShopIds,
-  searchLabel,
-  searchQuery,
-  onSearchQuery,
-  onClearSearch,
-}: {
-  searchShopIds?: number[];
-  searchLabel?: string;
-  searchQuery?: string;
-  onSearchQuery?: (q: string) => void;
-  onClearSearch?: () => void;
-}) {
-  const hasSearch = Boolean(
-    (searchShopIds && searchShopIds.length > 0) ||
-    (searchQuery && searchQuery.trim()) ||
-    (searchLabel && searchLabel.trim())
-  );
 
-  return (
-    <div
-      className="absolute right-4 top-4 z-[1000]"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
-      <div className={`flex items-center gap-1.5 rounded-full pl-3 pr-2 py-2 shadow-md ring-1 backdrop-blur transition-all duration-200 ${
-        hasSearch
-          ? 'bg-gradient-to-r from-amber-200/95 via-amber-100/95 to-orange-50/95 ring-amber-500/45 shadow-[0_12px_28px_-16px_rgba(217,119,6,0.75)]'
-          : 'bg-white/75 ring-slate-900/6'
-      }`}>
-        <span className={`shrink-0 text-[13px] ${hasSearch ? 'text-amber-700' : 'text-slate-400'}`}>🔍</span>
-        <input
-          type="text"
-          value={searchQuery ?? ''}
-          onChange={(e) => { e.stopPropagation(); onSearchQuery?.(e.target.value); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          placeholder="お店を探す"
-          className={`w-28 bg-transparent text-[13px] outline-none ${hasSearch ? 'font-medium text-amber-900 placeholder:text-amber-700/70' : 'text-slate-700 placeholder:text-slate-400'}`}
-        />
-        {hasSearch && searchShopIds && searchShopIds.length > 0 && (
-          <span className="shrink-0 rounded-full bg-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
-            {searchShopIds.length}件
-          </span>
-        )}
-        {hasSearch && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onClearSearch?.(); }}
-            className="shrink-0 rounded-full bg-white/85 p-1.5 text-amber-700 hover:bg-white active:scale-90 transition-all"
-            aria-label="検索をクリア"
-          >
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function MapZoomGuideToast({ message }: { message: string | null }) {
   return (
@@ -589,7 +527,6 @@ type MapViewProps = {
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
   searchShopIds?: number[];
-  searchLabel?: string;
   onMapReady?: () => void;
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
@@ -614,8 +551,6 @@ type MapViewProps = {
   onShopSelect?: (shop: Shop) => void;
   spotlightShopId?: number;
   onClearSearch?: () => void;
-  searchQuery?: string;
-  onSearchQuery?: (q: string) => void;
   couponEligibleVendorIds?: string[];
   activeCouponTypeId?: string;
   stampedVendorIds?: string[];
@@ -732,7 +667,6 @@ const MapView = memo(function MapView({
   agentOpen,
   onAgentToggle,
   searchShopIds,
-  searchLabel,
   onMapReady,
   eventTargets,
   highlightEventTargets = false,
@@ -748,8 +682,6 @@ const MapView = memo(function MapView({
   onShopSelect,
   spotlightShopId,
   onClearSearch,
-  searchQuery,
-  onSearchQuery,
   couponEligibleVendorIds,
   activeCouponTypeId,
   stampedVendorIds,
@@ -1443,13 +1375,6 @@ const MapView = memo(function MapView({
             currentZoom={mapUiZoom}
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
-          />
-          <MapSearchBar
-            searchShopIds={activeHighlightShopIds}
-            searchLabel={searchLabel}
-            searchQuery={searchQuery}
-            onSearchQuery={onSearchQuery}
-            onClearSearch={onClearSearch}
           />
         </>
       )}
