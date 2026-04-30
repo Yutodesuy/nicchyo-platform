@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
@@ -15,10 +15,10 @@ const _GrandmaChatter = dynamic(() => import("./components/GrandmaChatter"), { s
 import { useTimeBadge } from "./hooks/useTimeBadge";
 import { BadgeModal as _BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
+import { SHOP_CATEGORY_NAMES } from "./data/shops";
 import type { Shop } from "./data/shops";
 import type { Landmark } from "./types/landmark";
 import type { MapRoute } from "./types/mapRoute";
-import { grandmaComments, mapTutorialComments } from "./data/grandmaComments";
 import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
@@ -36,8 +36,6 @@ import {
   todayJstString,
 } from "../../../lib/coupons/client";
 import type { CouponTypeWithParticipants, MyCouponsResponse } from "../../../lib/coupons/types";
-
-const TUTORIAL_STORAGE_KEY = "nicchyo-tutorial-progress";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
@@ -60,53 +58,6 @@ type MapPageClientProps = {
   >;
 };
 
-const NEARBY_RADIUS_METERS = 120;
-const NEARBY_MAX_SHOPS = 10;
-const INTRO_TAP_HINT = "";
-const INTRO_STRENGTH_FALLBACK =
-  "あら、ここのお店、最近行ってないねぇ。今日は何が出ちゅうか、ちょっと見てきてくれん？";
-
-function buildShopIntroText(shop: Shop): string {
-  const name = shop.name?.trim() || `お店${shop.id}`;
-  const strength = shop.shopStrength?.trim() || INTRO_STRENGTH_FALLBACK;
-  return `${name}\n${strength}${INTRO_TAP_HINT}`;
-}
-
-function distanceMeters(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number }
-): number {
-  const earthRadius = 6371000;
-  const toRad = (value: number) => (value * Math.PI) / 180;
-  const dLat = toRad(to.lat - from.lat);
-  const dLng = toRad(to.lng - from.lng);
-  const lat1 = toRad(from.lat);
-  const lat2 = toRad(to.lat);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
-}
-
-function interleaveComments<T>(primary: T[], secondary: T[]): T[] {
-  const result: T[] = [];
-  const max = Math.max(primary.length, secondary.length);
-  for (let i = 0; i < max; i += 1) {
-    if (primary[i]) result.push(primary[i]);
-    if (secondary[i]) result.push(secondary[i]);
-  }
-  return result;
-}
-
-function shuffleArray<T>(items: T[]): T[] {
-  const result = items.slice();
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 export default function MapPageClient({
   shops,
@@ -145,8 +96,6 @@ export default function MapPageClient({
     if (isInMarket === true) recordMarketEnter();
     else if (isInMarket === false) recordMarketExit();
   }, [isInMarket]);
-  // マーカーglow用（コメント表示中のお店を追跡）
-  const [commentHighlightShopId, _setCommentHighlightShopId] = useState<number | null>(null);
   // スポットライトモード用（タップ時のみ、2秒で自動解除）
   const [spotlightShopId, setSpotlightShopId] = useState<number | null>(null);
   const spotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,16 +107,10 @@ export default function MapPageClient({
       spotlightTimerRef.current = null;
     }, 2000);
   }, []);
-  const [_currentZoom, setCurrentZoom] = useState<number>(21);
-  const [tutorialProgress, setTutorialProgress] = useState<number>(0);
   const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
   const [couponData, setCouponData] = useState<MyCouponsResponse | null>(null);
   const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
   const [mapSearchCouponTypeId, setMapSearchCouponTypeId] = useState<string | null>(null);
-  useEffect(() => {
-    const stored = parseInt(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "0", 10);
-    setTutorialProgress(Math.min(10, stored));
-  }, []);
 
   const refreshCouponData = useCallback(async (visitorKey?: string) => {
     const resolvedVisitorKey = visitorKey ?? getOrCreateConsultVisitorKey();
@@ -638,11 +581,6 @@ export default function MapPageClient({
     };
   }, [initialShopId, prefetchShopImage]);
 
-  const _aiSuggestedShops = useMemo(() => {
-    if (!aiMarkerPayload?.ids?.length) return [];
-    const shopSet = new Set(aiMarkerPayload.ids);
-    return shops.filter((shop) => shopSet.has(shop.id));
-  }, [aiMarkerPayload, shops]);
   const hasSearchMode =
     activePanel === 'search' ||
     !!searchMarkerPayload ||
@@ -653,14 +591,6 @@ export default function MapPageClient({
     mapCharacterConsultActive ||
     !!aiMarkerPayload;
 
-  const _introImageUrl = useMemo(() => {
-    if (!commentHighlightShopId) return null;
-    const shop = shopById.get(commentHighlightShopId);
-    if (!shop) return null;
-    const bannerSeed = shop.position ?? shop.id;
-    return shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
-  }, [commentHighlightShopId, shopById]);
-
   const kotoduteShopIds = useMemo(() => {
     const notes = loadKotodute();
     const ids = new Set<number>();
@@ -670,64 +600,6 @@ export default function MapPageClient({
       }
     });
     return Array.from(ids);
-  }, []);
-
-  const shopIntroComments = useMemo(() => {
-    if (isInMarket === true && userLocation) {
-      const withDistance = shops.map((shop) => ({
-        shop,
-        distance: distanceMeters(userLocation, { lat: shop.lat, lng: shop.lng }),
-      }));
-      const nearby = withDistance
-        .filter((entry) => entry.distance <= NEARBY_RADIUS_METERS)
-        .sort((a, b) => a.distance - b.distance);
-      const chosen = (nearby.length > 0 ? nearby : withDistance.sort((a, b) => a.distance - b.distance))
-        .slice(0, NEARBY_MAX_SHOPS);
-
-      return chosen.map(({ shop }) => ({
-        id: `shop-${shop.id}`,
-        genre: "notice" as const,
-        icon: "🏪",
-        text: buildShopIntroText(shop),
-        shopId: shop.id,
-      }));
-    }
-
-    if (isInMarket === false) {
-      return shuffleArray(shops)
-        .map((shop) => ({
-          id: `shop-${shop.id}`,
-          genre: "notice" as const,
-          icon: "🏪",
-          text: buildShopIntroText(shop),
-          shopId: shop.id,
-        }));
-    }
-
-    return [];
-  }, [isInMarket, shops, userLocation]);
-
-  const _commentPool = useMemo(() => {
-    if (!showGrandma) return [];
-    const tutorials = mapTutorialComments.slice(tutorialProgress);
-    const base = shopIntroComments.length > 0
-      ? interleaveComments(grandmaComments, shopIntroComments)
-      : grandmaComments;
-    return [...tutorials, ...base];
-  }, [shopIntroComments, showGrandma, tutorialProgress]);
-
-  const _handleCommentSeen = useCallback((id: string, genre: string) => {
-    if (genre !== "tutorial") return;
-    const idx = mapTutorialComments.findIndex((c) => c.id === id);
-    if (idx < 0) return;
-    setTutorialProgress((prev) => {
-      const next = Math.min(10, idx + 1);
-      if (next > prev) {
-        localStorage.setItem(TUTORIAL_STORAGE_KEY, String(next));
-        return next;
-      }
-      return prev;
-    });
   }, []);
 
   const shouldShowNavigationBar = !isShopBannerOpen;
@@ -915,7 +787,7 @@ export default function MapPageClient({
 
                 {/* ジャンルフィルター */}
                 <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-                  {['食材', '食べ物', '道具・工具', '生活雑貨', '植物・苗', 'アクセサリー', '手作り・工芸'].map((cat) => (
+                  {SHOP_CATEGORY_NAMES.map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -967,7 +839,6 @@ export default function MapPageClient({
               kotoduteShopIds={kotoduteShopIds}
               shopBannerVariant={shopBannerVariant}
               attendanceEstimates={attendanceEstimates}
-              onZoomChange={setCurrentZoom}
               suppressInitialLocationFocus={isAiFocusMode}
               hideMapUI={mapCharacterConsultActive}
               overlaySlot={
