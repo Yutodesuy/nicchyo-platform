@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useConsentValue } from '@/lib/analytics/consentClient';
 import { claimTimeBadge, type TimeBadgeResult } from '../services/timeBadgeService';
 
 type PriorityState = {
@@ -9,8 +10,14 @@ type PriorityState = {
 export function useTimeBadge() {
   const [priority, setPriority] = useState<PriorityState | null>(null);
   const tickingRef = useRef(false);
+  const locationConsent = useConsentValue("location");
 
   useEffect(() => {
+    if (locationConsent !== "accepted") {
+      tickingRef.current = false;
+      return;
+    }
+
     let intervalId: number | null = null;
 
     const tick = () => {
@@ -67,7 +74,7 @@ export function useTimeBadge() {
       stop();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [locationConsent]);
 
   const clearPriority = () => setPriority(null);
 

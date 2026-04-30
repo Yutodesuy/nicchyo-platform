@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { MenuProvider } from "@/lib/ui/MenuContext";
@@ -52,8 +51,6 @@ export const viewport: Viewport = {
   userScalable: true,
   viewportFit: "cover",
 };
-
-const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nicchyo.jp";
 
