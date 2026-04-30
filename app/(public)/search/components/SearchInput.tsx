@@ -6,23 +6,26 @@ interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  debounceMs?: number;
 }
 
 /**
  * テキスト検索入力コンポーネント
  * 300msデバウンス処理とクリアボタン付き
  */
-export default function SearchInput({ value, onChange, placeholder }: SearchInputProps) {
+export default function SearchInput({ value, onChange, placeholder, debounceMs = 300 }: SearchInputProps) {
   const [localValue, setLocalValue] = useState(value);
+  const immediate = debounceMs <= 0;
 
   // デバウンス処理: 300ms待ってから親にvalueを渡す
   useEffect(() => {
+    if (immediate) return;
     const timer = setTimeout(() => {
       onChange(localValue);
-    }, 300);
+    }, debounceMs);
 
     return () => clearTimeout(timer);
-  }, [localValue, onChange]);
+  }, [debounceMs, immediate, localValue, onChange]);
 
   // 親のvalueが変更された場合にローカル値を同期
   useEffect(() => {
@@ -37,15 +40,26 @@ export default function SearchInput({ value, onChange, placeholder }: SearchInpu
       <input
         type="search"
         value={localValue}
-        onChange={(e) => setLocalValue(e.target.value)}
+        onChange={(e) => {
+          const nextValue = e.target.value;
+          setLocalValue(nextValue);
+          if (immediate) {
+            onChange(nextValue);
+          }
+        }}
         placeholder={placeholder || 'お店の名前や商品で検索（例：レタス、野菜）'}
-        className="w-full rounded-lg border border-orange-100 py-2 pl-10 pr-10 text-sm text-gray-800 shadow-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+        className="w-full rounded-xl border border-orange-100 py-3 pl-10 pr-10 text-sm text-gray-800 shadow-sm transition focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
         aria-label="お店を検索"
       />
       {localValue && (
         <button
           type="button"
-          onClick={() => setLocalValue('')}
+          onClick={() => {
+            setLocalValue('');
+            if (immediate) {
+              onChange('');
+            }
+          }}
           className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
           aria-label="検索をクリア"
         >

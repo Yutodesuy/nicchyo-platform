@@ -7,7 +7,15 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60, // 秒単位でのキャッシュ時間
+    minimumCacheTTL: 60,
+    remotePatterns: [
+      {
+        // Supabase Storage（出店者がアップロードした店舗写真・投稿画像）
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 
   // 本番環境の圧縮設定
@@ -16,10 +24,21 @@ const nextConfig = {
   // パフォーマンス最適化
   poweredByHeader: false, // X-Powered-By ヘッダーを無効化（セキュリティ向上）
 
-  // セキュリティヘッダー
+  // /shops001 -> /shops/001 へ内部リライト
+  async rewrites() {
+    return [
+      {
+        source: '/shops:shopCode(\\d{3})',
+        destination: '/shops/:shopCode',
+      },
+    ];
+  },
+
+  // セキュリティヘッダー（CSPはmiddleware.tsでnonce付きで動的に設定）
   async headers() {
     return [
       {
+        // 全ページ共通セキュリティヘッダー
         source: '/:path*',
         headers: [
           {
@@ -28,7 +47,7 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
+            value: 'DENY'
           },
           {
             key: 'X-Content-Type-Options',
@@ -37,6 +56,28 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin'
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)'
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin'
+          },
+        ],
+      },
+      {
+        // 出店者クーポン確定ページ: カメラを許可
+        source: '/my-shop/coupon',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self)',
           },
         ],
       },

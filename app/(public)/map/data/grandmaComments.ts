@@ -72,3 +72,28 @@ export const grandmaComments: GrandmaComment[] = [
   { id: 'mono-49', genre: 'monologue', text: 'ここの景色、季節で色が変わるよ。' },
   { id: 'mono-50', genre: 'monologue', text: '最後まで楽しんでいってね。' },
 ];
+
+/**
+ * マップ初回表示時のチュートリアルコメント（最大10個・繰り返しなし）
+ * FirstVisitGuide の代替として GrandmaChatter 内で順に表示される
+ */
+export const mapTutorialComments: import('../types/grandmaComment').GrandmaComment[] = [
+  { id: 'tut-01', genre: 'tutorial', text: 'ようこそ、日曜市へ！マップのお店マーカーをタップすると詳細が見られるよ。' },
+  { id: 'tut-02', genre: 'tutorial', text: 'ズームインすると、もっとたくさんのお店が見えてくるよ。指でピンチしてみてね。' },
+  { id: 'tut-03', genre: 'tutorial', text: '気になる商品は「バッグに入れる」で買い物リストに追加できるよ。', link: { href: '/bag', label: 'bagを見る' } },
+  { id: 'tut-04', genre: 'tutorial', text: 'にちよさんに「おすすめのランチは？」って気軽に聞いてみてね。' },
+  { id: 'tut-05', genre: 'tutorial', text: 'お店の詳細ページで⭐をタップするとお気に入りに追加できるよ。' },
+  { id: 'tut-06', genre: 'tutorial', text: '「ことづて」でお店への感想やおすすめをひとこと投稿できるよ。' },
+  { id: 'tut-07', genre: 'tutorial', text: '日曜市は毎週日曜日の早朝から夕方まで、約300軒が並ぶきね。' },
+  { id: 'tut-08', genre: 'tutorial', text: 'AIに「野菜が安いお店は？」など聞くと、おすすめのお店を教えてくれるよ。' },
+  { id: 'tut-09', genre: 'tutorial', text: 'バッグに入れた商品は右上のアイコンからまとめて確認できるよ。', link: { href: '/bag', label: 'bagを開く' } },
+  { id: 'tut-10', genre: 'tutorial', text: '準備は整ったね！お気に入りのお店をたくさん見つけてきてね。' },
+];
+
+export const grandmaAiInstructorLines = [
+  '気になることがあれば、ここで聞いてみてね。',
+  'おすすめや道順など、質問を入れてくれると答えるよ。',
+  '知りたいことを入力してみて。しっかり案内するきね。',
+  'お店や場所のこと、なんでも聞いてちょうだい。',
+  '質問の例は上のボタンからでも送れるよ。',
+];

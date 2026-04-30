@@ -1,0 +1,47 @@
+{
+  "mcpServers": [
+    {
+      "name": "dev-server",
+      "description": "Next.js 開発サーバ。Playwright E2E の実行時にこのサーバを起動してテスト対象ページを提供します。",
+      "image": "node:24-bullseye",
+      "workingDir": "/workspace",
+      "ports": [3000],
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000"
+      },
+      "startCommand": "npm install --no-audit --no-fund && npm run dev",
+      "healthCheck": {
+        "type": "http",
+        "path": "/",
+        "port": 3000,
+        "timeoutSeconds": 60
+      },
+      "usage": "Start this server before running Playwright tests so the app is available at http://localhost:3000"
+    },
+    {
+      "name": "playwright",
+      "description": "Playwright を用いた E2E 実行環境。Chromium/Firefox/WebKit でテストを実行できます。",
+      "image": "mcr.microsoft.com/playwright",
+      "workingDir": "/workspace",
+      "ports": [],
+      "env": {
+        "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "0"
+      },
+      "startCommand": "npx playwright install --with-deps && npx playwright test",
+      "healthCheck": {
+        "type": "process",
+        "match": "playwright"
+      },
+      "usage": "Used to run E2E tests against the dev-server. Ensure dev-server is running and reachable at http://host.docker.internal:3000 (or container networking equivalent)."
+    }
+  ],
+  "notes": {
+    "howToRun": [
+      "Copilot CLI: /mcp (or use the copilot CLI 'mcp' subcommand) to manage MCP servers if your local Copilot supports it.",
+      "Manual (Docker): Start dev-server container mounting the repo at /workspace and run npm run dev; then start the playwright container and run npx playwright test.",
+      "Playwright config: Ensure playwright.config.ts (if present) points to the correct baseURL (http://localhost:3000) or use --project/--grep flags as needed."
+    ],
+    "notesForMaintainers": "Images and commands are suggestions. Adjust node/playwright image tags to match CI requirements. Set secrets (OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_*) as needed in the MCP environment or CI secrets."
+  }
+}

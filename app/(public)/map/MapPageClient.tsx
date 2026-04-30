@@ -2,72 +2,332 @@
 
 import NavigationBar from "../../components/NavigationBar";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import SearchClient from "../search/SearchClient";
 import type { Map as LeafletMap } from "leaflet";
-import { pickDailyRecipe, type Recipe } from "../../../lib/recipes";
-import { loadSearchMapPayload } from "../../../lib/searchMapStorage";
-import GrandmaChatter from "./components/GrandmaChatter";
+import { pickDailyRecipe, recipes, type Recipe } from "../../../lib/recipes";
+import { clearSearchMapPayload, loadAiMapPayload, loadSearchMapPayload } from "../../../lib/searchMapStorage";
+import NextImage from "next/image";
+import { getShopBannerImage } from "../../../lib/shopImages";
+const _GrandmaChatter = dynamic(() => import("./components/GrandmaChatter"), { ssr: false });
 import { useTimeBadge } from "./hooks/useTimeBadge";
-import { BadgeModal } from "./components/BadgeModal";
+import { BadgeModal as _BadgeModal } from "./components/BadgeModal";
 import { useAuth } from "../../../lib/auth/AuthContext";
-import { shops as baseShops } from "./data/shops";
-import { applyShopEdits } from "../../../lib/shopEdits";
+import { SHOP_CATEGORY_NAMES } from "./data/shops";
+import type { Shop } from "./data/shops";
+import type { Landmark } from "./types/landmark";
+import type { MapRoute } from "./types/mapRoute";
+import { loadKotodute } from "../../../lib/kotoduteStorage";
 import { useMapLoading } from "../../components/MapLoadingProvider";
 import { grandmaEvents } from "./data/grandmaEvents";
+import { recordMarketEnter, recordMarketExit } from "../../../lib/storage/marketStats";
+import { buildSearchIndex } from "../search/lib/searchIndex";
+import { useShopSearch } from "../search/hooks/useShopSearch";
+import { getOrCreateConsultVisitorKey } from "../../../lib/consultVisitorKey";
+import MapCharacterConsult from "./components/MapCharacterConsult";
+import {
+  buildCouponVendorIdsByType,
+  COUPON_LOTTERY_PENDING_KEY,
+  fetchCouponTypes,
+  fetchMyCoupons,
+  getEligibleCouponVendorIds,
+  todayJstString,
+} from "../../../lib/coupons/client";
+import type { CouponTypeWithParticipants, MyCouponsResponse } from "../../../lib/coupons/types";
 
 const MapView = dynamic(() => import("./components/MapView"), {
   ssr: false,
 });
 
-export default function MapPageClient() {
+type MapPageClientProps = {
+  shops: Shop[];
+  landmarks: Landmark[];
+  mapRoute: MapRoute;
+  shopBannerVariant?: "default" | "kotodute";
+  attendanceEstimates?: Record<
+    number,
+    {
+      label: string;
+      p: number | null;
+      n_eff: number;
+      vendor_override: boolean;
+      evidence_summary: string;
+    }
+  >;
+};
+
+
+export default function MapPageClient({
+  shops,
+  landmarks,
+  mapRoute,
+  shopBannerVariant = "default",
+  attendanceEstimates,
+}: MapPageClientProps) {
+  const showGrandma = false;
   const searchParams = useSearchParams();
   const router = useRouter();
+  const activePanel = searchParams?.get("panel") === "search" ? "search" : null;
   const { user, permissions } = useAuth();
   const { markMapReady } = useMapLoading();
   const initialShopIdParam = searchParams?.get("shop");
+  const isAiFocusMode = searchParams?.get("ai") === "1";
   const searchParamsKey = searchParams?.toString() ?? "";
   const initialShopId = initialShopIdParam ? Number(initialShopIdParam) : undefined;
   const [recommendedRecipe, setRecommendedRecipe] = useState<Recipe | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showRecipeOverlay, setShowRecipeOverlay] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
-  const { priority, clearPriority } = useTimeBadge();
-  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const { priority: _priority, clearPriority: _clearPriority } = useTimeBadge();
+  const [_showBadgeModal, _setShowBadgeModal] = useState(false);
   const [showVendorPrompt, setShowVendorPrompt] = useState(false);
   const [vendorShopName, setVendorShopName] = useState<string | null>(null);
-  const [isHoldActive, setIsHoldActive] = useState(false);
+  const [_isHoldActive, _setIsHoldActive] = useState(false);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
   const [eventMessageIndex, setEventMessageIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (isInMarket === true) recordMarketEnter();
+    else if (isInMarket === false) recordMarketExit();
+  }, [isInMarket]);
+  // スポットライトモード用（タップ時のみ、2秒で自動解除）
+  const [spotlightShopId, setSpotlightShopId] = useState<number | null>(null);
+  const spotlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activateSpotlight = useCallback((shopId: number) => {
+    if (spotlightTimerRef.current) clearTimeout(spotlightTimerRef.current);
+    setSpotlightShopId(shopId);
+    spotlightTimerRef.current = setTimeout(() => {
+      setSpotlightShopId(null);
+      spotlightTimerRef.current = null;
+    }, 2000);
+  }, []);
+  const [isShopBannerOpen, setIsShopBannerOpen] = useState(false);
+  const [couponData, setCouponData] = useState<MyCouponsResponse | null>(null);
+  const [couponTypes, setCouponTypes] = useState<CouponTypeWithParticipants[]>([]);
+  const [mapSearchCouponTypeId, setMapSearchCouponTypeId] = useState<string | null>(null);
+
+  const refreshCouponData = useCallback(async (visitorKey?: string) => {
+    const resolvedVisitorKey = visitorKey ?? getOrCreateConsultVisitorKey();
+    if (!resolvedVisitorKey) return;
+    try {
+      const next = await fetchMyCoupons(resolvedVisitorKey, todayJstString());
+      setCouponData(next);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCouponTypes()
+      .then((nextCouponTypes) => {
+        setCouponTypes(nextCouponTypes.filter((couponType) => couponType.participant_count > 0));
+      })
+      .catch(() => {
+        setCouponTypes([]);
+      });
+  }, []);
+
+  // 初回クーポン発行（マップを開いた日に1回だけ。失敗しても無視する）
+  useEffect(() => {
+    const visitorKey = getOrCreateConsultVisitorKey();
+    if (!visitorKey) return;
+    const marketDate = todayJstString();
+    fetch("/api/coupons/issue-initial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitor_key: visitorKey, market_date: marketDate }),
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as { issued?: boolean };
+      })
+      .then((payload) => {
+        if (payload?.issued && typeof window !== "undefined") {
+          window.localStorage.setItem(COUPON_LOTTERY_PENDING_KEY, "1");
+        }
+      })
+      .catch(() => {
+        // 通信エラーは無視（クーポンは副次機能）
+      })
+      .finally(() => {
+        refreshCouponData(visitorKey);
+      });
+  }, [refreshCouponData]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const handleFocus = () => {
+      refreshCouponData();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshCouponData();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshCouponData]);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const updateBannerState = () => {
+      setIsShopBannerOpen(document.body.classList.contains("shop-banner-open"));
+    };
+    updateBannerState();
+    const observer = new MutationObserver(updateBannerState);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  const dragControls = useDragControls();
+  const [mapCharacterConsultActive, setMapCharacterConsultActive] = useState(false);
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  const introFocusTimerRef = useRef<number | null>(null);
   const [searchMarkerPayload, setSearchMarkerPayload] = useState<{
     ids: number[];
     label: string;
   } | null>(null);
-  const vendorShopId = user?.vendorId ?? null;
-  const activeEvent = useMemo(
-    () => grandmaEvents.find((event) => event.id === activeEventId) ?? null,
-    [activeEventId]
+  const [mapSearchQuery, setMapSearchQuery] = useState('');
+  const [mapSearchCategory, setMapSearchCategory] = useState<string | null>(null);
+  const couponEligibleVendorIds = useMemo(
+    () => getEligibleCouponVendorIds(couponData),
+    [couponData]
   );
-  const activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
-  const eventTargets = useMemo(
+  const couponVendorIdsByType = useMemo(
+    () => buildCouponVendorIdsByType(couponTypes),
+    [couponTypes]
+  );
+  const mapSearchCouponVendorIds = useMemo(
     () =>
-      grandmaEvents.map((event) => ({
-        id: event.id,
-        lat: event.location.lat,
-        lng: event.location.lng,
-      })),
-    []
+      mapSearchCouponTypeId
+        ? couponVendorIdsByType.get(mapSearchCouponTypeId)
+        : undefined,
+    [couponVendorIdsByType, mapSearchCouponTypeId]
   );
+  const mapSearchIndex = useMemo(() => buildSearchIndex(shops), [shops]);
+  const mapSearchResults = useShopSearch({
+    shops,
+    searchIndex: mapSearchIndex,
+    textQuery: mapSearchQuery,
+    category: mapSearchCategory,
+    chome: null,
+    couponVendorIds: mapSearchCouponVendorIds,
+  });
+  const activeCouponTypeId = couponData?.active_coupon?.coupon_type_id ?? undefined;
+  const stampedVendorIds = useMemo(
+    () => couponData?.stamps?.map((s) => s.vendor_id) ?? [],
+    [couponData]
+  );
+  const mapSearchShopIds = useMemo(
+    () =>
+      mapSearchQuery.trim() || mapSearchCategory || mapSearchCouponTypeId
+        ? mapSearchResults.map((s) => s.id)
+        : undefined,
+    [mapSearchCategory, mapSearchCouponTypeId, mapSearchQuery, mapSearchResults],
+  );
+  const [aiMarkerPayload, setAiMarkerPayload] = useState<{
+    ids: number[];
+    label: string;
+  } | null>(null);
+  const clearMapSearchState = useCallback(() => {
+    clearSearchMapPayload();
+    setSearchMarkerPayload(null);
+    setMapSearchQuery('');
+    setMapSearchCategory(null);
+    setMapSearchCouponTypeId(null);
+  }, []);
+  const closeMapCharacterConsult = useCallback(() => {
+    setMapCharacterConsultActive(false);
+    setAiMarkerPayload(null);
+  }, []);
+  const startMapCharacterConsult = useCallback(() => {
+    clearMapSearchState();
+    setMapCharacterConsultActive(true);
+    router.replace('/map');
+  }, [clearMapSearchState, router]);
+  const closeMapInteractionMode = useCallback(() => {
+    clearMapSearchState();
+    closeMapCharacterConsult();
+    router.push('/map');
+  }, [clearMapSearchState, closeMapCharacterConsult, router]);
+
+  // 旧 URL 互換: /map?panel=consult が来ても直接 AI 相談モードを起動する
+  useEffect(() => {
+    if (searchParams?.get("panel") === "consult") {
+      startMapCharacterConsult();
+      return;
+    }
+    if (activePanel === 'search') {
+      closeMapCharacterConsult();
+    }
+  }, [activePanel, closeMapCharacterConsult, searchParams, startMapCharacterConsult]);
+
+  const vendorShopId = user?.vendorId ?? null;
+  const activeEvent = useMemo(() => {
+    if (!showGrandma) return null;
+    return grandmaEvents.find((event) => event.id === activeEventId) ?? null;
+  }, [activeEventId, showGrandma]);
+  const aiImageTargets = useMemo(() => {
+    return grandmaEvents
+      .map((event) => {
+        const image = event.messages.find((message) => message.image)?.image;
+        if (!image) return null;
+        return { image, location: event.location };
+      })
+      .filter(Boolean) as Array<{
+      image: string;
+      location: { lat: number; lng: number; radiusMeters: number };
+    }>;
+  }, []);
+  const shopById = useMemo(() => {
+    const map = new Map<number, Shop>();
+    shops.forEach((shop) => map.set(shop.id, shop));
+    return map;
+  }, [shops]);
+
+  const prefetchShopImage = useCallback(
+    (shopId: number) => {
+      if (typeof window === "undefined") return;
+      const shop = shopById.get(shopId);
+      if (!shop) return;
+      const bannerSeed = shop.position ?? shop.id;
+      const src = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
+      if (!src) return;
+      const img = new Image();
+      img.src = src;
+    },
+    [shopById]
+  );
+  const _activeMessage = activeEvent?.messages[eventMessageIndex] ?? null;
+  const _eventTargets = useMemo(() => {
+    if (!showGrandma) return [];
+    return grandmaEvents.map((event) => ({
+      id: event.id,
+      lat: event.location.lat,
+      lng: event.location.lng,
+    }));
+  }, [showGrandma]);
   const handleMapInstance = useCallback((map: LeafletMap) => {
     mapRef.current = map;
+    setMapInstance(map);
   }, []);
 
   const vendorShop = useMemo(() => {
     if (!vendorShopId) return null;
-    const merged = applyShopEdits(baseShops);
-    return merged.find((shop) => shop.id === vendorShopId) ?? null;
-  }, [vendorShopId]);
+    return shops.find((shop) => shop.id === vendorShopId) ?? null;
+  }, [shops, vendorShopId]);
 
   useEffect(() => {
     const dismissed = typeof window !== "undefined" && localStorage.getItem("nicchyo-daily-recipe-dismissed");
@@ -87,6 +347,16 @@ export default function MapPageClient() {
 
   useEffect(() => {
     if (!searchParams) return;
+    const recipeId = searchParams.get("recipe");
+    if (!recipeId) return;
+    const match = recipes.find((recipe) => recipe.id === recipeId);
+    if (!match) return;
+    setRecommendedRecipe(match);
+    setShowRecipeOverlay(true);
+  }, [searchParams, searchParamsKey]);
+
+  useEffect(() => {
+    if (!searchParams) return;
     const enabled = searchParams.get("search");
     if (!enabled) {
       setSearchMarkerPayload(null);
@@ -98,6 +368,22 @@ export default function MapPageClient() {
       setSearchMarkerPayload(payload);
     } else if (labelParam) {
       setSearchMarkerPayload({ ids: [], label: labelParam });
+    }
+  }, [searchParams, searchParamsKey]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const enabled = searchParams.get("ai");
+    if (!enabled) {
+      setAiMarkerPayload(null);
+      return;
+    }
+    const labelParam = searchParams.get("label") ?? "AIおすすめ";
+    const payload = loadAiMapPayload();
+    if (payload) {
+      setAiMarkerPayload(payload);
+    } else {
+      setAiMarkerPayload({ ids: [], label: labelParam });
     }
   }, [searchParams, searchParamsKey]);
 
@@ -129,8 +415,9 @@ export default function MapPageClient() {
     setShowVendorPrompt(false);
   };
 
-  const handleGrandmaDrop = useCallback(
+  const _handleGrandmaDrop = useCallback(
     (position: { x: number; y: number }) => {
+      if (!showGrandma) return;
       if (!mapRef.current) return;
       const container = mapRef.current.getContainer();
       const rect = container.getBoundingClientRect();
@@ -148,10 +435,10 @@ export default function MapPageClient() {
       setActiveEventId(hit.id);
       setEventMessageIndex(0);
     },
-    []
+    [showGrandma]
   );
 
-  const handleEventAdvance = () => {
+  const _handleEventAdvance = () => {
     if (!activeEvent) return;
     if (eventMessageIndex < activeEvent.messages.length - 1) {
       setEventMessageIndex((prev) => prev + 1);
@@ -161,29 +448,180 @@ export default function MapPageClient() {
     }
   };
 
-  const handleEventBack = () => {
+  const _handleEventBack = () => {
     if (!activeEvent) return;
     if (eventMessageIndex > 0) {
       setEventMessageIndex((prev) => prev - 1);
     }
   };
 
+  const _handleGrandmaAsk = useCallback(async (
+    text: string,
+    imageFile?: File | null,
+    context?: { shopId?: number; shopName?: string; source?: "suggestion" | "input" },
+    _history?: Array<{ role: "user" | "assistant"; text: string }>,
+    _memorySummary?: string
+  ) => {
+    try {
+      const visitorKey = getOrCreateConsultVisitorKey();
+      const useForm = !!imageFile;
+      const body = useForm
+        ? (() => {
+            const form = new FormData();
+            form.append("text", text);
+            form.append("location", JSON.stringify(userLocation ?? null));
+            if (context?.shopId) form.append("shopId", String(context.shopId));
+            if (context?.shopName) form.append("shopName", context.shopName);
+            if (visitorKey) form.append("visitorKey", visitorKey);
+            if (imageFile) form.append("image", imageFile);
+            return form;
+          })()
+        : JSON.stringify({
+            text,
+            location: userLocation,
+            shopId: context?.shopId ?? null,
+            shopName: context?.shopName ?? null,
+            visitorKey,
+          });
+      const response = await fetch("/api/grandma/ask", {
+        method: "POST",
+        headers: useForm ? undefined : { "Content-Type": "application/json" },
+        body,
+      });
+      const payload = (await response.json()) as {
+        reply?: string;
+        imageUrl?: string;
+        shopIds?: number[];
+        errorMessage?: string;
+      };
+      if (!response.ok) {
+        return {
+          reply:
+            payload.reply ??
+            payload.errorMessage ??
+            "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+        };
+      }
+      const rawReply =
+        payload.reply ?? "ごめんね、今は答えを出せんかった。時間をおいて試してね。";
+      if (payload.shopIds && payload.shopIds.length > 0) {
+        setAiMarkerPayload({ ids: payload.shopIds, label: "AIおすすめ" });
+        const cleaned = rawReply.replace(/SHOP_IDS:\s*([0-9,\s]+)/i, "").trim();
+        return {
+          reply: cleaned || "おすすめのお店を表示したよ。",
+          imageUrl: payload.imageUrl,
+          shopIds: payload.shopIds,
+        };
+      }
+      setAiMarkerPayload(null);
+      return { reply: rawReply, imageUrl: payload.imageUrl };
+    } catch {
+      return {
+        reply: "ごめんね、今は答えを出せんかった。時間をおいて試してね。",
+      };
+    }
+  }, [userLocation]);
+
+  const handleCommentShopFocus = useCallback(
+    (shopId: number) => {
+      const map = mapRef.current;
+      const shop = shopById.get(shopId);
+      if (!map || !shop) return;
+      prefetchShopImage(shopId);
+      activateSpotlight(shopId);
+      const maxZoom = map.getMaxZoom() ?? 19;
+      map.flyTo([shop.lat, shop.lng], maxZoom, {
+        animate: true,
+        duration: 0.8,
+        easeLinearity: 0.25,
+      });
+    },
+    [activateSpotlight, prefetchShopImage, shopById]
+  );
+
+  const _handleCommentShopOpen = useCallback(
+    (shopId: number) => {
+      handleCommentShopFocus(shopId);
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+        introFocusTimerRef.current = null;
+      }
+      if (typeof document !== "undefined") {
+        document.body.classList.add("shop-banner-open");
+      }
+      introFocusTimerRef.current = window.setTimeout(() => {
+        router.push(`/map?shop=${shopId}`);
+        introFocusTimerRef.current = null;
+      }, 900);
+    },
+    [handleCommentShopFocus, router]
+  );
+  const _handleAiImageClick = useCallback(
+    (imageUrl: string) => {
+      const target = aiImageTargets.find((entry) => entry.image === imageUrl);
+      if (!target || !mapRef.current) return;
+      const maxZoom = mapRef.current.getMaxZoom() ?? 19;
+      mapRef.current.flyTo([target.location.lat, target.location.lng], maxZoom, {
+        animate: true,
+        duration: 0.8,
+        easeLinearity: 0.25,
+      });
+    },
+    [aiImageTargets]
+  );
+
+  useEffect(() => {
+    if (initialShopId) {
+      prefetchShopImage(initialShopId);
+    }
+    return () => {
+      if (introFocusTimerRef.current !== null) {
+        window.clearTimeout(introFocusTimerRef.current);
+      }
+    };
+  }, [initialShopId, prefetchShopImage]);
+
+  const hasSearchMode =
+    activePanel === 'search' ||
+    !!searchMarkerPayload ||
+    !!mapSearchQuery.trim() ||
+    !!mapSearchCategory ||
+    !!mapSearchShopIds?.length;
+  const hasAiMode =
+    mapCharacterConsultActive ||
+    !!aiMarkerPayload;
+
+  const kotoduteShopIds = useMemo(() => {
+    const notes = loadKotodute();
+    const ids = new Set<number>();
+    notes.forEach((note) => {
+      if (typeof note.shopId === "number") {
+        ids.add(note.shopId);
+      }
+    });
+    return Array.from(ids);
+  }, []);
+
+  const shouldShowNavigationBar = !isShopBannerOpen;
+
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* 背景デコレーション */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30 z-0">
         <div className="absolute -top-20 -left-20 w-60 h-60 bg-gradient-to-br from-amber-200 to-orange-200 rounded-full blur-3xl opacity-20"></div>
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-gradient-to-tl from-yellow-200 to-amber-200 rounded-full blur-3xl opacity-20"></div>
       </div>
 
-      {/* メイン */}
-      <main className="flex-1 relative pb-16 z-10">
-        <div className="h-full relative">
-            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500 rounded-tl-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500 rounded-tr-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500 rounded-bl-lg z-[1500] pointer-events-none"></div>
-            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500 rounded-br-lg z-[1500] pointer-events-none"></div>
-
+      {/* メイン: NavigationBar(h-14=3.5rem) + safe-area-inset-bottom 分だけ下に余白 */}
+      <main
+        className="relative z-10 flex-1 overflow-hidden"
+        style={{
+          paddingBottom: shouldShowNavigationBar
+            ? 'calc(3.5rem + var(--safe-bottom, 0px))'
+            : '0px',
+        }}
+      >
+        <div className="relative h-full overflow-hidden">
             {showBanner && recommendedRecipe && (
               <div className="absolute left-4 right-4 top-4 z-[1200]">
                 <div className="rounded-2xl border border-amber-200 bg-white/95 shadow-xl p-4 flex flex-col gap-3">
@@ -257,13 +695,26 @@ export default function MapPageClient() {
                       ×
                     </button>
                   </div>
-                  {(vendorShop?.images?.main || "/images/shops/tosahamono.webp") && (
+                  {(vendorShop?.images?.main ||
+                    getShopBannerImage(
+                      vendorShop?.category,
+                      (vendorShop?.position ?? vendorShop?.id ?? 0)
+                    )) && (
                     <div className="mt-3 overflow-hidden rounded-2xl border border-amber-100 bg-white">
-                      <img
-                        src={vendorShop?.images?.main ?? "/images/shops/tosahamono.webp"}
+                      <NextImage
+                        src={
+                          vendorShop?.images?.main ??
+                          getShopBannerImage(
+                            vendorShop?.category,
+                            (vendorShop?.position ?? vendorShop?.id ?? 0)
+                          ) ?? ''
+                        }
                         alt={`${vendorShopName}の写真`}
+                        width={600}
+                        height={160}
                         className="h-40 w-full object-cover object-center"
                       />
+
                     </div>
                   )}
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -272,7 +723,7 @@ export default function MapPageClient() {
                       onClick={handleOpenVendorBanner}
                       className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-amber-200/70 transition hover:bg-amber-500"
                     >
-                      ショップバナーを開く
+                        お店の情報を開く
                     </button>
                     <button
                       type="button"
@@ -286,117 +737,209 @@ export default function MapPageClient() {
               </div>
             )}
 
+            {/* 全幅検索バー + ジャンルフィルター（AI相談モード時は非表示） */}
+            {!mapCharacterConsultActive && (
+              <div
+                className="absolute left-3 right-3 top-3 z-[1001] flex flex-col gap-2"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+              >
+                {/* 検索バー */}
+                <div className={`flex items-center gap-2 rounded-full px-4 py-2.5 shadow-lg ring-1 backdrop-blur-sm transition-all duration-200 ${
+                  mapSearchQuery.trim() || mapSearchCategory
+                    ? 'bg-gradient-to-r from-amber-100/95 to-orange-50/95 ring-amber-400/50'
+                    : 'bg-white/90 ring-slate-900/8'
+                }`}>
+                  <svg className="w-4 h-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                    <circle cx="11" cy="11" r="6.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 16.5 20 20" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="お店を検索…"
+                    value={mapSearchQuery}
+                    onChange={(e) => setMapSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
+                  />
+                  {(mapSearchQuery.trim() || mapSearchCategory) && (
+                    <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                      {mapSearchResults.length}件
+                    </span>
+                  )}
+                  {(mapSearchQuery || mapSearchCategory) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMapSearchQuery('');
+                        setMapSearchCategory(null);
+                        setMapSearchCouponTypeId(null);
+                      }}
+                      className="shrink-0 rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200 transition-colors"
+                      aria-label="検索をクリア"
+                    >
+                      <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* ジャンルフィルター */}
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                  {SHOP_CATEGORY_NAMES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setMapSearchCategory(mapSearchCategory === cat ? null : cat)}
+                      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm transition-all ${
+                        mapSearchCategory === cat
+                          ? 'bg-amber-500 text-white shadow-amber-200'
+                          : 'bg-white/85 text-slate-700 ring-1 ring-slate-900/8'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <MapView
+              shops={shops}
+              landmarks={landmarks}
+              mapRoute={mapRoute}
               initialShopId={initialShopId}
+              openInitialShopBanner={!isAiFocusMode}
               selectedRecipe={recommendedRecipe ?? undefined}
               showRecipeOverlay={showRecipeOverlay}
               onCloseRecipeOverlay={() => setShowRecipeOverlay(false)}
               agentOpen={agentOpen}
               onAgentToggle={setAgentOpen}
-              searchShopIds={searchMarkerPayload?.ids}
-              searchLabel={searchMarkerPayload?.label}
+              searchShopIds={searchMarkerPayload?.ids ?? mapSearchShopIds}
+              aiShopIds={aiMarkerPayload?.ids}
+              couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
+              activeCouponTypeId={activeCouponTypeId}
+              stampedVendorIds={stampedVendorIds}
               onMapReady={markMapReady}
-              eventTargets={eventTargets}
-              highlightEventTargets={isHoldActive}
               onMapInstance={handleMapInstance}
-            />
-            <GrandmaChatter
-              onOpenAgent={() => setAgentOpen(true)}
-              titleLabel="マップばあちゃん"
-              fullWidth
-              onHoldChange={setIsHoldActive}
-              onDrop={handleGrandmaDrop}
-              priorityMessage={
-                priority
-                  ? {
-                      text: `${priority.badge.slot}に日曜市へ訪れました！ ${priority.badge.tierIcon} ${priority.badge.badge.title}（${priority.badge.tierTitle}）`,
-                      badgeTitle: priority.badge.badge.title,
-                      badgeIcon: priority.badge.tierIcon,
-                    }
-                  : null
-              }
-              onPriorityClick={() => setShowBadgeModal(true)}
-              onPriorityDismiss={clearPriority}
-            />
-            <BadgeModal
-              open={showBadgeModal && !!priority}
-              onClose={() => {
-                setShowBadgeModal(false);
-                clearPriority();
+              onUserLocationUpdate={(coords) => {
+                setUserLocation({ lat: coords.lat, lng: coords.lng });
+                setIsInMarket(coords.inMarket);
               }}
-              title={priority?.badge.badge.title ?? ""}
-              slot={priority?.badge.slot ?? ""}
-              tierTitle={priority?.badge.tierTitle ?? ""}
-              tierIcon={priority?.badge.tierIcon ?? ""}
-              count={priority?.badge.count ?? 0}
+              spotlightShopId={spotlightShopId ?? undefined}
+              onClearSearch={() => {
+                clearSearchMapPayload();
+                setSearchMarkerPayload(null);
+                setMapSearchQuery('');
+                setMapSearchCategory(null);
+                setMapSearchCouponTypeId(null);
+                setAiMarkerPayload(null);
+              }}
+              kotoduteShopIds={kotoduteShopIds}
+              shopBannerVariant={shopBannerVariant}
+              attendanceEstimates={attendanceEstimates}
+              suppressInitialLocationFocus={isAiFocusMode}
+              hideMapUI={mapCharacterConsultActive}
+              overlaySlot={
+                mapCharacterConsultActive ? (
+                  <MapCharacterConsult
+                    map={mapInstance}
+                    shops={shops}
+                    onShopsRecommended={(shopIds) => {
+                      setAiMarkerPayload({ ids: shopIds, label: 'AIおすすめ' });
+                    }}
+                    onClose={closeMapCharacterConsult}
+                  />
+                ) : undefined
+              }
             />
-            {activeEvent && activeMessage && (
-              <div className="fixed inset-0 z-[3000] flex items-center justify-center">
-                <div className="absolute inset-0 bg-black/70" />
-                <div className="relative z-10 flex min-h-[70vh] w-[min(960px,92vw)] flex-col justify-end gap-6 overflow-hidden rounded-3xl border border-white/10 bg-white/95 p-6 shadow-2xl">
-                  <div className="absolute inset-0">
-                    <img
-                      src="/images/obaasan.webp"
-                      alt="おばあちゃん"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  </div>
-                  <div className="absolute left-6 top-4 z-10">
-                    <h3 className="rounded-full bg-white/80 px-3 py-1 text-xl font-bold text-gray-900 shadow-sm">
-                      {activeEvent.title}
-                    </h3>
-                  </div>
-                  <div className="relative flex min-h-[45vh] flex-col pt-16">
-                    <div className="mt-auto space-y-3 -translate-y-[10px]">
-                      {activeMessage.image && (
-                        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-                          <img
-                            src={activeMessage.image}
-                            alt=""
-                            className="h-44 w-full object-cover object-center sm:h-56"
-                          />
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                          {activeMessage.subtitle}
-                        </div>
-                        <div className="rounded-2xl border border-amber-200 bg-white/90 px-4 py-3 text-base leading-relaxed text-gray-900 shadow-sm">
-                          {activeMessage.text}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>
-                          {eventMessageIndex + 1}/{activeEvent.messages.length}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {eventMessageIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleEventBack}
-                              className="rounded-full border border-amber-200 bg-white px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-50"
-                            >
-                              戻る
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={handleEventAdvance}
-                            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500"
-                          >
-                            {eventMessageIndex + 1 < activeEvent.messages.length ? "次へ" : "閉じる"}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
       </main>
 
-      <NavigationBar />
+      {/* ── パネルオーバーレイ（検索のみ） ── */}
+      <AnimatePresence>
+        {activePanel === 'search' && (
+          <>
+            {/* マップ暗幕 */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-[9989] bg-black/60"
+            />
+
+            {/* パネル本体（半透明背景） */}
+            <motion.div
+              key={activePanel}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 320 }}
+              drag="y"
+              dragControls={dragControls}
+              dragListener={false}
+              dragConstraints={{ top: 0 }}
+              dragElastic={{ top: 0, bottom: 0.3 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  router.push("/map");
+                }
+              }}
+              className="fixed inset-x-0 bottom-0 z-[9990] overflow-hidden rounded-t-3xl bg-black/50 backdrop-blur-xl"
+              style={{ height: "92dvh" }}
+            >
+              {/* ドラッグハンドル */}
+              <div
+                className="absolute left-1/2 top-0 z-10 flex h-8 w-full -translate-x-1/2 cursor-grab items-center justify-center active:cursor-grabbing"
+                onPointerDown={(e) => dragControls.start(e)}
+                style={{ touchAction: "none" }}
+              >
+                <div className="h-1 w-10 rounded-full bg-white/40" />
+              </div>
+              <div className="h-full overflow-hidden pt-6">
+                <Suspense fallback={null}>
+                  <SearchClient
+                    shops={shops}
+                    landmarks={landmarks}
+                    embedded
+                    initialQuery={mapSearchQuery}
+                    initialCategory={mapSearchCategory}
+                    initialCouponTypeId={mapSearchCouponTypeId}
+                    onQueryChange={(q, cat, couponTypeId) => {
+                      setMapSearchQuery(q);
+                      setMapSearchCategory(cat);
+                      setMapSearchCouponTypeId(couponTypeId);
+                      if (searchMarkerPayload) {
+                        clearSearchMapPayload();
+                        setSearchMarkerPayload(null);
+                      }
+                      if (aiMarkerPayload) {
+                        setAiMarkerPayload(null);
+                      }
+                    }}
+                  />
+                </Suspense>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {shouldShowNavigationBar && (
+        <NavigationBar
+          onMenuOpenChange={(open) => {
+            if (open) {
+              closeMapCharacterConsult();
+            }
+          }}
+          onConsultClick={startMapCharacterConsult}
+          closeModeActive={hasSearchMode || hasAiMode}
+          onCloseMode={closeMapInteractionMode}
+        />
+      )}
     </div>
   );
 }

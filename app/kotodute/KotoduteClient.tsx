@@ -1,13 +1,12 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../components/NavigationBar";
 import { loadKotodute, saveKotodute, type KotoduteNote } from "../../lib/kotoduteStorage";
-import { shops } from "../(public)/map/data/shops";
+import { useShops } from "../../lib/hooks/useShops";
 import { useSearchParams } from "next/navigation";
-
-const shopOptions = shops.map((s) => ({ id: s.id, name: s.name }));
+import { MessageSquarePlus, Sparkles } from "lucide-react";
 
 function formatDate(ts: number) {
   const d = new Date(ts);
@@ -26,20 +25,43 @@ function extractTarget(tag: string): number | "all" {
   return "all";
 }
 
-function findShopName(id: number) {
+function findShopName(shops: { id: number; name: string }[], id: number) {
   return shops.find((s) => s.id === id)?.name ?? `#${id}`;
 }
 
 export default function KotoduteClient() {
+  const { shops } = useShops();
+  const shopOptions = useMemo(
+    () => shops.map((s) => ({ id: s.id, name: s.name })),
+    [shops]
+  );
   const searchParams = useSearchParams();
   const prefillTarget = searchParams?.get("shopId") ?? undefined;
 
   const [notes, setNotes] = useState<KotoduteNote[]>([]);
   const [text, setText] = useState("");
   const [targetTag, setTargetTag] = useState(prefillTarget ? `#${prefillTarget}` : "#all");
+  const [placeholder, setPlaceholder] = useState("おすすめや感想をひとこと書いてください");
 
   useEffect(() => {
     setNotes(loadKotodute());
+  }, []);
+
+  useEffect(() => {
+    // 時間帯に応じたスマートなプレースホルダーの設定
+    const hour = new Date().getHours();
+
+    if (hour >= 6 && hour < 11) {
+      setPlaceholder("（例）朝市に来ました！新鮮な野菜がたくさん…");
+    } else if (hour >= 11 && hour < 14) {
+      setPlaceholder("（例）お昼ご飯を食べました。美味しかったのは…");
+    } else if (hour >= 14 && hour < 17) {
+      setPlaceholder("（例）おやつの時間です。いも天が…");
+    } else if (hour >= 17) {
+      setPlaceholder("（例）今日の戦利品はこれ！晩ごはんに…");
+    } else {
+      setPlaceholder("（例）明日の日曜市が楽しみ！狙っているのは…");
+    }
   }, []);
 
   const target = extractTarget(targetTag);
@@ -97,7 +119,7 @@ export default function KotoduteClient() {
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="おすすめや感想をひとこと書いてください"
+                placeholder={placeholder}
               className="w-full rounded-lg border border-orange-100 px-3 py-2 text-base text-gray-800 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 min-h-[80px]"
               />
             </div>
@@ -144,14 +166,25 @@ export default function KotoduteClient() {
           </div>
 
           {filteredNotes.length === 0 ? (
-            <div className="mt-3 rounded-xl border border-dashed border-amber-200 bg-white/80 px-4 py-6 text-center text-sm text-gray-700">
-              まだ投稿がありません。
+            <div className="mt-3 rounded-xl border-2 border-dashed border-amber-300 bg-white/80 px-6 py-10 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <MessageSquarePlus size={32} />
+              </div>
+              <h3 className="mb-2 text-lg font-bold text-gray-900 flex items-center justify-center gap-2">
+                <Sparkles size={20} className="text-yellow-500" />
+                一番乗りで投稿しよう！
+              </h3>
+              <p className="mx-auto max-w-sm text-sm text-gray-600 leading-relaxed">
+                まだコメントがありません。
+                <br />
+                あなたの日曜市体験や、お店への応援メッセージをシェアしてください。
+              </p>
             </div>
           ) : (
             <div className="mt-3 space-y-2">
               {filteredNotes.map((note) => {
                 const isAll = note.shopId === "all";
-                const label = isAll ? "日曜市全体" : findShopName(note.shopId as number);
+                const label = isAll ? "日曜市全体" : findShopName(shops, note.shopId as number);
                 const targetHref = isAll ? "/map" : `/map?shop=${note.shopId}`;
 
                 return (
@@ -199,5 +232,3 @@ export default function KotoduteClient() {
     </main>
   );
 }
-
-

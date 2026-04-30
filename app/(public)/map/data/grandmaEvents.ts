@@ -21,8 +21,8 @@ export const grandmaEvents: GrandmaEvent[] = [
     id: 'kochi-castle-museum',
     title: '高知城歴史博物館',
     location: {
-      lat: 33.5635,
-      lng: 133.5286,
+      lat: 33.5636875,
+      lng: 133.5295,
       radiusMeters: 90,
     },
     messages: [
@@ -58,8 +58,8 @@ export const grandmaEvents: GrandmaEvent[] = [
     id: 'otepia',
     title: 'オーテピア（図書館）',
     location: {
-      lat: 33.5599,
-      lng: 133.5286,
+      lat: 33.5600875,
+      lng: 133.529,
       radiusMeters: 90,
     },
     messages: [
@@ -82,7 +82,7 @@ export const grandmaEvents: GrandmaEvent[] = [
         id: 'o4',
         subtitle: 'おすすめの人',
         text: '勉強や調べものをしたい人、静かな時間が好きな人におすすめよ。',
-        image: '/images/maps/elements/buildings/Otepia2.png',
+        image: '/images/maps/elements/buildings/Ohtepia.png',
       },
       {
         id: 'o5',
@@ -96,7 +96,7 @@ export const grandmaEvents: GrandmaEvent[] = [
     title: '高知城',
     location: {
       lat: 33.5673,
-      lng: 133.53382,
+      lng: 133.53129,
       radiusMeters: 110,
     },
     messages: [
@@ -133,7 +133,7 @@ export const grandmaEvents: GrandmaEvent[] = [
     title: 'チンチン電車',
     location: {
       lat: 33.55264,
-      lng: 133.53168,
+      lng: 133.53093,
       radiusMeters: 100,
     },
     messages: [
@@ -156,7 +156,7 @@ export const grandmaEvents: GrandmaEvent[] = [
         id: 't4',
         subtitle: 'おすすめの人',
         text: '歩き疲れた人や、街の雰囲気を楽しみたい人におすすめよ。',
-        image: '/images/maps/elements/buildings/TinTinDensha2.png',
+        image: '/images/maps/elements/buildings/Train.png',
       },
       {
         id: 't5',

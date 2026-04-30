@@ -20,63 +20,105 @@ export interface RoadConfig {
 }
 
 export const ROAD_CONFIG: RoadConfig = {
-  type: 'placeholder',
+  type: 'curved',
   bounds: [
-    [33.56500, 133.53200],
-    [33.55330, 133.53000],
+    // 追手筋の実座標（指定2区間）に合わせた範囲
+    [33.56231, 133.5433256],
+    [33.56047, 133.5336783],
   ],
-  centerLine: 133.53100,
+  // 東西配置では中心緯度を基準線として扱う
+  centerLine: 33.5614118,
   widthOffset: 0.0001,
   opacity: 0.9,
   zIndex: 50,
   segments: [
     {
-      name: 'Sixth',
+      name: 'F0',
       bounds: [
-        [33.56500, 133.53150],
-        [33.56333, 133.53050],
+        [33.5622728, 133.5433256],
+        [33.5620328, 133.5429279],
       ],
-      centerLine: 133.53100,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Fifth',
+      name: 'F1',
       bounds: [
-        [33.56333, 133.53170],
-        [33.56166, 133.53070],
+        [33.5622728, 133.5429279],
+        [33.5620328, 133.5423485],
       ],
-      centerLine: 133.53120,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Fourth',
+      name: 'F2',
       bounds: [
-        [33.56166, 133.53180],
-        [33.55999, 133.53080],
+        [33.5622728, 133.5423485],
+        [33.5620328, 133.5417692],
       ],
-      centerLine: 133.53130,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Third',
+      name: 'F3',
       bounds: [
-        [33.55999, 133.53170],
-        [33.55832, 133.53070],
+        [33.5622728, 133.5417692],
+        [33.5620328, 133.5411898],
       ],
-      centerLine: 133.53120,
+      centerLine: 33.5621528,
     },
     {
-      name: 'Second',
+      name: 'D1',
       bounds: [
-        [33.55832, 133.53150],
-        [33.55665, 133.53050],
+        [33.5622106, 133.5411898],
+        [33.5619706, 133.5401167],
       ],
-      centerLine: 133.53100,
+      centerLine: 33.5620906,
     },
     {
-      name: 'First',
+      name: 'D2',
       bounds: [
-        [33.55665, 133.53130],
-        [33.55500, 133.53030],
+        [33.5619843, 133.5401167],
+        [33.5617443, 133.5390437],
       ],
-      centerLine: 133.53080,
+      centerLine: 33.5618643,
+    },
+    {
+      name: 'D3',
+      bounds: [
+        [33.5617581, 133.5390437],
+        [33.5615181, 133.5379706],
+      ],
+      centerLine: 33.5616381,
+    },
+    {
+      name: 'D4',
+      bounds: [
+        [33.5615318, 133.5379706],
+        [33.5612918, 133.5368975],
+      ],
+      centerLine: 33.5614118,
+    },
+    {
+      name: 'D5',
+      bounds: [
+        [33.5613055, 133.5368975],
+        [33.5610655, 133.5358244],
+      ],
+      centerLine: 33.5611855,
+    },
+    {
+      name: 'D6',
+      bounds: [
+        [33.5610793, 133.5358244],
+        [33.5608393, 133.5347514],
+      ],
+      centerLine: 33.5609593,
+    },
+    {
+      name: 'D7',
+      bounds: [
+        [33.5608530, 133.5347514],
+        [33.5606130, 133.5336783],
+      ],
+      centerLine: 33.5607330,
     },
   ],
 };
@@ -85,8 +127,38 @@ export function getRoadBounds(): [[number, number], [number, number]] {
   return ROAD_CONFIG.bounds;
 }
 
+/**
+ * 日曜市エリア全体の範囲（位置判定用）
+ * - 高知城前（西端）からスタート地点（東端）までをカバー
+ * - UserLocationMarker と timeBadgeService で共通使用
+ */
+export const SUNDAY_MARKET_LOCATION_BOUNDS = {
+  north: 33.5625,   // 実測データに基づく北端
+  south: 33.5600,   // 実測データに基づく南端
+  west: 133.5335,   // 高知城前（西端）
+  east: 133.5430,   // スタート地点（東端）
+} as const;
+
+/**
+ * 座標が日曜市エリア内かどうかを判定
+ */
+export function isInsideSundayMarket(lat: number, lng: number): boolean {
+  return (
+    lat >= SUNDAY_MARKET_LOCATION_BOUNDS.south &&
+    lat <= SUNDAY_MARKET_LOCATION_BOUNDS.north &&
+    lng >= SUNDAY_MARKET_LOCATION_BOUNDS.west &&
+    lng <= SUNDAY_MARKET_LOCATION_BOUNDS.east
+  );
+}
+
 export function getRoadCenterLine(): number {
-  return (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
+  const bounds = ROAD_CONFIG.bounds;
+  const latSpan = Math.abs(bounds[0][0] - bounds[1][0]);
+  const lngSpan = Math.abs(bounds[0][1] - bounds[1][1]);
+  if (lngSpan > latSpan) {
+    return (bounds[0][0] + bounds[1][0]) / 2;
+  }
+  return (bounds[0][1] + bounds[1][1]) / 2;
 }
 
 export function getRoadWidthOffset(useDynamic: boolean = false): number {
@@ -94,9 +166,9 @@ export function getRoadWidthOffset(useDynamic: boolean = false): number {
     return ROAD_CONFIG.widthOffset;
   }
 
-  const roadLengthDegrees = Math.abs(
-    ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]
-  );
+  const latDiff = Math.abs(ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]);
+  const lngDiff = Math.abs(ROAD_CONFIG.bounds[0][1] - ROAD_CONFIG.bounds[1][1]);
+  const roadLengthDegrees = Math.max(latDiff, lngDiff);
   const ratio = 0.038;
   return roadLengthDegrees * ratio;
 }
@@ -104,7 +176,8 @@ export function getRoadWidthOffset(useDynamic: boolean = false): number {
 export function getRoadLength(): number {
   const [start, end] = ROAD_CONFIG.bounds;
   const latDiff = Math.abs(start[0] - end[0]);
-  return latDiff * 111;
+  const lngDiff = Math.abs(start[1] - end[1]);
+  return Math.max(latDiff, lngDiff) * 111;
 }
 
 export function getSundayMarketBounds(): [[number, number], [number, number]] {
@@ -161,4 +234,87 @@ export function getExpandedRoadBounds({
     [northLat, eastLng],
     [southLat, westLng],
   ];
+}
+
+type RoadPoint = { lat: number; lng: number };
+
+export function getRoadCenterlinePoints(): RoadPoint[] {
+  if (!ROAD_CONFIG.segments || ROAD_CONFIG.segments.length === 0) {
+    const centerLat = (ROAD_CONFIG.bounds[0][0] + ROAD_CONFIG.bounds[1][0]) / 2;
+    const centerLng = (ROAD_CONFIG.bounds[0][1] + ROAD_CONFIG.bounds[1][1]) / 2;
+    return [{ lat: centerLat, lng: centerLng }];
+  }
+
+  const latSpan = Math.abs(ROAD_CONFIG.bounds[0][0] - ROAD_CONFIG.bounds[1][0]);
+  const lngSpan = Math.abs(ROAD_CONFIG.bounds[0][1] - ROAD_CONFIG.bounds[1][1]);
+  const isEastWest = lngSpan > latSpan;
+
+  return ROAD_CONFIG.segments
+    .map((segment) => {
+      const northLat = Math.max(segment.bounds[0][0], segment.bounds[1][0]);
+      const southLat = Math.min(segment.bounds[0][0], segment.bounds[1][0]);
+      const eastLng = Math.max(segment.bounds[0][1], segment.bounds[1][1]);
+      const westLng = Math.min(segment.bounds[0][1], segment.bounds[1][1]);
+
+      if (isEastWest) {
+        return {
+          lat: segment.centerLine ?? (northLat + southLat) / 2,
+          lng: (eastLng + westLng) / 2,
+        };
+      }
+
+      return {
+        lat: (northLat + southLat) / 2,
+        lng: segment.centerLine ?? (eastLng + westLng) / 2,
+      };
+    })
+    .sort((a, b) => (isEastWest ? a.lng - b.lng : b.lat - a.lat));
+}
+
+export function getNearestPointOnRoad(lat: number, lng: number): RoadPoint {
+  const points = getRoadCenterlinePoints();
+  if (points.length === 0) {
+    return { lat, lng };
+  }
+  if (points.length === 1) {
+    return points[0];
+  }
+
+  const target = { lat, lng };
+  let bestPoint = points[0];
+  let bestDistanceSq = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const candidate = projectPointOntoSegment(target, points[i], points[i + 1]);
+    const distanceSq =
+      (candidate.lat - target.lat) * (candidate.lat - target.lat) +
+      (candidate.lng - target.lng) * (candidate.lng - target.lng);
+
+    if (distanceSq < bestDistanceSq) {
+      bestDistanceSq = distanceSq;
+      bestPoint = candidate;
+    }
+  }
+
+  return bestPoint;
+}
+
+function projectPointOntoSegment(point: RoadPoint, a: RoadPoint, b: RoadPoint): RoadPoint {
+  const abLat = b.lat - a.lat;
+  const abLng = b.lng - a.lng;
+  const abLenSq = abLat * abLat + abLng * abLng;
+
+  if (abLenSq === 0) {
+    return a;
+  }
+
+  const apLat = point.lat - a.lat;
+  const apLng = point.lng - a.lng;
+  const rawT = (apLat * abLat + apLng * abLng) / abLenSq;
+  const t = Math.max(0, Math.min(1, rawT));
+
+  return {
+    lat: a.lat + abLat * t,
+    lng: a.lng + abLng * t,
+  };
 }

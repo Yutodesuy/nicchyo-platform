@@ -13,7 +13,7 @@ type MapLoadingContextValue = {
 
 const MapLoadingContext = createContext<MapLoadingContextValue | null>(null);
 
-const MIN_LOADING_MS = 1300;
+const MIN_LOADING_MS = 120;
 
 export function useMapLoading() {
   const value = useContext(MapLoadingContext);

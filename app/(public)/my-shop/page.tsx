@@ -1,544 +1,322 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ElementType } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Megaphone, Store, BarChart2, Sparkles, Settings, ChevronRight, CheckCircle2, BookOpen, MapPin, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import NavigationBar from "@/app/components/NavigationBar";
-import { applyShopEdits, saveShopEdits, SHOP_EDITS_UPDATED_EVENT } from "@/lib/shopEdits";
-import { shops as baseShops } from "../map/data/shops";
-import type { ShopEditableData } from "../map/types/shopData";
+import { fetchVendorStore } from "@/app/vendor/_services/storeService";
+import { fetchVendorPosts } from "@/app/vendor/_services/postsService";
+import VendorNavBar from "@/components/vendor/VendorNavBar";
 
-type FormState = {
-  name: string;
-  ownerName: string;
-  category: string;
-  icon: string;
-  stallStyle: string;
-  schedule: string;
-  productsText: string;
+const MENU_ITEMS: {
+  title: string;
   description: string;
-  specialtyDish: string;
-  aboutVendor: string;
-  message: string;
-  imageMain: string;
-  imageThumb: string;
-  imageAdditional: string;
-  instagram: string;
-  facebook: string;
-  twitter: string;
-  website: string;
-};
-
-const CATEGORIES = [
-  "食材",
-  "食べ物",
-  "道具・工具",
-  "生活雑貨",
-  "植物・苗",
-  "アクセサリー",
-  "手作り・工芸",
+  href: string;
+  accent: string;
+  icon: ElementType;
+  badge?: string;
+}[] = [
+  {
+    title: "最新情報を発信",
+    description: "今日のおすすめ・残り数量など",
+    href: "/vendor/post/new",
+    accent: "from-amber-400/60 to-amber-100/80",
+    icon: Megaphone,
+  },
+  {
+    title: "お店の分析",
+    description: "閲覧数・人気商品・時間帯分析",
+    href: "/vendor/analytics",
+    accent: "from-violet-400/60 to-violet-100/80",
+    icon: BarChart2,
+  },
+  {
+    title: "出店情報を更新",
+    description: "商品・決済方法・出店日",
+    href: "/vendor/store",
+    accent: "from-emerald-400/60 to-emerald-100/80",
+    icon: Store,
+  },
+  {
+    title: "クーポン参加設定",
+    description: "参加クーポン種類・利用条件",
+    href: "/vendor/coupon-settings",
+    accent: "from-green-400/60 to-green-100/80",
+    icon: Sparkles,
+    badge: "NEW",
+  },
+  {
+    title: "クーポンを確定",
+    description: "お客様のクーポン利用を確定",
+    href: "/my-shop/coupon",
+    accent: "from-teal-400/60 to-teal-100/80",
+    icon: Sparkles,
+  },
+  {
+    title: "AIに教える",
+    description: "お店の情報をAIに学習させる",
+    href: "/vendor/ai-knowledge",
+    accent: "from-rose-400/60 to-rose-100/80",
+    icon: Sparkles,
+  },
+  {
+    title: "使い方ガイド",
+    description: "各機能の説明・Tips",
+    href: "/vendor/help",
+    accent: "from-sky-400/60 to-sky-100/80",
+    icon: BookOpen,
+  },
+  {
+    title: "アカウント設定",
+    description: "名前・メール・パスワード変更",
+    href: "/vendor/account",
+    accent: "from-slate-400/60 to-slate-100/80",
+    icon: Settings,
+  },
 ];
 
-const CATEGORY_ICONS: Record<string, string[]> = {
-  "食材": ["🥬", "🥕", "🍅"],
-  "食べ物": ["🍙", "🍡", "🍠"],
-  "道具・工具": ["🔪", "🧰", "🪚"],
-  "生活雑貨": ["🧺", "🧼", "🧻"],
-  "植物・苗": ["🪴", "🌱", "🌼"],
-  "アクセサリー": ["💍", "🧵", "🎀"],
-  "手作り・工芸": ["🧶", "🎨", "🧵"],
+type SetupStep = {
+  label: string;
+  done: boolean;
+  href: string;
 };
-
-const REQUIRED_FIELDS: (keyof FormState)[] = [
-  "name",
-  "ownerName",
-  "category",
-  "icon",
-  "productsText",
-  "description",
-  "schedule",
-];
-
-const EMPTY_FORM: FormState = {
-  name: "",
-  ownerName: "",
-  category: "",
-  icon: "",
-  stallStyle: "",
-  schedule: "",
-  productsText: "",
-  description: "",
-  specialtyDish: "",
-  aboutVendor: "",
-  message: "",
-  imageMain: "",
-  imageThumb: "",
-  imageAdditional: "",
-  instagram: "",
-  facebook: "",
-  twitter: "",
-  website: "",
-};
-
-function splitCsv(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
 export default function MyShopPage() {
-  const { user, permissions } = useAuth();
-  const vendorId = user?.vendorId ?? null;
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [initialized, setInitialized] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [editsVersion, setEditsVersion] = useState(0);
+  const { isLoggedIn, user, permissions, isLoading, logout } = useAuth();
+  const router = useRouter();
+  const canAccess = !isLoading && isLoggedIn;
 
-  const iconOptions = useMemo(() => {
-    if (!form.category) return [];
-    return CATEGORY_ICONS[form.category] ?? [];
-  }, [form.category]);
-
-  const vendorShop = useMemo(() => {
-    if (!vendorId) return null;
-    const merged = applyShopEdits(baseShops);
-    return merged.find((shop) => shop.id === vendorId) ?? null;
-  }, [vendorId, editsVersion]);
-
+  const [setupSteps, setSetupSteps] = useState<SetupStep[] | null>(null);
+  const [summary, setSummary] = useState<{
+    shopName: string;
+    productCount: number;
+    paymentCount: number;
+    scheduleCount: number;
+    postCount: number;
+    hasPhoto: boolean;
+  } | null>(null);
   useEffect(() => {
-    if (!vendorShop || initialized) return;
-    setForm({
-      name: vendorShop.name ?? "",
-      ownerName: vendorShop.ownerName ?? "",
-      category: vendorShop.category ?? "",
-      icon: vendorShop.icon ?? "",
-      stallStyle: vendorShop.stallStyle ?? "",
-      schedule: vendorShop.schedule ?? "",
-      productsText: vendorShop.products?.join(", ") ?? "",
-      description: vendorShop.description ?? "",
-      specialtyDish: vendorShop.specialtyDish ?? "",
-      aboutVendor: vendorShop.aboutVendor ?? "",
-      message: vendorShop.message ?? "",
-      imageMain: vendorShop.images?.main ?? "",
-      imageThumb: vendorShop.images?.thumbnail ?? "",
-      imageAdditional: vendorShop.images?.additional?.join(", ") ?? "",
-      instagram: vendorShop.socialLinks?.instagram ?? "",
-      facebook: vendorShop.socialLinks?.facebook ?? "",
-      twitter: vendorShop.socialLinks?.twitter ?? "",
-      website: vendorShop.socialLinks?.website ?? "",
+    if (!user) return;
+
+    Promise.all([fetchVendorStore(user.id), fetchVendorPosts(user.id)]).then(([store, posts]) => {
+      setSummary({
+        shopName: store?.name?.trim() || "未設定",
+        productCount: store?.main_products.length ?? 0,
+        paymentCount: store?.payment_methods.length ?? 0,
+        scheduleCount: store?.schedule.length ?? 0,
+        postCount: posts.length,
+        hasPhoto: !!store?.shop_image_url,
+      });
+
+      if (!store) return;
+      const steps: SetupStep[] = [
+        { label: "店舗名を設定する", done: !!store.name?.trim(), href: "/vendor/store" },
+        { label: "商品を追加する", done: store.main_products.length > 0, href: "/vendor/store" },
+        { label: "出店予定日を設定する", done: store.schedule.length > 0, href: "/vendor/store" },
+        { label: "決済方法を設定する", done: store.payment_methods.length > 0, href: "/vendor/store" },
+        { label: "店舗写真を追加する", done: !!store.shop_image_url, href: "/vendor/store" },
+        { label: "最初の投稿をする", done: posts.length > 0, href: "/vendor/post/new" },
+      ];
+      setSetupSteps(steps);
+    }).catch(() => {
+      // 取得失敗時は非表示
     });
-    setInitialized(true);
-  }, [vendorShop, initialized]);
+  }, [user]);
 
-  useEffect(() => {
-    const handleEditsUpdate = () => {
-      setEditsVersion((prev) => prev + 1);
-    };
-    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    return () => window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-  }, []);
+  const incompletedSteps = setupSteps?.filter((s) => !s.done) ?? [];
+  const completedCount = setupSteps ? setupSteps.length - incompletedSteps.length : 0;
+  const showOnboarding = setupSteps !== null && incompletedSteps.length > 0;
 
-  useEffect(() => {
-    if (!form.category) {
-      setForm((prev) => ({ ...prev, icon: "" }));
-      return;
-    }
-    if (form.icon && !iconOptions.includes(form.icon)) {
-      setForm((prev) => ({ ...prev, icon: "" }));
-    }
-  }, [form.category, form.icon, iconOptions]);
-
-  const handleChange =
-    (key: keyof FormState) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const value = event.target.value;
-      setForm((prev) => ({ ...prev, [key]: value }));
-      if (errors[key]) {
-        setErrors((prev) => ({ ...prev, [key]: undefined }));
-      }
-    };
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setStatusMessage("");
-    const nextErrors: Partial<Record<keyof FormState, string>> = {};
-    REQUIRED_FIELDS.forEach((key) => {
-      if (!form[key].trim()) {
-        nextErrors[key] = "必須項目です。";
-      }
-    });
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
-      return;
-    }
-
-    if (!vendorId || !permissions.isVendor) {
-      setStatusMessage("出店者としてログインしてください。");
-      return;
-    }
-
-    const edits: Partial<ShopEditableData> = {
-      name: form.name.trim(),
-      ownerName: form.ownerName.trim(),
-      category: form.category.trim(),
-      icon: form.icon.trim(),
-      products: splitCsv(form.productsText),
-      description: form.description.trim(),
-      specialtyDish: form.specialtyDish.trim() || undefined,
-      aboutVendor: form.aboutVendor.trim() || undefined,
-      stallStyle: form.stallStyle.trim() || undefined,
-      schedule: form.schedule.trim(),
-      message: form.message.trim() || undefined,
-      images: {
-        main: form.imageMain.trim() || undefined,
-        thumbnail: form.imageThumb.trim() || undefined,
-        additional: splitCsv(form.imageAdditional),
-      },
-      socialLinks: {
-        instagram: form.instagram.trim() || undefined,
-        facebook: form.facebook.trim() || undefined,
-        twitter: form.twitter.trim() || undefined,
-        website: form.website.trim() || undefined,
-      },
-      lastUpdated: Date.now(),
-      updatedBy: user?.id,
-    };
-
-    saveShopEdits(vendorId, edits);
-    setStatusMessage("更新内容をマップに反映しました。");
-  };
-
-  const requiredMark = (
-    <span className="ml-1 text-[11px] font-semibold text-rose-600">*</span>
-  );
-
-  const fieldClass = (key: keyof FormState) =>
-    `mt-1 w-full rounded-xl border px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none ${
-      errors[key]
-        ? "border-rose-400 focus:border-rose-500"
-        : "border-orange-200 focus:border-amber-400"
-    }`;
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 pb-24">
-      <div className="mx-auto w-full max-w-4xl px-4 pt-6">
-        <div className="mb-4 rounded-2xl border border-amber-100 bg-white/95 px-6 py-5 text-center shadow-sm">
-          <p className="text-base font-semibold uppercase tracking-[0.14em] text-amber-700">
-            My shop
-          </p>
-          <h1 className="mt-1 text-4xl font-bold text-slate-900">
-            出店情報の入力
-          </h1>
-          <p className="mt-1 text-xl text-slate-600">
-            入力内容は運営の確認後に反映されます。必須項目には * が付きます。
-          </p>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <section className="rounded-3xl border border-orange-300 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-amber-700">基本情報</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="block text-sm text-slate-700">
-                店舗名{requiredMark}
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={handleChange("name")}
-                  placeholder="例: 旬の野菜やさん"
-                  className={fieldClass("name")}
-                  aria-invalid={!!errors.name}
-                  required
-                />
-                {errors.name && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.name}
-                  </span>
-                )}
-              </label>
-              <label className="block text-sm text-slate-700">
-                店主名{requiredMark}
-                <input
-                  type="text"
-                  value={form.ownerName}
-                  onChange={handleChange("ownerName")}
-                  placeholder="例: 山田 花子"
-                  className={fieldClass("ownerName")}
-                  aria-invalid={!!errors.ownerName}
-                  required
-                />
-                {errors.ownerName && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.ownerName}
-                  </span>
-                )}
-              </label>
-              <label className="block text-sm text-slate-700">
-                カテゴリー{requiredMark}
-                <select
-                  value={form.category}
-                  onChange={handleChange("category")}
-                  className={fieldClass("category")}
-                  aria-invalid={!!errors.category}
-                  required
-                >
-                  <option value="">選択してください</option>
-                  {CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-                {errors.category && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.category}
-                  </span>
-                )}
-              </label>
-              <label className="block text-sm text-slate-700">
-                アイコン{requiredMark}
-                <select
-                  value={form.icon}
-                  onChange={handleChange("icon")}
-                  className={fieldClass("icon")}
-                  aria-invalid={!!errors.icon}
-                  required
-                  disabled={!form.category}
-                >
-                  <option value="">
-                    {form.category ? "選択してください" : "カテゴリーを選択してください"}
-                  </option>
-                  {iconOptions.map((icon) => (
-                    <option key={icon} value={icon}>
-                      {icon}
-                    </option>
-                  ))}
-                </select>
-                {errors.icon && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.icon}
-                  </span>
-                )}
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-orange-300 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-amber-700">出店情報</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="block text-sm text-slate-700">
-                出店スタイル
-                <input
-                  type="text"
-                  value={form.stallStyle}
-                  onChange={handleChange("stallStyle")}
-                  placeholder="例: テント出店 / ワゴン"
-                  className={fieldClass("stallStyle")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700">
-                出店予定・営業時間{requiredMark}
-                <input
-                  type="text"
-                  value={form.schedule}
-                  onChange={handleChange("schedule")}
-                  placeholder="例: 毎週日曜 6:00-12:00"
-                  className={fieldClass("schedule")}
-                  aria-invalid={!!errors.schedule}
-                  required
-                />
-                {errors.schedule && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.schedule}
-                  </span>
-                )}
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-orange-300 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-amber-700">商品・紹介</h2>
-            <div className="mt-3 space-y-3">
-              <label className="block text-sm text-slate-700">
-                取扱商品{requiredMark}
-                <textarea
-                  value={form.productsText}
-                  onChange={handleChange("productsText")}
-                  placeholder="例: トマト, きゅうり, 大根"
-                  rows={2}
-                  className={fieldClass("productsText")}
-                  aria-invalid={!!errors.productsText}
-                  required
-                />
-                <span className="mt-1 block text-[11px] text-slate-500">
-                  カンマ区切りで入力してください。
-                </span>
-                {errors.productsText && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.productsText}
-                  </span>
-                )}
-              </label>
-              <label className="block text-sm text-slate-700">
-                お店の説明{requiredMark}
-                <textarea
-                  value={form.description}
-                  onChange={handleChange("description")}
-                  placeholder="例: 朝採れの野菜を中心に、季節の味をお届けします。"
-                  rows={3}
-                  className={fieldClass("description")}
-                  aria-invalid={!!errors.description}
-                  required
-                />
-                {errors.description && (
-                  <span className="mt-1 block text-[11px] text-rose-600">
-                    {errors.description}
-                  </span>
-                )}
-              </label>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-sm text-slate-700">
-                  得意料理
-                  <input
-                    type="text"
-                    value={form.specialtyDish}
-                    onChange={handleChange("specialtyDish")}
-                    placeholder="例: かつおのたたき"
-                    className={fieldClass("specialtyDish")}
-                  />
-                </label>
-                <label className="block text-sm text-slate-700">
-                  出店者のこだわり
-                  <input
-                    type="text"
-                    value={form.aboutVendor}
-                    onChange={handleChange("aboutVendor")}
-                    placeholder="例: 無農薬にこだわっています"
-                    className={fieldClass("aboutVendor")}
-                  />
-                </label>
-              </div>
-              <label className="block text-sm text-slate-700">
-                メッセージ
-                <textarea
-                  value={form.message}
-                  onChange={handleChange("message")}
-                  placeholder="例: いつでも気軽に声をかけてください。"
-                  rows={2}
-                  className={fieldClass("message")}
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-orange-300 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-amber-700">写真</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="block text-sm text-slate-700">
-                メイン画像URL
-                <input
-                  type="url"
-                  value={form.imageMain}
-                  onChange={handleChange("imageMain")}
-                  placeholder="https://example.com/main.jpg"
-                  className={fieldClass("imageMain")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700">
-                サムネイルURL
-                <input
-                  type="url"
-                  value={form.imageThumb}
-                  onChange={handleChange("imageThumb")}
-                  placeholder="https://example.com/thumb.jpg"
-                  className={fieldClass("imageThumb")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700 md:col-span-2">
-                追加画像URL
-                <input
-                  type="text"
-                  value={form.imageAdditional}
-                  onChange={handleChange("imageAdditional")}
-                  placeholder="https://example.com/1.jpg, https://example.com/2.jpg"
-                  className={fieldClass("imageAdditional")}
-                />
-                <span className="mt-1 block text-[11px] text-slate-500">
-                  カンマ区切りで最大5枚まで。
-                </span>
-              </label>
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-orange-300 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-amber-700">SNS・外部リンク</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="block text-sm text-slate-700">
-                Instagram
-                <input
-                  type="url"
-                  value={form.instagram}
-                  onChange={handleChange("instagram")}
-                  placeholder="https://instagram.com/..."
-                  className={fieldClass("instagram")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700">
-                Facebook
-                <input
-                  type="url"
-                  value={form.facebook}
-                  onChange={handleChange("facebook")}
-                  placeholder="https://facebook.com/..."
-                  className={fieldClass("facebook")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700">
-                X (Twitter)
-                <input
-                  type="url"
-                  value={form.twitter}
-                  onChange={handleChange("twitter")}
-                  placeholder="https://x.com/..."
-                  className={fieldClass("twitter")}
-                />
-              </label>
-              <label className="block text-sm text-slate-700">
-                Webサイト
-                <input
-                  type="url"
-                  value={form.website}
-                  onChange={handleChange("website")}
-                  placeholder="https://example.com"
-                  className={fieldClass("website")}
-                />
-              </label>
-            </div>
-          </section>
-
-          {statusMessage && (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-              {statusMessage}
-            </div>
+    <div
+      className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.18),_rgba(255,255,255,0))]"
+      style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}
+    >
+      {/* ヘッダー */}
+      <div className="border-b border-amber-100 bg-white/90 px-4 py-4 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-2xl items-center justify-between md:max-w-4xl">
+          <h1 className="text-xl font-bold text-slate-900 md:text-2xl">出店者メニュー</h1>
+          {user?.name && (
+            <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              {user.name}
+            </span>
           )}
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <button
-              type="button"
-              className="rounded-full border border-orange-200 bg-white px-5 py-2 text-sm font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50"
-            >
-              下書き保存
-            </button>
-            <button
-              type="submit"
-              className="rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500"
-            >
-              送信する
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
-      <NavigationBar />
+
+      <div className="mx-auto w-full max-w-2xl px-4 pt-4 md:max-w-4xl md:pt-6">
+        {isLoading ? (
+          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            ログイン状態を確認しています…
+          </div>
+        ) : !canAccess ? (
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            出店者としてログインしてください。
+            <Link href="/login" className="ml-1 font-semibold underline">ログイン</Link>
+          </div>
+        ) : (
+          <>
+            {!permissions.isVendor && (
+              <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                現在のアカウントに出店者ロールが設定されていません。
+              </div>
+            )}
+
+            <div className="mb-4 rounded-3xl border border-amber-100 bg-white p-4 shadow-sm md:p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-600">Vendor Menu</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+                    {summary?.shopName === "未設定" ? "お店の準備を進めましょう" : `${summary?.shopName} さんの出店メニュー`}
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                    まずは「最新情報」「店舗情報」「AIばあちゃん」の3つを整えると、お客さんに伝わりやすくなります。
+                  </p>
+                </div>
+                <div className="grid gap-2 md:w-[320px]">
+                  <Link href="/vendor/post/new" className="rounded-2xl bg-amber-500 px-4 py-3.5 text-center text-base font-bold text-white shadow-sm transition hover:bg-amber-400">
+                    最新情報を発信する
+                  </Link>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href="/vendor/store" className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700 transition hover:bg-amber-100">
+                      店舗情報を更新
+                    </Link>
+                    <Link href="/vendor/help" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+                      使い方を見る
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {summary && (
+                <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+                  {[
+                    { label: "商品", value: `${summary.productCount}件` },
+                    { label: "決済", value: `${summary.paymentCount}種` },
+                    { label: "出店日", value: `${summary.scheduleCount}日` },
+                    { label: "投稿", value: `${summary.postCount}件` },
+                    { label: "写真", value: summary.hasPhoto ? "あり" : "未設定" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-slate-50 px-3 py-3">
+                      <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+                      <p className="mt-1 text-base font-bold text-slate-900">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 初回オンボーディング */}
+            {showOnboarding && (
+              <div id="setup-steps" className="mb-4 rounded-3xl border border-emerald-200 bg-white p-4 shadow-sm md:p-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-lg font-bold text-slate-900">はじめに整えること</p>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {completedCount}/{setupSteps!.length}完了
+                  </span>
+                </div>
+                <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-emerald-400 transition-all"
+                    style={{ width: `${(completedCount / setupSteps!.length) * 100}%` }}
+                  />
+                </div>
+                <ul className="space-y-2">
+                  {incompletedSteps.map((step, index) => (
+                    <li key={step.label}>
+                      <Link
+                        href={step.href}
+                        className="flex items-center gap-3 rounded-2xl bg-emerald-50 px-4 py-4 text-slate-700 transition hover:bg-emerald-100"
+                      >
+                        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-emerald-500">
+                          {index + 1}
+                        </span>
+                        <span className="flex-1 text-sm font-semibold">{step.label}</span>
+                        <ChevronRight size={16} className="flex-shrink-0 text-slate-400" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* メニューグリッド */}
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">よく使う機能</p>
+                <p className="text-xs text-slate-500">大きいカードをタップして進めます</p>
+              </div>
+              <Link href="/vendor/help" className="hidden rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 md:inline-flex">
+                使い方ガイド
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 md:gap-4">
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="group relative overflow-hidden rounded-3xl border border-white/60 bg-white shadow-sm transition active:scale-[0.98] hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.accent}`} />
+                    <div className="relative flex min-h-[128px] flex-col justify-between p-4 md:min-h-[140px] md:p-5">
+                      <div className="flex items-start justify-between">
+                        {item.badge ? (
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                            {item.badge}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="rounded-2xl border border-white/70 bg-white/90 p-2.5 text-slate-700 shadow-sm">
+                          <Icon size={20} />
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-base font-bold leading-tight text-slate-900 md:text-lg">{item.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-600 md:text-sm">{item.description}</p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Exit & Return</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">戻る・ログアウト</h3>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                迷ったら地図に戻れます。ここからログアウトもできます。
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <Link
+                  href="/map"
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-400"
+                >
+                  <MapPin size={16} />
+                  マップへ戻る
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                >
+                  <LogOut size={16} />
+                  ログアウト
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+      <VendorNavBar />
     </div>
   );
 }
