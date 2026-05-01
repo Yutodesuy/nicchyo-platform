@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
@@ -147,10 +148,11 @@ export default async function ShopPage({ params }: ShopPageProps) {
         {/* 店舗画像 */}
         {shop?.shop_image_url && (
           <div className="overflow-hidden rounded-2xl border border-amber-100 shadow-card">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={shop.shop_image_url}
               alt={shopName}
+              width={960}
+              height={224}
               className="h-56 w-full object-cover"
             />
           </div>
