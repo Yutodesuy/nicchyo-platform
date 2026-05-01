@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import NavigationBar from "../../components/NavigationBar";
 import GrandmaChatter from "../map/components/GrandmaChatter";
@@ -275,15 +276,23 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
 
           {/* ヘッダー：standalone のみ表示 */}
           {!embedded && (
-            <section className="rounded-2xl border border-amber-100 bg-white/95 px-5 py-4 text-center shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Consult</p>
-              <h1 className="mt-1 text-2xl font-bold text-gray-900">AIキャラに相談する</h1>
-              <p className="mt-1 text-sm leading-relaxed text-gray-600">
-                お店探し・回り方・旬のもの・写真つきの質問まで
-              </p>
-              <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
-                <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">🎤 音声入力OK</span>
-                <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">📷 写真相談OK</span>
+            <section className="flex flex-col items-center gap-3 pb-1 pt-4 text-center">
+              <Image
+                src="/characters/obaasan.png"
+                alt="にちよさん"
+                width={180}
+                height={180}
+                className="h-[120px] w-[120px] object-contain drop-shadow-[0_8px_16px_rgba(146,64,14,0.25)] md:h-[180px] md:w-[180px]"
+              />
+              <div>
+                <p className="eyebrow">Nichiyo-san</p>
+                <h1 className="mt-1 font-display text-2xl text-amber-900 md:text-3xl">
+                  なんでも、聞いてください
+                </h1>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1.5">
+                <span className="rounded-full border border-amber-200/70 bg-white/70 px-3 py-1 text-xs font-bold text-amber-800">🎤 音声入力OK</span>
+                <span className="rounded-full border border-amber-200/70 bg-white/70 px-3 py-1 text-xs font-bold text-amber-800">📷 写真相談OK</span>
               </div>
             </section>
           )}
@@ -295,6 +304,7 @@ export default function ConsultClient({ embedded = false }: { embedded?: boolean
             embedded={embedded}
             comments={grandmaComments}
             onAsk={handleGrandmaAsk}
+            onAskStream={handleGrandmaAskStream}
             allShops={knownShops}
             aiSuggestedShops={aiSuggestedShops}
             onSelectShop={(shopId, shopFromCard) => {

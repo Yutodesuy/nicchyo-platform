@@ -358,7 +358,6 @@ export default function ShopDetailBanner({
   const handleBagClick = useCallback(() => { router.push("/bag"); }, [router]);
 
   const isKotodute = variant === "kotodute";
-  const _today = new Date();
 
   const matchedIngredientIds = useMemo(() => {
     if (shop.category !== "食材") return [];

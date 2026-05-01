@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
@@ -120,14 +121,50 @@ export default async function ShopPage({ params }: ShopPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-2xl items-center px-4 py-12">
-        <section className="w-full rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold text-[#0284C7]">出店者ページ</p>
-          <h1 className="mt-2 text-2xl font-bold text-[#111827]">店舗コード {normalizedCode}</h1>
-          <p className="mt-3 text-sm text-[#4B5563]">
-            3桁コードを数値IDへ正規化しました。内部ID: <span className="font-semibold">{shopId}</span>
-          </p>
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-2xl flex-col gap-4 px-4 py-10">
+        {/* 店舗ヘッダーカード */}
+        <section className="w-full rounded-2xl border border-amber-100 bg-surface-warmwhite p-6 shadow-card">
+          <p className="eyebrow">日曜市 {normalizedCode}番</p>
+          <h1 className="mt-1 font-display text-2xl text-slate-900">{shopName}</h1>
+
+          {shop?.strength && (
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">{shop.strength}</p>
+          )}
+
+          {shop?.main_products && shop.main_products.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {shop.main_products.map((product) => (
+                <span
+                  key={product}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800"
+                >
+                  {product}
+                </span>
+              ))}
+            </div>
+          )}
         </section>
+
+        {/* 店舗画像 */}
+        {shop?.shop_image_url && (
+          <div className="overflow-hidden rounded-2xl border border-amber-100 shadow-card">
+            <Image
+              src={shop.shop_image_url}
+              alt={shopName}
+              width={960}
+              height={224}
+              className="h-56 w-full object-cover"
+            />
+          </div>
+        )}
+
+        {/* マップへ戻るリンク */}
+        <a
+          href={`/map?shop=${normalizedCode}`}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-white px-5 py-3 text-sm font-bold text-amber-800 shadow-chip transition hover:bg-amber-50"
+        >
+          🗺 マップで場所を確認する
+        </a>
       </main>
     </>
   );
