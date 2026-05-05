@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { requireSameOrigin } from './requestGuards';
-
 
 describe('requestGuards', () => {
   describe('requireSameOrigin', () => {
@@ -63,19 +62,17 @@ describe('requestGuards', () => {
     });
 
     it('returns ok when both origin and referer are missing in non-production', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
 
       const req = new Request('https://example.com/api');
       const result = requireSameOrigin(req);
       expect(result.ok).toBe(true);
 
-      process.env.NODE_ENV = originalEnv;
+      vi.unstubAllEnvs();
     });
 
     it('returns error when both origin and referer are missing in production', async () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      vi.stubEnv('NODE_ENV', 'production');
 
       const req = new Request('https://example.com/api');
       const result = requireSameOrigin(req);
@@ -87,7 +84,7 @@ describe('requestGuards', () => {
         expect(body.error).toBe('Origin header required');
       }
 
-      process.env.NODE_ENV = originalEnv;
+      vi.unstubAllEnvs();
     });
   });
 });
