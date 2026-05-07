@@ -7,3 +7,14 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
   )
 );
 Card.displayName = "Card";
+
+export const CardWarm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("rounded-2xl border border-amber-100 bg-surface-warmwhite text-slate-900 shadow-card", className)}
+      {...props}
+    />
+  )
+);
+CardWarm.displayName = "CardWarm";
