@@ -308,9 +308,11 @@ export default function GrandmaChatter({
     []
   );
   const router = useRouter();
-  const { avatarOffset, isHolding, holdPhase, consumeWasMoved, handlers } = useAvatarDrag({
+  const lastAvatarOffsetRef = useRef({ x: 0, y: 0 });
+  const { avatarOffset, setAvatarOffset, isHolding, holdPhase, consumeWasMoved, handlers } = useAvatarDrag({
     onHoldChange,
     onDrop,
+    disabled: isChatOpen,
   });
 
   useEffect(() => {
@@ -668,6 +670,8 @@ export default function GrandmaChatter({
   const handleAvatarClick = () => {
     if (consumeWasMoved()) return;
     if (!isChatOpen) {
+      lastAvatarOffsetRef.current = avatarOffset;
+      setAvatarOffset({ x: 0, y: 0 });
       if (inputRef.current) {
         try {
           inputRef.current.focus({ preventScroll: true });
@@ -678,6 +682,7 @@ export default function GrandmaChatter({
       setIsChatOpen(true);
     } else {
       setIsChatOpen(false);
+      setAvatarOffset(lastAvatarOffsetRef.current);
       inputRef.current?.blur();
     }
   };

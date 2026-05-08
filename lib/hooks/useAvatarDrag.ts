@@ -19,10 +19,12 @@ type DragState = {
 type UseAvatarDragOptions = {
   onHoldChange?: (holding: boolean) => void;
   onDrop?: (position: { x: number; y: number }) => void;
+  disabled?: boolean;
 };
 
 export type UseAvatarDragReturn = {
   avatarOffset: { x: number; y: number };
+  setAvatarOffset: (offset: { x: number; y: number }) => void;
   isHolding: boolean;
   holdPhase: 'idle' | 'priming' | 'active';
   /** Checks (and clears) whether the last pointer interaction was a drag. Used to suppress click. */
@@ -40,6 +42,7 @@ export type UseAvatarDragReturn = {
 export function useAvatarDrag({
   onHoldChange,
   onDrop,
+  disabled,
 }: UseAvatarDragOptions = {}): UseAvatarDragReturn {
   const [avatarOffset, setAvatarOffset] = useState({ x: 0, y: 0 });
   const [isHolding, setIsHolding] = useState(false);
@@ -73,6 +76,13 @@ export function useAvatarDrag({
   useEffect(() => { onHoldChangeRef.current = onHoldChange; }, [onHoldChange]);
   useEffect(() => { onDropRef.current = onDrop; }, [onDrop]);
 
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current !== null) window.clearTimeout(holdTimerRef.current);
+      if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   const consumeWasMoved = useCallback(() => {
     if (dragStateRef.current.moved) {
       dragStateRef.current.moved = false;
@@ -82,6 +92,7 @@ export function useAvatarDrag({
   }, []);
 
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled) return;
     event.preventDefault();
     setIsHolding(true);
     setHoldPhase('priming');
@@ -112,7 +123,7 @@ export function useAvatarDrag({
       setHoldPhase('active');
     }, HOLD_MS);
     event.currentTarget.setPointerCapture(event.pointerId);
-  }, []);
+  }, [disabled]);
 
   const onPointerMove = useCallback((event: React.PointerEvent<HTMLButtonElement>) => {
     if (dragStateRef.current.pointerId !== event.pointerId) return;
@@ -189,6 +200,7 @@ export function useAvatarDrag({
 
   return {
     avatarOffset,
+    setAvatarOffset,
     isHolding,
     holdPhase,
     consumeWasMoved,
