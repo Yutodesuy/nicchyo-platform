@@ -442,7 +442,6 @@ export default function SearchClient({
                   openInitialShopBanner={false}
                   onShopSelect={isDesktop ? setOpenedShop : undefined}
                   searchShopIds={desktopSearchShopIds}
-                  searchLabel={searchLabel}
                   couponEligibleVendorIds={Array.from(couponEligibleVendorIds)}
                   activeCouponTypeId={activeCouponTypeId}
                   suppressInitialLocationFocus
