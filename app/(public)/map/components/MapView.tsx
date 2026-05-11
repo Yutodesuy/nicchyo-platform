@@ -126,12 +126,12 @@ function TimeAmbientOverlay() {
 
 // ===== テーパー型縦ズームスライダー =====
 // 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
-const VZ_PAD = 18;        // 上下パディング（サムがはみ出ないように）
-const VZ_TRACK_H = 195;   // トラック高さ
-const VZ_SVG_W = 42;
+const VZ_PAD = 14;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 156;   // トラック高さ
+const VZ_SVG_W = 34;
 const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
-const VZ_WIDE = 27;       // 上端（拡大）の幅
-const VZ_NARROW = 10.5;   // 下端（縮小）の幅
+const VZ_WIDE = 22;       // 上端（拡大）の幅
+const VZ_NARROW = 8.5;    // 下端（縮小）の幅
 const VZ_CX = VZ_SVG_W / 2;
 const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
 const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
@@ -212,7 +212,7 @@ function VerticalZoomSlider({
       {/* アンバー塗り（現在のズームレベルを表す） */}
       <polygon points={fillPts} fill="#d97706" opacity="0.65" />
       {/* サム */}
-      <circle cx={VZ_CX} cy={thumbY} r={10.5} fill="white" stroke="#d97706" strokeWidth="3.75" />
+      <circle cx={VZ_CX} cy={thumbY} r={8.5} fill="white" stroke="#d97706" strokeWidth="3" />
     </svg>
   );
 }
@@ -407,73 +407,8 @@ function SearchResultsSheet({
   );
 }
 
-// ===== Bottom-right: vertical zoom slider =====
-function MapZoomControls({
-  map,
-  currentZoom,
-  minZoom,
-  maxZoom,
-}: {
-  map: L.Map | null;
-  currentZoom: number;
-  minZoom: number;
-  maxZoom: number;
-}) {
-  return (
-    <div
-      className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+1rem+60px)] right-4 z-[1000] flex flex-col items-center gap-3"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-    >
-      {/* 縦ズームスライダー（くさび形：上端=拡大、下端=縮小） */}
-      <div className="flex flex-col items-center gap-1 rounded-2xl bg-white/92 px-2.5 py-3 shadow-lg ring-1 ring-slate-900/8 backdrop-blur">
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
-        <VerticalZoomSlider
-          value={currentZoom}
-          min={minZoom}
-          max={maxZoom}
-          onValueChange={(v) => map?.setZoom(v, { animate: false })}
-        />
-        <span className="select-none text-[15px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
-      </div>
-    </div>
-  );
-}
 
-// ===== Top-left: location tracking button =====
-function MapTrackingButton({
-  isTracking,
-  onToggleTracking,
-}: {
-  isTracking: boolean;
-  onToggleTracking: () => void;
-}) {
-  return (
-    <div
-      className="absolute top-4 left-4 z-[1000]"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => { e.stopPropagation(); }}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleTracking();
-        }}
-        className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-          isTracking ? "bg-blue-500 text-white" : "bg-white/92 text-gray-700 hover:bg-gray-50"
-        }`}
-        aria-label={isTracking ? "追従中" : "追従オフ"}
-      >
-        <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
-      </button>
-    </div>
-  );
-}
-
-// ===== Combined controls (kept for call-site compatibility) =====
+// ===== Right-side controls: zoom slider (bottom) + tracking button (above nav bar) =====
 function MapControls({
   map,
   isTracking,
@@ -491,75 +426,51 @@ function MapControls({
 }) {
   return (
     <>
-      <MapZoomControls map={map} currentZoom={currentZoom} minZoom={minZoom} maxZoom={maxZoom} />
-      <MapTrackingButton isTracking={isTracking} onToggleTracking={onToggleTracking} />
+      {/* 縦ズームスライダー（ナビバー直上） */}
+      <div
+        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)-2rem)] right-4 z-[1000] flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
+      >
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
+        <VerticalZoomSlider
+          value={currentZoom}
+          min={minZoom}
+          max={maxZoom}
+          onValueChange={(v) => map?.setZoom(v, { animate: false })}
+        />
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
+      </div>
+
+      {/* 現在地追跡ボタン（画面上部右） */}
+      <div
+        className="absolute right-4 top-28 z-[1000]"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleTracking();
+          }}
+          className={`flex h-11 w-11 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
+            isTracking
+              ? "bg-amber-500 text-white hover:bg-amber-600"
+              : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
+          }`}
+          aria-label={isTracking ? "追従中" : "追従オフ"}
+        >
+          <Navigation className={`h-5 w-5 ${isTracking ? "fill-current" : ""}`} />
+        </button>
+      </div>
     </>
   );
 }
 
-// ===== Top-right: inline search bar =====
-function MapSearchBar({
-  searchShopIds,
-  searchLabel,
-  searchQuery,
-  onSearchQuery,
-  onClearSearch,
-}: {
-  searchShopIds?: number[];
-  searchLabel?: string;
-  searchQuery?: string;
-  onSearchQuery?: (q: string) => void;
-  onClearSearch?: () => void;
-}) {
-  const hasSearch = Boolean(
-    (searchShopIds && searchShopIds.length > 0) ||
-    (searchQuery && searchQuery.trim()) ||
-    (searchLabel && searchLabel.trim())
-  );
 
-  return (
-    <div
-      className="absolute right-4 top-4 z-[1000]"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
-      <div className={`flex items-center gap-1.5 rounded-full pl-3 pr-2 py-2 shadow-md ring-1 backdrop-blur transition-all duration-200 ${
-        hasSearch
-          ? 'bg-gradient-to-r from-amber-200/95 via-amber-100/95 to-orange-50/95 ring-amber-500/45 shadow-[0_12px_28px_-16px_rgba(217,119,6,0.75)]'
-          : 'bg-white/75 ring-slate-900/6'
-      }`}>
-        <span className={`shrink-0 text-[13px] ${hasSearch ? 'text-amber-700' : 'text-slate-400'}`}>🔍</span>
-        <input
-          type="text"
-          value={searchQuery ?? ''}
-          onChange={(e) => { e.stopPropagation(); onSearchQuery?.(e.target.value); }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          placeholder="お店を探す"
-          className={`w-28 bg-transparent text-[13px] outline-none ${hasSearch ? 'font-medium text-amber-900 placeholder:text-amber-700/70' : 'text-slate-700 placeholder:text-slate-400'}`}
-        />
-        {hasSearch && searchShopIds && searchShopIds.length > 0 && (
-          <span className="shrink-0 rounded-full bg-amber-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
-            {searchShopIds.length}件
-          </span>
-        )}
-        {hasSearch && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onClearSearch?.(); }}
-            className="shrink-0 rounded-full bg-white/85 p-1.5 text-amber-700 hover:bg-white active:scale-90 transition-all"
-            aria-label="検索をクリア"
-          >
-            <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function MapZoomGuideToast({ message }: { message: string | null }) {
   return (
@@ -589,7 +500,6 @@ type MapViewProps = {
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
   searchShopIds?: number[];
-  searchLabel?: string;
   onMapReady?: () => void;
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
@@ -614,8 +524,6 @@ type MapViewProps = {
   onShopSelect?: (shop: Shop) => void;
   spotlightShopId?: number;
   onClearSearch?: () => void;
-  searchQuery?: string;
-  onSearchQuery?: (q: string) => void;
   couponEligibleVendorIds?: string[];
   activeCouponTypeId?: string;
   stampedVendorIds?: string[];
@@ -732,7 +640,6 @@ const MapView = memo(function MapView({
   agentOpen,
   onAgentToggle,
   searchShopIds,
-  searchLabel,
   onMapReady,
   eventTargets,
   highlightEventTargets = false,
@@ -748,8 +655,6 @@ const MapView = memo(function MapView({
   onShopSelect,
   spotlightShopId,
   onClearSearch,
-  searchQuery,
-  onSearchQuery,
   couponEligibleVendorIds,
   activeCouponTypeId,
   stampedVendorIds,
@@ -1443,13 +1348,6 @@ const MapView = memo(function MapView({
             currentZoom={mapUiZoom}
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
-          />
-          <MapSearchBar
-            searchShopIds={activeHighlightShopIds}
-            searchLabel={searchLabel}
-            searchQuery={searchQuery}
-            onSearchQuery={onSearchQuery}
-            onClearSearch={onClearSearch}
           />
         </>
       )}

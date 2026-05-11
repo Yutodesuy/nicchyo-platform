@@ -1,11 +1,13 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { memo } from "react";
 import type { MouseEvent } from "react";
 import type { Shop } from "../../map/data/shops";
 import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../../lib/shopImages";
+import { Badge } from "@/components/ui/badge";
 
 interface ShopResultCardProps {
   shop: Shop;
@@ -77,13 +79,9 @@ function ShopResultCard({
         </div>
         <div className="flex items-center gap-2">
           {hasCoupon && (
-            <span
-              className={`rounded-full border border-green-200 bg-green-50 px-2 py-1 font-semibold text-green-800 ${
-                compact ? "text-[10px]" : "text-[11px]"
-              }`}
-            >
+            <Badge variant="coupon" className={compact ? "text-[10px]" : "text-[11px]"}>
               🎟️ クーポン対応
-            </span>
+            </Badge>
           )}
           <button
             type="button"
@@ -111,9 +109,11 @@ function ShopResultCard({
       </div>
 
       <div className={`${compact ? "mt-1.5" : "mt-2"} flex gap-3 overflow-hidden rounded-xl border border-amber-100 bg-white p-2.5`}>
-        <img
+        <Image
           src={previewImage}
           alt={`${shop.name}の画像`}
+          width={128}
+          height={96}
           className={`${compact ? "h-20 w-20" : "h-24 w-28 sm:w-32"} shrink-0 rounded-lg object-cover bg-white`}
         />
         <div className="min-w-0 flex-1">

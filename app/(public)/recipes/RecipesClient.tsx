@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import NavigationBar from "../../components/NavigationBar";
@@ -36,12 +37,7 @@ type RankedRecipe = {
 function loadFridge(): FridgeItem[] {
   if (typeof window === "undefined") return [];
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as FridgeItem[];
-  } catch {
-    return [];
-  }
+  return safeJsonParse<FridgeItem[]>(raw, []);
 }
 
 function saveFridge(items: FridgeItem[]) {
@@ -58,7 +54,7 @@ const difficultyLabel = (difficulty: Recipe["difficulty"]) => {
 export default function RecipesClient() {
   const { shops } = useShops();
   const [fridge, setFridge] = useState<FridgeItem[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
+  const [_addOpen, setAddOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("ingredient");
   const [query, setQuery] = useState("");
   const [placeholder, setPlaceholder] = useState("料理・食材名で検索");
@@ -149,7 +145,7 @@ export default function RecipesClient() {
     return seasonalCollections.find((c) => c.id === season) ?? seasonalCollections[0];
   })();
 
-  const handleAdd = (value: string) => {
+  const _handleAdd = (value: string) => {
     const v = value.trim();
     if (!v) return;
     setFridge((prev) => {
@@ -164,7 +160,7 @@ export default function RecipesClient() {
     setAddOpen(false);
   };
 
-  const handleRemove = (id: string) => {
+  const _handleRemove = (id: string) => {
     setFridge((prev) => {
       const next = prev.filter((i) => i.id !== id);
       saveFridge(next);

@@ -1,3 +1,5 @@
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
+
 const STORAGE_KEY = 'nicchyo-fridge-items';
 
 type BagItem = {
@@ -27,12 +29,7 @@ export const SHOPPING_SEGMENTS: ShoppingSegment[] = [
 function loadBagItems(): BagItem[] {
   if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
+  return safeJsonParse<BagItem[]>(raw, []);
 }
 
 function normalize(text: string) {
