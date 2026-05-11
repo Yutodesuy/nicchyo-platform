@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import type { CSSProperties, RefObject } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -113,12 +114,7 @@ function findIngredientMatch(name: string) {
 function loadBagItems(): BagItem[] {
   if (typeof window === "undefined") return [];
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
+  return safeJsonParse<BagItem[]>(raw, []);
 }
 
 function useCenterBounceTrigger(
@@ -1408,6 +1404,5 @@ export default function ShopDetailBanner({
     </div>
   );
 }
-
 
 
