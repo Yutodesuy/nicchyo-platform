@@ -473,13 +473,13 @@ export default async function AdminDashboardPage() {
   ];
 
   const latestVendorRows = Array.isArray(latestVendorsResult.data)
-    ? (latestVendorsResult.data as unknown as VendorActivityRow[])
+    ? (latestVendorsResult.data as VendorActivityRow[])
     : [];
   const latestContentRows = Array.isArray(latestContentsResult.data)
-    ? (latestContentsResult.data as unknown as ContentActivityRow[])
+    ? (latestContentsResult.data as ContentActivityRow[])
     : [];
   const latestLandmarkRows = Array.isArray(latestLandmarksResult.data)
-    ? (latestLandmarksResult.data as unknown as LandmarkActivityRow[])
+    ? (latestLandmarksResult.data as LandmarkActivityRow[])
     : [];
 
   const recentActivities: ActivityItem[] = [

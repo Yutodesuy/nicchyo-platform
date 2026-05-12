@@ -6,7 +6,8 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { createClient } from "@/utils/supabase/client";
 import { AdminLayout, AdminPageHeader, EmptyState } from "@/components/admin";
 import { showToast } from "@/lib/admin/toast";
-import { Loader2, Trash2, Image, Clock, Search } from "lucide-react";
+import NextImage from "next/image";
+import { Loader2, Trash2, Image as ImageIcon, Clock, Search } from "lucide-react";
 
 type ContentStatus = "active" | "expired";
 
@@ -70,7 +71,7 @@ export default function AdminContentPage() {
 
     const now = new Date();
     setContents(
-      (data as unknown as DbRow[]).map((r) => ({
+      (data as DbRow[]).map((r) => ({
         id: r.id,
         vendor_id: r.vendor_id,
         shop_name: r.vendors?.shop_name ?? "名称未設定",
@@ -196,14 +197,16 @@ export default function AdminContentPage() {
               >
                 {/* サムネイル */}
                 {c.image_url ? (
-                  <img
+                  <NextImage
                     src={c.image_url}
                     alt=""
+                    width={64}
+                    height={64}
                     className="h-16 w-16 shrink-0 rounded-lg object-cover"
                   />
                 ) : (
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                    <Image size={20} className="text-slate-400" />
+                    <ImageIcon size={20} className="text-slate-400" />
                   </div>
                 )}
 

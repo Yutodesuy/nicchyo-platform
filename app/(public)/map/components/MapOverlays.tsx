@@ -2,6 +2,7 @@
 
 import { Fragment, memo, useCallback, useEffect, useState } from "react";
 import type { ComponentType } from "react";
+import type { OptimizedShopLayerWithClusteringProps } from "./OptimizedShopLayerWithClustering";
 import { CircleMarker, Marker, Pane, Popup, Rectangle, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
@@ -76,8 +77,7 @@ export const MapOverlays = memo(function MapOverlays({
   shopsWithIngredients: Shop[];
   recipeIngredients: Array<{ name: string; icon: string }>;
   onRecipeShopClick: (shop: Shop) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  OptimizedShopLayerWithClustering: ComponentType<any>;
+  OptimizedShopLayerWithClustering: ComponentType<OptimizedShopLayerWithClusteringProps>;
 }) {
   const map = useMap();
   const handleRoadTap = useCallback((latlng: import("leaflet").LatLng) => {

@@ -17,7 +17,7 @@ import { generateShopMarkerHtml } from '../utils/markerHtmlGenerator';
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-interface OptimizedShopLayerWithClusteringProps {
+export interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
   onShopClick: (shop: Shop, origin?: ShopBannerOrigin) => void;
   onChunkProgress?: (processed: number, total: number, done: boolean) => void;
@@ -305,7 +305,7 @@ function OptimizedShopLayerWithClustering({
 
     clusterGroupRef.current = markers;
 
-    const createCompactIcon = (shop: Shop) => {
+    const createCompactIcon = (_shop: Shop) => {
       return L.divIcon({
         html: `
           <div class="shop-marker-compact-wrapper">
@@ -561,14 +561,18 @@ function OptimizedShopLayerWithClustering({
 
     map.addLayer(markers);
 
+    const markersMap = markersRef.current;
+    const fullIcons = fullIconsRef.current;
+    const midIcons = midIconsRef.current;
+    const compactIcons = compactIconsRef.current;
     return () => {
       map.off('zoomend', updateMarkerDensity);
       map.removeLayer(markers);
       clusterGroupRef.current = null;
-      markersRef.current.clear();
-      fullIconsRef.current.clear();
-      midIconsRef.current.clear();
-      compactIconsRef.current.clear();
+      markersMap.clear();
+      fullIcons.clear();
+      midIcons.clear();
+      compactIcons.clear();
     };
   }, [map, onChunkProgress, onShopClick, shops]);
 
