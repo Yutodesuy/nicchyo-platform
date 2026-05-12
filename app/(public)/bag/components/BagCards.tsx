@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import Image from "next/image";
 import { CheckCircle2, Circle, ClipboardList, Edit2, Map as MapIcon, Package, Plus, Store } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -137,8 +138,7 @@ export function BagGroupSection({
           <div className="flex min-w-0 items-start gap-3">
             <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/80 bg-white shadow-sm">
               {group.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={group.imageUrl} alt="" className="h-full w-full object-cover" />
+                <Image src={group.imageUrl} alt="" width={44} height={44} className="h-full w-full object-cover" />
               ) : group.isOther ? (
                 <Package size={18} className="text-stone-500" />
               ) : (

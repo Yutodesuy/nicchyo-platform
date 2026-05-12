@@ -61,7 +61,7 @@ function pathLabel(path: string): { label: string; sub: string } {
 
 // ---- types ----
 type PageAnalyticsRow = { visit_date: string; visitor_key: string; path: string; duration_seconds: number | null; user_role: string | null };
-type ShopViewRow = { vendor_id: string; source: string; vendors: { shop_name: string | null } | null };
+type ShopViewRow = { vendor_id: string; source: string | null; vendors: { shop_name: string | null } | null };
 type SearchLogRow = { keyword: string; searched_at: string };
 type ConsultLogRow = { intent_category: string | null; consulted_at: string };
 type VendorCatRow = { categories: { name: string } | null };
@@ -163,7 +163,7 @@ export default async function AdminAnalyticsPage() {
     const name = r.vendors?.shop_name ?? r.vendor_id;
     const entry = shopMap.get(r.vendor_id) ?? { name, views: 0, sourceMap: {} };
     entry.views++;
-    entry.sourceMap[r.source] = (entry.sourceMap[r.source] ?? 0) + 1;
+    if (r.source) entry.sourceMap[r.source] = (entry.sourceMap[r.source] ?? 0) + 1;
     shopMap.set(r.vendor_id, entry);
   }
   const topShops = Array.from(shopMap.values())

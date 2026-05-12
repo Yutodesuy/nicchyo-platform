@@ -1,3 +1,5 @@
+import { safeJsonParse } from "./utils/safeJsonParse";
+
 export type SearchMapPayload = {
   ids: number[];
   label: string;
@@ -17,15 +19,10 @@ export function saveSearchMapPayload(payload: SearchMapPayload) {
 
 export function loadSearchMapPayload(): SearchMapPayload | null {
   if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SEARCH_MAP_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SearchMapPayload;
-    if (!Array.isArray(parsed?.ids) || typeof parsed?.label !== "string") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const raw = localStorage.getItem(SEARCH_MAP_STORAGE_KEY);
+  const parsed = safeJsonParse<SearchMapPayload | null>(raw, null);
+  if (!parsed || !Array.isArray(parsed.ids) || typeof parsed.label !== "string") return null;
+  return parsed;
 }
 
 export function saveAiMapPayload(payload: SearchMapPayload) {
@@ -48,13 +45,8 @@ export function clearSearchMapPayload() {
 
 export function loadAiMapPayload(): SearchMapPayload | null {
   if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(AI_MAP_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SearchMapPayload;
-    if (!Array.isArray(parsed?.ids) || typeof parsed?.label !== "string") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const raw = localStorage.getItem(AI_MAP_STORAGE_KEY);
+  const parsed = safeJsonParse<SearchMapPayload | null>(raw, null);
+  if (!parsed || !Array.isArray(parsed.ids) || typeof parsed.label !== "string") return null;
+  return parsed;
 }

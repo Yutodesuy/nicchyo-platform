@@ -53,7 +53,9 @@ export type ProductSale = {
   vendor_id: string;
   product_name: string;
   quantity: number;
-  date: string;
+  sale_date: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type HourlyData = {

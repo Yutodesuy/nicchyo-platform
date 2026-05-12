@@ -1,4 +1,5 @@
 import type { Shop, ShopEditableData } from "@/app/(public)/map/types/shopData";
+import { safeJsonParse } from "./utils/safeJsonParse";
 
 export const SHOP_EDITS_STORAGE_KEY = "nicchyo-shop-edits";
 export const SHOP_EDITS_UPDATED_EVENT = "nicchyo-shop-edits-updated";
@@ -8,15 +9,8 @@ type ShopEditsMap = Record<string, Partial<ShopEditableData>>;
 function readEditsMap(): ShopEditsMap {
   if (typeof window === "undefined") return {};
   const raw = localStorage.getItem(SHOP_EDITS_STORAGE_KEY);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") {
-      return parsed as ShopEditsMap;
-    }
-  } catch {
-    // ignore parse errors
-  }
+  const parsed = safeJsonParse<unknown>(raw, null);
+  if (parsed && typeof parsed === "object") return parsed as ShopEditsMap;
   return {};
 }
 
