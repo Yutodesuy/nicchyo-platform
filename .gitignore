@@ -145,6 +145,5 @@ supabase_backup_*.sql
 # Playwright テスト結果
 test-results/
 *.pdf
-
 # Claude Code local settings (machine-specific, not for sharing)
 .claude/settings.local.json
