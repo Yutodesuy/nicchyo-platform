@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /c/Users/miyuk/nicchyo-platform && npx tsc --noEmit --skipLibCheck 2>&1 | grep -E 'error TS|Found [0-9]+ error' | head -10 || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /c/Users/miyuk/nicchyo-platform && git diff --stat HEAD 2>/dev/null | tail -3 || true"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "everything-claude-code@everything-claude-code": true
+  }
+}

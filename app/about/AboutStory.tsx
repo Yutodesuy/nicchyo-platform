@@ -3,9 +3,60 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
 import { AboutIcon } from "./AboutIcon";
-import { aboutSlides } from "./slides";
+import { aboutSlides, type SlideRichContent } from "./slides";
+
+function RichContent({ content }: { content: SlideRichContent }) {
+  if (content.type === "painPoints") {
+    return (
+      <div className="mb-8 flex w-full max-w-sm flex-col gap-3 text-left">
+        {content.items.map((p, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+            <span className="text-2xl">{p.emoji}</span>
+            <p className="text-sm font-semibold text-gray-700 leading-snug">{p.text}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (content.type === "characters") {
+    return (
+      <div className="mb-8 grid w-full max-w-sm grid-cols-2 gap-3">
+        {content.items.map((c, i) => (
+          <div key={i} className={`flex flex-col items-center gap-2 rounded-2xl ${c.bg} p-3 text-center`}>
+            <div className="h-14 w-14 overflow-hidden rounded-full bg-white shadow ring-2 ring-white">
+              <Image src={c.img} alt={c.name} width={56} height={56} className="h-full w-full object-cover" />
+            </div>
+            <p className="text-xs font-extrabold text-gray-800">{c.name}</p>
+            <p className="text-[10px] font-semibold text-amber-600">{c.role}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (content.type === "achievements") {
+    return (
+      <div className="mb-8 flex w-full max-w-sm flex-col gap-3">
+        {content.items.map((a, i) => (
+          <div key={i} className="flex items-center gap-4 rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+            <span className="text-3xl">{a.emoji}</span>
+            <div>
+              <p className="text-[11px] font-semibold text-gray-400">{a.label}</p>
+              <p className="text-lg font-extrabold text-gray-900 leading-tight">{a.value}</p>
+              <p className="text-[11px] text-gray-400">{a.sub}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function AboutStory() {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,7 +90,7 @@ export default function AboutStory() {
 
       {/* Close Button */}
       <Link
-        href="/"
+        href="/map"
         className="fixed top-6 right-6 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow-sm backdrop-blur-sm transition hover:bg-white"
         aria-label="Close"
       >
@@ -64,20 +115,25 @@ export default function AboutStory() {
               </div>
             )}
             {!currentSlide.iconName && currentSlide.id === "intro" && (
-               <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-amber-500 text-white shadow-md font-bold text-xl">
-                 nicchyo
-               </div>
+              <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-amber-500 text-white shadow-md font-bold text-xl">
+                nicchyo
+              </div>
             )}
 
             {/* Typography */}
-            <h2 className="mb-6 text-3xl font-bold leading-tight text-gray-900 md:text-4xl">
+            <h2 className="mb-4 text-3xl font-bold leading-tight text-gray-900 md:text-4xl">
               {currentSlide.title}
             </h2>
-            <p className="mb-10 text-xl font-medium leading-relaxed text-gray-700 md:text-2xl">
+            <p className="mb-8 text-xl font-medium leading-relaxed text-gray-700 md:text-2xl">
               {currentSlide.description}
             </p>
 
-            {/* Slide Action Button (if specific to slide) */}
+            {/* Rich Content */}
+            {currentSlide.richContent && (
+              <RichContent content={currentSlide.richContent} />
+            )}
+
+            {/* Slide Action Button */}
             {currentSlide.action && (
               <Link
                 href={currentSlide.action.href}
@@ -124,14 +180,14 @@ export default function AboutStory() {
             }`}
             aria-label="Next slide"
           >
-             {currentIndex === aboutSlides.length - 1 ? (
-                 <span>完了</span>
-             ) : (
-                <>
-                    <span>次へ</span>
-                    <ArrowRight className="h-5 w-5" />
-                </>
-             )}
+            {currentIndex === aboutSlides.length - 1 ? (
+              <span>完了</span>
+            ) : (
+              <>
+                <span>次へ</span>
+                <ArrowRight className="h-5 w-5" />
+              </>
+            )}
           </button>
         </div>
       </div>

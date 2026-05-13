@@ -1,8 +1,11 @@
+import { safeJsonParse } from "./utils/safeJsonParse";
+
 export type KotoduteNote = {
   id: string;
   shopId: number | "all";
   text: string;
   createdAt: number;
+  authorEmoji?: string;
 };
 
 const STORAGE_KEY = "nicchyo-kotodute-notes";
@@ -32,14 +35,9 @@ const seed: KotoduteNote[] = [
 export function loadKotodute(): KotoduteNote[] {
   if (typeof window === "undefined") return seed;
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return seed;
-  try {
-    const parsed = JSON.parse(raw) as KotoduteNote[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return seed;
-    return parsed;
-  } catch {
-    return seed;
-  }
+  const parsed = safeJsonParse<KotoduteNote[]>(raw, []);
+  if (!Array.isArray(parsed) || parsed.length === 0) return seed;
+  return parsed;
 }
 
 export function saveKotodute(notes: KotoduteNote[]) {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import type { Shop } from '../../map/data/shops';
 import ShopResultCard from './ShopResultCard';
 import EmptyState from './EmptyState';
@@ -8,14 +7,15 @@ import { Map } from 'lucide-react';
 
 interface SearchResultsProps {
   shops: Shop[];
+  couponVendorIds?: Set<string>;
   totalCount: number;
+  currentPage: number;
+  totalPages: number;
   hasQuery: boolean;
   categories: string[];
   favoriteShopIds: number[];
-  hasMore: boolean;
-  onLoadMore?: () => void;
+  onPageSelect?: (page: number) => void;
   onCategoryClick?: (category: string) => void;
-  onKeywordClick?: (keyword: string) => void;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   onOpenMap?: () => void;
@@ -29,37 +29,22 @@ interface SearchResultsProps {
  */
 export default function SearchResults({
   shops,
+  couponVendorIds,
   totalCount,
+  currentPage,
+  totalPages,
   hasQuery,
   categories,
   favoriteShopIds,
-  hasMore,
-  onLoadMore,
+  onPageSelect,
   onCategoryClick,
-  onKeywordClick,
   onToggleFavorite,
   onSelectShop,
   onOpenMap,
   mapLabel,
   enableSearchMapHighlight = false,
 }: SearchResultsProps) {
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!hasMore || !onLoadMore || !sentinelRef.current) return;
-    const target = sentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasMore, onLoadMore]);
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   // 結果がない場合は空状態を表示
   if (shops.length === 0) {
@@ -68,21 +53,21 @@ export default function SearchResults({
         hasQuery={hasQuery}
         categories={categories}
         onCategoryClick={onCategoryClick}
-        onKeywordClick={onKeywordClick}
       />
     );
   }
 
   return (
     <>
-      <div className="rounded-2xl border-2 border-orange-300 bg-white/95 p-4 shadow-sm pb-16 md:pb-4">
+      <div className="rounded-[1.75rem] border border-amber-200 bg-white/95 p-5 shadow-sm pb-16 md:pb-5">
         {/* ヘッダー: タイトルと結果件数 */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
               検索結果
             </p>
-            <h2 className="text-lg font-bold text-gray-900">お店一覧</h2>
+            <h2 className="text-xl font-bold text-gray-900">お店一覧</h2>
+            <p className="mt-1 text-xs text-gray-500">関連度の高いお店を先に表示しています</p>
           </div>
           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-100">
             {totalCount}件
@@ -94,19 +79,20 @@ export default function SearchResults({
           <button
             type="button"
             onClick={onOpenMap}
-            className="mt-4 hidden w-full md:block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
+            className="mt-4 hidden w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100"
           >
             マップで見る{mapLabel ? `（${mapLabel}）` : ''}
           </button>
         )}
 
         {/* 検索結果グリッド */}
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 space-y-3">
           {shops.map((shop) => (
             <ShopResultCard
               key={shop.id}
               shop={shop}
               isFavorite={favoriteShopIds.includes(shop.id)}
+              hasCoupon={!!shop.vendorId && (couponVendorIds?.has(shop.vendorId) ?? false)}
               onToggleFavorite={onToggleFavorite}
               onSelectShop={onSelectShop}
               enableSearchMapHighlight={enableSearchMapHighlight}
@@ -114,12 +100,31 @@ export default function SearchResults({
           ))}
         </div>
 
-        {hasMore && (
-          <div
-            ref={sentinelRef}
-            className="mt-6 flex items-center justify-center py-6 text-xs text-gray-500"
-          >
-            読み込み中...
+        {totalCount > 10 && (
+          <div className="mt-6 flex flex-col items-center gap-3 border-t border-amber-100 pt-5">
+            <p className="text-xs font-medium text-gray-500">
+              {currentPage} / {totalPages} ページ
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {pageNumbers.map((pageNumber) => {
+                const isActive = pageNumber === currentPage;
+                return (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    onClick={() => onPageSelect?.(pageNumber)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`min-w-10 rounded-full border px-3 py-2 text-sm font-semibold shadow-sm transition ${
+                      isActive
+                        ? "border-amber-200 bg-amber-600 text-white"
+                        : "border-amber-200 bg-white text-amber-900 hover:bg-amber-50"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

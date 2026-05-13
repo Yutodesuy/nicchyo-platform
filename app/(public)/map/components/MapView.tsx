@@ -15,50 +15,46 @@
 
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useCallback, Fragment, memo } from "react";
-import { MapContainer, useMap, Tooltip, CircleMarker, Pane, Rectangle, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from "react";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
-import { Navigation, Plus, Minus } from "lucide-react";
+import { Navigation } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { shops as baseShops, Shop } from "../data/shops";
 import ShopDetailBanner from "./ShopDetailBanner";
-import RoadOverlay from "./RoadOverlay";
 import BackgroundOverlay from "./BackgroundOverlay";
 import UserLocationMarker from "./UserLocationMarker";
 import MapAgentAssistant from "./MapAgentAssistant";
 import OptimizedShopLayerWithClustering from "./OptimizedShopLayerWithClustering";
+import { MapOverlays, getVisibleMajorPlaceLabels } from "./MapOverlays";
 import { ingredientCatalog, ingredientIcons, type Recipe } from "../../../../lib/recipes";
 import {
-  getRoadBounds,
-  getNearestPointOnRoad,
-  getSundayMarketBounds,
   getRecommendedZoomBounds,
 } from '../config/roadConfig';
-import { getZoomConfig } from '../utils/zoomCalculator';
 import { FAVORITE_SHOPS_KEY, FAVORITE_SHOPS_UPDATED_EVENT, loadFavoriteShopIds } from "../../../../lib/favoriteShops";
-import {
-  applyShopEdits,
-  SHOP_EDITS_STORAGE_KEY,
-  SHOP_EDITS_UPDATED_EVENT,
-} from "../../../../lib/shopEdits";
 import {
   getViewModeForZoom,
   ViewMode,
-  canShowShopDetailBanner,
 } from '../config/displayConfig';
 import { useBag } from "../../../../lib/storage/BagContext";
-import { normalizeRotationDeg } from "../utils/autoRotation";
-
-// Map bounds (Sunday market)
-const ROAD_BOUNDS = getRoadBounds();
-const KOCHI_SUNDAY_MARKET: [number, number] = [
-  (ROAD_BOUNDS[0][0] + ROAD_BOUNDS[1][0]) / 2, // latitude center
-  (ROAD_BOUNDS[0][1] + ROAD_BOUNDS[1][1]) / 2, // longitude center
-];
-
-// Sunday Market area boundaries (restrict pan operations to this area)
-const SUNDAY_MARKET_BOUNDS = getSundayMarketBounds();
+import type { Landmark } from "../types/landmark";
+import type { MapRoute } from "../types/mapRoute";
+import {
+  getAutoRotationForVisibleRoad,
+  normalizeRotationDeg,
+} from "../utils/autoRotation";
+import {
+  expandBoundsByMeters,
+  getDefaultMapRouteConfig,
+  getDefaultMapRoutePoints,
+  getRouteBounds,
+  getRouteCenter,
+  normalizeMapRoutePoints,
+  projectPointOntoRoute,
+} from "../utils/mapRouteGeometry";
+import { useMapGestures } from "../hooks/useMapGestures";
+import { useMapCameraController } from "../hooks/useMapCameraController";
+import { getShopBannerImage } from "../../../../lib/shopImages";
 
 function findIngredientMatch(name: string) {
   const lower = name.trim().toLowerCase();
@@ -79,153 +75,9 @@ function findIngredientMatch(name: string) {
 // Recommended zoom bounds (optimal range for Sunday Market)
 const ZOOM_BOUNDS = getRecommendedZoomBounds();
 
-// Zoom config by shop count
-const BASE_SHOP_COUNT = baseShops.length || 300;
-const ZOOM_CONFIG = getZoomConfig(BASE_SHOP_COUNT);
 const MIN_ZOOM = ZOOM_BOUNDS.min;
 const MAX_ZOOM = ZOOM_BOUNDS.max;
 const INITIAL_ZOOM = MAX_ZOOM;
-
-// Allow a slight pan margin outside road bounds
-const MAX_BOUNDS: [[number, number], [number, number]] = SUNDAY_MARKET_BOUNDS;
-
-const KOCHI_CASTLE_MUSEUM_ASPECT = 1152 / 648;
-const KOCHI_CASTLE_MUSEUM_BASE_WIDTH = 0.0036;
-const KOCHI_CASTLE_MUSEUM_SCALE = 0.7;
-const KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE = 1.5;
-const KOCHI_CASTLE_MUSEUM_WIDTH = KOCHI_CASTLE_MUSEUM_BASE_WIDTH * KOCHI_CASTLE_MUSEUM_SCALE;
-const KOCHI_CASTLE_MUSEUM_HEIGHT = KOCHI_CASTLE_MUSEUM_WIDTH / KOCHI_CASTLE_MUSEUM_ASPECT;
-const KOCHI_CASTLE_MUSEUM_CENTER_LAT = 33.5599801;
-const KOCHI_CASTLE_MUSEUM_CENTER_LNG = 133.5340747;
-const OTEPIA_CENTER_LAT = 33.5605212;
-const OTEPIA_CENTER_LNG = 133.5371029;
-const OTEPIA_SCALE = 1.3;
-const OTEPIA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * OTEPIA_SCALE;
-const OTEPIA_HEIGHT = KOCHI_CASTLE_MUSEUM_HEIGHT * OTEPIA_SCALE;
-const KOCHI_CASTLE_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (4 / 1.5);
-const KOCHI_CASTLE_HEIGHT = KOCHI_CASTLE_WIDTH / 1.5;
-const KOCHI_CASTLE_CENTER_LAT = 33.5615208;
-const KOCHI_CASTLE_CENTER_LNG = 133.5311987;
-const TINTIN_DENSHA_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * (1.6 / 1.5);
-const TINTIN_DENSHA_HEIGHT = TINTIN_DENSHA_WIDTH / 2;
-const TINTIN_DENSHA_CENTER_LAT = 33.5613531;
-const TINTIN_DENSHA_CENTER_LNG = 133.543104;
-const KOCHI_STATION_ASPECT = 1536 / 1024;
-const KOCHI_STATION_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.9;
-const KOCHI_STATION_HEIGHT = KOCHI_STATION_WIDTH / KOCHI_STATION_ASPECT;
-const KOCHI_STATION_CENTER_LAT = 33.5671869;
-const KOCHI_STATION_CENTER_LNG = 133.5436682;
-const OHTEMAE_SCHOOL_ASPECT = 1536 / 1024;
-const OHTEMAE_SCHOOL_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
-const OHTEMAE_SCHOOL_HEIGHT = OHTEMAE_SCHOOL_WIDTH / OHTEMAE_SCHOOL_ASPECT;
-const OHTEMAE_SCHOOL_CENTER_LAT = 33.5616992;
-const OHTEMAE_SCHOOL_CENTER_LNG = 133.5365687;
-const HIROME_MARKET_ASPECT = 1536 / 1024;
-const HIROME_MARKET_WIDTH = KOCHI_CASTLE_MUSEUM_WIDTH * 0.95;
-const HIROME_MARKET_HEIGHT = HIROME_MARKET_WIDTH / HIROME_MARKET_ASPECT;
-const HIROME_MARKET_CENTER_LAT = 33.5605993;
-const HIROME_MARKET_CENTER_LNG = 133.535527;
-const LANDMARK_PIXEL_BASE = 192;
-const LANDMARK_SPECS: Array<{
-  key: string;
-  name: string;
-  description: string;
-  url: string;
-  lat: number;
-  lng: number;
-  widthPx: number;
-  heightPx: number;
-}> = [
-  {
-    key: "museum",
-    name: "高知県立高知城歴史博物館",
-    description: "土佐藩や高知城の歴史を学べる博物館。企画展や収蔵資料の展示も行われます。",
-    url: "/images/maps/elements/buildings/KochiCastleMusium2.png",
-    lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT,
-    lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * KOCHI_CASTLE_MUSEUM_DISPLAY_SCALE) /
-      KOCHI_CASTLE_MUSEUM_ASPECT,
-  },
-  {
-    key: "otepia",
-    name: "オーテピア",
-    description: "図書館・科学館・点字図書館が入る複合施設。観光の立ち寄り先としても使いやすい場所です。",
-    url: "/images/maps/elements/buildings/Ohtepia.png",
-    lat: OTEPIA_CENTER_LAT,
-    lng: OTEPIA_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * OTEPIA_SCALE) /
-      KOCHI_CASTLE_MUSEUM_ASPECT,
-  },
-  {
-    key: "castle",
-    name: "高知城",
-    description: "江戸時代の天守と本丸御殿が残る高知の代表的な史跡。日曜市周辺のランドマークです。",
-    url: "/images/maps/elements/buildings/KochiCastle.png",
-    lat: KOCHI_CASTLE_CENTER_LAT,
-    lng: KOCHI_CASTLE_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5),
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (4 / 1.5)) / 1.5,
-  },
-  {
-    key: "densha",
-    name: "路面電車",
-    description: "高知市内を走る路面電車。街歩きの目印としても分かりやすい移動インフラです。",
-    url: "/images/maps/elements/buildings/Train.png",
-    lat: TINTIN_DENSHA_CENTER_LAT,
-    lng: TINTIN_DENSHA_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5),
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * (1.6 / 1.5)) / 2,
-  },
-  {
-    key: "station",
-    name: "高知駅",
-    description: "JR高知駅。県外から日曜市へ向かうときの主要な玄関口です。",
-    url: "/images/maps/elements/buildings/kochistation.png",
-    lat: KOCHI_STATION_CENTER_LAT,
-    lng: KOCHI_STATION_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9,
-    heightPx: (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.9) / KOCHI_STATION_ASPECT,
-  },
-  {
-    key: "ohtemae-school",
-    name: "追手前高校",
-    description: "日曜市エリア近くにある高校で、地図上では周辺位置を把握する目印になります。",
-    url: "/images/maps/elements/buildings/ohtemae-school.png",
-    lat: OHTEMAE_SCHOOL_CENTER_LAT,
-    lng: OHTEMAE_SCHOOL_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / OHTEMAE_SCHOOL_ASPECT,
-  },
-  {
-    key: "hirome-market",
-    name: "ひろめ市場",
-    description: "高知の名物グルメが集まる人気スポット。日曜市と合わせて回りやすい観光拠点です。",
-    url: "/images/maps/elements/buildings/hirome-market.png",
-    lat: HIROME_MARKET_CENTER_LAT,
-    lng: HIROME_MARKET_CENTER_LNG,
-    widthPx: LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95,
-    heightPx:
-      (LANDMARK_PIXEL_BASE * KOCHI_CASTLE_MUSEUM_SCALE * 0.95) / HIROME_MARKET_ASPECT,
-  },
-];
-const MAJOR_PLACE_LABELS: Array<{ name: string; lat: number; lng: number }> = [
-  { name: "高知駅", lat: KOCHI_STATION_CENTER_LAT, lng: KOCHI_STATION_CENTER_LNG },
-  { name: "高知城", lat: KOCHI_CASTLE_CENTER_LAT, lng: KOCHI_CASTLE_CENTER_LNG },
-  { name: "オーテピア", lat: OTEPIA_CENTER_LAT, lng: OTEPIA_CENTER_LNG },
-  { name: "歴史博物館", lat: KOCHI_CASTLE_MUSEUM_CENTER_LAT, lng: KOCHI_CASTLE_MUSEUM_CENTER_LNG },
-  { name: "ひろめ市場", lat: HIROME_MARKET_CENTER_LAT, lng: HIROME_MARKET_CENTER_LNG },
-  { name: "追手前高校", lat: OHTEMAE_SCHOOL_CENTER_LAT, lng: OHTEMAE_SCHOOL_CENTER_LNG },
-  { name: "チンチン電車", lat: TINTIN_DENSHA_CENTER_LAT, lng: TINTIN_DENSHA_CENTER_LNG },
-];
-const MIN_ZOOM_LABEL_NAMES = new Set(["高知城", "高知駅", "チンチン電車"]);
-const MIN_ZOOM_LANDMARK_KEYS = new Set(["castle", "station", "densha"]);
-const MIN_ZOOM_ONLY_LABEL = { name: "日曜市", lat: 33.56145, lng: 133.5383 };
-
 const AGENT_STORAGE_KEY = "nicchyo-map-agent-plan";
 const BASEMAP_TILE_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png";
 const BASEMAP_ATTRIBUTION =
@@ -246,26 +98,357 @@ function isIngredientName(name: string) {
   );
 }
 
-// ===== Mobile zoom buttons =====
-function MapControls({
-  map,
-  isMobile,
-  isTracking,
-  onToggleTracking,
+// ===== 時間帯に応じたアンビエントオーバーレイ =====
+function TimeAmbientOverlay() {
+  const hour = new Date().getHours();
+
+  let background: string | null = null;
+  if (hour >= 6 && hour < 9) {
+    // 朝 — 朝霧・柔らかい白い光
+    background = 'linear-gradient(to bottom, rgba(255,252,235,0.18), rgba(255,248,220,0.07))';
+  } else if (hour >= 14 && hour < 17) {
+    // 昼後半 — 陽光の暖かみ
+    background = 'rgba(255,195,70,0.06)';
+  } else if (hour >= 17 && hour < 19) {
+    // 夕方 — 橙色の斜光
+    background = 'linear-gradient(to bottom, rgba(255,140,30,0.12), rgba(255,90,10,0.05))';
+  }
+
+  if (!background) return null;
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[500]"
+      style={{ background }}
+    />
+  );
+}
+
+// ===== テーパー型縦ズームスライダー =====
+// 上端（拡大側）が太く、下端（縮小側）が細いくさび形のトラックで操作方向を直感的に伝える
+const VZ_PAD = 14;        // 上下パディング（サムがはみ出ないように）
+const VZ_TRACK_H = 156;   // トラック高さ
+const VZ_SVG_W = 34;
+const VZ_SVG_H = VZ_TRACK_H + VZ_PAD * 2;
+const VZ_WIDE = 22;       // 上端（拡大）の幅
+const VZ_NARROW = 8.5;    // 下端（縮小）の幅
+const VZ_CX = VZ_SVG_W / 2;
+const VZ_L_TOP = VZ_CX - VZ_WIDE / 2;
+const VZ_R_TOP = VZ_CX + VZ_WIDE / 2;
+const VZ_L_BOT = VZ_CX - VZ_NARROW / 2;
+const VZ_R_BOT = VZ_CX + VZ_NARROW / 2;
+
+function VerticalZoomSlider({
+  value,
+  min,
+  max,
+  onValueChange,
 }: {
-  map: L.Map | null;
-  isMobile: boolean;
-  isTracking: boolean;
-  onToggleTracking: () => void;
+  value: number;
+  min: number;
+  max: number;
+  onValueChange: (v: number) => void;
 }) {
-  // Mobile: Only tracking button at top-left
-  if (isMobile) {
-    return (
+  const svgRef = useRef<SVGSVGElement>(null);
+  const isDragging = useRef(false);
+
+  const trackTop = VZ_PAD;
+  const trackBot = VZ_PAD + VZ_TRACK_H;
+
+  const pct = (value - min) / (max - min);           // 0=最小, 1=最大
+  const thumbY = trackTop + VZ_TRACK_H * (1 - pct); // 上=拡大, 下=縮小
+
+  // アンバー塗り: サムから下端まで（塗りが多い＝よりズームインしている）
+  const fillRatio = (thumbY - trackTop) / VZ_TRACK_H;
+  const fillTL = VZ_L_TOP + (VZ_L_BOT - VZ_L_TOP) * fillRatio;
+  const fillTR = VZ_R_TOP + (VZ_R_BOT - VZ_R_TOP) * fillRatio;
+  const trackPts = `${VZ_L_TOP},${trackTop} ${VZ_R_TOP},${trackTop} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+  const fillPts  = `${fillTL},${thumbY} ${fillTR},${thumbY} ${VZ_R_BOT},${trackBot} ${VZ_L_BOT},${trackBot}`;
+
+  const getValueFromY = useCallback(
+    (clientY: number): number => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return value;
+      const relY = Math.max(0, Math.min(VZ_TRACK_H, clientY - rect.top - VZ_PAD));
+      return min + (1 - relY / VZ_TRACK_H) * (max - min);
+    },
+    [min, max, value],
+  );
+
+  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = true;
+    svgRef.current?.setPointerCapture(e.pointerId);
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isDragging.current) return;
+    onValueChange(getValueFromY(e.clientY));
+    e.stopPropagation();
+  };
+  const onPointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    isDragging.current = false;
+    e.stopPropagation();
+  };
+
+  return (
+    <svg
+      ref={svgRef}
+      width={VZ_SVG_W}
+      height={VZ_SVG_H}
+      style={{ cursor: "ns-resize", touchAction: "none", display: "block" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      role="slider"
+      aria-label="ズーム"
+      aria-valuenow={value}
+      aria-valuemin={min}
+      aria-valuemax={max}
+    >
+      {/* グレーのトラック（くさび形） */}
+      <polygon points={trackPts} fill="#e5e7eb" />
+      {/* アンバー塗り（現在のズームレベルを表す） */}
+      <polygon points={fillPts} fill="#d97706" opacity="0.65" />
+      {/* サム */}
+      <circle cx={VZ_CX} cy={thumbY} r={8.5} fill="white" stroke="#d97706" strokeWidth="3" />
+    </svg>
+  );
+}
+
+// ===== Spotlight countdown bar: 2s amber progress bar shown during spotlight mode =====
+function SpotlightCountdownBar({ shopId }: { shopId: number }) {
+  return (
+    <div
+      key={shopId}
+      className="pointer-events-none absolute left-0 right-0 top-0 z-[1200] h-1 overflow-hidden"
+    >
+      <div className="h-full w-full origin-left bg-amber-400 opacity-80"
+        style={{ animation: "spotlight-drain 2s linear forwards" }}
+      />
+    </div>
+  );
+}
+
+// ===== Search results bottom sheet =====
+function SearchResultsSheet({
+  shops,
+  searchShopIds,
+  map,
+  onClearSearch,
+  badgeBottom,
+}: {
+  shops: Shop[];
+  searchShopIds: number[];
+  map: L.Map | null;
+  onClearSearch?: () => void;
+  badgeBottom?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [focusedId, setFocusedId] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartY = useRef<number | null>(null);
+
+  const searchShopSet = useMemo(() => new Set(searchShopIds), [searchShopIds]);
+  const searchShops = useMemo(() => {
+    const firstShopById = new Map<number, Shop>();
+    shops.forEach((shop) => {
+      if (searchShopSet.has(shop.id) && !firstShopById.has(shop.id)) {
+        firstShopById.set(shop.id, shop);
+      }
+    });
+
+    const orderedUniqueIds = Array.from(new Set(searchShopIds));
+    return orderedUniqueIds
+      .map((id) => firstShopById.get(id))
+      .filter((shop): shop is Shop => Boolean(shop));
+  }, [shops, searchShopIds, searchShopSet]);
+
+  // 検索結果が変わったらシートを閉じる
+  useEffect(() => {
+    setIsOpen(false);
+    setFocusedId(null);
+  }, [searchShopIds]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const handleRowTap = useCallback((shop: Shop) => {
+    if (!map) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setFocusedId(shop.id);
+    map.flyTo([shop.lat, shop.lng], map.getMaxZoom(), { animate: true, duration: 0.8, easeLinearity: 0.25 });
+    timerRef.current = setTimeout(() => {
+      setFocusedId(null);
+      timerRef.current = null;
+    }, 2000);
+    setIsOpen(false);
+  }, [map]);
+
+  const handleDragStart = (clientY: number) => { dragStartY.current = clientY; };
+  const handleDragEnd = (clientY: number) => {
+    if (dragStartY.current !== null && clientY - dragStartY.current > 60) setIsOpen(false);
+    dragStartY.current = null;
+  };
+
+  if (searchShops.length === 0) return null;
+
+  return (
+    <>
+      {focusedId != null && <SpotlightCountdownBar shopId={focusedId} />}
+
+      {/* バッジピル: 件数タップでシートを開く */}
+      {!isOpen && (
+        <div
+          className="absolute left-1/2 z-[1100] -translate-x-1/2 pointer-events-auto"
+          style={{ bottom: badgeBottom ?? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)' }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2.5 text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="shrink-0">
+              <circle cx="5.5" cy="5.5" r="4.5" stroke="white" strokeWidth="1.8"/>
+              <path d="M9 9l3 3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <span className="text-[13px] font-bold">{searchShops.length}件のお店</span>
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="shrink-0 opacity-80">
+              <path d="M1 5L5 1L9 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* 背景オーバーレイ */}
+      {isOpen && (
+        <div
+          className="absolute inset-0 z-[1620] bg-black/20 pointer-events-auto"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* ボトムシート本体 */}
       <div
-        className="absolute top-4 left-4 z-[1000]"
+        className={`absolute left-0 right-0 z-[1650] pointer-events-auto rounded-t-[1.75rem] bg-white shadow-2xl transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ bottom: 0, maxHeight: '42vh', display: 'flex', flexDirection: 'column' }}
+        onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+        onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
+      >
+        {/* ドラッグハンドル + ヘッダー */}
+        <div
+          className="shrink-0 cursor-grab active:cursor-grabbing"
+          onTouchStart={(e) => { e.stopPropagation(); handleDragStart(e.touches[0].clientY); }}
+          onTouchEnd={(e) => { e.stopPropagation(); handleDragEnd(e.changedTouches[0].clientY); }}
+        >
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-slate-300" />
+          </div>
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-2.5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Search Results</p>
+              <h3 className="text-base font-bold text-slate-900">{searchShops.length}件のお店</h3>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClearSearch?.(); setIsOpen(false); }}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-[12px] font-medium text-slate-600 active:bg-slate-200 transition-colors"
+            >
+              検索を解除
+            </button>
+          </div>
+        </div>
+
+        {/* 一覧は縦スクロール可能 */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
+          {searchShops.map((shop, i) => {
+            const bannerSeed = shop.position ?? shop.id;
+            const imageUrl = shop.images?.main ?? getShopBannerImage(shop.category, bannerSeed);
+            return (
+              <button
+                key={shop.id}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleRowTap(shop); }}
+                className={`flex w-full items-center gap-3 border-b border-slate-100/80 px-5 py-2.5 text-left transition-colors active:bg-amber-50 ${
+                  focusedId === shop.id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                }`}
+              >
+                <div className="shrink-0 h-10 w-10 overflow-hidden rounded-xl bg-slate-100">
+                  {imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={imageUrl} alt="" className="h-full w-full object-cover" draggable={false} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-bold leading-tight text-slate-900">{shop.name}</p>
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    {shop.category && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">{shop.category}</span>
+                    )}
+                    {shop.position && (
+                      <span className="text-[11px] text-slate-400">{shop.position}番</span>
+                    )}
+                  </div>
+                </div>
+                <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="shrink-0 text-slate-300">
+                  <path d="M1 1l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+// ===== Right-side controls: zoom slider (bottom) + tracking button (above nav bar) =====
+function MapControls({
+  map,
+  isTracking,
+  onToggleTracking,
+  currentZoom,
+  minZoom,
+  maxZoom,
+}: {
+  map: L.Map | null;
+  isTracking: boolean;
+  onToggleTracking: () => void;
+  currentZoom: number;
+  minZoom: number;
+  maxZoom: number;
+}) {
+  return (
+    <>
+      {/* 縦ズームスライダー（ナビバー直上） */}
+      <div
+        className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)-2rem)] right-4 z-[1000] flex flex-col items-center gap-1 rounded-2xl border border-amber-100/60 bg-white/95 px-2.5 py-3 shadow-card backdrop-blur"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
+      >
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">+</span>
+        <VerticalZoomSlider
+          value={currentZoom}
+          min={minZoom}
+          max={maxZoom}
+          onValueChange={(v) => map?.setZoom(v, { animate: false })}
+        />
+        <span className="select-none text-[12px] font-black leading-none text-amber-700 drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]">−</span>
+      </div>
+
+      {/* 現在地追跡ボタン（画面上部右） */}
+      <div
+        className="absolute right-4 top-28 z-[1000]"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => { e.stopPropagation(); }}
       >
         <button
           type="button"
@@ -273,76 +456,50 @@ function MapControls({
             e.stopPropagation();
             onToggleTracking();
           }}
-          className={`flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all active:scale-95 ${
-            isTracking ? "bg-blue-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+          className={`flex h-11 w-11 items-center justify-center rounded-full shadow-pop transition-all active:scale-95 ${
+            isTracking
+              ? "bg-amber-500 text-white hover:bg-amber-600"
+              : "border border-amber-100/60 bg-white/95 text-slate-600 shadow-card hover:bg-amber-50"
           }`}
           aria-label={isTracking ? "追従中" : "追従オフ"}
         >
-          <Navigation className={`h-6 w-6 ${isTracking ? "fill-current" : ""}`} />
+          <Navigation className={`h-5 w-5 ${isTracking ? "fill-current" : ""}`} />
         </button>
       </div>
-    );
-  }
+    </>
+  );
+}
 
-  // Desktop: Unified stack at top-left
+
+
+function MapZoomGuideToast({ message }: { message: string | null }) {
   return (
     <div
-      className="absolute top-4 left-4 z-[1000] flex flex-col overflow-hidden rounded-lg bg-white shadow-md ring-1 ring-gray-900/5"
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      className={`pointer-events-none absolute left-1/2 top-20 z-[1400] w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 transition-all duration-200 ${
+        message ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+      }`}
+      aria-live="polite"
+      aria-atomic="true"
     >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomIn();
-          }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームイン"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            map?.zoomOut();
-          }}
-        className="flex h-9 w-9 items-center justify-center border-b border-gray-100 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        aria-label="ズームアウト"
-      >
-        <Minus className="h-5 w-5" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleTracking();
-        }}
-        className={`flex h-9 w-9 items-center justify-center transition-colors ${
-          isTracking
-            ? "bg-blue-50 text-blue-600"
-            : "bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100"
-        }`}
-        aria-label={isTracking ? "追従中" : "追従オフ"}
-      >
-        <Navigation className={`h-4 w-4 ${isTracking ? "fill-current" : ""}`} />
-      </button>
+      <div className="rounded-full bg-slate-900/88 px-4 py-2 text-center text-sm font-medium text-white shadow-lg backdrop-blur">
+        {message ?? ""}
+      </div>
     </div>
   );
 }
 
 type MapViewProps = {
   shops?: Shop[];
+  landmarks?: Landmark[];
+  mapRoute?: MapRoute;
   initialShopId?: number;
+  openInitialShopBanner?: boolean;
   selectedRecipe?: Recipe;
   showRecipeOverlay?: boolean;
   onCloseRecipeOverlay?: () => void;
   agentOpen?: boolean;
   onAgentToggle?: (open: boolean) => void;
   searchShopIds?: number[];
-  searchLabel?: string;
   onMapReady?: () => void;
   eventTargets?: Array<{ id: string; lat: number; lng: number }>;
   highlightEventTargets?: boolean;
@@ -363,32 +520,26 @@ type MapViewProps = {
     }
   >;
   onZoomChange?: (zoom: number) => void;
+  suppressInitialLocationFocus?: boolean;
+  onShopSelect?: (shop: Shop) => void;
+  spotlightShopId?: number;
+  onClearSearch?: () => void;
+  couponEligibleVendorIds?: string[];
+  activeCouponTypeId?: string;
+  stampedVendorIds?: string[];
+  /** マップ座標系内にレンダリングするオーバーレイ（キャラクターなど） */
+  overlaySlot?: React.ReactNode;
+  /** trueのとき拡大縮小スライダーと検索バーを非表示にする */
+  hideMapUI?: boolean;
 };
 
-type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
+export type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
-const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
-const PAN_START_THRESHOLD_PX = 3;
+/** 18 <= zoom < 19 のとき丁目エリアマーカーを表示 */
+const OVERVIEW_ZONE_MIN_ZOOM = 17;
+const OVERVIEW_ZONE_MAX_ZOOM = 19;
 const SKIPPED_ZOOM_LEVELS = [18];
-const SKIPPED_ZOOM_TOLERANCE = 0.01;
-
-function getTouchDistance(
-  t0: { clientX: number; clientY: number },
-  t1: { clientX: number; clientY: number }
-): number {
-  return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-}
-
-function rotateVector(x: number, y: number, degrees: number): { x: number; y: number } {
-  const radians = (degrees * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  return {
-    x: x * cos - y * sin,
-    y: x * sin + y * cos,
-  };
-}
+const SKIPPED_ZOOM_TOLERANCE = 0.026; // step(0.05) の半分より少し大きく設定
 
 function MapZoomListener({ onZoomChange }: { onZoomChange?: (zoom: number) => void }) {
   const map = useMap();
@@ -419,8 +570,9 @@ function MapZoomConstraint() {
         (level) => Math.abs(zoom - level) <= SKIPPED_ZOOM_TOLERANCE
       );
       if (skippedZoom !== undefined) {
+        // スムーズスライダー対応: ±1 の大ジャンプをやめ、スキップゾーンを抜ける最小幅(0.1)だけ移動
         const targetZoom =
-          lastAcceptedZoom > zoom ? skippedZoom - 1 : skippedZoom + 1;
+          lastAcceptedZoom > zoom ? skippedZoom - 0.1 : skippedZoom + 0.1;
         map.setZoom(targetZoom, { animate: false });
         lastAcceptedZoom = targetZoom;
         return;
@@ -437,7 +589,11 @@ function MapZoomConstraint() {
   return null;
 }
 
-function MapZoomRoadSnapController() {
+function MapZoomRoadSnapController({
+  onSnapCenter,
+}: {
+  onSnapCenter: (center: L.LatLng) => [number, number] | null;
+}) {
   const map = useMap();
 
   useEffect(() => {
@@ -453,8 +609,11 @@ function MapZoomRoadSnapController() {
       }
 
       const center = map.getCenter();
-      const nearestRoadPoint = getNearestPointOnRoad(center.lat, center.lng);
-      map.panTo([nearestRoadPoint.lat, nearestRoadPoint.lng], {
+      const snappedPoint = onSnapCenter(center);
+      if (!snappedPoint) {
+        return;
+      }
+      map.panTo(snappedPoint, {
         animate: true,
         duration: 0.7,
         easeLinearity: 0.25,
@@ -465,21 +624,22 @@ function MapZoomRoadSnapController() {
     return () => {
       map.off("zoomend", handleZoomEnd);
     };
-  }, [map]);
+  }, [map, onSnapCenter]);
 
   return null;
 }
 
 const MapView = memo(function MapView({
   shops: initialShops,
+  landmarks = [],
+  mapRoute,
   initialShopId,
+  openInitialShopBanner = true,
   selectedRecipe,
   showRecipeOverlay,
-  onCloseRecipeOverlay,
   agentOpen,
   onAgentToggle,
   searchShopIds,
-  searchLabel,
   onMapReady,
   eventTargets,
   highlightEventTargets = false,
@@ -491,9 +651,18 @@ const MapView = memo(function MapView({
   shopBannerVariant,
   attendanceEstimates,
   onZoomChange,
+  suppressInitialLocationFocus = false,
+  onShopSelect,
+  spotlightShopId,
+  onClearSearch,
+  couponEligibleVendorIds,
+  activeCouponTypeId,
+  stampedVendorIds,
+  overlaySlot,
+  hideMapUI = false,
 }: MapViewProps = {}) {
   const [isMobile, setIsMobile] = useState(false);
-  const [isInMarket, setIsInMarket] = useState<boolean | null>(null);
+  const [_isInMarket, setIsInMarket] = useState<boolean | null>(null);
   const { addItem, items: bagItems } = useBag();
   const bagShopIds = useMemo(() => {
     return bagItems
@@ -506,9 +675,54 @@ const MapView = memo(function MapView({
     () => (initialShops && initialShops.length > 0 ? initialShops : baseShops),
     [initialShops]
   );
-  const [displayShops, setDisplayShops] = useState<Shop[]>(() =>
-    applyShopEdits(sourceShops)
+  const routePoints = useMemo(
+    () => {
+      const normalized = normalizeMapRoutePoints(mapRoute?.points ?? []);
+      return normalized.length >= 2 ? normalized : getDefaultMapRoutePoints();
+    },
+    [mapRoute]
   );
+  const routeConfig = useMemo(
+    () => ({
+      ...getDefaultMapRouteConfig(),
+      ...(mapRoute?.config ?? {}),
+    }),
+    [mapRoute]
+  );
+  const routeBounds = useMemo(() => getRouteBounds(routePoints), [routePoints]);
+  const routeCenter = useMemo(() => getRouteCenter(routePoints), [routePoints]);
+  const initialMapCenter = useMemo<[number, number]>(() => {
+    const projected = projectPointOntoRoute(
+      { lat: routeCenter[0], lng: routeCenter[1] },
+      routePoints
+    );
+    if (!projected) {
+      return routeCenter;
+    }
+    return [projected.point.lat, projected.point.lng];
+  }, [routeCenter, routePoints]);
+  const initialMapRotation = useMemo(() => {
+    const baseRotation =
+      getAutoRotationForVisibleRoad({
+        center: L.latLng(initialMapCenter[0], initialMapCenter[1]),
+        routePoints,
+      }) ?? 0;
+    return normalizeRotationDeg(baseRotation + 180);
+  }, [initialMapCenter, routePoints]);
+  const mapBounds = useMemo(
+    () => expandBoundsByMeters(routeBounds, Math.max(routeConfig.visibleDistanceMeters + 48, 120)),
+    [routeBounds, routeConfig.visibleDistanceMeters]
+  );
+  const landmarkSpecs = useMemo(() => landmarks ?? [], [landmarks]);
+  const majorPlaceLabels = useMemo(
+    () => landmarkSpecs.map((spec) => ({ name: spec.name, lat: spec.lat, lng: spec.lng })),
+    [landmarkSpecs]
+  );
+  const minZoomLandmarkKeys = useMemo(
+    () => new Set(landmarkSpecs.filter((spec) => spec.showAtMinZoom).map((spec) => spec.key)),
+    [landmarkSpecs]
+  );
+  const [displayShops, setDisplayShops] = useState<Shop[]>(() => sourceShops);
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【ポイント6】state は「選択中店舗」のみ
   // - currentZoom は state で管理しない（Leaflet に任せる）
@@ -516,38 +730,29 @@ const MapView = memo(function MapView({
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [shopBannerOrigin, setShopBannerOrigin] = useState<ShopBannerOrigin | null>(null);
+  const [shopBannerSession, setShopBannerSession] = useState(0);
+  const [shopBannerInitialSurface, setShopBannerInitialSurface] = useState<"summary" | "detail">("detail");
+  const [shopBannerMainSurface, setShopBannerMainSurface] = useState<"summary" | "detail">("detail");
   const [isTracking, setIsTracking] = useState(true);
-  const [manualRotationOffset, setManualRotationOffset] = useState(0);
+  const [_shopLoadProgress, setShopLoadProgress] = useState({ processed: 0, total: 0, done: false });
+  const [autoRotation, setAutoRotation] = useState(initialMapRotation);
   const [mapUiZoom, setMapUiZoom] = useState(INITIAL_ZOOM);
-  const [isTouchRotating, setIsTouchRotating] = useState(false);
-  const [isMultiTouchGesture, setIsMultiTouchGesture] = useState(false);
+  const [zoomGuideMessage, setZoomGuideMessage] = useState<string | null>(null);
   const [mapShellSize, setMapShellSize] = useState(() => {
     if (typeof window === "undefined") return 1600;
-    const { innerWidth, innerHeight } = window;
-    return Math.ceil(Math.hypot(innerWidth, innerHeight) + 120);
+    // visualViewport はブラウザUIを除いた実際の表示領域サイズ（iOS Safari 対応）
+    const w = window.visualViewport?.width ?? window.innerWidth;
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    return Math.ceil(Math.hypot(w, h) + 120);
   });
-  const touchRotateRef = useRef<{
-    startAngle: number;
-    startDistance: number;
-    startRotation: number;
-    isRotating: boolean;
-  } | null>(null);
-  const touchPanRef = useRef<{
-    lastX: number;
-    lastY: number;
-    hasMoved: boolean;
-  } | null>(null);
-  const mousePanRef = useRef<{
-    lastX: number;
-    lastY: number;
-    isPanning: boolean;
-  } | null>(null);
 
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [favoriteShopIds, setFavoriteShopIds] = useState<number[]>([]);
-  const [planOrder, setPlanOrder] = useState<number[]>([]);
+  const [_planOrder, setPlanOrder] = useState<number[]>([]);
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const isTouchGestureActiveRef = useRef(false);
+  const zoomGuideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 【削除】visibleShops の計算を削除
@@ -557,36 +762,53 @@ const MapView = memo(function MapView({
 
   const shops = displayShops;
 
-  const planOrderMap = useMemo(() => {
-    const m = new Map<number, number>();
-    planOrder.forEach((id, idx) => m.set(id, idx));
-    return m;
-  }, [planOrder]);
-
   useEffect(() => {
     const detectMobile = () => {
       if (typeof window === "undefined") return;
       const touch = "ontouchstart" in window;
       const narrow = window.innerWidth <= 768;
       setIsMobile(touch || narrow);
-      setMapShellSize(Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) + 120));
+      // visualViewport でブラウザUIを除いた実際の表示領域を取得（iOS Safari 対応）
+      const w = window.visualViewport?.width ?? window.innerWidth;
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      setMapShellSize(Math.ceil(Math.hypot(w, h) + 120));
     };
 
     detectMobile();
     window.addEventListener("resize", detectMobile);
-    return () => window.removeEventListener("resize", detectMobile);
+    // iOS Safari ではアドレスバーの表示/非表示で visualViewport が変わる
+    window.visualViewport?.addEventListener("resize", detectMobile);
+    return () => {
+      window.removeEventListener("resize", detectMobile);
+      window.visualViewport?.removeEventListener("resize", detectMobile);
+    };
   }, []);
 
   useEffect(() => {
     if (!mapInstance) return;
-    mapInstance.invalidateSize(false);
+    const timer = setTimeout(() => { mapInstance.invalidateSize(false); }, 150);
+    return () => clearTimeout(timer);
   }, [mapInstance, mapShellSize]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setAutoRotation(initialMapRotation);
+  }, [initialMapRotation]);
 
   useEffect(() => {
     if (initialShopId) {
       const shop = shops.find((s) => s.id === initialShopId);
       if (shop) {
-        setSelectedShop(shop);
+        if (openInitialShopBanner) {
+          setSelectedShop(shop);
+        }
         if (mapRef.current) {
           const currentZoom = mapRef.current.getZoom();
           if (currentZoom < 18) {
@@ -597,27 +819,10 @@ const MapView = memo(function MapView({
         }
       }
     }
-  }, [initialShopId, shops]);
+  }, [initialShopId, openInitialShopBanner, shops]);
 
   useEffect(() => {
-    const updateShops = () => {
-      setDisplayShops(applyShopEdits(sourceShops));
-    };
-    updateShops();
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === SHOP_EDITS_STORAGE_KEY) {
-        updateShops();
-      }
-    };
-    const handleEditsUpdate = () => {
-      updateShops();
-    };
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(SHOP_EDITS_UPDATED_EVENT, handleEditsUpdate);
-    };
+    setDisplayShops(sourceShops);
   }, [sourceShops]);
 
   useEffect(() => {
@@ -694,10 +899,24 @@ const MapView = memo(function MapView({
       }));
   }, [bagIngredientIds, selectedRecipe]);
 
+  // レシピ食材を持つ店舗（絞り込み済み）
+  const shopsWithIngredients = useMemo(() => {
+    if (!selectedRecipe || recipeIngredients.length === 0) return [];
+    return shops.filter((shop) =>
+      shop.products.some((product) =>
+        recipeIngredients.some((ing) =>
+          product.toLowerCase().includes(ing.name.toLowerCase()) ||
+          ing.name.toLowerCase().includes(product.toLowerCase())
+        )
+      )
+    );
+  }, [selectedRecipe, recipeIngredients, shops]);
+
+  // shopsWithIngredients を再利用して全 shops ループを回避
   const recipeIngredientIconsByShop = useMemo(() => {
     if (!showRecipeOverlay || !selectedRecipe || recipeIngredients.length === 0) return {};
     const byShop: Record<number, string[]> = {};
-    shops.forEach((shop) => {
+    shopsWithIngredients.forEach((shop) => {
       const icons = recipeIngredients
         .filter((ing) =>
           shop.products.some((product) =>
@@ -712,19 +931,7 @@ const MapView = memo(function MapView({
       }
     });
     return byShop;
-  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shops]);
-
-  const shopsWithIngredients = useMemo(() => {
-    if (!selectedRecipe || recipeIngredients.length === 0) return [];
-    return shops.filter((shop) =>
-      shop.products.some((product) =>
-        recipeIngredients.some((ing) =>
-          product.toLowerCase().includes(ing.name.toLowerCase()) ||
-          ing.name.toLowerCase().includes(product.toLowerCase())
-        )
-      )
-    );
-  }, [selectedRecipe, recipeIngredients, shops]);
+  }, [recipeIngredients, selectedRecipe, showRecipeOverlay, shopsWithIngredients]);
 
   const attendanceLabelsByShop = useMemo(() => {
     const labels: Record<number, string> = {};
@@ -752,9 +959,23 @@ const MapView = memo(function MapView({
 
     if (viewMode.mode === ViewMode.DETAIL) {
       // 詳細モード: 詳細バナーを表示
+      if (onShopSelect) {
+        onShopSelect(clickedShop);
+        setSelectedShop(null);
+        setShopBannerOrigin(null);
+        return;
+      }
       if (typeof document !== "undefined") {
         document.body.classList.add("shop-banner-open");
       }
+      const nextInitialSurface: "summary" | "detail" =
+        selectedShop &&
+        shopBannerMainSurface === "summary" &&
+        selectedShop.id !== clickedShop.id
+          ? "summary"
+          : "detail";
+      setShopBannerInitialSurface(nextInitialSurface);
+      setShopBannerSession((prev) => prev + 1);
       setSelectedShop(clickedShop);
       setShopBannerOrigin(origin ?? null);
     } else {
@@ -787,16 +1008,25 @@ const MapView = memo(function MapView({
       if (viewMode.mode === ViewMode.OVERVIEW) {
         // OVERVIEW → INTERMEDIATE（エリア探索）へ
         targetZoom = 18.0;
+        setZoomGuideMessage("このエリアを拡大しました");
       } else {
         // INTERMEDIATE → DETAIL（詳細閲覧）へ
         targetZoom = 18.5;
+        setZoomGuideMessage("もう一度タップするとお店の詳細を見られます");
       }
+
+      if (zoomGuideTimerRef.current) {
+        clearTimeout(zoomGuideTimerRef.current);
+      }
+      zoomGuideTimerRef.current = setTimeout(() => {
+        setZoomGuideMessage(null);
+      }, 1800);
 
       mapRef.current.flyTo([centerLat, centerLng], targetZoom, {
         duration: 0.75,
       });
     }
-  }, [shops]);
+  }, [onShopSelect, selectedShop, shopBannerMainSurface, shops]);
 
   const handleOpenShop = useCallback((shopId: number) => {
     const target = shops.find((s) => s.id === shopId);
@@ -825,17 +1055,52 @@ const MapView = memo(function MapView({
     addItem({ name: value, fromShopId, category });
   }, [addItem]);
 
+  const handleShopChunkProgress = useCallback((processed: number, total: number, done: boolean) => {
+    setShopLoadProgress((prev) => {
+      if (
+        prev.processed === processed &&
+        prev.total === total &&
+        prev.done === done
+      ) {
+        return prev;
+      }
+      return { processed, total, done };
+    });
+  }, []);
+
   const selectedShopIndex = useMemo(() => {
     if (!selectedShop) return -1;
     return shops.findIndex((shop) => shop.id === selectedShop.id);
   }, [selectedShop, shops]);
 
   const canNavigate = selectedShopIndex >= 0 && shops.length > 1;
-  const isMinimumZoomMode = mapUiZoom <= MIN_ZOOM + 0.05;
-  const isLowZoomTintMode = mapUiZoom <= MIN_ZOOM + 1.05;
-  const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2)) <= 0.05;
-  const interactionDisabled = agentOpen;
-  const mapRotation = normalizeRotationDeg(manualRotationOffset);
+  const isMinimumZoomMode = mapUiZoom < MIN_ZOOM + 0.5;
+  const isOverviewZoneMode = mapUiZoom >= OVERVIEW_ZONE_MIN_ZOOM && mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
+  const isLowZoomTintMode = mapUiZoom < OVERVIEW_ZONE_MAX_ZOOM;
+  const isThirdZoomFromMinimum = Math.abs(mapUiZoom - (MIN_ZOOM + 2.5)) <= 0.15;
+  const shouldRenderEventGlow = highlightEventTargets && mapUiZoom >= MIN_ZOOM + 1.5;
+  const shouldRenderRecipeOverlay = (showRecipeOverlay ?? false) && mapUiZoom >= 19.0;
+  const shouldRenderMajorLabels = mapUiZoom <= MIN_ZOOM + 2.5;
+  const shouldRenderLandmarks = mapUiZoom >= MIN_ZOOM + 0.8 || highlightEventTargets;
+  const interactionDisabled = agentOpen ?? false;
+  const mapRotation = normalizeRotationDeg(autoRotation);
+
+  useEffect(() => {
+    if (isMinimumZoomMode) {
+      setShopLoadProgress({ processed: 0, total: 0, done: true });
+      return;
+    }
+    setShopLoadProgress({ processed: 0, total: shops.length, done: shops.length === 0 });
+  }, [isMinimumZoomMode, shops.length]);
+
+  const getSnappedCenter = useCallback(
+    (center: L.LatLng) => {
+      const projection = projectPointOntoRoute(center, routePoints);
+      if (!projection) return null;
+      return [projection.point.lat, projection.point.lng] as [number, number];
+    },
+    [routePoints]
+  );
 
   const handleSelectByOffset = useCallback((offset: number) => {
     if (!canNavigate) return;
@@ -844,24 +1109,6 @@ const MapView = memo(function MapView({
     if (!nextShop) return;
     handleShopClick(nextShop);
   }, [canNavigate, selectedShopIndex, handleShopClick, shops]);
-
-  const applyManualRotation = useCallback(
-    (nextRotation: number) => {
-      setManualRotationOffset(normalizeRotationDeg(nextRotation));
-    },
-    []
-  );
-
-  const panMapByScreenDelta = useCallback((dx: number, dy: number) => {
-    if (interactionDisabled) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const adjusted = rotateVector(-dx, -dy, -mapRotation);
-    map.panBy([adjusted.x, adjusted.y], {
-      animate: false,
-      noMoveStart: true,
-    });
-  }, [interactionDisabled, mapRotation]);
 
   const handleMapZoomChange = useCallback(
     (zoom: number) => {
@@ -878,7 +1125,7 @@ const MapView = memo(function MapView({
 
   const landmarkIcons = useMemo(() => {
     const icons = new Map<string, L.DivIcon>();
-    LANDMARK_SPECS.forEach((spec) => {
+    landmarkSpecs.forEach((spec) => {
       const width = Math.max(1, Math.round(spec.widthPx * landmarkScale));
       const height = Math.max(1, Math.round(spec.heightPx * landmarkScale));
       const highlightClass = highlightEventTargets ? " is-highlight" : "";
@@ -893,199 +1140,108 @@ const MapView = memo(function MapView({
       );
     });
     return icons;
-  }, [highlightEventTargets, landmarkScale]);
+  }, [highlightEventTargets, landmarkScale, landmarkSpecs]);
 
-  const visibleMajorPlaceLabels = useMemo(() => {
-    if (!isMinimumZoomMode) {
-      return MAJOR_PLACE_LABELS;
+  const visibleMajorPlaceLabels = useMemo(
+    () =>
+      getVisibleMajorPlaceLabels({
+        shouldRenderMajorLabels,
+        isMinimumZoomMode,
+        majorPlaceLabels,
+      }),
+    [isMinimumZoomMode, majorPlaceLabels, shouldRenderMajorLabels]
+  );
+  const activeHighlightShopIds = useMemo(() => {
+    if (searchShopIds && searchShopIds.length > 0) {
+      return searchShopIds;
     }
-    return [
-      ...MAJOR_PLACE_LABELS.filter((place) => MIN_ZOOM_LABEL_NAMES.has(place.name)),
-      MIN_ZOOM_ONLY_LABEL,
-    ];
-  }, [isMinimumZoomMode]);
+    if (aiShopIds && aiShopIds.length > 0) {
+      return aiShopIds;
+    }
+    return undefined;
+  }, [aiShopIds, searchShopIds]);
+  const resultsBadgeBottom = overlaySlot
+    ? 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 5.5rem + 25px)'
+    : 'calc(4.5rem + env(safe-area-inset-bottom,0px) + 0.5rem + 25px)';
 
   const visibleLandmarkSpecs = useMemo(() => {
+    if (!shouldRenderLandmarks) {
+      return [];
+    }
     if (!isMinimumZoomMode) {
-      return LANDMARK_SPECS;
+      return landmarkSpecs;
     }
-    return LANDMARK_SPECS.filter((spec) => MIN_ZOOM_LANDMARK_KEYS.has(spec.key));
-  }, [isMinimumZoomMode]);
+    return landmarkSpecs.filter((spec) => minZoomLandmarkKeys.has(spec.key));
+  }, [isMinimumZoomMode, landmarkSpecs, minZoomLandmarkKeys, shouldRenderLandmarks]);
 
-  const handleTouchStartRotate = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (interactionDisabled) return;
-      if (e.touches.length === 1) {
-        setIsMultiTouchGesture(false);
-        const touch = e.touches[0];
-        touchPanRef.current = {
-          lastX: touch.clientX,
-          lastY: touch.clientY,
-          hasMoved: false,
-        };
-        touchRotateRef.current = null;
-        setIsTouchRotating(false);
-        return;
-      }
-      if (e.touches.length !== 2) return;
-      setIsMultiTouchGesture(true);
-      touchPanRef.current = null;
-      const t0 = e.touches[0];
-      const t1 = e.touches[1];
-      const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-      const distance = getTouchDistance(t0, t1);
-      touchRotateRef.current = {
-        startAngle: angle,
-        startDistance: distance,
-        startRotation: mapRotation,
-        isRotating: false,
-      };
+  const { markManualRotation, snapRotationToVisibleRoad } = useMapCameraController({
+    mapRef,
+    gestureActiveRef: isTouchGestureActiveRef,
+    interactionDisabled,
+    autoRotation,
+    routePoints,
+    isTracking,
+    setIsTracking,
+    setAutoRotation,
+  });
+
+  const { isTouchGestureActive, gestureTargetRef, gestureHandlers } = useMapGestures({
+    mapRef,
+    gestureActiveRef: isTouchGestureActiveRef,
+    interactionDisabled,
+    mapRotation,
+    onPanStart: () => setIsTracking(false),
+    onRotationChange: (rotation) => {
+      markManualRotation();
+      setAutoRotation(rotation);
     },
-    [interactionDisabled, mapRotation]
-  );
-
-  const handleTouchMoveRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    if (e.touches.length === 1 && touchPanRef.current && !isTouchRotating) {
-      const touch = e.touches[0];
-      const dx = touch.clientX - touchPanRef.current.lastX;
-      const dy = touch.clientY - touchPanRef.current.lastY;
-      if (
-        !touchPanRef.current.hasMoved &&
-        Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX
-      ) {
-        return;
-      }
-      touchPanRef.current.hasMoved = true;
-      touchPanRef.current.lastX = touch.clientX;
-      touchPanRef.current.lastY = touch.clientY;
-      setIsTracking(false);
-      e.preventDefault();
-      panMapByScreenDelta(dx, dy);
-      return;
-    }
-
-    if (e.touches.length !== 2 || !touchRotateRef.current) return;
-    const t0 = e.touches[0];
-    const t1 = e.touches[1];
-    const angle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-    const deltaDeg = ((angle - touchRotateRef.current.startAngle) * 180) / Math.PI;
-    const distance = getTouchDistance(t0, t1);
-    const distanceDelta = distance - touchRotateRef.current.startDistance;
-
-    if (!touchRotateRef.current.isRotating) {
-      if (
-        Math.abs(deltaDeg) < TOUCH_ROTATION_ANGLE_THRESHOLD_DEG &&
-        Math.abs(distanceDelta) < TOUCH_ROTATION_DISTANCE_THRESHOLD_PX
-      ) {
-        return;
-      }
-
-      if (
-        Math.abs(deltaDeg) <= TOUCH_ROTATION_ANGLE_THRESHOLD_DEG ||
-        Math.abs(deltaDeg) * 2 < Math.abs(distanceDelta)
-      ) {
-        return;
-      }
-
-      touchRotateRef.current.isRotating = true;
-      setIsTouchRotating(true);
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-    const next = touchRotateRef.current.startRotation + deltaDeg;
-    applyManualRotation(next);
-  }, [applyManualRotation, interactionDisabled, isTouchRotating, panMapByScreenDelta]);
-
-  const handleTouchEndRotate = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    setIsMultiTouchGesture(e.touches.length >= 2);
-    if (e.touches.length < 2) {
-      touchRotateRef.current = null;
-      setIsTouchRotating(false);
-    }
-    if (e.touches.length === 0) {
-      touchPanRef.current = null;
-    } else if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      touchPanRef.current = {
-        lastX: touch.clientX,
-        lastY: touch.clientY,
-        hasMoved: false,
-      };
-    }
-  }, [interactionDisabled]);
-
-  const handleMouseDownPan = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (interactionDisabled) return;
-    if (e.button !== 0) return;
-    mousePanRef.current = {
-      lastX: e.clientX,
-      lastY: e.clientY,
-      isPanning: false,
-    };
-  }, [interactionDisabled]);
+    onGestureEnd: () => {},
+  });
 
   useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      if (!mousePanRef.current || isTouchRotating || interactionDisabled) return;
-      const dx = e.clientX - mousePanRef.current.lastX;
-      const dy = e.clientY - mousePanRef.current.lastY;
-      if (
-        !mousePanRef.current.isPanning &&
-        Math.hypot(dx, dy) < PAN_START_THRESHOLD_PX
-      ) {
-        return;
+    if (!isTouchGestureActive) {
+      const map = mapRef.current;
+      if (map) {
+        snapRotationToVisibleRoad(map.getCenter());
       }
-      mousePanRef.current.isPanning = true;
-      mousePanRef.current.lastX = e.clientX;
-      mousePanRef.current.lastY = e.clientY;
-      setIsTracking(false);
-      panMapByScreenDelta(dx, dy);
-    };
-    const handleUp = () => {
-      mousePanRef.current = null;
-    };
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-  }, [interactionDisabled, isTouchRotating, panMapByScreenDelta]);
+    }
+  }, [isTouchGestureActive, snapRotationToVisibleRoad]);
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden"
+      className={`relative h-full w-full overflow-hidden${spotlightShopId ? " map-spotlight-mode" : ""}${activeHighlightShopIds && activeHighlightShopIds.length > 0 ? " map-search-spotlight-mode" : ""}`}
       style={{
-        ["--map-rotation-inverse" as any]: `${-mapRotation}deg`,
+      ["--map-rotation-inverse" as string]: `${-mapRotation}deg`,
       }}
     >
       <div
+        ref={gestureTargetRef}
         className="absolute left-1/2 top-1/2 z-0"
-        onTouchStart={handleTouchStartRotate}
-        onTouchMove={handleTouchMoveRotate}
-        onTouchEnd={handleTouchEndRotate}
-        onTouchCancel={handleTouchEndRotate}
-        onMouseDown={handleMouseDownPan}
+        {...gestureHandlers}
         style={{
           width: `${mapShellSize}px`,
           height: `${mapShellSize}px`,
           touchAction: "none",
           transform: `translate(-50%, -50%) rotate(${mapRotation}deg)`,
           transformOrigin: "center center",
-          transition: isTouchRotating ? "none" : "transform 1600ms ease-out",
+          transition: "transform 1500ms ease-out",
         }}
       >
         <MapContainer
-          center={KOCHI_SUNDAY_MARKET}
+          center={initialMapCenter}
           zoom={INITIAL_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
+          preferCanvas
+          zoomSnap={0.05}
+          zoomDelta={0.35}
+          wheelPxPerZoomLevel={130}
+          zoomAnimation
+          markerZoomAnimation
+          fadeAnimation
           scrollWheelZoom={!agentOpen && !isMobile}
           dragging={false}
-          touchZoom={agentOpen ? false : isMultiTouchGesture || isTouchRotating ? false : isMobile ? "center" : true}
+          touchZoom={false}
           doubleClickZoom={!agentOpen && !isMobile}
           className={`h-full w-full ${agentOpen ? "pointer-events-none" : ""}`}
           style={{
@@ -1095,7 +1251,7 @@ const MapView = memo(function MapView({
           }}
           zoomControl={false}
           attributionControl={false}
-          maxBounds={MAX_BOUNDS}
+          maxBounds={mapBounds}
           maxBoundsViscosity={1.0}
           whenReady={() => {
             onMapReady?.();
@@ -1112,7 +1268,7 @@ const MapView = memo(function MapView({
           }}
         >
           <MapZoomConstraint />
-          <MapZoomRoadSnapController />
+          <MapZoomRoadSnapController onSnapCenter={getSnappedCenter} />
           <MapZoomListener onZoomChange={handleMapZoomChange} />
           <TileLayer
             url={BASEMAP_TILE_URL}
@@ -1123,121 +1279,22 @@ const MapView = memo(function MapView({
           />
           {/* 背景 */}
           <BackgroundOverlay />
-
-        {/* 道路 */}
-        <RoadOverlay overviewTint={isLowZoomTintMode} />
-        <DynamicMaxBounds baseBounds={MAX_BOUNDS} paddingPx={100} />
-        <Pane name="major-place-label" style={{ zIndex: 950 }}>
-          {visibleMajorPlaceLabels.map((place) => (
-            <Marker
-              key={`major-place-${place.name}`}
-              position={[place.lat, place.lng]}
-              icon={L.divIcon({
-                className: "major-place-label-icon",
-                html: `<span class="major-place-label-pill${
-                  place.name === "日曜市" ? " is-sunday-market" : ""
-                }" style="display:inline-block;padding:2px 8px;border-radius:9999px;background:rgba(255,255,255,0.88);border:1px solid rgba(15,23,42,0.15);font-size:11px;font-weight:700;color:#0f172a;white-space:nowrap;">${place.name}</span>`,
-                iconSize: [0, 0],
-              })}
-              interactive={false}
-              keyboard={false}
-              zIndexOffset={1200}
-            />
-          ))}
-        </Pane>
-
-        <EventDimOverlay active={highlightEventTargets} />
-
-        {highlightEventTargets && (
-          <Pane name="event-glow" style={{ zIndex: 2000 }}>
-            {eventTargets?.map((target) => (
-              <Fragment key={target.id}>
-                <CircleMarker
-                  key={`${target.id}-r1`}
-                  center={[target.lat, target.lng]}
-                  radius={20}
-                  pane="event-glow"
-                  pathOptions={{
-                    fillColor: "transparent",
-                    fillOpacity: 0,
-                    color: "#ffffff",
-                    weight: 2,
-                    opacity: 0.9,
-                  }}
-                  className="map-event-ripple is-1"
-                />
-                <CircleMarker
-                  key={`${target.id}-r2`}
-                  center={[target.lat, target.lng]}
-                  radius={30}
-                  pane="event-glow"
-                  pathOptions={{
-                    fillColor: "transparent",
-                    fillOpacity: 0,
-                    color: "#ffffff",
-                    weight: 2,
-                    opacity: 0.7,
-                  }}
-                  className="map-event-ripple is-2"
-                />
-                <CircleMarker
-                  key={`${target.id}-r3`}
-                  center={[target.lat, target.lng]}
-                  radius={40}
-                  pane="event-glow"
-                  pathOptions={{
-                    fillColor: "transparent",
-                    fillOpacity: 0,
-                    color: "#ffffff",
-                    weight: 2,
-                    opacity: 0.5,
-                  }}
-                  className="map-event-ripple is-3"
-                />
-              </Fragment>
-            ))}
-          </Pane>
-        )}
-
-        <Pane
-          name="landmarks"
-          style={{ zIndex: highlightEventTargets ? 3000 : 70 }}
-        >
-          {visibleLandmarkSpecs.map((spec) => (
-            <Marker
-              key={`landmark-${spec.key}`}
-              position={[spec.lat, spec.lng]}
-              icon={landmarkIcons.get(spec.key) ?? L.divIcon({ className: "map-landmark-icon" })}
-              interactive
-              keyboard={false}
-              opacity={1}
-              zIndexOffset={highlightEventTargets ? 1800 : 0}
-            >
-              <Popup
-                pane="landmark-popup"
-                offset={[0, -18]}
-                className="map-landmark-popup"
-              >
-                <div className="min-w-[180px] max-w-[220px]">
-                  <p className="text-sm font-bold text-slate-900">{spec.name}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{spec.description}</p>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </Pane>
-        <Pane name="landmark-popup" style={{ zIndex: 10000 }} />
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            【ポイント8】最適化された店舗レイヤー
-            - 300個の ShopMarker コンポーネントではなく、
-              1つの OptimizedShopLayerWithClustering が Leaflet API で管理
-            - shops は初期ロード時のみ渡され、以降変更されない
-            - ズーム操作で再レンダリングされない
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        {!isMinimumZoomMode && (
-          <OptimizedShopLayerWithClustering
+          <MapOverlays
+            isLowZoomTintMode={isLowZoomTintMode}
+            routePoints={routePoints}
+            routeConfig={routeConfig}
+            mapBounds={mapBounds}
+            visibleMajorPlaceLabels={visibleMajorPlaceLabels}
+            shouldRenderEventGlow={shouldRenderEventGlow}
+            eventTargets={eventTargets}
+            highlightEventTargets={highlightEventTargets}
+            visibleLandmarkSpecs={visibleLandmarkSpecs}
+            landmarkIcons={landmarkIcons}
+            isMinimumZoomMode={isMinimumZoomMode}
+            isOverviewZoneMode={isOverviewZoneMode}
             shops={shops}
             onShopClick={handleShopClick}
+            onChunkProgress={handleShopChunkProgress}
             selectedShopId={selectedShop?.id}
             favoriteShopIds={favoriteShopIds}
             searchShopIds={searchShopIds}
@@ -1247,49 +1304,13 @@ const MapView = memo(function MapView({
             recipeIngredientIconsByShop={recipeIngredientIconsByShop}
             attendanceLabelsByShop={attendanceLabelsByShop}
             bagShopIds={bagShopIds}
+            couponEligibleVendorIds={couponEligibleVendorIds}
+            shouldRenderRecipeOverlay={shouldRenderRecipeOverlay}
+            shopsWithIngredients={shopsWithIngredients}
+            recipeIngredients={recipeIngredients}
+            onRecipeShopClick={setSelectedShop}
+            OptimizedShopLayerWithClustering={OptimizedShopLayerWithClustering}
           />
-        )}
-
-        {/* レシピオーバーレイ */}
-        {!isMinimumZoomMode && showRecipeOverlay && shopsWithIngredients.map((shop) => {
-          const matchingIngredients = recipeIngredients.filter((ing) =>
-            shop.products.some((product) =>
-              product.toLowerCase().includes(ing.name.toLowerCase()) ||
-              ing.name.toLowerCase().includes(product.toLowerCase())
-            )
-          );
-
-          return (
-            <CircleMarker
-              key={`recipe-${shop.id}`}
-              center={[shop.lat, shop.lng]}
-              radius={40}
-              pathOptions={{
-                fillColor: "#f59e0b",
-                fillOpacity: 0.2,
-                color: "#f59e0b",
-                weight: 3,
-                opacity: 0.8,
-              }}
-              eventHandlers={{
-                click: () => setSelectedShop(shop),
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -10]} opacity={0.95}>
-                <div className="text-xs">
-                  <div className="font-bold mb-1">{shop.name}</div>
-                  <div className="text-[10px] space-y-0.5">
-                    {matchingIngredients.slice(0, 3).map((ing, i) => (
-                      <div key={i}>
-                        {ing.icon} {ing.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Tooltip>
-            </CircleMarker>
-          );
-        })}
 
         {/* ユーザー位置 */}
         <UserLocationMarker
@@ -1303,6 +1324,9 @@ const MapView = memo(function MapView({
             });
           }}
           isTracking={isTracking}
+          suppressInitialFocus={suppressInitialLocationFocus}
+          routePoints={routePoints}
+          routeConfig={routeConfig}
         />
 
           {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1313,12 +1337,32 @@ const MapView = memo(function MapView({
         </MapContainer>
       </div>
 
-      <MapControls
-        map={mapInstance}
-        isMobile={isMobile}
-        isTracking={isTracking}
-        onToggleTracking={() => setIsTracking((prev) => !prev)}
-      />
+      <TimeAmbientOverlay />
+      <MapZoomGuideToast message={zoomGuideMessage} />
+      {!hideMapUI && (
+        <>
+          <MapControls
+            map={mapInstance}
+            isTracking={isTracking}
+            onToggleTracking={() => setIsTracking((prev) => !prev)}
+            currentZoom={mapUiZoom}
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+          />
+        </>
+      )}
+
+      {spotlightShopId && <SpotlightCountdownBar shopId={spotlightShopId} />}
+
+      {activeHighlightShopIds && activeHighlightShopIds.length > 0 && (
+        <SearchResultsSheet
+          shops={displayShops}
+          searchShopIds={activeHighlightShopIds}
+          map={mapInstance}
+          onClearSearch={onClearSearch}
+          badgeBottom={resultsBadgeBottom}
+        />
+      )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           【ポイント9】UI 層と地図層を完全分離
@@ -1329,16 +1373,28 @@ const MapView = memo(function MapView({
       {selectedShop && (
         <>
           <ShopDetailBanner
+            key={`${selectedShop.id}-${shopBannerSession}`}
             shop={selectedShop}
+            openNonce={shopBannerSession}
+            initialMobileSurface={shopBannerInitialSurface}
+            onMobileMainSurfaceChange={setShopBannerMainSurface}
+            canNavigateBetweenShops={canNavigate}
+            selectedShopPosition={selectedShopIndex + 1}
+            totalShopCount={shops.length}
+            onSelectPreviousShop={() => handleSelectByOffset(-1)}
+            onSelectNextShop={() => handleSelectByOffset(1)}
             onClose={() => {
               setSelectedShop(null);
               setShopBannerOrigin(null);
+              setShopBannerInitialSurface("detail");
+              setShopBannerMainSurface("detail");
             }}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
-            inMarket={isInMarket === true}
-            attendanceEstimate={attendanceEstimates?.[selectedShop.id]}
             originRect={shopBannerOrigin ?? undefined}
+            activeCouponTypeId={activeCouponTypeId}
+            stampedVendorIds={stampedVendorIds}
+            reserveBottomNavSpace={false}
           />
         </>
       )}
@@ -1351,80 +1407,11 @@ const MapView = memo(function MapView({
         onToggle={onAgentToggle}
         hideLauncher
       />
+
+      {/* 外部から注入するオーバーレイ（マップ座標系内） */}
+      {overlaySlot}
     </div>
   );
 });
 
 export default MapView;
-
-function DynamicMaxBounds({
-  baseBounds,
-  paddingPx,
-}: {
-  baseBounds: [[number, number], [number, number]];
-  paddingPx: number;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    const baseLatLngBounds = L.latLngBounds(baseBounds);
-
-    const updateBounds = () => {
-      const zoom = map.getZoom();
-      const size = map.getSize();
-      const viewportDiagonal = Math.sqrt(size.x * size.x + size.y * size.y);
-      const dynamicPaddingPx = Math.max(paddingPx, viewportDiagonal);
-      const sw = map.project(baseLatLngBounds.getSouthWest(), zoom);
-      const ne = map.project(baseLatLngBounds.getNorthEast(), zoom);
-      const paddedSw = L.point(sw.x - dynamicPaddingPx, sw.y + dynamicPaddingPx);
-      const paddedNe = L.point(ne.x + dynamicPaddingPx, ne.y - dynamicPaddingPx);
-      const paddedBounds = L.latLngBounds(
-        map.unproject(paddedSw, zoom),
-        map.unproject(paddedNe, zoom)
-      );
-      map.setMaxBounds(paddedBounds);
-    };
-
-    updateBounds();
-    map.on("zoom resize move", updateBounds);
-    return () => {
-      map.off("zoom resize move", updateBounds);
-    };
-  }, [map, baseBounds, paddingPx]);
-
-  return null;
-}
-
-function EventDimOverlay({ active }: { active: boolean }) {
-  const map = useMap();
-  const [bounds, setBounds] = useState<LatLngBoundsExpression | null>(null);
-
-  useEffect(() => {
-    if (!active) return;
-    const update = () => {
-      setBounds(map.getBounds());
-    };
-    update();
-    map.on("move zoom resize", update);
-    return () => {
-      map.off("move zoom resize", update);
-    };
-  }, [map, active]);
-
-  if (!active || !bounds) return null;
-
-  return (
-    <Pane name="event-dim" style={{ zIndex: 800 }}>
-      <Rectangle
-        bounds={bounds}
-        pathOptions={{
-          color: "transparent",
-          weight: 0,
-          fillColor: "#050505",
-          fillOpacity: 0.55,
-        }}
-        interactive={false}
-      />
-    </Pane>
-  );
-}

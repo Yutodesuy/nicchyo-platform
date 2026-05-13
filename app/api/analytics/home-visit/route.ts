@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database.types";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
 
 const VISITOR_COOKIE_NAME = "nicchyo_visitor_id";
 
@@ -23,13 +25,36 @@ function isValidVisitorKey(value: string) {
   return /^[a-f0-9-]{16,64}$/i.test(value);
 }
 
-export async function POST() {
+// 同一visitor_keyからの連続呼び出しを防ぐ（1分以内は無視）
+const homeVisitCooldown = new Map<string, number>();
+const HOME_VISIT_COOLDOWN_MS = 60 * 1000;
+
+export async function POST(request: Request) {
+  const originCheck = requireSameOrigin(request);
+  if (!originCheck.ok) return originCheck.response;
+
   const cookieStore = await cookies();
   let visitorKey = cookieStore.get(VISITOR_COOKIE_NAME)?.value ?? "";
   let shouldSetVisitorCookie = false;
   if (!isValidVisitorKey(visitorKey)) {
     visitorKey = crypto.randomUUID();
     shouldSetVisitorCookie = true;
+  }
+
+  // クールダウンチェック
+  const now = Date.now();
+  const lastCall = homeVisitCooldown.get(visitorKey);
+  if (lastCall && now - lastCall < HOME_VISIT_COOLDOWN_MS) {
+    const skipped = NextResponse.json({ ok: true, skipped: true, reason: "cooldown" });
+    return skipped;
+  }
+  homeVisitCooldown.set(visitorKey, now);
+  // メモリリーク防止: 1000件超えたら古いものを削除
+  if (homeVisitCooldown.size > 1000) {
+    const oldest = Array.from(homeVisitCooldown.entries())
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 200);
+    oldest.forEach(([k]) => homeVisitCooldown.delete(k));
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -56,7 +81,7 @@ export async function POST() {
     return skippedResponse;
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

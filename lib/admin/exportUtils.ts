@@ -6,7 +6,7 @@
 /**
  * CSVエクスポート
  */
-export function exportToCSV<T extends Record<string, string | number | boolean | null>>(
+export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   filename: string,
   headers?: Record<keyof T, string>

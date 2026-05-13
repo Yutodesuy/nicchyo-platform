@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import type { Database } from "@/types/database.types";
+import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 type Answers = {
   purpose?: string;
@@ -45,10 +48,10 @@ const MARKET_CENTER: [number, number] = [33.55915, 133.531];
 
 async function loadShops(): Promise<BaseShop[]> {
   if (!SUPABASE_URL || !SUPABASE_KEY) return [];
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false },
   });
-  const shops = await fetchShopsFromDb(supabase);
+  const shops = await fetchVendorShopsFromDb(supabase);
   return shops.map((shop) => ({
     id: shop.id,
     name: shop.name,
@@ -286,6 +289,16 @@ async function callOpenAI(
 
 export async function POST(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "map-agent",
+      limit: 15,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const body = (await request.json()) as RequestBody;
     const answers: Answers = body?.answers ?? {};
     const start = Array.isArray(body?.location) && body.location.length === 2 ? body.location : MARKET_CENTER;

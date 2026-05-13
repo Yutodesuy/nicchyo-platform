@@ -4,12 +4,12 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.markercluster';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+// MarkerCluster.Default.css は意図的に除外（青いデフォルトスタイルを排除）
+// MarkerCluster.css も除外（zoom≥17では clustering が発生しないため不要）
 import { Shop } from '../data/shops';
 import { ILLUSTRATION_SIZES, DEFAULT_ILLUSTRATION_SIZE } from '../config/displayConfig';
 import { getShopBannerImage } from '../../../../lib/shopImages';
@@ -17,9 +17,10 @@ import { generateShopMarkerHtml } from '../utils/markerHtmlGenerator';
 
 type ShopBannerOrigin = { x: number; y: number; width: number; height: number };
 
-interface OptimizedShopLayerWithClusteringProps {
+export interface OptimizedShopLayerWithClusteringProps {
   shops: Shop[];
   onShopClick: (shop: Shop, origin?: ShopBannerOrigin) => void;
+  onChunkProgress?: (processed: number, total: number, done: boolean) => void;
   selectedShopId?: number;
   favoriteShopIds?: number[];
   searchShopIds?: number[];
@@ -29,12 +30,15 @@ interface OptimizedShopLayerWithClusteringProps {
   recipeIngredientIconsByShop?: Record<number, string[]>;
   attendanceLabelsByShop?: Record<number, string>;
   bagShopIds?: number[];
+  couponEligibleVendorIds?: string[];
 }
 
 const COMPACT_ICON_SIZE: [number, number] = [24, 36];
 const COMPACT_ICON_ANCHOR: [number, number] = [12, 18];
-const COMPACT_ICON_MAX_ZOOM = 17.5;
-const MID_ICON_MAX_ZOOM = 18.0;
+const COMPACT_ICON_MAX_ZOOM = 19.0;
+const MID_ICON_MAX_ZOOM = 19.4;
+const FULL_ICON_MIN_ZOOM = 19.5;
+const FULL_ICON_NAME_MIN_ZOOM = 20.5;
 
 function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
   if (currentZoom >= maxZoom - 0.001) {
@@ -47,6 +51,14 @@ function getMarkerZoomScale(currentZoom: number, maxZoom: number): number {
     return 0.6;
   }
   return 1;
+}
+
+function getShopMarkerDisplayScale(currentZoom: number, maxZoom: number): number {
+  const baseScale = getMarkerZoomScale(currentZoom, maxZoom);
+  if (currentZoom >= 19.7 && currentZoom < 19.8) {
+    return baseScale * 1.1;
+  }
+  return baseScale;
 }
 
 // Helper to get origin rect for animation
@@ -65,9 +77,10 @@ const getOriginRect = (marker: L.Marker): ShopBannerOrigin | undefined => {
   };
 };
 
-export default function OptimizedShopLayerWithClustering({
+function OptimizedShopLayerWithClustering({
   shops,
   onShopClick,
+  onChunkProgress,
   selectedShopId,
   favoriteShopIds,
   searchShopIds,
@@ -77,6 +90,7 @@ export default function OptimizedShopLayerWithClustering({
   recipeIngredientIconsByShop,
   attendanceLabelsByShop,
   bagShopIds,
+  couponEligibleVendorIds,
 }: OptimizedShopLayerWithClusteringProps) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -96,11 +110,14 @@ export default function OptimizedShopLayerWithClustering({
   const prevKotoduteSetRef = useRef<Set<number>>(new Set());
   const bagShopSetRef = useRef<Set<number>>(new Set());
   const prevBagShopSetRef = useRef<Set<number>>(new Set());
+  const couponVendorSetRef = useRef<Set<string>>(new Set());
   const recipeIconsRef = useRef<Record<number, string[]>>({});
   const attendanceLabelsRef = useRef<Record<number, string>>(attendanceLabelsByShop ?? {});
   const lastIconModeRef = useRef<'compact' | 'mid' | 'full' | null>(null);
   const lastProductIconVisibleRef = useRef<boolean | null>(null);
   const lastSimpleBannerVisibleRef = useRef<boolean | null>(null);
+  const lastSimpleBannerNameVisibleRef = useRef<boolean | null>(null);
+  const lastMarkerZoomScaleRef = useRef<number | null>(null);
   const selectedShopIdRef = useRef<number | undefined>(undefined);
 
   const setMarkerFavorite = (marker: L.Marker, isFavorite: boolean) => {
@@ -169,6 +186,16 @@ export default function OptimizedShopLayerWithClustering({
       icon.classList.add('shop-marker-bag');
     } else {
       icon.classList.remove('shop-marker-bag');
+    }
+  };
+
+  const setMarkerCoupon = (marker: L.Marker, isHighlighted: boolean) => {
+    const icon = marker.getElement();
+    if (!icon) return;
+    if (isHighlighted) {
+      icon.classList.add('shop-marker-coupon');
+    } else {
+      icon.classList.remove('shop-marker-coupon');
     }
   };
 
@@ -247,42 +274,45 @@ export default function OptimizedShopLayerWithClustering({
   }, [attendanceLabelsByShop]);
 
   useEffect(() => {
+    couponVendorSetRef.current = new Set(couponEligibleVendorIds ?? []);
+    markersRef.current.forEach((marker, shopId) => {
+      const shop = shops.find((entry) => entry.id === shopId);
+      setMarkerCoupon(marker, !!shop?.vendorId && couponVendorSetRef.current.has(shop.vendorId));
+    });
+  }, [couponEligibleVendorIds, shops]);
+
+  useEffect(() => {
     const markers = L.markerClusterGroup({
-      disableClusteringAtZoom: 17,
+      disableClusteringAtZoom: 1,
       spiderfyOnMaxZoom: false,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       chunkedLoading: true,
       chunkInterval: 200,
       chunkDelay: 50,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        let sizeClass = 'cluster-small';
-
-        if (count > 50) {
-          sizeClass = 'cluster-large';
-        } else if (count > 10) {
-          sizeClass = 'cluster-medium';
-        }
-
+      iconCreateFunction: (_cluster) => {
         return L.divIcon({
-          html: `<div class="cluster-icon ${sizeClass}"><span>${count}</span></div>`,
+          html: `<div class="cluster-icon cluster-small"></div>`,
           className: 'custom-cluster-icon',
           iconSize: L.point(40, 40),
         });
       },
       maxClusterRadius: 80,
+      chunkProgress: (processed, total) => {
+        onChunkProgress?.(processed, total, processed >= total);
+      },
     });
 
     clusterGroupRef.current = markers;
 
-    const createCompactIcon = (shop: Shop) => {
+    const createCompactIcon = (_shop: Shop) => {
       return L.divIcon({
         html: `
           <div class="shop-marker-compact-wrapper">
             <div class="shop-recipe-icons" aria-hidden="true"></div>
             <div class="shop-kotodute-badge" aria-hidden="true">i</div>
             <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
+            <div class="shop-coupon-badge" aria-hidden="true">🎟️</div>
             <div class="shop-marker-compact"></div>
           </div>
         `,
@@ -381,14 +411,15 @@ export default function OptimizedShopLayerWithClustering({
         setMarkerCommentHighlight(marker, commentHighlightSetRef.current.has(shop.id));
         setMarkerKotodute(marker, kotoduteSetRef.current.has(shop.id));
         setMarkerBag(marker, bagShopSetRef.current.has(shop.id));
+        setMarkerCoupon(marker, !!shop.vendorId && couponVendorSetRef.current.has(shop.vendorId));
         setMarkerRecipeIcons(marker, recipeIconsRef.current[shop.id]);
         const maxZoom = map.getMaxZoom() ?? map.getZoom();
-        const isMaxZoom = map.getZoom() >= maxZoom - 0.001;
-        const showSimpleBanner = map.getZoom() >= maxZoom - 1;
-        const markerZoomScale = getMarkerZoomScale(map.getZoom(), maxZoom);
-        setMarkerProductIconVisibility(marker, map.getZoom() >= maxZoom - 1 && !isMaxZoom);
+        const showSimpleBanner = map.getZoom() >= FULL_ICON_MIN_ZOOM;
+        const showSimpleBannerName = map.getZoom() >= FULL_ICON_NAME_MIN_ZOOM;
+        const markerZoomScale = getShopMarkerDisplayScale(map.getZoom(), maxZoom);
+        setMarkerProductIconVisibility(marker, map.getZoom() >= FULL_ICON_MIN_ZOOM && map.getZoom() < FULL_ICON_NAME_MIN_ZOOM);
         setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
-        setMarkerSimpleBannerNameVisibility(marker, isMaxZoom);
+        setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
         setMarkerZoomScale(marker, markerZoomScale);
         setMarkerAttendanceLabel(
           marker,
@@ -403,11 +434,10 @@ export default function OptimizedShopLayerWithClustering({
     const updateMarkerDensity = () => {
       const zoom = map.getZoom();
       const maxZoom = map.getMaxZoom() ?? zoom;
-      const isMaxZoom = zoom >= maxZoom - 0.001;
-      const showProductIcon = zoom >= maxZoom - 1 && !isMaxZoom;
-      const showSimpleBanner = zoom >= maxZoom - 1;
-      const showSimpleBannerName = isMaxZoom;
-      const markerZoomScale = getMarkerZoomScale(zoom, maxZoom);
+      const showProductIcon = zoom >= FULL_ICON_MIN_ZOOM && zoom < FULL_ICON_NAME_MIN_ZOOM;
+      const showSimpleBanner = zoom >= FULL_ICON_MIN_ZOOM;
+      const showSimpleBannerName = zoom >= FULL_ICON_NAME_MIN_ZOOM;
+      const markerZoomScale = getShopMarkerDisplayScale(zoom, maxZoom);
       const useCompact = zoom <= COMPACT_ICON_MAX_ZOOM;
       const useMid = zoom > COMPACT_ICON_MAX_ZOOM && zoom <= MID_ICON_MAX_ZOOM;
       const nextMode: 'compact' | 'mid' | 'full' = useCompact
@@ -418,97 +448,109 @@ export default function OptimizedShopLayerWithClustering({
       if (
         lastIconModeRef.current === nextMode &&
         lastProductIconVisibleRef.current === showProductIcon &&
-        lastSimpleBannerVisibleRef.current === showSimpleBanner
+        lastSimpleBannerVisibleRef.current === showSimpleBanner &&
+        lastSimpleBannerNameVisibleRef.current === showSimpleBannerName &&
+        lastMarkerZoomScaleRef.current === markerZoomScale
       ) {
         return;
       }
+      const modeChanged = lastIconModeRef.current !== nextMode;
       lastIconModeRef.current = nextMode;
       lastProductIconVisibleRef.current = showProductIcon;
       lastSimpleBannerVisibleRef.current = showSimpleBanner;
+      lastSimpleBannerNameVisibleRef.current = showSimpleBannerName;
+      lastMarkerZoomScaleRef.current = markerZoomScale;
 
       markersRef.current.forEach((marker, shopId) => {
         let icon: L.DivIcon | undefined;
 
-        // Retrieve or generate the required icon
-        if (useCompact) {
-          icon = compactIconsRef.current.get(shopId);
-          if (!icon) {
-            const shop = shopsMap.get(shopId);
-            if (shop) {
-              icon = createCompactIcon(shop);
-              compactIconsRef.current.set(shopId, icon);
+        if (modeChanged) {
+          if (useCompact) {
+            icon = compactIconsRef.current.get(shopId);
+            if (!icon) {
+              const shop = shopsMap.get(shopId);
+              if (shop) {
+                icon = createCompactIcon(shop);
+                compactIconsRef.current.set(shopId, icon);
+              }
             }
-          }
-        } else if (useMid) {
-          icon = midIconsRef.current.get(shopId);
-          if (!icon) {
-            const shop = shopsMap.get(shopId);
-            if (shop) {
-              icon = createMidIcon(shop);
-              midIconsRef.current.set(shopId, icon);
+          } else if (useMid) {
+            icon = midIconsRef.current.get(shopId);
+            if (!icon) {
+              const shop = shopsMap.get(shopId);
+              if (shop) {
+                icon = createMidIcon(shop);
+                midIconsRef.current.set(shopId, icon);
+              }
             }
-          }
-        } else {
-          // Full
-          icon = fullIconsRef.current.get(shopId);
-          if (!icon) {
-            const shop = shopsMap.get(shopId);
-            if (shop) {
-              icon = createFullIcon(shop);
-              fullIconsRef.current.set(shopId, icon);
+          } else {
+            icon = fullIconsRef.current.get(shopId);
+            if (!icon) {
+              const shop = shopsMap.get(shopId);
+              if (shop) {
+                icon = createFullIcon(shop);
+                fullIconsRef.current.set(shopId, icon);
+              }
             }
           }
         }
 
         if (icon) {
           marker.setIcon(icon);
-          setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
-          setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
-          setMarkerProductIconVisibility(marker, showProductIcon);
-          setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
-          setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
-          setMarkerZoomScale(marker, markerZoomScale);
-          setMarkerAttendanceLabel(
-            marker,
-            attendanceLabelsRef.current[shopId] ?? 'わからない'
-          );
-          const markerElement = marker.getElement();
-          if (markerElement) {
-            if (shopId === selectedShopIdRef.current) {
-              markerElement.classList.add('shop-marker-selected');
-              marker.setZIndexOffset(1000);
-            } else {
-              markerElement.classList.remove('shop-marker-selected');
-              marker.setZIndexOffset(0);
+        }
+
+        setMarkerFavorite(marker, favoriteSetRef.current.has(shopId));
+        setMarkerRecipeIcons(marker, recipeIconsRef.current[shopId]);
+        setMarkerProductIconVisibility(marker, showProductIcon);
+        setMarkerSimpleBannerVisibility(marker, showSimpleBanner);
+        setMarkerSimpleBannerNameVisibility(marker, showSimpleBannerName);
+        setMarkerZoomScale(marker, markerZoomScale);
+        setMarkerAttendanceLabel(
+          marker,
+          attendanceLabelsRef.current[shopId] ?? 'わからない'
+        );
+        const shop = shopsMap.get(shopId);
+        const markerElement = marker.getElement();
+        if (markerElement) {
+          if (shopId === selectedShopIdRef.current) {
+            markerElement.classList.add('shop-marker-selected');
+            marker.setZIndexOffset(1000);
+          } else {
+            markerElement.classList.remove('shop-marker-selected');
+            marker.setZIndexOffset(0);
+          }
+          if (aiHighlightSetRef.current.has(shopId)) {
+            markerElement.classList.add('shop-marker-ai');
+            if (shopId !== selectedShopIdRef.current) {
+              marker.setZIndexOffset(900);
             }
-            if (aiHighlightSetRef.current.has(shopId)) {
-              markerElement.classList.add('shop-marker-ai');
-              if (shopId !== selectedShopIdRef.current) {
-                marker.setZIndexOffset(900);
-              }
-            } else {
-              markerElement.classList.remove('shop-marker-ai');
-            }
-            if (searchHighlightSetRef.current.has(shopId)) {
-              markerElement.classList.add('shop-marker-search');
-            } else {
-              markerElement.classList.remove('shop-marker-search');
-            }
-            if (commentHighlightSetRef.current.has(shopId)) {
-              markerElement.classList.add('shop-marker-comment');
-            } else {
-              markerElement.classList.remove('shop-marker-comment');
-            }
-            if (kotoduteSetRef.current.has(shopId)) {
-              markerElement.classList.add('shop-marker-kotodute');
-            } else {
-              markerElement.classList.remove('shop-marker-kotodute');
-            }
-            if (bagShopSetRef.current.has(shopId)) {
-              markerElement.classList.add('shop-marker-bag');
-            } else {
-              markerElement.classList.remove('shop-marker-bag');
-            }
+          } else {
+            markerElement.classList.remove('shop-marker-ai');
+          }
+          if (searchHighlightSetRef.current.has(shopId)) {
+            markerElement.classList.add('shop-marker-search');
+          } else {
+            markerElement.classList.remove('shop-marker-search');
+          }
+          if (commentHighlightSetRef.current.has(shopId)) {
+            markerElement.classList.add('shop-marker-comment');
+          } else {
+            markerElement.classList.remove('shop-marker-comment');
+          }
+          if (kotoduteSetRef.current.has(shopId)) {
+            markerElement.classList.add('shop-marker-kotodute');
+          } else {
+            markerElement.classList.remove('shop-marker-kotodute');
+          }
+          if (bagShopSetRef.current.has(shopId)) {
+            markerElement.classList.add('shop-marker-bag');
+          } else {
+            markerElement.classList.remove('shop-marker-bag');
+          }
+          if (shop?.vendorId && couponVendorSetRef.current.has(shop.vendorId)) {
+            markerElement.classList.add('shop-marker-coupon');
+          } else {
+            markerElement.classList.remove('shop-marker-coupon');
           }
         }
       });
@@ -519,16 +561,20 @@ export default function OptimizedShopLayerWithClustering({
 
     map.addLayer(markers);
 
+    const markersMap = markersRef.current;
+    const fullIcons = fullIconsRef.current;
+    const midIcons = midIconsRef.current;
+    const compactIcons = compactIconsRef.current;
     return () => {
       map.off('zoomend', updateMarkerDensity);
       map.removeLayer(markers);
       clusterGroupRef.current = null;
-      markersRef.current.clear();
-      fullIconsRef.current.clear();
-      midIconsRef.current.clear();
-      compactIconsRef.current.clear();
+      markersMap.clear();
+      fullIcons.clear();
+      midIcons.clear();
+      compactIcons.clear();
     };
-  }, [shops, map, onShopClick]);
+  }, [map, onChunkProgress, onShopClick, shops]);
 
   useEffect(() => {
     favoriteSetRef.current = new Set(favoriteShopIds ?? []);
@@ -703,3 +749,5 @@ export default function OptimizedShopLayerWithClustering({
 
   return null;
 }
+
+export default memo(OptimizedShopLayerWithClustering);

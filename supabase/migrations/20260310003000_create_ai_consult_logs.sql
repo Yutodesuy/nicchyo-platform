@@ -14,10 +14,21 @@ alter table public.ai_consult_logs enable row level security;
 
 -- 書き込みはサービスロール経由（APIから）
 -- 出店者は自分の店舗ログのみ読み取り可能
-create policy "vendors can read own store logs"
-on public.ai_consult_logs
-for select
-using (store_id = auth.uid()::text);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'ai_consult_logs'
+      and policyname = 'vendors can read own store logs'
+  ) then
+    create policy "vendors can read own store logs"
+    on public.ai_consult_logs
+    for select
+    using (store_id = auth.uid()::text);
+  end if;
+end $$;
 
 create index if not exists idx_ai_consult_logs_store_id on public.ai_consult_logs (store_id);
 create index if not exists idx_ai_consult_logs_consulted_at on public.ai_consult_logs (consulted_at);

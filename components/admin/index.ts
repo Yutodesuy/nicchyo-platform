@@ -7,3 +7,4 @@ export { ErrorBoundary } from "./ErrorBoundary";
 export { Toaster } from "./Toaster";
 export { AdminSidebar } from "./AdminSidebar";
 export { AdminLayout } from "./AdminLayout";
+export { AdminPageHeader } from "./AdminPageHeader";

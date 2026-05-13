@@ -1,113 +1,157 @@
 'use client';
 
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import type { CouponTypeWithParticipants } from '@/lib/coupons/types';
+
 interface CategoryFilterProps {
-  mode: 'genre' | 'location';
-  onModeChange: (mode: 'genre' | 'location') => void;
   selectedCategory: string | null;
   onCategoryChange: (category: string | null) => void;
-  selectedChome: string | null;
-  onChomeChange: (chome: string | null) => void;
   categories: string[];
-  chomeOptions: { label: string; value: string }[];
+  couponTypes?: CouponTypeWithParticipants[];
+  selectedCouponTypeId?: string | null;
+  onCouponTypeChange?: (couponTypeId: string | null) => void;
 }
+
+const INITIAL_SHOW = 2;
 
 /**
  * カテゴリーフィルターコンポーネント
- * 横スクロール可能なタブUI（モバイル最適化）
+ * 最初はカテゴリー・クーポンを2件ずつ表示し、トグルで展開できる
  */
 export default function CategoryFilter({
-  mode,
-  onModeChange,
   selectedCategory,
   onCategoryChange,
-  selectedChome,
-  onChomeChange,
   categories,
-  chomeOptions,
+  couponTypes = [],
+  selectedCouponTypeId = null,
+  onCouponTypeChange,
 }: CategoryFilterProps) {
+  // 選択中のものがあれば初期展開
+  const [categoriesExpanded, setCategoriesExpanded] = useState(
+    () => selectedCategory !== null && categories.indexOf(selectedCategory) >= INITIAL_SHOW
+  );
+  const [couponsExpanded, setCouponsExpanded] = useState(
+    () => selectedCouponTypeId !== null && couponTypes.findIndex((c) => c.id === selectedCouponTypeId) >= INITIAL_SHOW
+  );
+
+  const visibleCategories = categoriesExpanded ? categories : categories.slice(0, INITIAL_SHOW);
+  const visibleCoupons = couponsExpanded ? couponTypes : couponTypes.slice(0, INITIAL_SHOW);
+
   return (
-    <div className="mt-3" role="group" aria-label="カテゴリーで絞り込み">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+    <div className="mt-3 space-y-3">
+      {/* カテゴリー */}
+      <div>
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
           カテゴリー
         </p>
         <div
-          className="inline-flex items-center rounded-full border border-amber-200 bg-white p-1 text-[11px] font-semibold text-amber-800"
-          role="tablist"
-          aria-label="カテゴリーの種類"
+          role="group"
+          aria-label="カテゴリーで絞り込み"
+          className="flex flex-wrap gap-1.5"
         >
           <button
             type="button"
-            onClick={() => onModeChange('genre')}
-            className={`rounded-full px-3 py-1 transition ${
-              mode === 'genre' ? 'bg-amber-600 text-white' : 'text-amber-700 hover:bg-amber-50'
+            onClick={() => onCategoryChange(null)}
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold shadow-sm transition ${
+              selectedCategory === null
+                ? 'bg-amber-600 text-white'
+                : 'border border-amber-200 bg-white text-amber-800 hover:bg-amber-50'
             }`}
-            role="tab"
-            aria-selected={mode === 'genre'}
+            aria-pressed={selectedCategory === null}
           >
-            ジャンル
+            すべて
           </button>
-          <button
-            type="button"
-            onClick={() => onModeChange('location')}
-            className={`rounded-full px-3 py-1 transition ${
-              mode === 'location' ? 'bg-amber-600 text-white' : 'text-amber-700 hover:bg-amber-50'
-            }`}
-            role="tab"
-            aria-selected={mode === 'location'}
-          >
-            場所
-          </button>
+          {visibleCategories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => onCategoryChange(cat)}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold shadow-sm transition ${
+                selectedCategory === cat
+                  ? 'bg-amber-600 text-white'
+                  : 'border border-amber-200 bg-white text-amber-800 hover:bg-amber-50'
+              }`}
+              aria-pressed={selectedCategory === cat}
+            >
+              {cat}
+            </button>
+          ))}
+          {categories.length > INITIAL_SHOW && (
+            <button
+              type="button"
+              onClick={() => setCategoriesExpanded((v) => !v)}
+              className="flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
+              aria-expanded={categoriesExpanded}
+            >
+              {categoriesExpanded ? (
+                <><ChevronUp className="h-3 w-3" />閉じる</>
+              ) : (
+                <><ChevronDown className="h-3 w-3" />あと{categories.length - INITIAL_SHOW}件</>
+              )}
+            </button>
+          )}
         </div>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin' }}>
-        <button
-          type="button"
-          onClick={() => (mode === 'genre' ? onCategoryChange(null) : onChomeChange(null))}
-          className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-            mode === 'genre' ? selectedCategory === null : selectedChome === null
-              ? 'bg-amber-600 text-white'
-              : 'border border-amber-200 bg-white text-amber-800 hover:bg-amber-50'
-          }`}
-          aria-label="すべてのカテゴリーを表示"
-          aria-pressed={mode === 'genre' ? selectedCategory === null : selectedChome === null}
-        >
-          すべて
-        </button>
-        {mode === 'genre'
-          ? categories.map((cat) => (
+
+      {/* クーポン */}
+      {couponTypes.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">
+            クーポン
+          </p>
+          <div
+            role="group"
+            aria-label="クーポン種類で絞り込み"
+            className="flex flex-wrap gap-1.5"
+          >
+            <button
+              type="button"
+              onClick={() => onCouponTypeChange?.(null)}
+              className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold shadow-sm transition ${
+                selectedCouponTypeId === null
+                  ? 'border-emerald-500 bg-emerald-500 text-white'
+                  : 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+              }`}
+              aria-pressed={selectedCouponTypeId === null}
+            >
+              すべて
+            </button>
+            {visibleCoupons.map((couponType) => {
+              const isActive = selectedCouponTypeId === couponType.id;
+              return (
+                <button
+                  key={couponType.id}
+                  type="button"
+                  onClick={() => onCouponTypeChange?.(isActive ? null : couponType.id)}
+                  className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold shadow-sm transition ${
+                    isActive
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                  }`}
+                  aria-pressed={isActive}
+                >
+                  {couponType.emoji} {couponType.name}
+                </button>
+              );
+            })}
+            {couponTypes.length > INITIAL_SHOW && (
               <button
-                key={cat}
                 type="button"
-                onClick={() => onCategoryChange(cat)}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-                  selectedCategory === cat
-                    ? 'bg-amber-600 text-white'
-                    : 'border border-amber-200 bg-white text-amber-800 hover:bg-amber-50'
-                }`}
-                aria-label={`${cat}で絞り込む`}
-                aria-pressed={selectedCategory === cat}
+                onClick={() => setCouponsExpanded((v) => !v)}
+                className="flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                aria-expanded={couponsExpanded}
               >
-                {cat}
+                {couponsExpanded ? (
+                  <><ChevronUp className="h-3 w-3" />閉じる</>
+                ) : (
+                  <><ChevronDown className="h-3 w-3" />あと{couponTypes.length - INITIAL_SHOW}件</>
+                )}
               </button>
-            ))
-          : chomeOptions.map((chome) => (
-              <button
-                key={chome.value}
-                type="button"
-                onClick={() => onChomeChange(chome.value)}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${
-                  selectedChome === chome.value
-                    ? 'bg-amber-600 text-white'
-                    : 'border border-amber-200 bg-white text-amber-800 hover:bg-amber-50'
-                }`}
-                aria-label={`${chome.label}で絞り込む`}
-                aria-pressed={selectedChome === chome.value}
-              >
-                {chome.label}
-              </button>
-            ))}
-      </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

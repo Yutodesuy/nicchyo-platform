@@ -1,4 +1,5 @@
 import { Shop } from '../data/shops';
+import { sanitizeInlineSvg } from './svgSanitizer';
 
 type ShopIllustrationSize = 'small' | 'medium' | 'large';
 
@@ -32,8 +33,9 @@ function generateShopIllustrationHtml(
   color?: string,
   customSvg?: string
 ): string {
-  if (customSvg) {
-    return `<div class="shop-illustration">${customSvg}</div>`;
+  const safeSvg = sanitizeInlineSvg(customSvg);
+  if (safeSvg) {
+    return `<div class="shop-illustration">${safeSvg}</div>`;
   }
 
   if (type === 'custom') {
@@ -44,10 +46,6 @@ function generateShopIllustrationHtml(
   const baseColor = color || '#22c55e';
   const darkColor = adjustColor(baseColor, -25);
   const lightColor = adjustColor(baseColor, 25);
-
-  // Note: style object keys in React are camelCase, but in HTML style attribute they are kebab-case (except custom props which are kept as is usually, but here they are CSS variables)
-  // React: ['--stall-color' as any]: baseColor
-  // HTML: style="width: ...; height: ...; --stall-color: ...;"
 
   const style = `width:${width}px;height:${height}px;--stall-color:${baseColor};--stall-color-dark:${darkColor};--stall-color-light:${lightColor};`;
 
@@ -72,7 +70,7 @@ export function generateShopMarkerHtml(
   bannerImage: string | undefined,
   attendanceLabel: string,
   illustrationSize: ShopIllustrationSize,
-  mainProduct: string
+  _mainProduct: string
 ): string {
   const bannerHtml = mode === 'full' ? `
     ${bannerImage ? `<span class="shop-product-icon" style="background-image: url(${escapeHtml(bannerImage)})" aria-hidden="true"></span>` : ''}
@@ -102,6 +100,7 @@ export function generateShopMarkerHtml(
       <div class="shop-recipe-icons" aria-hidden="true"></div>
       <div class="shop-kotodute-badge" aria-hidden="true">i</div>
       <div class="shop-favorite-badge" aria-hidden="true">&#10084;</div>
+      <div class="shop-coupon-badge" aria-hidden="true">🎟️</div>
       <div class="shop-bag-badge" aria-hidden="true">🛍️</div>
       ${illustrationHtml}
     </div>

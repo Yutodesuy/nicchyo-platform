@@ -1,0 +1,10 @@
+# /test
+
+Vitestのテストをすべて実行し、失敗があれば原因を調査して修正する。
+
+```bash
+cd /c/Users/miyuk/nicchyo-platform
+npm test
+```
+
+失敗したテストがあれば、対象ファイルを読んで原因を特定し修正案を提示すること。

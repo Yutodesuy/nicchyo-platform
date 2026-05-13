@@ -17,7 +17,6 @@
 import type {
   ShopEditableData,
   ShopDisplaySettings,
-  EDITABLE_FIELDS,
 } from '../types/shopData';
 
 /**
@@ -273,18 +272,11 @@ export function validateShopDisplaySettings(
  * @returns 編集可能か
  */
 export async function canEditShop(
-  userId: string,
-  shopId: number
+  _userId: string,
+  _shopId: number
 ): Promise<boolean> {
-  // 現在: 未実装（常にfalse）
+  // 将来: /api/auth/can-edit-shop でDBから権限確認
   return false;
-
-  // 将来: DBやAPIで権限確認
-  // - 店舗の所有者か確認
-  // - 管理者権限を持っているか確認
-  // const response = await fetch(`/api/auth/can-edit-shop?userId=${userId}&shopId=${shopId}`);
-  // const result = await response.json();
-  // return result.canEdit;
 }
 
 /**
@@ -293,14 +285,9 @@ export async function canEditShop(
  * @param userId ユーザーID
  * @returns 管理者か
  */
-export async function isAdmin(userId: string): Promise<boolean> {
-  // 現在: 未実装（常にfalse）
+export async function isAdmin(_userId: string): Promise<boolean> {
+  // 将来: /api/auth/is-admin でDBから権限確認
   return false;
-
-  // 将来: DBやAPIで権限確認
-  // const response = await fetch(`/api/auth/is-admin?userId=${userId}`);
-  // const result = await response.json();
-  // return result.isAdmin;
 }
 
 // ===== ヘルパー関数 =====

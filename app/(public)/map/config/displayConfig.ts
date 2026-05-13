@@ -79,9 +79,9 @@ export const DEFAULT_ILLUSTRATION_SIZE: 'small' | 'medium' | 'large' =
  * - filterIntervalとの組み合わせで適切な間隔を確保
  *
  * 【設計根拠】
- * - ズーム19.0以上: medium (60px) - DETAIL モード（詳細閲覧、大きく見やすい）
- * - ズーム18.0-19.0: small (45px) - INTERMEDIATE モード（エリア探索、タップしやすい）
- * - ズーム18.0未満: small (45px) - OVERVIEW モード（全体俯瞰、見やすい）
+ * - ズーム19.5以上: medium (60px) - DETAIL モード（詳細閲覧、大きく見やすい）
+ * - ズーム17.5-19.5未満: small (45px) - 中間帯
+ * - ズーム17.5未満: small (45px) - OVERVIEW モード
  *
  * @param currentZoom 現在のズームレベル
  * @returns イラストサイズ ('small' | 'medium' | 'large')
@@ -89,10 +89,10 @@ export const DEFAULT_ILLUSTRATION_SIZE: 'small' | 'medium' | 'large' =
 export function getIllustrationSizeForZoom(
   currentZoom: number
 ): 'small' | 'medium' | 'large' {
-  if (currentZoom >= 19.0) {
+  if (currentZoom >= 19.5) {
     return 'medium'; // 【スマホUX】詳細閲覧: 60px（大きく見やすい）
   }
-  if (currentZoom >= 18.0) {
+  if (currentZoom >= 17.5) {
     return 'small'; // 【スマホUX】エリア探索: 45px（タップしやすい）
   }
   return 'small'; // 全体俯瞰: 45px（視認性確保）
@@ -160,7 +160,7 @@ export interface ZoomDisplayRule {
  */
 export const ZOOM_DISPLAY_RULES: ZoomDisplayRule[] = [
   {
-    minZoom: 18.0,
+    minZoom: 19.5,
     filterInterval: 1, // 拡大時: 全店舗表示（300店舗）
     allowShopDetails: true,
     allowShopInfo: true,
@@ -345,7 +345,7 @@ export interface ViewModeConfig {
  * 【シンプルな2段階表示】
  *
  * ┌─────────────────────────────────────┐
- * │ OVERVIEW（16.0-18.0未満）          │
+ * │ OVERVIEW（16.0-19.5未満）          │
  * │ 役割：縮小時、全体俯瞰              │
  * │ 体験：「日曜市の7丁目を把握」       │
  * │ 表示：14店舗（各丁目から左右1つずつ）│
@@ -353,7 +353,7 @@ export interface ViewModeConfig {
  * │ タップ：その丁目にズームイン        │
  * └─────────────────────────────────────┘
  * ┌─────────────────────────────────────┐
- * │ DETAIL（18.0以上）                 │
+ * │ DETAIL（19.5以上）                 │
  * │ 役割：拡大時、詳細閲覧              │
  * │ 体験：「全店舗を見渡せる」          │
  * │ 表示：300店舗すべて                 │
@@ -365,12 +365,12 @@ export interface ViewModeConfig {
  * - 2段階のシンプルな切り替え
  * - 縮小時は丁目別に代表店舗を表示（論理的な7分割）
  * - 拡大時は全店舗を表示
- * - デフォルトズーム18.0：拡大時（全店舗表示）
+ * - デフォルトズーム18.0：中間帯、19.5で全店舗表示へ
  */
 export const VIEW_MODE_CONFIGS: ViewModeConfig[] = [
   {
     mode: ViewMode.DETAIL,
-    minZoom: 18.0,  // 【2段階表示】拡大時（デフォルト）
+    minZoom: 19.5,  // 【2段階表示】19.5で詳細表示へ
     filterInterval: 1,  // 全店舗表示（300店舗すべて）
     mobileFilterInterval: 1,  // 全店舗表示
     allowShopDetails: true,

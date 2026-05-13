@@ -1,27 +1,47 @@
 /**
  * 管理者用レイアウト
- * サイドバー付きの2カラムレイアウト
+ * 管理画面共通レイアウト
  */
 
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AdminSidebar } from "./AdminSidebar";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
+  withBottomPadding?: boolean;
 }
 
-export const AdminLayout = React.memo(function AdminLayout({ children }: AdminLayoutProps) {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* サイドバー */}
-      <AdminSidebar />
+export const AdminLayout = React.memo(function AdminLayout({
+  children,
+  withBottomPadding = true,
+}: AdminLayoutProps) {
+  const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-      {/* メインコンテンツ */}
-      <div className="lg:pl-64">
-        <main className="min-h-screen">{children}</main>
-      </div>
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isSidebarOpen]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 lg:pl-64">
+      <AdminSidebar
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen((v) => !v)}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <main className={`min-h-screen ${withBottomPadding ? "pb-24" : ""}`}>{children}</main>
     </div>
   );
 });

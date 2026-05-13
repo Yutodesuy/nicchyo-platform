@@ -5,8 +5,8 @@ import ContactForm from "./ContactForm";
 import { HelpCircle } from "lucide-react";
 
 export const metadata = {
-  title: "Contact | nicchyo",
-  description: "nicchyo へのお問い合わせ",
+  title: "お問い合わせ",
+  description: "nicchyo へのご意見・ご要望・不具合報告はこちらからお送りください。",
 };
 
 export default function ContactPage() {
