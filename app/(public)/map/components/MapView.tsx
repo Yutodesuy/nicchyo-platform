@@ -1118,6 +1118,16 @@ const MapView = memo(function MapView({
     [onZoomChange]
   );
 
+  const handleCloseBanner = useCallback(() => {
+    setSelectedShop(null);
+    setShopBannerOrigin(null);
+    setShopBannerInitialSurface("detail");
+    setShopBannerMainSurface("detail");
+  }, []);
+
+  const handleSelectPreviousShop = useCallback(() => handleSelectByOffset(-1), [handleSelectByOffset]);
+  const handleSelectNextShop = useCallback(() => handleSelectByOffset(1), [handleSelectByOffset]);
+
   const landmarkScale = useMemo(() => {
     const factor = Math.pow(1.22, mapUiZoom - 18);
     return Math.min(2.8, Math.max(0.5, factor));
@@ -1381,14 +1391,9 @@ const MapView = memo(function MapView({
             canNavigateBetweenShops={canNavigate}
             selectedShopPosition={selectedShopIndex + 1}
             totalShopCount={shops.length}
-            onSelectPreviousShop={() => handleSelectByOffset(-1)}
-            onSelectNextShop={() => handleSelectByOffset(1)}
-            onClose={() => {
-              setSelectedShop(null);
-              setShopBannerOrigin(null);
-              setShopBannerInitialSurface("detail");
-              setShopBannerMainSurface("detail");
-            }}
+            onSelectPreviousShop={handleSelectPreviousShop}
+            onSelectNextShop={handleSelectNextShop}
+            onClose={handleCloseBanner}
             onAddToBag={handleAddToBag}
             variant={shopBannerVariant}
             originRect={shopBannerOrigin ?? undefined}

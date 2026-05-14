@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import type { CSSProperties, RefObject } from "react";
 import Image from "next/image";
@@ -146,7 +146,7 @@ function useCenterBounceTrigger(
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function ShopDetailBanner({
+const ShopDetailBanner = memo(function ShopDetailBanner({
   shop,
   onClose,
   onAddToBag,
@@ -180,8 +180,6 @@ export default function ShopDetailBanner({
       min_purchase_amount: number;
     }>;
   } | null>(null);
-  // セッション中のクーポン情報キャッシュ（vendorId → データ）
-  const couponInfoCacheRef = useRef<Map<string, typeof couponInfo>>(new Map());
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
 
@@ -281,18 +279,9 @@ export default function ShopDetailBanner({
       setCouponInfo(null);
       return;
     }
-    const cached = couponInfoCacheRef.current.get(vendorId);
-    if (cached !== undefined) {
-      setCouponInfo(cached);
-      return;
-    }
     fetch(`/api/coupons/shop-info?vendor_id=${encodeURIComponent(vendorId)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        const value = data ?? null;
-        couponInfoCacheRef.current.set(vendorId, value);
-        setCouponInfo(value);
-      })
+      .then((data) => setCouponInfo(data ?? null))
       .catch(() => {
         // クーポン情報取得失敗は無視
       });
@@ -1403,6 +1392,8 @@ export default function ShopDetailBanner({
       )}
     </div>
   );
-}
+});
+
+export default ShopDetailBanner;
 
 
