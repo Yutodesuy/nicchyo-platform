@@ -2,10 +2,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  const { supabase, response } = createClient(request);
+  const { supabase, getResponse } = createClient(request);
 
   // セッション更新（Supabase Auth）
+  // getUser() 内でセッションリフレッシュが起きると createClient 内の supabaseResponse が
+  // 再代入されるため、呼び出し後に getResponse() で最新のレスポンスを取得する
   await supabase.auth.getUser();
+  const supabaseResponse = getResponse();
 
   // ノンスを生成してCSPヘッダーに設定
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
@@ -32,9 +35,9 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  // レスポンスにCSPヘッダーとSupabase Cookieを設定
+  // レスポンスにCSPヘッダーとSupabase Cookieを設定（リフレッシュ後の最新 Cookie を使用）
   res.headers.set("content-security-policy", csp);
-  response.cookies.getAll().forEach(({ name, value }) => {
+  supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
     res.cookies.set(name, value);
   });
 
