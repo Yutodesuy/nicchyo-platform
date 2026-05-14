@@ -48,6 +48,19 @@ import {
   buildReplyFromTurns,
 } from "@/lib/grandma/promptBuilder";
 import { handleAbuseDetection } from "@/lib/grandma/abuseDetection";
+import { z } from "zod";
+
+const AskJsonBodySchema = z.object({
+  text: z.string().optional(),
+  location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
+  shopId: z.number().int().nullable().optional(),
+  shopName: z.string().nullable().optional(),
+  history: z.array(z.unknown()).optional(),
+  memorySummary: z.string().optional(),
+  preferredCharacterId: z.string().nullable().optional(),
+  visitorKey: z.string().max(128).nullable().optional(),
+  stream: z.boolean().optional(),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,17 +129,11 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       imageDataUrl = `data:${mime};base64,${base64}`;
     }
   } else {
-    const payload = (await request.json()) as {
-      text?: string;
-      location?: { lat: number; lng: number } | null;
-      shopId?: number | null;
-      shopName?: string | null;
-      history?: ConsultHistoryEntry[];
-      memorySummary?: string;
-      preferredCharacterId?: ConsultCharacterId | null;
-      visitorKey?: string | null;
-      stream?: boolean;
-    };
+    const parsed = AskJsonBodySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      throw new Error(`Invalid request body: ${parsed.error.issues[0].message}`);
+    }
+    const payload = parsed.data;
     text = payload.text ?? "";
     location = payload.location ?? null;
     targetShopId =
@@ -134,11 +141,11 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
         ? payload.shopId
         : null;
     targetShopName = payload.shopName?.trim() || null;
-    history = Array.isArray(payload.history) ? payload.history : [];
+    history = Array.isArray(payload.history) ? (payload.history as ConsultHistoryEntry[]) : [];
     memorySummary = payload.memorySummary?.trim() || "";
     preferredCharacterId =
-      payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId)
-        ? payload.preferredCharacterId
+      payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId as ConsultCharacterId)
+        ? (payload.preferredCharacterId as ConsultCharacterId)
         : null;
     if (typeof payload.visitorKey === "string") {
       const vk = payload.visitorKey.trim();
