@@ -11,7 +11,6 @@ import { Mail, Lock, LogIn, ChevronRight, UserPlus, Eye, EyeOff, AlertCircle } f
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { loginWithCredentials } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -31,12 +30,18 @@ export default function LoginPage() {
       setError("ログインできませんでした。メールアドレスやパスワードにお間違いがないか確認してください。");
       return;
     }
-    const destination = loggedInUser.role === "vendor" ? "/my-shop" : "/map";
+    const destination =
+      loggedInUser.role === "vendor"
+        ? "/my-shop"
+        : loggedInUser.role === "super_admin"
+          ? "/admin/dashboard"
+          : "/map";
     router.push(destination);
   };
 
   const handleGoogleLogin = async () => {
     setError("");
+    const supabase = createClient();
     const origin =
       typeof window !== "undefined" ? window.location.origin : "";
     const { error: oauthError } = await supabase.auth.signInWithOAuth({

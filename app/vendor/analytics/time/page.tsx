@@ -61,32 +61,40 @@ export default function TimeAnalyticsPage() {
           </div>
         ) : (
           <>
+            <div className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Time Analytics</p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">時間帯分析</h2>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                いつ見られているかが分かると、投稿や案内のタイミングを合わせやすくなります。
+              </p>
+            </div>
+
             {/* インサイトカード */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50">
                   <TrendingUp size={15} className="text-amber-600" />
                 </div>
-                <p className="text-xs text-slate-500">ピーク時間</p>
-                <p className="text-2xl font-bold text-amber-600">{hasData ? peakHour?.hour : "—"}</p>
-                <p className="text-[10px] text-slate-400">{hasData ? `閲覧数 ${maxViews} 回` : "データなし"}</p>
+                <p className="text-sm text-slate-500">ピーク時間</p>
+                <p className="text-3xl font-bold text-amber-600">{hasData ? peakHour?.hour : "—"}</p>
+                <p className="text-xs text-slate-400">{hasData ? `閲覧数 ${maxViews} 回` : "データなし"}</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50">
                   <Clock size={15} className="text-sky-600" />
                 </div>
-                <p className="text-xs text-slate-500">今週の閲覧合計</p>
-                <p className="text-2xl font-bold text-sky-600">
+                <p className="text-sm text-slate-500">今週の閲覧合計</p>
+                <p className="text-3xl font-bold text-sky-600">
                   {hourlyData.reduce((s, d) => s + d.views, 0)}
                 </p>
-                <p className="text-[10px] text-slate-400">過去7日間</p>
+                <p className="text-xs text-slate-400">過去7日間</p>
               </div>
             </div>
 
             {/* グラフ */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="mb-1 text-sm font-semibold text-slate-700">時間帯別 閲覧数</p>
-              <p className="mb-4 text-xs text-slate-400">過去7日間の合計</p>
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="mb-1 text-base font-semibold text-slate-700">時間帯別 閲覧数</p>
+              <p className="mb-4 text-sm text-slate-400">過去7日間の合計</p>
               {!hasData ? (
                 <div className="flex h-[220px] flex-col items-center justify-center gap-2 text-slate-400">
                   <p className="text-sm">まだ閲覧データがありません</p>
@@ -108,7 +116,7 @@ export default function TimeAnalyticsPage() {
                 </ResponsiveContainer>
               )}
               {hasData && (
-                <div className="mt-3 flex items-center justify-center gap-4 text-[10px] text-slate-400">
+                <div className="mt-3 flex items-center justify-center gap-4 text-xs text-slate-400">
                   <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" />ピーク時間</span>
                   <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-200" />その他</span>
                 </div>
@@ -117,9 +125,9 @@ export default function TimeAnalyticsPage() {
 
             {/* アドバイス */}
             {hasData && (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
-                <p className="text-xs font-semibold text-sky-700">💡 アドバイス</p>
-                <p className="mt-1 text-xs leading-relaxed text-sky-800">
+              <div className="rounded-3xl border border-sky-100 bg-sky-50 px-4 py-3">
+                <p className="text-sm font-semibold text-sky-700">アドバイス</p>
+                <p className="mt-1 text-sm leading-relaxed text-sky-800">
                   {peakHour?.hour}頃が最も閲覧が多い時間帯です。この時間帯に合わせてSNS投稿や限定商品のアナウンスをすると効果的です。
                 </p>
               </div>

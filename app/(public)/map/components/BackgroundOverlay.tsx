@@ -34,15 +34,23 @@ interface BackgroundConfig {
   zIndex?: number;
 }
 
-// 背景設定（将来の拡張用）
+// 市場エリア全体に温かみのあるアンバートーンをのせる背景
+const marketTintSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 160">
+  <defs>
+    <radialGradient id="mg" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.02"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="160" fill="url(#mg)"/>
+</svg>`;
+
 const BACKGROUND_CONFIG: BackgroundConfig = {
-  enabled: false, // 今回は無効
-  // 将来的に有効化する例:
-  // enabled: true,
-  // imagePath: '/images/maps/sunday-market-background.svg',
-  // bounds: [[33.56500, 133.53200], [33.55330, 133.53000]],
-  // opacity: 0.3,
-  // zIndex: 10,
+  enabled: true,
+  imagePath: `data:image/svg+xml,${encodeURIComponent(marketTintSvg)}`,
+  bounds: [[33.5650, 133.5265], [33.5555, 133.5450]],
+  opacity: 1.0,
+  zIndex: 15,
 };
 
 export default function BackgroundOverlay() {

@@ -42,7 +42,7 @@ function StatusBadge({ status }: { status: PostStatus }) {
 
 function PostCard({ post, onRepost, onEditRepost }: { post: Post; onRepost: (post: Post) => void; onEditRepost: (post: Post) => void }) {
   return (
-    <div className={`rounded-2xl border bg-white p-4 shadow-sm transition ${post.status === "active" ? "border-amber-100" : "border-slate-200"}`}>
+    <div className={`rounded-3xl border bg-white p-4 shadow-sm transition ${post.status === "active" ? "border-amber-100" : "border-slate-200"}`}>
       <div className="flex items-start gap-3">
         {post.image_url ? (
           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100" style={{ backgroundImage: `url(${post.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }} />
@@ -61,14 +61,14 @@ function PostCard({ post, onRepost, onEditRepost }: { post: Post; onRepost: (pos
           </div>
         </div>
       </div>
-      <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row">
         <button onClick={() => onRepost(post)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-amber-200 bg-amber-50 py-3 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
         >
           <RotateCcw size={13} />そのまま再投稿
         </button>
         <button onClick={() => onEditRepost(post)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
         >
           <Pencil size={13} />編集して再投稿
         </button>
@@ -150,17 +150,30 @@ export default function VendorPostsPage() {
       </div>
 
       <div className="mx-auto max-w-2xl px-4 pt-4">
+        <div className="mb-4 rounded-3xl border border-amber-100 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">Post History</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">投稿履歴</h2>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            文字を大きめにし、再投稿ボタンも押しやすくしています。
+          </p>
+          <div className="mt-3">
+            <Link href="/vendor/post/new" className="inline-flex rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400">
+              新規投稿へ
+            </Link>
+          </div>
+        </div>
+
         {error && (
           <div className="mb-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
         )}
 
-        <div className="mb-4 flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="mb-4 flex gap-1.5 rounded-3xl border border-slate-200 bg-white p-1.5 shadow-sm">
           {TABS.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition ${activeTab === tab.key ? "bg-amber-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-semibold transition ${activeTab === tab.key ? "bg-amber-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               {tab.label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeTab === tab.key ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-400"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${activeTab === tab.key ? "bg-amber-400 text-white" : "bg-slate-100 text-slate-400"}`}>
                 {tab.count}
               </span>
             </button>

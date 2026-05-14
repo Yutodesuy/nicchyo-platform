@@ -1,15 +1,18 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { memo } from "react";
 import type { MouseEvent } from "react";
 import type { Shop } from "../../map/data/shops";
 import { saveSearchMapPayload } from "../../../../lib/searchMapStorage";
 import { getShopBannerImage } from "../../../../lib/shopImages";
+import { Badge } from "@/components/ui/badge";
 
 interface ShopResultCardProps {
   shop: Shop;
   isFavorite: boolean;
+  hasCoupon?: boolean;
   onToggleFavorite?: (shopId: number) => void;
   onSelectShop?: (shop: Shop) => void;
   compact?: boolean;
@@ -24,6 +27,7 @@ interface ShopResultCardProps {
 function ShopResultCard({
   shop,
   isFavorite,
+  hasCoupon = false,
   onToggleFavorite,
   onSelectShop,
   compact = false,
@@ -50,7 +54,7 @@ function ShopResultCard({
   return (
     <div
       className={`cursor-pointer rounded-xl border-2 border-orange-300 bg-amber-50/40 shadow-sm transition hover:bg-orange-50 active:scale-[1.02] active:bg-orange-50 ${
-        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-4 py-3"
+        compact ? "px-3 py-1.5 w-64 shrink-0" : "px-3.5 py-2"
       }`}
       role="button"
       tabIndex={0}
@@ -74,6 +78,11 @@ function ShopResultCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {hasCoupon && (
+            <Badge variant="coupon" className={compact ? "text-[10px]" : "text-[11px]"}>
+              🎟️ クーポン対応
+            </Badge>
+          )}
           <button
             type="button"
             onClick={() => onToggleFavorite?.(shop.id)}
@@ -99,23 +108,19 @@ function ShopResultCard({
         </div>
       </div>
 
-      <div className={`${compact ? "mt-1.5" : "mt-3"} flex gap-2`}>
-        <div className="flex-1 overflow-hidden rounded-lg border border-amber-100 bg-white">
-          <img
-            src={previewImage}
-            alt={`${shop.name}の画像`}
-            className={`${compact ? "h-20" : "h-28"} w-full object-contain bg-white`}
-          />
-        </div>
-        <div
-          className={`flex-1 rounded-lg border border-amber-100 bg-white ${
-            compact ? "h-20 p-2" : "p-3"
-          }`}
-        >
+      <div className={`${compact ? "mt-1.5" : "mt-2"} flex gap-3 overflow-hidden rounded-xl border border-amber-100 bg-white p-2.5`}>
+        <Image
+          src={previewImage}
+          alt={`${shop.name}の画像`}
+          width={128}
+          height={96}
+          className={`${compact ? "h-20 w-20" : "h-24 w-28 sm:w-32"} shrink-0 rounded-lg object-cover bg-white`}
+        />
+        <div className="min-w-0 flex-1">
           <p className={`${compact ? "text-[10px]" : "text-xs"} text-amber-700`}>
             {shop.category}
           </p>
-          <p className={`${compact ? "mt-1 text-[11px]" : "mt-2 text-sm"} text-gray-700`}>
+          <p className={`${compact ? "mt-1 text-[11px]" : "mt-1.5 text-sm leading-5"} line-clamp-2 text-gray-700`}>
             取り扱い: {shop.products.slice(0, 4).join("・")}
             {shop.products.length > 4 && "..."}
           </p>
@@ -125,8 +130,8 @@ function ShopResultCard({
       <Link
         href={mapHref}
         onClick={handleOpenMap}
-        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 ${
-          compact ? "mt-2 text-[10px]" : "mt-3 text-xs"
+        className={`inline-flex items-center gap-1 rounded-full border border-amber-200 bg-white px-3 py-1 font-semibold text-amber-800 shadow-sm transition hover:bg-amber-50 lg:hidden ${
+          compact ? "mt-2 text-[10px]" : "mt-2 text-xs"
         }`}
       >
         地図で見る →

@@ -13,7 +13,7 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
   const supabase = createClient();
   const { data, error } = await supabase
     .from("vendors")
-    .select("id, shop_name, owner_name, category_id, style, style_tags, main_products, main_product_prices, payment_methods, rain_policy, schedule")
+    .select("id, shop_name, owner_name, category_id, style, style_tags, main_products, main_product_prices, payment_methods, rain_policy, schedule, shop_image_url, sns_instagram, sns_x, sns_hp, business_hours_start, business_hours_end")
     .eq("id", vendorId)
     .single();
 
@@ -45,7 +45,25 @@ export async function fetchVendorStore(vendorId: string): Promise<Store | null> 
     payment_methods: ((data.payment_methods as string[]) ?? []) as PaymentMethod[],
     rain_policy: ((data.rain_policy as string) ?? "undecided") as RainPolicy,
     schedule: (data.schedule as string[]) ?? [],
+    shop_image_url: (data.shop_image_url as string) ?? undefined,
+    sns_instagram: (data.sns_instagram as string) ?? undefined,
+    sns_x: (data.sns_x as string) ?? undefined,
+    sns_hp: (data.sns_hp as string) ?? undefined,
+    business_hours_start: (data.business_hours_start as string) ?? undefined,
+    business_hours_end: (data.business_hours_end as string) ?? undefined,
   };
+}
+
+export async function uploadStoreImage(vendorId: string, file: File): Promise<string> {
+  const supabase = createClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${vendorId}/store-main.${ext}`;
+  const { error } = await supabase.storage
+    .from("vendor-images")
+    .upload(path, file, { contentType: file.type, upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from("vendor-images").getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export async function saveVendorStore(
@@ -66,6 +84,12 @@ export async function saveVendorStore(
       payment_methods: store.payment_methods,
       rain_policy: store.rain_policy,
       schedule: store.schedule,
+      shop_image_url: store.shop_image_url ?? null,
+      sns_instagram: store.sns_instagram ?? null,
+      sns_x: store.sns_x ?? null,
+      sns_hp: store.sns_hp ?? null,
+      business_hours_start: store.business_hours_start ?? null,
+      business_hours_end: store.business_hours_end ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", vendorId);

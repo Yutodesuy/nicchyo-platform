@@ -9,16 +9,38 @@ create table if not exists public.product_search_logs (
 -- 全員が書き込み可能（認証不要）、読み取りは不可
 alter table public.product_search_logs enable row level security;
 
-create policy "anyone can insert search logs"
-on public.product_search_logs
-for insert
-with check (true);
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'product_search_logs'
+      and policyname = 'anyone can insert search logs'
+  ) then
+    create policy "anyone can insert search logs"
+    on public.product_search_logs
+    for insert
+    with check (true);
+  end if;
+end $$;
 
 -- 認証済みユーザー（出店者）はトレンド集計のために全件読み取り可能
-create policy "authenticated users can read search logs"
-on public.product_search_logs
-for select
-using (auth.role() = 'authenticated');
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'product_search_logs'
+      and policyname = 'authenticated users can read search logs'
+  ) then
+    create policy "authenticated users can read search logs"
+    on public.product_search_logs
+    for select
+    using (auth.role() = 'authenticated');
+  end if;
+end $$;
 
 -- インデックス（集計クエリの高速化）
 create index if not exists idx_product_search_logs_keyword on public.product_search_logs (keyword);

@@ -7,7 +7,7 @@ type DbContent = {
   body: string | null;
   image_url: string | null;
   expires_at: string;
-  created_at: string;
+  created_at: string | null;
 };
 
 function contentToPost(c: DbContent): Post {
@@ -16,10 +16,22 @@ function contentToPost(c: DbContent): Post {
     vendor_id: c.vendor_id,
     text: c.body ?? "",
     image_url: c.image_url ?? undefined,
-    created_at: c.created_at,
+    created_at: c.created_at ?? new Date().toISOString(),
     expiration_time: c.expires_at,
     status: new Date(c.expires_at) > new Date() ? "active" : "expired",
   };
+}
+
+export async function fetchPostById(postId: string): Promise<Post | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("vendor_contents")
+    .select("id, vendor_id, body, image_url, expires_at, created_at")
+    .eq("id", postId)
+    .single();
+
+  if (error || !data) return null;
+  return contentToPost(data as DbContent);
 }
 
 export async function fetchVendorPosts(vendorId: string): Promise<Post[]> {
@@ -38,10 +50,11 @@ export async function createPost(
   vendorId: string,
   text: string,
   expiresAt: Date,
-  imageFile?: File
+  imageFile?: File,
+  existingImageUrl?: string
 ): Promise<Post> {
   const supabase = createClient();
-  let imageUrl: string | null = null;
+  let imageUrl: string | null = existingImageUrl ?? null;
 
   if (imageFile) {
     const ext = imageFile.name.split(".").pop() ?? "jpg";

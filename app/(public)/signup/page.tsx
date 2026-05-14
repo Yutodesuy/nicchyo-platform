@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, type FormEvent } from "react";
 import { getSmartNamePlaceholder } from "./signup-logic";
 import TurnstileWidget from "../../components/TurnstileWidget";
 import { createClient } from "@/utils/supabase/client";
@@ -11,9 +11,12 @@ import NavigationBar from "../../components/NavigationBar";
 
 export default function SignupPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [name, setName] = useState("");
-  const [namePlaceholder, setNamePlaceholder] = useState("日曜 太郎");
+  const [namePlaceholder] = useState(() =>
+    typeof navigator === "undefined"
+      ? "日曜 太郎"
+      : getSmartNamePlaceholder(new Date(), navigator.language)
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -48,6 +51,7 @@ export default function SignupPage() {
     }
 
     setIsSubmitting(true);
+    const supabase = createClient();
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -69,11 +73,6 @@ export default function SignupPage() {
 
     router.push("/map");
   };
-
-  useEffect(() => {
-    const locale = navigator.language;
-    setNamePlaceholder(getSmartNamePlaceholder(new Date(), locale));
-  }, []);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] pb-safe-bottom">

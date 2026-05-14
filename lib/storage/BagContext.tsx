@@ -15,6 +15,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 
 export type BagItem = {
   id: string;
@@ -24,11 +25,13 @@ export type BagItem = {
   qty?: string;
   note?: string;
   photo?: string;
+  price?: number;
   createdAt: number;
 };
 
 type BagContextType = {
   items: BagItem[];
+  totalPrice: number;
   addItem: (item: Omit<BagItem, 'id' | 'createdAt'>) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<BagItem>) => void;
@@ -55,10 +58,8 @@ export function BagProvider({ children }: { children: ReactNode }) {
     const loadItems = () => {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as BagItem[];
-          setItems(parsed);
-        }
+        const parsed = safeJsonParse<BagItem[]>(raw, []);
+        if (parsed.length > 0) setItems(parsed);
       } catch (error) {
         console.error('[BagContext] Failed to load bag items:', error);
       } finally {
@@ -196,10 +197,13 @@ export function BagProvider({ children }: { children: ReactNode }) {
     setItems([]);
   }, []);
 
+  const totalPrice = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
+
   return (
     <BagContext.Provider
       value={{
         items,
+        totalPrice,
         addItem,
         removeItem,
         updateItem,

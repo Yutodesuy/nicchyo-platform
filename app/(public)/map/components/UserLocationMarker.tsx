@@ -1,9 +1,16 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { isInsideSundayMarket } from '../config/roadConfig';
+import type { MapRouteConfig, MapRoutePoint } from '../types/mapRoute';
+import {
+  getDefaultMapRouteConfig,
+  getDefaultMapRoutePoints,
+  getRouteSegments,
+  normalizeMapRoutePoints,
+  projectPointOntoSegments,
+} from '../utils/mapRouteGeometry';
 
 const MARKET_CENTER: [number, number] = [33.5614118, 133.5379706];
 
@@ -21,9 +28,18 @@ const INITIAL_ZOOM_LEVEL = 19;
 interface UserLocationMarkerProps {
   onLocationUpdate?: (isInMarket: boolean, position: [number, number]) => void;
   isTracking?: boolean;
+  suppressInitialFocus?: boolean;
+  routePoints?: MapRoutePoint[];
+  routeConfig?: MapRouteConfig;
 }
 
-export default function UserLocationMarker({ onLocationUpdate, isTracking }: UserLocationMarkerProps) {
+export default function UserLocationMarker({
+  onLocationUpdate,
+  isTracking,
+  suppressInitialFocus = false,
+  routePoints,
+  routeConfig,
+}: UserLocationMarkerProps) {
   const map = useMap();
   const markerRef = useRef<L.Marker | null>(null);
   const arrowRef = useRef<HTMLDivElement | null>(null);
@@ -41,6 +57,19 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
   const lastAccuracyRef = useRef<number | null>(null);
   // 初回位置取得フラグ（マップを位置に移動させるため）
   const isFirstLocationRef = useRef(true);
+  const routeVisibleRef = useRef(false);
+  const effectiveRoutePoints = useMemo(() => {
+    const activeRoutePoints = normalizeMapRoutePoints(routePoints ?? []);
+    return activeRoutePoints.length >= 2 ? activeRoutePoints : getDefaultMapRoutePoints();
+  }, [routePoints]);
+  const effectiveRouteConfig = useMemo(
+    () => ({
+      ...getDefaultMapRouteConfig(),
+      ...(routeConfig ?? {}),
+    }),
+    [routeConfig]
+  );
+  const routeSegments = useMemo(() => getRouteSegments(effectiveRoutePoints), [effectiveRoutePoints]);
 
   const applyHeading = (heading: number) => {
     lastHeadingRef.current = heading;
@@ -71,8 +100,8 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
         let heading: number | null = null;
 
         // iOS WebKit
-        if ((event as any).webkitCompassHeading) {
-            heading = (event as any).webkitCompassHeading;
+        if ((event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading) {
+            heading = (event as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading ?? null;
         } else if (event.alpha !== null) {
             heading = 360 - event.alpha;
         }
@@ -87,10 +116,6 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
         window.removeEventListener('deviceorientation', handleOrientation);
     };
   }, []);
-
-  const checkIfInMarket = (lat: number, lng: number): boolean => {
-    return isInsideSundayMarket(lat, lng);
-  };
 
   useEffect(() => {
     if (!map) return;
@@ -134,6 +159,18 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });
+
+    const removeMarker = () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      if (markerRef.current) {
+        map.removeLayer(markerRef.current);
+        markerRef.current = null;
+      }
+      arrowRef.current = null;
+    };
 
     const animateMarkerTo = (target: [number, number]) => {
       if (!markerRef.current) return;
@@ -205,7 +242,16 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, accuracy } = position.coords;
-          const inMarket = checkIfInMarket(latitude, longitude);
+          const projected = projectPointOntoSegments(
+            { lat: latitude, lng: longitude },
+            effectiveRoutePoints,
+            routeSegments
+          );
+          const distanceFromRoute = projected?.distanceMeters ?? Number.POSITIVE_INFINITY;
+          const canSnap = distanceFromRoute <= effectiveRouteConfig.snapDistanceMeters;
+          const canStayVisible = distanceFromRoute <= effectiveRouteConfig.visibleDistanceMeters;
+          const shouldShowOnRoute = canSnap || (routeVisibleRef.current && canStayVisible);
+          const inMarket = shouldShowOnRoute && projected !== null;
           const now = Date.now();
           const interval = inMarket ? UPDATE_INTERVAL_IN_MARKET_MS : UPDATE_INTERVAL_OUTSIDE_MS;
           if (markerRef.current && now - lastUpdateRef.current < interval) {
@@ -227,12 +273,7 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
 
             // マーカーが既にある場合、フォールバック時間まで待つ
             if (markerRef.current && !shouldFallback) {
-              console.log(`位置精度が低いため再取得を待機中 (精度: ${accuracy.toFixed(1)}m, 閾値: ${ACCURACY_THRESHOLD_METERS}m)`);
               return;
-            }
-
-            if (shouldFallback) {
-              console.log(`フォールバック: 精度 ${accuracy.toFixed(1)}m で更新`);
             }
           } else {
             // 精度が良い場合、低精度タイマーをリセット
@@ -242,21 +283,26 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
           lastUpdateRef.current = now;
           lastAccuracyRef.current = accuracy;
 
-          // 実GPS座標をそのまま使用（DB座標系と一致させる）
           let displayPosition: [number, number];
-          if (inMarket) {
-            displayPosition = [latitude, longitude];
+          if (inMarket && projected) {
+            routeVisibleRef.current = true;
+            displayPosition = [projected.point.lat, projected.point.lng];
           } else {
-            displayPosition = MARKET_CENTER;
+            routeVisibleRef.current = false;
+            removeMarker();
+            onLocationUpdateRef.current?.(false, [latitude, longitude]);
+            return;
           }
 
           // 初回位置取得時はマップをその位置に移動
           if (isFirstLocationRef.current) {
             isFirstLocationRef.current = false;
-            map.flyTo(displayPosition, INITIAL_ZOOM_LEVEL, {
-              animate: true,
-              duration: 1.0,
-            });
+            if (!suppressInitialFocus) {
+              map.flyTo(displayPosition, INITIAL_ZOOM_LEVEL, {
+                animate: true,
+                duration: 1.0,
+              });
+            }
           } else if (isTrackingRef.current) {
             // Tracking enabled: Center map on user
             map.panTo(displayPosition, { animate: true, duration: 0.5 });
@@ -283,12 +329,8 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
         },
         (error) => {
           console.warn('Failed to get geolocation', error);
-          const defaultPosition = MARKET_CENTER;
-
-          if (!markerRef.current) {
-            markerRef.current = setupMarker(defaultPosition[0], defaultPosition[1]);
-          }
-          onLocationUpdateRef.current?.(false, defaultPosition);
+          removeMarker();
+          onLocationUpdateRef.current?.(false, MARKET_CENTER);
         },
         {
           enableHighAccuracy: true,
@@ -303,26 +345,18 @@ export default function UserLocationMarker({ onLocationUpdate, isTracking }: Use
           cancelAnimationFrame(animFrameRef.current);
           animFrameRef.current = null;
         }
-        if (markerRef.current) {
-          map.removeLayer(markerRef.current);
-          markerRef.current = null;
-        }
+        removeMarker();
       };
     }
 
     console.warn('Geolocation is not supported by this browser');
-    const defaultPosition = MARKET_CENTER;
-
-    markerRef.current = setupMarker(defaultPosition[0], defaultPosition[1]);
-    onLocationUpdateRef.current?.(false, defaultPosition);
+    removeMarker();
+    onLocationUpdateRef.current?.(false, MARKET_CENTER);
 
     return () => {
-      if (markerRef.current) {
-        map.removeLayer(markerRef.current);
-        markerRef.current = null;
-      }
+      removeMarker();
     };
-  }, [map]);
+  }, [effectiveRouteConfig, effectiveRoutePoints, map, routeSegments, suppressInitialFocus]);
 
   return null;
 }

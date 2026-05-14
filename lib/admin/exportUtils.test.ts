@@ -2,10 +2,15 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { exportToCSV, exportToJSON, formatDateForFilename } from './exportUtils';
 
 describe('exportUtils', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let createObjectURLMock: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let revokeObjectURLMock: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let createElementMock: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let appendChildMock: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let removeChildMock: any;
 
   beforeEach(() => {
@@ -21,8 +26,8 @@ describe('exportUtils', () => {
     appendChildMock = vi.spyOn(document.body, 'appendChild');
     removeChildMock = vi.spyOn(document.body, 'removeChild');
 
-    appendChildMock.mockImplementation((node: any) => node);
-    removeChildMock.mockImplementation((node: any) => node);
+    appendChildMock.mockImplementation((node: unknown) => node);
+    removeChildMock.mockImplementation((node: unknown) => node);
   });
 
   const originalCreateObjectURL = global.URL.createObjectURL;
@@ -48,7 +53,6 @@ describe('exportUtils', () => {
     });
 
     it('should use current date if no argument provided', () => {
-        const now = new Date();
         const formatted = formatDateForFilename();
         // Just check the format structure roughly as time moves
         expect(formatted).toMatch(/^\d{8}_\d{6}$/);

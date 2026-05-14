@@ -7,7 +7,6 @@ interface EmptyStateProps {
   hasQuery: boolean;
   categories: string[];
   onCategoryClick?: (category: string) => void;
-  onKeywordClick?: (keyword: string) => void;
 }
 
 /**
@@ -15,7 +14,7 @@ interface EmptyStateProps {
  * 結果なし時（0件）のメッセージを表示
  * ※ クエリ未入力時の表示は SearchDiscovery コンポーネントに委譲
  */
-export default function EmptyState({ hasQuery, categories, onCategoryClick, onKeywordClick }: EmptyStateProps) {
+export default function EmptyState({ hasQuery, categories, onCategoryClick }: EmptyStateProps) {
   // 注意: hasQueryがfalseの場合は親コンポーネントでSearchDiscoveryが表示されるため
   // ここでは理論上到達しないか、あるいは単純に何も表示しない
   if (!hasQuery) {
@@ -48,39 +47,6 @@ export default function EmptyState({ hasQuery, categories, onCategoryClick, onKe
                 漢字がわからない場合はひらがながおすすめです。
               </li>
             </ul>
-
-            <div className="pt-2">
-               <p className="text-xs font-semibold text-gray-500 mb-2">よく使われるキーワード：</p>
-               <div className="flex flex-wrap gap-2">
-                {onKeywordClick ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => onKeywordClick('トマト')}
-                      className="rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
-                    >
-                      トマト
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onKeywordClick('包丁')}
-                      className="rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
-                    >
-                      包丁
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onKeywordClick('コーヒー')}
-                      className="rounded-md bg-white px-2 py-1 text-xs font-medium text-amber-700 shadow-sm ring-1 ring-amber-200 hover:bg-amber-50"
-                    >
-                      コーヒー
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-xs text-gray-500">（キーワードクリック機能なし）</span>
-                )}
-               </div>
-            </div>
           </div>
         </div>
       </div>

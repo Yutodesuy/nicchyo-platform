@@ -13,12 +13,14 @@ export const createClient = (request: NextRequest) => {
 
   // Mock supabase client if env vars are missing
   if (!supabaseUrl || !supabaseKey) {
-    const mockSupabase = {
+    const mockSupabase: {
+      auth: { getUser: () => Promise<{ data: { user: null }; error: null }> };
+    } = {
       auth: {
         getUser: async () => ({ data: { user: null }, error: null }),
       },
-    } as any;
-    return { supabase: mockSupabase, response: supabaseResponse };
+    };
+    return { supabase: mockSupabase, getResponse: () => supabaseResponse };
   }
 
   const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
@@ -28,6 +30,7 @@ export const createClient = (request: NextRequest) => {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        // setAll は supabaseResponse を再代入するため、呼び出し元は getResponse() で最新を取得する
         supabaseResponse = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
@@ -36,5 +39,5 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
-  return { supabase, response: supabaseResponse };
+  return { supabase, getResponse: () => supabaseResponse };
 };

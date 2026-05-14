@@ -44,16 +44,7 @@ export function useRoleTheme(): RoleTheme {
 
   // role が変更されたときのみ再計算（パフォーマンス最適化）
   const theme = useMemo(() => {
-    const selectedTheme = getRoleTheme(user?.role);
-
-    // デバッグ用ログ（開発時のみ）
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[useRoleTheme] user.role:', user?.role);
-      console.log('[useRoleTheme] selected theme:', selectedTheme.description);
-      console.log('[useRoleTheme] headerBg:', selectedTheme.headerBg);
-    }
-
-    return selectedTheme;
+    return getRoleTheme(user?.role);
   }, [user?.role]);
 
   return theme;

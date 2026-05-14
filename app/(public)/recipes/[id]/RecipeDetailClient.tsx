@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
@@ -16,7 +17,7 @@ type BagItem = {
   createdAt: number;
 };
 
-const difficultyLabel: Record<Recipe["difficulty"], string> = {
+const _difficultyLabel: Record<Recipe["difficulty"], string> = {
   easy: "かんたん",
   normal: "ふつう",
   hard: "むずかしい",
@@ -27,12 +28,7 @@ const STORAGE_KEY = "nicchyo-fridge-items";
 function loadFridge(): BagItem[] {
   if (typeof window === "undefined") return [];
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as BagItem[];
-  } catch {
-    return [];
-  }
+  return safeJsonParse<BagItem[]>(raw, []);
 }
 
 export default function RecipeDetailClient({ id }: Props) {

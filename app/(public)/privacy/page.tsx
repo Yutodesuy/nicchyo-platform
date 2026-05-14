@@ -4,8 +4,8 @@ import { ArrowLeft, Shield, Lock, Eye, FileText, Mail } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export const metadata = {
-  title: "プライバシーポリシー | nicchyo",
-  description: "nicchyoにおける個人情報の取り扱いについて",
+  title: "プライバシーポリシー",
+  description: "nicchyo における個人情報の収集・利用・管理方針についてご説明します。",
 };
 
 export default function PrivacyPage() {

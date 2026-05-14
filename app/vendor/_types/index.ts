@@ -29,6 +29,16 @@ export type Store = {
   payment_methods: PaymentMethod[];
   rain_policy: RainPolicy;
   schedule: string[];
+  shop_image_url?: string;
+  sns_instagram?: string;
+  sns_x?: string;
+  sns_hp?: string;
+  business_hours_start?: string;
+  business_hours_end?: string;
+  /** バナーのテーマカラー（プリセットキー） */
+  theme_color?: "amber" | "green" | "orange" | "earth" | "navy" | "rose";
+  /** キャッチコピー（20文字以内） */
+  catchphrase?: string;
 };
 
 export type VendorAnalytics = {
@@ -43,7 +53,9 @@ export type ProductSale = {
   vendor_id: string;
   product_name: string;
   quantity: number;
-  date: string;
+  sale_date: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type HourlyData = {
