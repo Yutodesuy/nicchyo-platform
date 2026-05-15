@@ -39,7 +39,7 @@ function getRole(user: unknown) {
     app_metadata?: { role?: string };
     user_metadata?: { role?: string };
   };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
+  return record.app_metadata?.role ?? null;
 }
 
 function isAdminRole(role: string | null) {
@@ -153,7 +153,7 @@ export async function GET() {
 
     const users: AdminUserRecord[] = allUsers.map((authUser) => {
       const vendor = vendorById.get(authUser.id);
-      const role = normalizeRole(authUser.app_metadata?.role ?? authUser.user_metadata?.role);
+      const role = normalizeRole(authUser.app_metadata?.role );
       const name =
         vendor?.shop_name ??
         authUser.user_metadata?.name ??
