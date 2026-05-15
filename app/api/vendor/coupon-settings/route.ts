@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import type { VendorCouponSettingsResponse } from "@/lib/coupons/types";
+import { requireVendorRole } from "@/lib/auth/permissions";
 
 const CouponSettingsBodySchema = z.object({
   updates: z.array(
@@ -48,6 +49,8 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     const serviceClient = getServiceClient();
 

@@ -9,6 +9,7 @@ import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 import { isCouponQrTokenValid, parseCouponQrToken } from "@/lib/coupons/qrToken";
 import { todayJstString } from "@/lib/time/jstDate";
+import { requireVendorRole } from "@/lib/auth/permissions";
 
 const RedeemBodySchema = z.object({
   visitor_key: z.string().min(1),
@@ -48,6 +49,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     // ② リクエストボディ
     const parsed = RedeemBodySchema.safeParse(await request.json());

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { requireVendorRole } from "@/lib/auth/permissions";
 
 const MAX_CONTENT_LENGTH = 5000;
 const KnowledgeBodySchema = z.object({
@@ -21,6 +22,8 @@ export async function GET() {
     const supabase = createServerClient(cookieStore);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     const { data } = await supabase
       .from("store_knowledge")
@@ -53,6 +56,8 @@ export async function POST(request: Request) {
     const supabase = createServerClient(cookieStore);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     const parsed = KnowledgeBodySchema.safeParse(await request.json());
     if (!parsed.success) {
