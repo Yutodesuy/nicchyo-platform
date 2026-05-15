@@ -6,6 +6,7 @@ import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
 import { fetchMapRouteFromDb } from "@/app/(public)/map/services/mapRouteDb";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
 import type { MapRouteConfig, MapRoutePoint } from "@/app/(public)/map/types/mapRoute";
 
@@ -28,19 +29,6 @@ type SnapshotSummary = {
   routeConfigChanged?: boolean;
   restoreSourceSnapshotId?: string;
 };
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 function createAdminWriteClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -334,7 +322,7 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -374,7 +362,7 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
