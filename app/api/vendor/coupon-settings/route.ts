@@ -10,6 +10,7 @@ const CouponSettingsBodySchema = z.object({
     z.object({
       coupon_type_id: z.string().min(1),
       is_participating: z.boolean(),
+      // サポート対象額の明示的制限（DB の check 制約と一致させる）
       min_purchase_amount: z.union([
         z.literal(0),
         z.literal(300),

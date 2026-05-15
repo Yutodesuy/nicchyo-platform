@@ -50,12 +50,19 @@ import {
 import { handleAbuseDetection } from "@/lib/grandma/abuseDetection";
 import { z } from "zod";
 
+const ConsultHistoryEntrySchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  speakerId: z.string().nullable().optional(),
+  speakerName: z.string().nullable().optional(),
+});
+
 const AskJsonBodySchema = z.object({
   text: z.string().optional(),
   location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
   shopId: z.number().int().nullable().optional(),
   shopName: z.string().nullable().optional(),
-  history: z.array(z.unknown()).optional(),
+  history: z.array(ConsultHistoryEntrySchema).optional(),
   memorySummary: z.string().optional(),
   preferredCharacterId: z.string().nullable().optional(),
   visitorKey: z.string().max(128).nullable().optional(),
@@ -141,12 +148,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
         ? payload.shopId
         : null;
     targetShopName = payload.shopName?.trim() || null;
-    history = Array.isArray(payload.history) ? (payload.history as ConsultHistoryEntry[]) : [];
+    history = (payload.history ?? []) as ConsultHistoryEntry[];
     memorySummary = payload.memorySummary?.trim() || "";
-    preferredCharacterId =
-      payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId as ConsultCharacterId)
-        ? (payload.preferredCharacterId as ConsultCharacterId)
-        : null;
+    const charId = payload.preferredCharacterId as ConsultCharacterId | null;
+    preferredCharacterId = charId && CONSULT_CHARACTER_BY_ID.has(charId) ? charId : null;
     if (typeof payload.visitorKey === "string") {
       const vk = payload.visitorKey.trim();
       visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
