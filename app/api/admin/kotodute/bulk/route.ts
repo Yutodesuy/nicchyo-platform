@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const r = user as { app_metadata?: { role?: string }; user_metadata?: { role?: string } };
-  return r.app_metadata?.role ?? r.user_metadata?.role ?? null;
+  return r.app_metadata?.role ?? null;
 }
 function canModerate(role: string | null) {
   return role === "super_admin" || role === "admin" || role === "moderator";
