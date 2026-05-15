@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { z } from "zod";
 import type { Database } from "@/types/database.types";
 import { fetchVendorShopsFromDb } from "@/app/(public)/map/services/shopDb";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
@@ -37,15 +36,10 @@ type BaseShop = {
   lng: number;
 };
 
-const MapAgentBodySchema = z.object({
-  answers: z.object({
-    purpose: z.string().optional(),
-    needs: z.string().optional(),
-    visitCount: z.string().optional(),
-    favoriteFood: z.string().optional(),
-  }).optional(),
-  location: z.tuple([z.number(), z.number()]).nullable().optional(),
-});
+type RequestBody = {
+  answers?: Answers;
+  location?: [number, number] | null;
+};
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -305,12 +299,9 @@ export async function POST(request: Request) {
     });
     if (rateLimited) return rateLimited;
 
-    const parsed = MapAgentBodySchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid request body" }, { status: 400 });
-    }
-    const answers: Answers = parsed.data.answers ?? {};
-    const start = parsed.data.location ?? MARKET_CENTER;
+    const body = (await request.json()) as RequestBody;
+    const answers: Answers = body?.answers ?? {};
+    const start = Array.isArray(body?.location) && body.location.length === 2 ? body.location : MARKET_CENTER;
 
     const baseShops = await loadShops();
     const ranked = rankShops(answers, baseShops);

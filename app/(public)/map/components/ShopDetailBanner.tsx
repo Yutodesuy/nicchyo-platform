@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { safeJsonParse } from "@/lib/utils/safeJsonParse";
 import type { CSSProperties, RefObject } from "react";
 import Image from "next/image";
@@ -146,44 +146,7 @@ function useCenterBounceTrigger(
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-function areShopDetailBannerPropsEqual(
-  prev: ShopDetailBannerProps,
-  next: ShopDetailBannerProps
-): boolean {
-  // shop は DB 再フェッチで参照が変わることがあるため id で比較する
-  if (prev.shop.id !== next.shop.id) return false;
-  // stampedVendorIds は配列なので内容で比較する
-  const ps = prev.stampedVendorIds ?? [];
-  const ns = next.stampedVendorIds ?? [];
-  if (ps.length !== ns.length || ps.some((id, i) => id !== ns[i])) return false;
-  // originRect はオブジェクトなので各フィールドで比較する
-  if (
-    prev.originRect?.x !== next.originRect?.x ||
-    prev.originRect?.y !== next.originRect?.y ||
-    prev.originRect?.width !== next.originRect?.width ||
-    prev.originRect?.height !== next.originRect?.height
-  ) return false;
-  // 残りは primitive または useCallback / setState で安定した参照
-  return (
-    prev.bagCount === next.bagCount &&
-    prev.onClose === next.onClose &&
-    prev.onAddToBag === next.onAddToBag &&
-    prev.variant === next.variant &&
-    prev.layout === next.layout &&
-    prev.openNonce === next.openNonce &&
-    prev.initialMobileSurface === next.initialMobileSurface &&
-    prev.onMobileMainSurfaceChange === next.onMobileMainSurfaceChange &&
-    prev.canNavigateBetweenShops === next.canNavigateBetweenShops &&
-    prev.selectedShopPosition === next.selectedShopPosition &&
-    prev.totalShopCount === next.totalShopCount &&
-    prev.onSelectPreviousShop === next.onSelectPreviousShop &&
-    prev.onSelectNextShop === next.onSelectNextShop &&
-    prev.activeCouponTypeId === next.activeCouponTypeId &&
-    prev.reserveBottomNavSpace === next.reserveBottomNavSpace
-  );
-}
-
-const ShopDetailBanner = memo(function ShopDetailBanner({
+export default function ShopDetailBanner({
   shop,
   onClose,
   onAddToBag,
@@ -217,6 +180,8 @@ const ShopDetailBanner = memo(function ShopDetailBanner({
       min_purchase_amount: number;
     }>;
   } | null>(null);
+  // セッション中のクーポン情報キャッシュ（vendorId → データ）
+  const couponInfoCacheRef = useRef<Map<string, typeof couponInfo>>(new Map());
   const [currentPostIndex, setCurrentPostIndex] = useState(0);
   const [heroImageError, setHeroImageError] = useState(false);
 
@@ -316,9 +281,18 @@ const ShopDetailBanner = memo(function ShopDetailBanner({
       setCouponInfo(null);
       return;
     }
+    const cached = couponInfoCacheRef.current.get(vendorId);
+    if (cached !== undefined) {
+      setCouponInfo(cached);
+      return;
+    }
     fetch(`/api/coupons/shop-info?vendor_id=${encodeURIComponent(vendorId)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setCouponInfo(data ?? null))
+      .then((data) => {
+        const value = data ?? null;
+        couponInfoCacheRef.current.set(vendorId, value);
+        setCouponInfo(value);
+      })
       .catch(() => {
         // クーポン情報取得失敗は無視
       });
@@ -1429,8 +1403,6 @@ const ShopDetailBanner = memo(function ShopDetailBanner({
       )}
     </div>
   );
-}, areShopDetailBannerPropsEqual);
-
-export default ShopDetailBanner;
+}
 
 

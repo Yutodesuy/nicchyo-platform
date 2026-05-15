@@ -69,10 +69,14 @@ export async function POST(request: Request) {
     }
 
     // vendors テーブルに存在するIDのみに絞る（admin等を誤って操作しないため）
-    const { data: validVendors } = await serviceClient
+    const { data: validVendors, error: vendorFetchError } = await serviceClient
       .from("vendors")
       .select("id")
       .in("id", withoutSelf);
+    if (vendorFetchError) {
+      return NextResponse.json({ error: "Failed to validate vendor IDs" }, { status: 500 });
+    }
+
     const safeIds = validVendors?.map((v: { id: string }) => v.id) ?? [];
     if (safeIds.length === 0) {
       return NextResponse.json({ error: "対象の出店者が見つかりません" }, { status: 400 });

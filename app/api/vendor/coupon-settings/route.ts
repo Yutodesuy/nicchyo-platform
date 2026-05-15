@@ -1,26 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { z } from "zod";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import type { VendorCouponSettingsResponse } from "@/lib/coupons/types";
-import { requireVendorRole } from "@/lib/auth/permissions";
-
-const CouponSettingsBodySchema = z.object({
-  updates: z.array(
-    z.object({
-      coupon_type_id: z.string().min(1),
-      is_participating: z.boolean(),
-      // サポート対象額の明示的制限（DB の check 制約と一致させる）
-      min_purchase_amount: z.union([
-        z.literal(0),
-        z.literal(300),
-        z.literal(500),
-        z.literal(1000),
-      ]),
-    })
-  ),
-});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,8 +31,6 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const forbidden = requireVendorRole(user);
-    if (forbidden) return forbidden;
 
     const serviceClient = getServiceClient();
 
@@ -104,15 +84,35 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const parsed = CouponSettingsBodySchema.safeParse(await request.json());
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    const body = (await request.json()) as {
+      updates?: Array<{
+        coupon_type_id: string;
+        is_participating: boolean;
+        min_purchase_amount: 0 | 300 | 500 | 1000;
+      }>;
+    };
+
+    if (!Array.isArray(body.updates)) {
+      return NextResponse.json({ error: "updates array is required" }, { status: 400 });
+    }
+
+    const VALID_AMOUNTS = new Set([0, 300, 500, 1000]);
+    for (const u of body.updates) {
+      if (!u.coupon_type_id || typeof u.is_participating !== "boolean") {
+        return NextResponse.json({ error: "Invalid update entry" }, { status: 400 });
+      }
+      if (!VALID_AMOUNTS.has(u.min_purchase_amount)) {
+        return NextResponse.json(
+          { error: "min_purchase_amount must be one of 0, 300, 500, 1000" },
+          { status: 400 }
+        );
+      }
     }
 
     const serviceClient = getServiceClient();
 
     // UPSERT で一括保存
-    const rows = parsed.data.updates.map((u) => ({
+    const rows = body.updates.map((u) => ({
       vendor_id: user.id,
       coupon_type_id: u.coupon_type_id,
       is_participating: u.is_participating,

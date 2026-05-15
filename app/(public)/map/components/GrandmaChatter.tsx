@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import React, { memo, useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -185,7 +185,7 @@ function ThinkingDiscussion({ data }: { data: ThinkingEntry[] }) {
   );
 }
 
-const GrandmaChatter = memo(function GrandmaChatter({
+export default function GrandmaChatter({
   comments,
   titleLabel = "おせっかいばあちゃん",
   priorityMessage,
@@ -2043,7 +2043,7 @@ const GrandmaChatter = memo(function GrandmaChatter({
       )}
     </div>
   );
-});
+}
 
 function pickCommentIcon(comment: { genre: string; text: string }) {
   const text = comment.text;
@@ -2161,5 +2161,3 @@ function ConsultShopSuggestionCard({
     </div>
   );
 }
-
-export default GrandmaChatter;
