@@ -78,7 +78,10 @@ export async function POST(req: Request) {
     ip_address: ip,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/audit-logs] insert failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }
 
@@ -102,6 +105,9 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/audit-logs] select failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ logs: data });
 }
