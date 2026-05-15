@@ -37,7 +37,7 @@ function getRole(user: unknown) {
     app_metadata?: { role?: string };
     user_metadata?: { role?: string };
   };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
+  return record.app_metadata?.role ?? null;
 }
 
 export async function GET() {

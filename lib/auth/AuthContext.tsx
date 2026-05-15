@@ -50,7 +50,7 @@ function mapSupabaseUser(user: SupabaseUser): User {
     phone?: string;
   } | undefined;
 
-  const role = normalizeRole(appMeta?.role ?? userMeta?.role);
+  const role = normalizeRole(appMeta?.role);
   const vendorId = getVendorId(userMeta?.vendorId);
   const name = userMeta?.name ?? userMeta?.full_name ?? (user.email ? user.email.split("@")[0] : "user");
   const avatarUrl = userMeta?.avatarUrl ?? userMeta?.avatar_url;
