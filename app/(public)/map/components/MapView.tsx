@@ -1118,6 +1118,7 @@ const MapView = memo(function MapView({
     [onZoomChange]
   );
 
+  // deps が [] なのは setState 関数のみ参照しているため（React が安定を保証）
   const handleCloseBanner = useCallback(() => {
     setSelectedShop(null);
     setShopBannerOrigin(null);

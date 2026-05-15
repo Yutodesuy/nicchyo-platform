@@ -146,6 +146,43 @@ function useCenterBounceTrigger(
 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
+function areShopDetailBannerPropsEqual(
+  prev: ShopDetailBannerProps,
+  next: ShopDetailBannerProps
+): boolean {
+  // shop は DB 再フェッチで参照が変わることがあるため id で比較する
+  if (prev.shop.id !== next.shop.id) return false;
+  // stampedVendorIds は配列なので内容で比較する
+  const ps = prev.stampedVendorIds ?? [];
+  const ns = next.stampedVendorIds ?? [];
+  if (ps.length !== ns.length || ps.some((id, i) => id !== ns[i])) return false;
+  // originRect はオブジェクトなので各フィールドで比較する
+  if (
+    prev.originRect?.x !== next.originRect?.x ||
+    prev.originRect?.y !== next.originRect?.y ||
+    prev.originRect?.width !== next.originRect?.width ||
+    prev.originRect?.height !== next.originRect?.height
+  ) return false;
+  // 残りは primitive または useCallback / setState で安定した参照
+  return (
+    prev.bagCount === next.bagCount &&
+    prev.onClose === next.onClose &&
+    prev.onAddToBag === next.onAddToBag &&
+    prev.variant === next.variant &&
+    prev.layout === next.layout &&
+    prev.openNonce === next.openNonce &&
+    prev.initialMobileSurface === next.initialMobileSurface &&
+    prev.onMobileMainSurfaceChange === next.onMobileMainSurfaceChange &&
+    prev.canNavigateBetweenShops === next.canNavigateBetweenShops &&
+    prev.selectedShopPosition === next.selectedShopPosition &&
+    prev.totalShopCount === next.totalShopCount &&
+    prev.onSelectPreviousShop === next.onSelectPreviousShop &&
+    prev.onSelectNextShop === next.onSelectNextShop &&
+    prev.activeCouponTypeId === next.activeCouponTypeId &&
+    prev.reserveBottomNavSpace === next.reserveBottomNavSpace
+  );
+}
+
 const ShopDetailBanner = memo(function ShopDetailBanner({
   shop,
   onClose,
@@ -1392,7 +1429,7 @@ const ShopDetailBanner = memo(function ShopDetailBanner({
       )}
     </div>
   );
-});
+}, areShopDetailBannerPropsEqual);
 
 export default ShopDetailBanner;
 
