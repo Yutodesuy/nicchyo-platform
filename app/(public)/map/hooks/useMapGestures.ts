@@ -7,7 +7,6 @@ import L from "leaflet";
 const TOUCH_ROTATION_ANGLE_THRESHOLD_DEG = 4;
 const TOUCH_ROTATION_DISTANCE_THRESHOLD_PX = 8;
 const POINTER_PAN_START_THRESHOLD_PX = 3;
-const DEBUG_STORAGE_KEY = "nicchyo-map-gesture-debug";
 
 type TouchPoint = { clientX: number; clientY: number };
 type GestureMode = "pending" | "rotate" | "zoom";
@@ -52,15 +51,6 @@ function normalizeRotationDeg(value: number): number {
   return ((((value + 180) % 360) + 360) % 360) - 180;
 }
 
-function isDebugEnabled(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const search = new URLSearchParams(window.location.search);
-    return search.get("mapGestureDebug") === "1" || window.localStorage.getItem(DEBUG_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 type UseMapGesturesArgs = {
   mapRef: MutableRefObject<L.Map | null>;
@@ -86,7 +76,6 @@ export function useMapGestures({
   const gestureTargetRef = useCallback((node: HTMLDivElement | null) => {
     setGestureTarget(node);
   }, []);
-  const debugEnabledRef = useRef(false);
   const interactionDisabledRef = useRef(interactionDisabled);
   const mapRotationRef = useRef(mapRotation);
   const isTouchGestureActiveRef = useRef(false);
@@ -103,10 +92,6 @@ export function useMapGestures({
     gestureActiveRef.current = isTouchGestureActive;
     isTouchGestureActiveRef.current = isTouchGestureActive;
   }, [gestureActiveRef, isTouchGestureActive]);
-
-  useEffect(() => {
-    debugEnabledRef.current = isDebugEnabled();
-  }, []);
 
   useEffect(() => {
     interactionDisabledRef.current = interactionDisabled;
@@ -127,15 +112,6 @@ export function useMapGestures({
   useEffect(() => {
     onGestureEndRef.current = onGestureEnd;
   }, [onGestureEnd]);
-
-  const debugLog = useCallback((event: string, data?: Record<string, unknown>) => {
-    if (!debugEnabledRef.current) return;
-    if (data) {
-      console.debug("[map-gesture]", event, data);
-      return;
-    }
-    console.debug("[map-gesture]", event);
-  }, []);
 
   const panMapByScreenDelta = useCallback((dx: number, dy: number) => {
     const map = mapRef.current;
@@ -201,8 +177,7 @@ export function useMapGestures({
       lastMidpoint: getTouchMidpoint(t0, t1),
     };
     setIsTouchGestureActive(true);
-    debugLog("touch:start", { rotation: mapRotationRef.current, zoom: map.getZoom() });
-  }, [debugLog, mapRef]);
+  }, [mapRef]);
 
   const handleNativeTouchMove = useCallback((e: TouchEvent) => {
     if (interactionDisabledRef.current) return;
@@ -250,11 +225,6 @@ export function useMapGestures({
       // ピンチズームは無効 — 2本指操作は常に回転として扱う
       gesture.mode = "rotate";
 
-      debugLog("touch:mode", {
-        mode: gesture.mode,
-        deltaDeg: Number(deltaDeg.toFixed(2)),
-        distanceDelta: Number(distanceDelta.toFixed(2)),
-      });
     }
 
     if (e.cancelable) {
@@ -289,14 +259,11 @@ export function useMapGestures({
   }, [
     mapRef,
     panMapByScreenDelta,
-    debugLog,
     scheduleZoom,
   ]);
 
   const handleNativeTouchEnd = useCallback((e: TouchEvent) => {
     if (interactionDisabledRef.current) return;
-
-    const activeGesture = touchGestureRef.current;
 
     if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -319,11 +286,10 @@ export function useMapGestures({
       flushPendingZoom();
     }
     if (isTouchGestureActiveRef.current) {
-      debugLog("touch:end", { mode: activeGesture?.mode ?? "unknown" });
       onGestureEndRef.current();
     }
     setIsTouchGestureActive(false);
-  }, [debugLog, flushPendingZoom]);
+  }, [flushPendingZoom]);
 
   const handleMouseDownCapture = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
     if (interactionDisabledRef.current || isTouchGestureActiveRef.current || e.button !== 0) return;
