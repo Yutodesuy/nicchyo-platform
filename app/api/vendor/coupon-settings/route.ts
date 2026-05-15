@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import type { VendorCouponSettingsResponse } from "@/lib/coupons/types";
+import { requireVendorRole } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,8 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     const serviceClient = getServiceClient();
 

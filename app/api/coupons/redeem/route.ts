@@ -8,6 +8,7 @@ import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
 import { isCouponQrTokenValid, parseCouponQrToken } from "@/lib/coupons/qrToken";
 import { todayJstString } from "@/lib/time/jstDate";
+import { requireVendorRole } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const forbidden = requireVendorRole(user);
+    if (forbidden) return forbidden;
 
     // ② リクエストボディ
     const body = (await request.json()) as {
