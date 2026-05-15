@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { z } from "zod";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+
+const MAX_CONTENT_LENGTH = 5000;
+const KnowledgeBodySchema = z.object({
+  content: z.string().trim().min(1, "content is required").max(MAX_CONTENT_LENGTH, `内容は${MAX_CONTENT_LENGTH}文字以内で入力してください`),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,17 +54,11 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const MAX_CONTENT_LENGTH = 5000;
-    const { content } = (await request.json()) as { content?: string };
-    if (!content?.trim()) {
-      return NextResponse.json({ error: "content is required" }, { status: 400 });
+    const parsed = KnowledgeBodySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    if (content.trim().length > MAX_CONTENT_LENGTH) {
-      return NextResponse.json(
-        { error: `内容は${MAX_CONTENT_LENGTH}文字以内で入力してください` },
-        { status: 400 }
-      );
-    }
+    const { content } = parsed.data;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

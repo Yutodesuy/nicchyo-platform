@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import type { Database } from "@/types/database.types";
 import type { IssueInitialResponse } from "@/lib/coupons/types";
 import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
+
+const IssueInitialBodySchema = z.object({
+  visitor_key: z.string().min(1),
+  market_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "market_date must be YYYY-MM-DD"),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,24 +34,11 @@ function getServiceClient() {
 export async function POST(request: Request) {
   try {
     const isDevCouponOverride = process.env.NODE_ENV !== "production";
-    const body = (await request.json()) as {
-      visitor_key?: string;
-      market_date?: string;
-    };
-
-    const visitor_key = body.visitor_key?.trim();
-    const market_date = body.market_date?.trim();
-
-    if (!visitor_key || !market_date) {
-      return NextResponse.json(
-        { error: "visitor_key and market_date are required" },
-        { status: 400 }
-      );
+    const parsed = IssueInitialBodySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    // market_date フォーマット検証 (YYYY-MM-DD)
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(market_date)) {
-      return NextResponse.json({ error: "Invalid market_date format" }, { status: 400 });
-    }
+    const { visitor_key, market_date } = parsed.data;
 
     const supabase = getServiceClient();
 
