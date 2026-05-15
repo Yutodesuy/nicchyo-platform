@@ -34,4 +34,10 @@ describe("safeJsonParse", () => {
     const raw = '{"user":{"name":"太郎","age":30}}';
     expect(safeJsonParse(raw, null)).toEqual({ user: { name: "太郎", age: 30 } });
   });
+
+  it('"null"文字列はnullを返す（fallbackではなくJSON.parseの結果）', () => {
+    // JSON.parse("null") === null のため、fallback ではなく null が返る
+    // 呼び出し側で !result チェックをしている場合は null も fallback と同等に扱われる点に注意
+    expect(safeJsonParse("null", "fallback")).toBeNull();
+  });
 });
