@@ -5,6 +5,8 @@ import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
 import TrafficChartCard, { type TrafficGranularity, type TrafficPoint } from "@/components/admin/TrafficChartCard";
 import { createClient } from "@/utils/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 type ActivityItem = {
   id: string;
   icon: string;

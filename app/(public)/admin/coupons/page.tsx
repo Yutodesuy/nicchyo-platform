@@ -4,6 +4,8 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
 
+export const dynamic = "force-dynamic";
+
 function getRole(user: unknown) {
   if (!user || typeof user !== "object") return null;
   const record = user as {

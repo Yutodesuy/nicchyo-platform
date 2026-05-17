@@ -1,6 +1,9 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -64,7 +67,7 @@ export default function AiAnalyticsPage() {
             {/* サマリー */}
             <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <img src="/images/obaasan_transparent.png" alt="AIばあちゃん" className="h-14 w-14 opacity-80" />
+                <Image src="/images/obaasan_transparent.png" alt="AIばあちゃん" width={56} height={56} className="opacity-80" />
                 <div>
                   <p className="text-sm text-slate-500">過去7日間の相談総数</p>
                   <p className="text-4xl font-black text-amber-500">{data.totalCount}<span className="ml-1 text-base font-normal text-slate-500">件</span></p>

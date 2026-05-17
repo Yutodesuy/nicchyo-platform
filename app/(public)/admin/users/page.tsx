@@ -1,9 +1,10 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { UserRole } from "@/lib/auth/types";
 import { exportToCSV, exportToJSON, formatDateForFilename } from "@/lib/admin/exportUtils";
 import { showToast } from "@/lib/admin/toast";
@@ -296,7 +297,7 @@ function AdminUsersContent() {
       } else {
         showToast.error(result.error || "エクスポートに失敗しました");
       }
-    } catch (error) {
+    } catch (_error) {
       showToast.error("エクスポートに失敗しました");
     } finally {
       setIsExporting(false);
@@ -313,7 +314,7 @@ function AdminUsersContent() {
       } else {
         showToast.error(result.error || "エクスポートに失敗しました");
       }
-    } catch (error) {
+    } catch (_error) {
       showToast.error("エクスポートに失敗しました");
     } finally {
       setIsExporting(false);
@@ -751,6 +752,7 @@ function AdminUsersContent() {
                             <div className="flex items-center">
                               <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center">
                                 {user.avatarUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
                                   <img
                                     src={user.avatarUrl}
                                     alt={user.name}
