@@ -162,6 +162,9 @@ export async function POST(request: Request) {
     });
 
     if (rpcError) {
+      // RPC がエラーを返した場合、PostgreSQL トランザクション全体が自動ロールバックされる。
+      // クーポン消費・スタンプ付与・次回クーポン発行はいずれも取り消されており、
+      // DB は呼び出し前の状態に戻っているため、安全にエラーレスポンスを返せる。
       if (rpcError.message?.includes("COUPON_ALREADY_USED")) {
         return NextResponse.json(
           { error: "Coupon already used by another request" },
@@ -172,26 +175,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to process redemption" }, { status: 500 });
     }
 
-    const rpc = rpcResult as { is_new_stamp: boolean; next_coupon_id: string | null };
+    // next_coupon は SQL 関数がトランザクション内で coupon_types JOIN 済みのデータを返す。
+    // 別途 SELECT しないため、フェッチ時のレース条件がない。
+    const rpc = rpcResult as { is_new_stamp: boolean; next_coupon: SupabaseCouponIssuanceRow | null };
     const is_new_stamp = rpc.is_new_stamp;
 
-    // 次回クーポンの詳細を取得（発行された場合のみ）
     let next_coupon: RedeemResponse["next_coupon"] = null;
     let next_coupon_issued = false;
 
-    if (rpc.next_coupon_id) {
-      const { data: newCouponRow } = await serviceClient
-        .from("coupon_issuances")
-        .select("*, coupon_types(*)")
-        .eq("id", rpc.next_coupon_id)
-        .single();
-
-      if (newCouponRow) {
-        next_coupon = normalizeCouponIssuance(
-          newCouponRow as SupabaseCouponIssuanceRow
-        ) as RedeemResponse["next_coupon"];
-        next_coupon_issued = true;
-      }
+    if (rpc.next_coupon) {
+      next_coupon = normalizeCouponIssuance(rpc.next_coupon) as RedeemResponse["next_coupon"];
+      next_coupon_issued = true;
     }
 
     // ⑩ 監査ログ

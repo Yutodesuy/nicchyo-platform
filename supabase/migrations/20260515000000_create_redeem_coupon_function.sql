@@ -12,8 +12,9 @@
 --   p_next_coupon_amount : 次回クーポンの割引額
 --
 -- 戻り値 (jsonb):
---   is_new_stamp    : 今回初スタンプかどうか
---   next_coupon_id  : 発行した次回クーポンの UUID（発行なしの場合は null）
+--   is_new_stamp  : 今回初スタンプかどうか
+--   next_coupon   : 発行した次回クーポンの全データ（coupon_types JOIN済み）。発行なしの場合は null。
+--                   トランザクション内で SELECT するため、別途フェッチ時のレース条件がない。
 CREATE OR REPLACE FUNCTION redeem_coupon(
   p_coupon_id          uuid,
   p_visitor_key        text,
@@ -34,6 +35,7 @@ DECLARE
   v_today_count        bigint;
   v_new_coupon_id      uuid;
   v_expires_at         timestamptz;
+  v_next_coupon        jsonb;
 BEGIN
   -- ① クーポン消費（is_used = false を条件にし、二重消費を防ぐ）
   UPDATE coupon_issuances
@@ -109,13 +111,48 @@ BEGIN
           v_expires_at
         )
         RETURNING id INTO v_new_coupon_id;
+
+        -- 発行した次回クーポンの全データをトランザクション内で取得（coupon_types JOIN込み）
+        -- これにより呼び出し側で別途 SELECT する必要がなくなり、フェッチ時のレース条件を排除する
+        SELECT jsonb_build_object(
+          'id',             ci.id,
+          'visitor_key',    ci.visitor_key,
+          'market_date',    ci.market_date::text,
+          'coupon_type_id', ci.coupon_type_id,
+          'amount',         ci.amount,
+          'is_used',        ci.is_used,
+          'used_at',        ci.used_at,
+          'used_vendor_id', ci.used_vendor_id,
+          'issue_reason',   ci.issue_reason,
+          'expires_at',     ci.expires_at,
+          'created_at',     ci.created_at,
+          'coupon_types', jsonb_build_object(
+            'id',            ct.id,
+            'name',          ct.name,
+            'description',   ct.description,
+            'emoji',         ct.emoji,
+            'amount',        ct.amount,
+            'is_initial_gift', ct.is_initial_gift,
+            'is_enabled',    ct.is_enabled,
+            'display_order', ct.display_order
+          )
+        )
+        INTO v_next_coupon
+        FROM coupon_issuances ci
+        JOIN coupon_types ct ON ct.id = ci.coupon_type_id
+        WHERE ci.id = v_new_coupon_id;
       END IF;
     END IF;
   END IF;
 
   RETURN jsonb_build_object(
-    'is_new_stamp',   v_is_new_stamp,
-    'next_coupon_id', v_new_coupon_id
+    'is_new_stamp', v_is_new_stamp,
+    'next_coupon',  v_next_coupon
   );
 END;
 $$;
+
+-- service_role のみ実行可能。anon・authenticated からは直接呼び出せないようにする。
+-- この関数は SECURITY DEFINER のため、権限を明示的に制限することが重要。
+GRANT EXECUTE ON FUNCTION redeem_coupon TO service_role;
+REVOKE EXECUTE ON FUNCTION redeem_coupon FROM anon, authenticated;
