@@ -1,12 +1,14 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { AdminLayout, AdminPageHeader, EmptyState } from "@/components/admin";
 import { useAdminNotifications } from "@/lib/hooks/useAdminNotifications";
-import { Loader2, Bell, BellOff } from "lucide-react";
+import { Bell } from "lucide-react";
 
 const TYPE_ICONS: Record<string, string> = {
   new_application: "📝",

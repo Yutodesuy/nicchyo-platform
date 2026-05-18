@@ -1,6 +1,9 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import NavigationBar from "@/app/components/NavigationBar";
 import { ArrowLeft, Save, CheckCircle2, Loader2, Sparkles, Info } from "lucide-react";
@@ -81,7 +84,7 @@ export default function AiKnowledgePage() {
 
         <div className="rounded-3xl border border-amber-200 bg-white p-4 shadow-sm">
           <div className="flex items-start gap-3">
-            <img src="/images/obaasan_transparent.png" alt="AIばあちゃん" className="h-14 w-14 flex-shrink-0 opacity-80" />
+            <Image src="/images/obaasan_transparent.png" alt="AIばあちゃん" width={56} height={56} className="flex-shrink-0 opacity-80" />
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-600">AI Knowledge</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-900">AIばあちゃんに伝えるお店メモ</h2>

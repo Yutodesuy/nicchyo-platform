@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowLeft, Megaphone, Store, BarChart2, Sparkles, User, ChevronRight } from "lucide-react";
 import NavigationBar from "@/app/components/NavigationBar";
 
+export const dynamic = "force-dynamic";
+
 const GUIDE_SECTIONS = [
   {
     icon: Megaphone,
