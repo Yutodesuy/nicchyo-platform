@@ -11,15 +11,6 @@ export const dynamic = "force-dynamic";
 
 type BulkAction = "suspend" | "restore" | "delete";
 
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as { app_metadata?: { role?: string } };
-  return record.app_metadata?.role ?? null;
-}
 
 export async function POST(request: Request) {
   try {
