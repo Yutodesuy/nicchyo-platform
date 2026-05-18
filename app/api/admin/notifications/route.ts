@@ -35,7 +35,10 @@ export async function GET(_req: Request) {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/notifications] select failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ notifications: data });
 }
 
@@ -66,6 +69,9 @@ export async function PATCH(req: Request) {
     .update({ is_read: true })
     .eq("is_read", false);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/notifications] update failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

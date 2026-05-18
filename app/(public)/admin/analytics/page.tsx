@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/server";
 import { AdminLayout, AdminPageHeader } from "@/components/admin";
 import { getRole, isAdmin } from "@/lib/auth/permissions";
 
+export const dynamic = "force-dynamic";
+
 // ---- auth helpers ----
 function isAdminAnalyticsRole(role: string | null | undefined) {
   return role === "admin" || role === "super_admin";

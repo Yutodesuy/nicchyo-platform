@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/server";
 import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
 import { getRole, isAdmin } from "@/lib/auth/permissions";
 
+export const dynamic = "force-dynamic";
+
 type CouponSummary = {
   market_date: string;
   total_issued: number;

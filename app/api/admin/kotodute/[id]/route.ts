@@ -48,7 +48,10 @@ export async function PATCH(
   const dc = createAdminClient() ?? supabase;
   const { error } = await dc.from("kotodutes").update({ status: body.status }).eq("id", id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/kotodute] patch failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }
 
@@ -78,6 +81,9 @@ export async function DELETE(
   const dc = createAdminClient() ?? supabase;
   const { error } = await dc.from("kotodutes").update({ status: "deleted" }).eq("id", id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/kotodute] delete failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

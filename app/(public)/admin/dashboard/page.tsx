@@ -6,6 +6,8 @@ import TrafficChartCard, { type TrafficGranularity, type TrafficPoint } from "@/
 import { createClient } from "@/utils/supabase/server";
 import { getRole, isAdmin } from "@/lib/auth/permissions";
 
+export const dynamic = "force-dynamic";
+
 type ActivityItem = {
   id: string;
   icon: string;

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { MyCouponsResponse, CouponIssuance, CouponType } from "@/lib/coupons/types";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,16 @@ function getServiceClient() {
  */
 export async function GET(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "coupons-my",
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const { searchParams } = new URL(request.url);
     const visitor_key = searchParams.get("visitor_key")?.trim();
     const market_date = searchParams.get("market_date")?.trim();

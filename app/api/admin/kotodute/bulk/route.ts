@@ -44,6 +44,9 @@ export async function POST(req: Request) {
   const dc = createAdminClient() ?? supabase;
   const { error } = await dc.from("kotodutes").update({ status: body.status }).in("id", body.ids);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/kotodute/bulk] update failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true, updated: body.ids.length });
 }

@@ -425,29 +425,23 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const { error: deleteRoutePointsError } = await adminWriteClient
-      .from("map_route_points")
-      .delete()
-      .neq("id", "");
+    // replace_map_route_points SQL 関数で全件削除→再挿入をアトミックに実行
+    // （別々の操作にすると削除後に insert が失敗した場合に route_points が消える）
+    const routePointsPayload = body.route.points.map((point, index) => ({
+      id: point.id,
+      latitude: point.lat,
+      longitude: point.lng,
+      sort_order: index,
+      branch_from_id: point.branchFromId ?? null,
+    }));
 
-    if (deleteRoutePointsError) {
-      return NextResponse.json({ error: "Failed to clear route points" }, { status: 500 });
-    }
+    const { error: routePointsError } = await adminWriteClient.rpc(
+      "replace_map_route_points",
+      { p_points: routePointsPayload }
+    );
 
-    if (body.route.points.length > 0) {
-      const { error: routePointsError } = await adminWriteClient.from("map_route_points").insert(
-        body.route.points.map((point, index) => ({
-          id: point.id,
-          latitude: point.lat,
-          longitude: point.lng,
-          sort_order: index,
-          branch_from_id: point.branchFromId ?? null,
-        }))
-      );
-
-      if (routePointsError) {
-        return NextResponse.json({ error: "Failed to save route points" }, { status: 500 });
-      }
+    if (routePointsError) {
+      return NextResponse.json({ error: "Failed to save route points" }, { status: 500 });
     }
 
     const { error: routeConfigError } = await adminWriteClient.from("map_route_configs").upsert(

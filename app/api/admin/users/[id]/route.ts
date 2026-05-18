@@ -57,7 +57,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         ban_duration: "876000h",
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] suspend failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,
@@ -70,7 +73,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         ban_duration: "none",
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] restore failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,
@@ -89,7 +95,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         app_metadata: { role: newRole },
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] change_role failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,
