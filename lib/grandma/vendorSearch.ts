@@ -98,24 +98,51 @@ export async function fetchSeasonalProductContext(
   supabase: SupabaseClient<Database>,
   seasonId: number
 ): Promise<SeasonalProductRow[]> {
-  const { data: rows } = await supabase
+  const { data: productSeasonRows } = await supabase
     .from("product_seasons")
-    .select("products(id, vendor_id, name, vendors(id, shop_name))")
+    .select("product_id, season_id")
     .eq("season_id", seasonId)
     .limit(24);
 
-  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const productIds = (productSeasonRows ?? [])
+    .map((row) => row.product_id)
+    .filter((value): value is string => !!value);
+  if (productIds.length === 0) return [];
+
+  const { data: productsData } = await supabase
+    .from("products")
+    .select("id, vendor_id, name")
+    .in("id", productIds);
+  const products = Array.isArray(productsData) ? productsData : [];
+  if (products.length === 0) return [];
+
+  const vendorIds = Array.from(
+    new Set(
+      products
+        .map((row) => row.vendor_id)
+        .filter((value): value is string => !!value)
+    )
+  );
+  const { data: vendorsData } =
+    vendorIds.length > 0
+      ? await supabase.from("vendors").select("id, shop_name").in("id", vendorIds)
+      : { data: [] as { id: string; shop_name: string | null }[] };
+
+  const vendorNameById = new Map<string, string>();
+  (vendorsData ?? []).forEach((row) => {
+    if (row.id) {
+      vendorNameById.set(row.id, row.shop_name ?? "");
+    }
+  });
 
   const seasonName = getCurrentSeasonInfo().seasonName;
-  return rows
+  return products
     .map((row) => {
-      const product = Array.isArray(row.products) ? row.products[0] : row.products;
-      if (!product?.vendor_id || !product?.name) return null;
-      const vendor = Array.isArray(product.vendors) ? product.vendors[0] : product.vendors;
+      if (!row.vendor_id || !row.name) return null;
       return {
-        vendorId: product.vendor_id,
-        shopName: vendor?.shop_name ?? "",
-        productName: product.name,
+        vendorId: row.vendor_id,
+        shopName: vendorNameById.get(row.vendor_id) ?? "",
+        productName: row.name,
         seasonName,
       } satisfies SeasonalProductRow;
     })

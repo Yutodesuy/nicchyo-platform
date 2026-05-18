@@ -29,8 +29,7 @@ export function requireSameOrigin(request: Request) {
     }
   }
 
-  const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(targetOrigin);
-  if (!origin && !referer && !isLocalhost) {
+  if (!origin && !referer && process.env.NODE_ENV === "production") {
     return {
       ok: false as const,
       response: NextResponse.json({ error: "Origin header required" }, { status: 403 }),
