@@ -5,6 +5,8 @@ import type { Database } from "@/types/database.types";
 import type { IssueInitialResponse } from "@/lib/coupons/types";
 import { normalizeCouponIssuance } from "@/lib/coupons/types";
 import type { SupabaseCouponIssuanceRow } from "@/lib/coupons/types";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 const IssueInitialBodySchema = z.object({
   visitor_key: z.string().min(1),
@@ -33,6 +35,16 @@ function getServiceClient() {
  */
 export async function POST(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "coupons-issue-initial",
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const isDevCouponOverride = process.env.NODE_ENV !== "production";
     const parsed = IssueInitialBodySchema.safeParse(await request.json());
     if (!parsed.success) {
