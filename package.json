@@ -22,8 +22,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
     "@hookform/resolvers": "^3.10.0",
     "@prisma/client": "5.22.0",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
