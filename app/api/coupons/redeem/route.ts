@@ -28,10 +28,14 @@ function getServiceClient() {
  * - 保有クーポン1枚を消費
  * - スタンプを付与（同日・同店は UPSERT）
  * - 新規スタンプなら次回クーポンを発行（1枚まで / 上限内）
+ *
+ * クーポン消費・スタンプ付与・次回クーポン発行は redeem_coupon SQL 関数で
+ * 1トランザクション内に閉じており、ロールバック不整合と race condition を防止する。
  */
 export async function POST(request: Request) {
   try {
     const isDevCouponOverride = process.env.NODE_ENV !== "production";
+
     // ① 出店者認証
     const cookieStore = await cookies();
     const supabase = createServerClient(cookieStore);
@@ -144,111 +148,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // ⑥ 今日この出店者ですでにスタンプ済みか確認
-    const { data: existingStamp } = await serviceClient
-      .from("coupon_stamps")
-      .select("id")
-      .eq("visitor_key", visitor_key)
-      .eq("vendor_id", vendor_id)
-      .eq("market_date", market_date)
-      .maybeSingle();
+    // ⑥⑦⑧⑨ クーポン消費・スタンプ付与・次回クーポン発行をアトミックに実行
+    // redeem_coupon SQL 関数が1トランザクション内でこれらを完結させる
+    const maxIssuance = couponSettings?.maxDailyIssuance ?? 300;
+    const nextCouponAmount = couponSettings?.amount ?? 50;
 
-    const is_new_stamp = !existingStamp;
+    const { data: rpcResult, error: rpcError } = await serviceClient.rpc("redeem_coupon", {
+      p_coupon_id: couponToUse.id,
+      p_visitor_key: visitor_key,
+      p_vendor_id: vendor_id,
+      p_market_date: market_date,
+      p_max_issuance: maxIssuance,
+      p_next_coupon_amount: nextCouponAmount,
+    });
 
-    // ⑦ クーポン消費（is_used = true）— アトミック更新
-    // .eq("is_used", false) を条件に加えることで、同時リクエストによる二重消費を防ぐ
-    const { data: updatedRows, error: updateError } = await serviceClient
-      .from("coupon_issuances")
-      .update({
-        is_used: true,
-        used_at: now,
-        used_vendor_id: vendor_id,
-      })
-      .eq("id", couponToUse.id)
-      .eq("is_used", false)
-      .select("id");
-
-    if (updateError) {
-      console.error("[redeem] update error:", updateError);
-      return NextResponse.json({ error: "Failed to consume coupon" }, { status: 500 });
+    if (rpcError) {
+      // RPC がエラーを返した場合、PostgreSQL トランザクション全体が自動ロールバックされる。
+      // クーポン消費・スタンプ付与・次回クーポン発行はいずれも取り消されており、
+      // DB は呼び出し前の状態に戻っているため、安全にエラーレスポンスを返せる。
+      if (rpcError.message?.includes("COUPON_ALREADY_USED")) {
+        return NextResponse.json(
+          { error: "Coupon already used by another request" },
+          { status: 409 }
+        );
+      }
+      console.error("[redeem] rpc error:", rpcError);
+      return NextResponse.json({ error: "Failed to process redemption" }, { status: 500 });
     }
 
-    // 影響行数が 0 = 別リクエストが先に消費済み → 二重消費を拒否
-    if (!updatedRows || updatedRows.length === 0) {
-      return NextResponse.json(
-        { error: "Coupon already used by another request" },
-        { status: 409 }
-      );
-    }
+    // next_coupon は SQL 関数がトランザクション内で coupon_types JOIN 済みのデータを返す。
+    // 別途 SELECT しないため、フェッチ時のレース条件がない。
+    const rpc = rpcResult as { is_new_stamp: boolean; next_coupon: SupabaseCouponIssuanceRow | null };
+    const is_new_stamp = rpc.is_new_stamp;
 
-    // ⑧ スタンプ付与（既存なら ignore）
-    const { error: stampError } = await serviceClient
-      .from("coupon_stamps")
-      .upsert(
-        { visitor_key, vendor_id, market_date },
-        { onConflict: "visitor_key,vendor_id,market_date", ignoreDuplicates: true }
-      );
-
-    if (stampError) {
-      // スタンプ付与失敗 → クーポン消費をロールバック
-      console.error("[redeem] stamp upsert error:", stampError);
-      await serviceClient
-        .from("coupon_issuances")
-        .update({ is_used: false, used_at: null, used_vendor_id: null })
-        .eq("id", couponToUse.id);
-      return NextResponse.json({ error: "Failed to record stamp" }, { status: 500 });
-    }
-
-    // ⑨ 新スタンプなら次回クーポンを発行
     let next_coupon: RedeemResponse["next_coupon"] = null;
     let next_coupon_issued = false;
 
-    if (is_new_stamp) {
-      // 上限チェック
-      const maxIssuance = couponSettings?.maxDailyIssuance ?? 300;
-      const { count: todayCount } = await serviceClient
-        .from("coupon_issuances")
-        .select("id", { count: "exact", head: true })
-        .eq("market_date", market_date);
-
-      if ((todayCount ?? 0) < maxIssuance) {
-        // 次回クーポンの種類をランダムに選択（is_initial_gift = false のものから）
-        const { data: nextTypes } = await serviceClient
-          .from("coupon_types")
-          .select("*")
-          .eq("is_enabled", true)
-          .order("display_order", { ascending: true });
-
-        if (nextTypes && nextTypes.length > 0) {
-          // is_initial_gift=false のものを優先、なければどれでも
-          const nonInitialTypes = nextTypes.filter((t) => !t.is_initial_gift);
-          const candidates = nonInitialTypes.length > 0 ? nonInitialTypes : nextTypes;
-          const nextType = candidates[Math.floor(Math.random() * candidates.length)];
-
-          const expiresAt = new Date(`${market_date}T15:00:00.000Z`);
-          expiresAt.setDate(expiresAt.getDate() + 1);
-
-          const { data: newCoupon } = await serviceClient
-            .from("coupon_issuances")
-            .insert({
-              visitor_key,
-              market_date,
-              coupon_type_id: nextType.id,
-              amount: couponSettings?.amount ?? nextType.amount,
-              issue_reason: "next_visit",
-              expires_at: expiresAt.toISOString(),
-            })
-            .select("*, coupon_types(*)")
-            .single();
-
-          if (newCoupon) {
-            next_coupon = normalizeCouponIssuance(
-              newCoupon as SupabaseCouponIssuanceRow
-            ) as RedeemResponse["next_coupon"];
-            next_coupon_issued = true;
-          }
-        }
-      }
+    if (rpc.next_coupon) {
+      next_coupon = normalizeCouponIssuance(rpc.next_coupon) as RedeemResponse["next_coupon"];
+      next_coupon_issued = true;
     }
 
     // ⑩ 監査ログ
