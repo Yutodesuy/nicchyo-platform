@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { requireSameOrigin } from './requestGuards';
 
 describe('requestGuards', () => {
@@ -61,19 +61,19 @@ describe('requestGuards', () => {
       }
     });
 
-    it('returns ok when both origin and referer are missing on localhost', () => {
-      const req = new Request('http://localhost:3000/api');
+    it('returns ok when both origin and referer are missing in non-production', () => {
+      vi.stubEnv('NODE_ENV', 'development');
+
+      const req = new Request('https://example.com/api');
       const result = requireSameOrigin(req);
       expect(result.ok).toBe(true);
+
+      vi.unstubAllEnvs();
     });
 
-    it('returns ok when both origin and referer are missing on 127.0.0.1', () => {
-      const req = new Request('http://127.0.0.1:3000/api');
-      const result = requireSameOrigin(req);
-      expect(result.ok).toBe(true);
-    });
+    it('returns error when both origin and referer are missing in production', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
 
-    it('returns error when both origin and referer are missing on non-localhost', async () => {
       const req = new Request('https://example.com/api');
       const result = requireSameOrigin(req);
       expect(result.ok).toBe(false);
@@ -83,6 +83,8 @@ describe('requestGuards', () => {
         const body = await result.response.json();
         expect(body.error).toBe('Origin header required');
       }
+
+      vi.unstubAllEnvs();
     });
   });
 });

@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
-import { requireVendorRole } from "@/lib/auth/permissions";
 
 // TODO: SAVE_DISABLEDが解除され次第、このエンドポイントも有効化してください。
 //       現在は出店者のメールアドレス・パスワードが一部公開状態のため無効化中。
@@ -49,8 +48,6 @@ export async function DELETE(request: Request) {
   if (sessionError || !user) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
-  const forbidden = requireVendorRole(user);
-  if (forbidden) return forbidden;
 
   // 管理者権限でユーザーを削除
   const adminClient = createAdminClient(supabaseUrl, supabaseServiceRoleKey, {

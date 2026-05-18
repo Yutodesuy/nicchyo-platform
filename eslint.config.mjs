@@ -30,7 +30,6 @@ const config = [
   {
     rules: {
       ...reactCompilerRulesOff,
-      "no-console": ["warn", { allow: ["warn", "error"] }],
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {
