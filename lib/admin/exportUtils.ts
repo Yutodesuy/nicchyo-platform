@@ -73,12 +73,12 @@ export function exportToJSON<T>(data: T[], filename: string): { success: boolean
  */
 function escapeCSV(value: string): string {
   const dangerous = /^[=+\-@\t\r]/.test(value);
-  const escaped = value.replace(/"/g, '""');
-  const quoted =
-    escaped.includes(",") || escaped.includes("\n") || escaped.includes('"')
-      ? `"${escaped}"`
-      : escaped;
-  return dangerous ? `'${quoted}` : quoted;
+  const sanitized = dangerous ? `'${value}` : value;
+  const escaped = sanitized.replace(/"/g, '""');
+  if (escaped.includes(",") || escaped.includes("\n") || escaped.includes('"')) {
+    return `"${escaped}"`;
+  }
+  return escaped;
 }
 
 /**
