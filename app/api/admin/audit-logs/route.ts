@@ -4,18 +4,10 @@ import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isModerator } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const r = user as { app_metadata?: { role?: string }; user_metadata?: { role?: string } };
-  return r.app_metadata?.role ?? null;
-}
-function isAdmin(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,8 +40,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const role = getRole(user);
-  const canLog = role === "super_admin" || role === "admin" || role === "moderator";
-  if (!user || !canLog) {
+  if (!user || !isModerator(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -90,7 +81,7 @@ export async function GET(req: Request) {
   const supabase = createServerClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || !isAdmin(getRole(user))) {
+  if (!user || !isModerator(getRole(user))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

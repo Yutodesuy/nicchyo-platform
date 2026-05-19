@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
 import TrafficChartCard, { type TrafficGranularity, type TrafficPoint } from "@/components/admin/TrafficChartCard";
 import { createClient } from "@/utils/supabase/server";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -57,20 +58,6 @@ type LandmarkActivityRow = {
   name: string | null;
   created_at: string | null;
 };
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string; name?: string };
-    email?: string;
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 function getDisplayName(user: unknown) {
   if (!user || typeof user !== "object") return "管理者";
@@ -279,7 +266,7 @@ export default async function AdminDashboardPage() {
     redirect("/login");
   }
 
-  if (!isAdminRole(role)) {
+  if (!isAdmin(role)) {
     redirect("/");
   }
 

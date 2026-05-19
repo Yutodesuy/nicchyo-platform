@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 
-function getAppRole(user: User): string | null {
-  return (user.app_metadata as { role?: string } | undefined)?.role ?? null;
+/** app_metadata.role から文字列ロールを取り出す（unknown 型の user 対応） */
+export function getRole(user: unknown): string | null {
+  if (!user || typeof user !== "object") return null;
+  const record = user as { app_metadata?: { role?: string } };
+  return record.app_metadata?.role ?? null;
 }
 
+/** admin / super_admin ロールかどうかを判定する */
+export function isAdmin(role: string | null): boolean {
+  return role === "admin" || role === "super_admin";
+}
+
+/** moderator 以上のロール（moderator / admin / super_admin）かどうかを判定する */
+export function isModerator(role: string | null): boolean {
+  return role === "moderator" || isAdmin(role);
+}
+
+/** vendor ロールかどうかを判定する */
+export function isVendor(role: string | null): boolean {
+  return role === "vendor";
+}
+
+/** vendor ロール以外を 403 で弾く（API Route 用ガード） */
 export function requireVendorRole(user: User): NextResponse | null {
-  if (getAppRole(user) !== "vendor") {
+  if (getRole(user) !== "vendor") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;
