@@ -4,22 +4,10 @@ import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 type PatchBody =
   | { action: "suspend" | "restore" }
@@ -47,7 +35,7 @@ export async function PATCH(
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (id === user.id) {
@@ -69,7 +57,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         ban_duration: "876000h",
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] suspend failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,
@@ -82,7 +73,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         ban_duration: "none",
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] restore failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,
@@ -101,7 +95,10 @@ export async function PATCH(
       const { error } = await serviceClient.auth.admin.updateUserById(id, {
         app_metadata: { role: newRole },
       });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) {
+        console.error("[admin/users] change_role failed:", error.message);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
 
       await serviceClient.from("admin_audit_logs").insert({
         actor_id: user.id,

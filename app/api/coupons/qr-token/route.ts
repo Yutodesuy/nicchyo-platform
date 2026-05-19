@@ -6,6 +6,8 @@ import {
   createCouponQrToken,
   getSecondsUntilNextCouponQrSlot,
 } from "@/lib/coupons/qrToken";
+import { requireSameOrigin } from "@/lib/security/requestGuards";
+import { enforceRateLimit } from "@/lib/security/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +23,16 @@ function getServiceClient() {
 
 export async function GET(request: Request) {
   try {
+    const originCheck = requireSameOrigin(request);
+    if (!originCheck.ok) return originCheck.response;
+
+    const rateLimited = enforceRateLimit(request, {
+      bucket: "coupons-qr-token",
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (rateLimited) return rateLimited;
+
     const { searchParams } = new URL(request.url);
     const visitorKey = searchParams.get("visitor_key")?.trim();
     const marketDate = searchParams.get("market_date")?.trim();

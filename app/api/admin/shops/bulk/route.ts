@@ -4,24 +4,13 @@ import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type BulkAction = "suspend" | "restore" | "delete";
 
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
 
 export async function POST(request: Request) {
   try {
@@ -41,7 +30,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -65,24 +54,42 @@ export async function POST(request: Request) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    // 自分自身への操作を除外
+    const withoutSelf = ids.filter((id) => id !== user.id);
+    if (withoutSelf.length === 0) {
+      return NextResponse.json({ error: "自分自身への操作はできません" }, { status: 400 });
+    }
+
+    // vendors テーブルに存在するIDのみに絞る（admin等を誤って操作しないため）
+    const { data: validVendors, error: vendorFetchError } = await serviceClient
+      .from("vendors")
+      .select("id")
+      .in("id", withoutSelf);
+    if (vendorFetchError) {
+      return NextResponse.json({ error: "Failed to validate vendor IDs" }, { status: 500 });
+    }
+
+    const safeIds = validVendors?.map((v: { id: string }) => v.id) ?? [];
+    if (safeIds.length === 0) {
+      return NextResponse.json({ error: "対象の出店者が見つかりません" }, { status: 400 });
+    }
+
     const errors: string[] = [];
 
     if (action === "delete") {
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.deleteUser(id);
         if (error) errors.push(id);
       }
     } else if (action === "suspend") {
-      const bannedUntil = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(); // 100年
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.updateUserById(id, {
           ban_duration: "876000h",
         });
         if (error) errors.push(id);
       }
-      void bannedUntil; // suppress unused warning
     } else if (action === "restore") {
-      for (const id of ids) {
+      for (const id of safeIds) {
         const { error } = await serviceClient.auth.admin.updateUserById(id, {
           ban_duration: "none",
         });
@@ -98,8 +105,8 @@ export async function POST(request: Request) {
       actor_id: user.id,
       action: `bulk_${action}`,
       target_type: "vendor",
-      target_id: ids.join(","),
-      details: `${ids.length}件を一括${actionLabel}`,
+      target_id: safeIds.join(","),
+      details: `${safeIds.length}件を一括${actionLabel}`,
     });
 
     if (errors.length > 0) {
@@ -109,7 +116,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, count: ids.length });
+    return NextResponse.json({ ok: true, count: safeIds.length });
   } catch {
     return NextResponse.json({ error: "Failed to process bulk action" }, { status: 500 });
   }

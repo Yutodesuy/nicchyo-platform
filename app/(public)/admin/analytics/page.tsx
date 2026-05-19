@@ -3,16 +3,11 @@ import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { AdminLayout, AdminPageHeader } from "@/components/admin";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
-// ---- auth helpers (dashboard と同じパターン) ----
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const r = user as { app_metadata?: { role?: string }; user_metadata?: { role?: string } };
-  return r.app_metadata?.role ?? r.user_metadata?.role ?? null;
-}
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
+export const dynamic = "force-dynamic";
+
+// ---- auth helpers ----
 function isAdminAnalyticsRole(role: string | null | undefined) {
   return role === "admin" || role === "super_admin";
 }
@@ -71,7 +66,7 @@ export default async function AdminAnalyticsPage() {
   const supabase = createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
   const role = getRole(user);
-  if (!user || !isAdminRole(role)) redirect("/login");
+  if (!user || !isAdmin(role)) redirect("/login");
 
   const dc = createAdminReadClient() ?? supabase;
 

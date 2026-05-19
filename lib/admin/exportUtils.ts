@@ -44,7 +44,7 @@ export function exportToCSV<T extends Record<string, unknown>>(
   try {
     downloadBlob(blob, filename);
     return { success: true };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, error: "エクスポートに失敗しました" };
   }
 }
@@ -62,20 +62,23 @@ export function exportToJSON<T>(data: T[], filename: string): { success: boolean
     const blob = new Blob([json], { type: "application/json;charset=utf-8;" });
     downloadBlob(blob, filename);
     return { success: true };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, error: "エクスポートに失敗しました" };
   }
 }
 
 /**
  * CSV用エスケープ処理
+ * =, +, -, @, \t, \r で始まる値にシングルクォートを前置してCSVインジェクションを防ぐ
  */
 function escapeCSV(value: string): string {
-  // カンマ、改行、ダブルクォートを含む場合はダブルクォートで囲む
-  if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const dangerous = /^[=+\-@\t\r]/.test(value);
+  const sanitized = dangerous ? `'${value}` : value;
+  const escaped = sanitized.replace(/"/g, '""');
+  if (escaped.includes(",") || escaped.includes("\n") || escaped.includes('"')) {
+    return `"${escaped}"`;
   }
-  return value;
+  return escaped;
 }
 
 /**

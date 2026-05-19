@@ -324,7 +324,7 @@ export const viewport: Viewport = {
 
 ---
 
-## 🚀 PWA/Capacitor 化への準備
+## 🚀 PWA 化への準備
 
 この実装は以下の理由で、将来的なアプリ化に対応しています：
 
@@ -333,11 +333,7 @@ export const viewport: Viewport = {
 3. **オーバーレイ構造**: ネイティブUIと統合しやすい
 4. **メニュー状態管理**: Contextで一元管理
 
-### Capacitor化の際の変更点
-
-- `ViewportHeightUpdater` → Capacitorプラグインで置換可能
-- `MenuContext` → そのまま使用可能
-- `safe-area` → Capacitor Safe Areaプラグインと併用
+> **注記**: Capacitor パッケージ（`@capacitor/cli` / `@capacitor/core`）は未使用のため削除済み（#202）。ネイティブアプリ化を検討する場合は改めて導入する。
 
 ---
 

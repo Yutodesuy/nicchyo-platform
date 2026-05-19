@@ -3,19 +3,9 @@ import { redirect } from "next/navigation";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { AdminLayout, AdminPageHeader, StatCard } from "@/components/admin";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
+export const dynamic = "force-dynamic";
 
 type CouponSummary = {
   market_date: string;
@@ -45,7 +35,7 @@ export default async function AdminCouponsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || !isAdminRole(getRole(user))) {
+  if (!user || !isAdmin(getRole(user))) {
     redirect("/login");
   }
 

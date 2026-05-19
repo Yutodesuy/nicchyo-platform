@@ -6,6 +6,7 @@ import { fetchLandmarksFromDb } from "@/app/(public)/map/services/landmarksDb";
 import { fetchMapRouteFromDb } from "@/app/(public)/map/services/mapRouteDb";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 import type { Landmark as EditableLandmark } from "@/app/(public)/map/types/landmark";
 import type { MapRouteConfig, MapRoutePoint } from "@/app/(public)/map/types/mapRoute";
 
@@ -28,19 +29,6 @@ type SnapshotSummary = {
   routeConfigChanged?: boolean;
   restoreSourceSnapshotId?: string;
 };
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 function createAdminWriteClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -165,164 +153,16 @@ async function applySnapshot(
   snapshotRoutePoints: MapRoutePoint[],
   snapshotRouteConfig: MapRouteConfig | null
 ) {
-  const { data: currentLocations, error: currentLocationsError } = await adminWriteClient
-    .from("market_locations")
-    .select("id");
-  if (currentLocationsError) {
-    throw new Error("Failed to load current market locations");
-  }
+  // restore_map_layout_snapshot SQL 関数で全テーブルの復元を1トランザクションに閉じる
+  const { error } = await adminWriteClient.rpc("restore_map_layout_snapshot", {
+    p_shops: snapshotShops,
+    p_landmarks: snapshotLandmarks,
+    p_route_points: snapshotRoutePoints,
+    p_route_config: snapshotRouteConfig ?? null,
+  });
 
-  const { data: currentAssignments, error: currentAssignmentsError } = await adminWriteClient
-    .from("location_assignments")
-    .select("vendor_id, location_id");
-  if (currentAssignmentsError) {
-    throw new Error("Failed to load current assignments");
-  }
-
-  const { data: currentLandmarks, error: currentLandmarksError } = await adminWriteClient
-    .from("map_landmarks")
-    .select("key");
-  if (currentLandmarksError) {
-    throw new Error("Failed to load current landmarks");
-  }
-
-  const { error: clearRoutePointsError } = await adminWriteClient
-    .from("map_route_points")
-    .delete()
-    .neq("id", "");
-  if (clearRoutePointsError) {
-    throw new Error("Failed to clear current route points");
-  }
-
-  if (snapshotShops.length > 0) {
-    const { error } = await adminWriteClient.from("market_locations").upsert(
-      snapshotShops.map((shop) => ({
-        id: shop.locationId,
-        store_number: shop.position,
-        latitude: shop.lat,
-        longitude: shop.lng,
-      })),
-      { onConflict: "id" }
-    );
-    if (error) {
-      throw new Error("Failed to restore shop locations");
-    }
-  }
-
-  const snapshotLocationIds = new Set(snapshotShops.map((shop) => shop.locationId));
-  const currentLocationIds = (currentLocations ?? []).map((row) => row.id as string).filter(Boolean);
-  const locationIdsToDelete = currentLocationIds.filter((id) => !snapshotLocationIds.has(id));
-
-  const currentVendorIds = (currentAssignments ?? [])
-    .map((row) => row.vendor_id as string | null)
-    .filter((value): value is string => Boolean(value));
-  const snapshotVendorIds = snapshotShops
-    .map((shop) => shop.vendorId)
-    .filter((value): value is string => Boolean(value));
-  const vendorIdsToClear = Array.from(new Set([...currentVendorIds, ...snapshotVendorIds]));
-
-  if (currentLocationIds.length > 0) {
-    const { error } = await adminWriteClient
-      .from("location_assignments")
-      .delete()
-      .in("location_id", currentLocationIds);
-    if (error) {
-      throw new Error("Failed to clear assignments for restore");
-    }
-  }
-
-  if (vendorIdsToClear.length > 0) {
-    const { error } = await adminWriteClient
-      .from("location_assignments")
-      .delete()
-      .in("vendor_id", vendorIdsToClear);
-    if (error) {
-      throw new Error("Failed to clear vendor assignments for restore");
-    }
-  }
-
-  const assignmentsToInsert = snapshotShops
-    .filter((shop) => shop.vendorId)
-    .map((shop) => ({
-      location_id: shop.locationId,
-      vendor_id: shop.vendorId as string,
-      market_date: new Date().toISOString().slice(0, 10),
-    }));
-
-  if (assignmentsToInsert.length > 0) {
-    const { error } = await adminWriteClient.from("location_assignments").insert(assignmentsToInsert);
-    if (error) {
-      throw new Error("Failed to restore assignments");
-    }
-  }
-
-  if (locationIdsToDelete.length > 0) {
-    const { error } = await adminWriteClient.from("market_locations").delete().in("id", locationIdsToDelete);
-    if (error) {
-      throw new Error("Failed to delete extra locations during restore");
-    }
-  }
-
-  if (snapshotLandmarks.length > 0) {
-    const { error } = await adminWriteClient.from("map_landmarks").upsert(
-      snapshotLandmarks.map((landmark) => ({
-        key: landmark.key,
-        name: landmark.name,
-        description: landmark.description,
-        image_url: landmark.url,
-        latitude: landmark.lat,
-        longitude: landmark.lng,
-        width_px: landmark.widthPx,
-        height_px: landmark.heightPx,
-        show_at_min_zoom: landmark.showAtMinZoom,
-      })),
-      { onConflict: "key" }
-    );
-    if (error) {
-      throw new Error("Failed to restore landmarks");
-    }
-  }
-
-  const snapshotKeys = new Set(snapshotLandmarks.map((landmark) => landmark.key));
-  const landmarkKeysToDelete = (currentLandmarks ?? [])
-    .map((row) => row.key as string)
-    .filter((key) => key && !snapshotKeys.has(key));
-
-  if (landmarkKeysToDelete.length > 0) {
-    const { error } = await adminWriteClient.from("map_landmarks").delete().in("key", landmarkKeysToDelete);
-    if (error) {
-      throw new Error("Failed to delete extra landmarks during restore");
-    }
-  }
-
-  if (snapshotRoutePoints.length > 0) {
-    const { error } = await adminWriteClient.from("map_route_points").insert(
-      snapshotRoutePoints.map((point, index) => ({
-        id: point.id,
-        latitude: point.lat,
-        longitude: point.lng,
-        sort_order: index,
-        branch_from_id: point.branchFromId ?? null,
-      }))
-    );
-    if (error) {
-      throw new Error("Failed to restore route points");
-    }
-  }
-
-  if (snapshotRouteConfig) {
-    const { error } = await adminWriteClient.from("map_route_configs").upsert(
-      {
-        key: snapshotRouteConfig.key,
-        road_half_width_meters: snapshotRouteConfig.roadHalfWidthMeters,
-        snap_distance_meters: snapshotRouteConfig.snapDistanceMeters,
-        visible_distance_meters: snapshotRouteConfig.visibleDistanceMeters,
-      },
-      { onConflict: "key" }
-    );
-    if (error) {
-      throw new Error("Failed to restore route config");
-    }
+  if (error) {
+    throw new Error(`Failed to restore map layout: ${error.message}`);
   }
 }
 
@@ -334,7 +174,7 @@ export async function GET() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -374,7 +214,7 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user || !isAdminRole(getRole(user))) {
+    if (!user || !isAdmin(getRole(user))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

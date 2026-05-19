@@ -48,6 +48,26 @@ import {
   buildReplyFromTurns,
 } from "@/lib/grandma/promptBuilder";
 import { handleAbuseDetection } from "@/lib/grandma/abuseDetection";
+import { z } from "zod";
+
+const ConsultHistoryEntrySchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  speakerId: z.string().nullable().optional(),
+  speakerName: z.string().nullable().optional(),
+});
+
+const AskJsonBodySchema = z.object({
+  text: z.string().optional(),
+  location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
+  shopId: z.number().int().nullable().optional(),
+  shopName: z.string().nullable().optional(),
+  history: z.array(ConsultHistoryEntrySchema).optional(),
+  memorySummary: z.string().optional(),
+  preferredCharacterId: z.string().nullable().optional(),
+  visitorKey: z.string().max(128).nullable().optional(),
+  stream: z.boolean().optional(),
+});
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,17 +136,13 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
       imageDataUrl = `data:${mime};base64,${base64}`;
     }
   } else {
-    const payload = (await request.json()) as {
-      text?: string;
-      location?: { lat: number; lng: number } | null;
-      shopId?: number | null;
-      shopName?: string | null;
-      history?: ConsultHistoryEntry[];
-      memorySummary?: string;
-      preferredCharacterId?: ConsultCharacterId | null;
-      visitorKey?: string | null;
-      stream?: boolean;
-    };
+    const parsed = AskJsonBodySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      const err = new Error(parsed.error.issues[0].message);
+      (err as Error & { statusCode: number }).statusCode = 400;
+      throw err;
+    }
+    const payload = parsed.data;
     text = payload.text ?? "";
     location = payload.location ?? null;
     targetShopId =
@@ -134,12 +150,10 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
         ? payload.shopId
         : null;
     targetShopName = payload.shopName?.trim() || null;
-    history = Array.isArray(payload.history) ? payload.history : [];
+    history = (payload.history ?? []) as ConsultHistoryEntry[];
     memorySummary = payload.memorySummary?.trim() || "";
-    preferredCharacterId =
-      payload.preferredCharacterId && CONSULT_CHARACTER_BY_ID.has(payload.preferredCharacterId)
-        ? payload.preferredCharacterId
-        : null;
+    const charId = payload.preferredCharacterId as ConsultCharacterId | null;
+    preferredCharacterId = charId && CONSULT_CHARACTER_BY_ID.has(charId) ? charId : null;
     if (typeof payload.visitorKey === "string") {
       const vk = payload.visitorKey.trim();
       visitorKey = vk.length > 0 && vk.length <= 128 ? vk : null;
@@ -501,6 +515,15 @@ export async function POST(request: Request) {
     });
     if (rateLimited) return rateLimited;
 
+    let parsedReq: ParsedRequest;
+    try {
+      parsedReq = await parseRequest(request);
+    } catch (e) {
+      if (e instanceof Error && (e as Error & { statusCode?: number }).statusCode === 400) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+      }
+      throw e;
+    }
     const {
       text,
       location,
@@ -512,7 +535,7 @@ export async function POST(request: Request) {
       preferredCharacterId,
       visitorKey,
       stream,
-    } = await parseRequest(request);
+    } = parsedReq;
     const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
       return NextResponse.json({ reply: "質問を入力してね。" }, { status: 400 });

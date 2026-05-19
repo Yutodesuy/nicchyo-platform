@@ -7,8 +7,33 @@ export async function middleware(request: NextRequest) {
   // セッション更新（Supabase Auth）
   // getUser() 内でセッションリフレッシュが起きると createClient 内の supabaseResponse が
   // 再代入されるため、呼び出し後に getResponse() で最新のレスポンスを取得する
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   const supabaseResponse = getResponse();
+
+  // パスベースのアクセス制御
+  const pathname = request.nextUrl.pathname;
+  const appRole = (user?.app_metadata as { role?: string } | undefined)?.role ?? null;
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/moderator")) {
+    const allowed = appRole === "super_admin" || appRole === "admin" || appRole === "moderator";
+    if (!user || !allowed) {
+      const redirectRes = NextResponse.redirect(new URL("/", request.url));
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectRes.cookies.set(name, value);
+      });
+      return redirectRes;
+    }
+  }
+
+  if (pathname.startsWith("/my-shop")) {
+    if (!user || appRole !== "vendor") {
+      const redirectRes = NextResponse.redirect(new URL("/", request.url));
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectRes.cookies.set(name, value);
+      });
+      return redirectRes;
+    }
+  }
 
   // ノンスを生成してCSPヘッダーに設定
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");

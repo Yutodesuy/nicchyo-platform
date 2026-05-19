@@ -1455,6 +1455,17 @@ export type Database = {
         Args: { p_visit_date: string; p_visitor_key: string }
         Returns: boolean
       }
+      redeem_coupon: {
+        Args: {
+          p_coupon_id: string
+          p_visitor_key: string
+          p_vendor_id: string
+          p_market_date: string
+          p_max_issuance: number
+          p_next_coupon_amount: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

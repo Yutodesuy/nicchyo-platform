@@ -4,18 +4,10 @@ import { cookies } from "next/headers";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isModerator } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const r = user as { app_metadata?: { role?: string }; user_metadata?: { role?: string } };
-  return r.app_metadata?.role ?? r.user_metadata?.role ?? null;
-}
-function canModerate(role: string | null) {
-  return role === "super_admin" || role === "admin" || role === "moderator";
-}
 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,7 +31,7 @@ export async function POST(req: Request) {
   const supabase = createServerClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || !canModerate(getRole(user))) {
+  if (!user || !isModerator(getRole(user))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -52,6 +44,9 @@ export async function POST(req: Request) {
   const dc = createAdminClient() ?? supabase;
   const { error } = await dc.from("kotodutes").update({ status: body.status }).in("id", body.ids);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/kotodute/bulk] update failed:", error.message);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json({ success: true, updated: body.ids.length });
 }

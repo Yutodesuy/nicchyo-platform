@@ -4,6 +4,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { requireSameOrigin } from "@/lib/security/requestGuards";
 import { enforceRateLimit } from "@/lib/security/rateLimit";
+import { getRole, isAdmin } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,19 +38,6 @@ const DEFAULT_MAP_SETTINGS: MapSettings = {
   maxMapSnapshots: 50,
   maxEditZoom: 20,
 };
-
-function getRole(user: unknown) {
-  if (!user || typeof user !== "object") return null;
-  const record = user as {
-    app_metadata?: { role?: string };
-    user_metadata?: { role?: string };
-  };
-  return record.app_metadata?.role ?? record.user_metadata?.role ?? null;
-}
-
-function isAdminRole(role: string | null) {
-  return role === "super_admin" || role === "admin";
-}
 
 function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -118,7 +106,7 @@ async function requireAdmin() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || !isAdminRole(getRole(user))) {
+  if (!user || !isAdmin(getRole(user))) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
 
