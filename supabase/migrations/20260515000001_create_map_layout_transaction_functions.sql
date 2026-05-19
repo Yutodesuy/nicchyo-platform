@@ -177,3 +177,11 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- service_role のみ実行可能。anon・authenticated からは直接呼び出せないようにする。
+-- redeem_coupon と同様に SECURITY DEFINER 関数の権限を明示的に制限する。
+GRANT EXECUTE ON FUNCTION replace_map_route_points(jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION replace_map_route_points(jsonb) FROM anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION restore_map_layout_snapshot(jsonb, jsonb, jsonb, jsonb) TO service_role;
+REVOKE EXECUTE ON FUNCTION restore_map_layout_snapshot(jsonb, jsonb, jsonb, jsonb) FROM anon, authenticated;

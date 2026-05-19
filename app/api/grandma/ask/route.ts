@@ -138,7 +138,9 @@ async function parseRequest(request: Request): Promise<ParsedRequest> {
   } else {
     const parsed = AskJsonBodySchema.safeParse(await request.json());
     if (!parsed.success) {
-      throw new Error(`Invalid request body: ${parsed.error.issues[0].message}`);
+      const err = new Error(parsed.error.issues[0].message);
+      (err as Error & { statusCode: number }).statusCode = 400;
+      throw err;
     }
     const payload = parsed.data;
     text = payload.text ?? "";
@@ -513,6 +515,15 @@ export async function POST(request: Request) {
     });
     if (rateLimited) return rateLimited;
 
+    let parsedReq: ParsedRequest;
+    try {
+      parsedReq = await parseRequest(request);
+    } catch (e) {
+      if (e instanceof Error && (e as Error & { statusCode?: number }).statusCode === 400) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+      }
+      throw e;
+    }
     const {
       text,
       location,
@@ -524,7 +535,7 @@ export async function POST(request: Request) {
       preferredCharacterId,
       visitorKey,
       stream,
-    } = await parseRequest(request);
+    } = parsedReq;
     const question = text || (imageDataUrl ? "画像について教えて" : "");
     if (!question) {
       return NextResponse.json({ reply: "質問を入力してね。" }, { status: 400 });
