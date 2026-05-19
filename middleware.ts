@@ -17,13 +17,21 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin") || pathname.startsWith("/moderator")) {
     const allowed = appRole === "super_admin" || appRole === "admin" || appRole === "moderator";
     if (!user || !allowed) {
-      return NextResponse.redirect(new URL("/", request.url));
+      const redirectRes = NextResponse.redirect(new URL("/", request.url));
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectRes.cookies.set(name, value);
+      });
+      return redirectRes;
     }
   }
 
   if (pathname.startsWith("/my-shop")) {
     if (!user || appRole !== "vendor") {
-      return NextResponse.redirect(new URL("/", request.url));
+      const redirectRes = NextResponse.redirect(new URL("/", request.url));
+      supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+        redirectRes.cookies.set(name, value);
+      });
+      return redirectRes;
     }
   }
 
